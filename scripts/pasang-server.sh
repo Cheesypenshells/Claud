@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pemasangan bot Cheesy Pen Shells di server Linux (Debian/Ubuntu), misalnya Google Cloud e2-micro.
+# Pemasangan bot Cheesy Pen Shells di server Linux (Ubuntu/Debian): VPS lokal atau Google Cloud e2-micro.
 # Jalankan dari jendela SSH:
 #   curl -fsSL https://raw.githubusercontent.com/Cheesypenshells/Claud/claude/cheesy-pen-shells-management-nq92xx/scripts/pasang-server.sh | bash
 set -euo pipefail
@@ -7,6 +7,10 @@ set -euo pipefail
 REPO="https://github.com/Cheesypenshells/Claud.git"
 BRANCH="${CPS_BRANCH:-claude/cheesy-pen-shells-management-nq92xx}"
 DIR="$HOME/cps-bot"
+PENGGUNA="$(id -un)"
+
+# VPS biasanya login sebagai root dan kadang tidak punya sudo.
+if [ "$(id -u)" -eq 0 ]; then sudo() { if [ "$1" = "-E" ]; then shift; fi; "$@"; }; fi
 
 tanya() { local var; read -rp "$1" var < /dev/tty; echo "$var" | tr -cd '0-9A-Za-z_-'; }
 # Nomor boleh ditulis 0877... atau 62877...; disimpan sebagai 62877...
@@ -61,9 +65,25 @@ until [ -f "$DIR/credentials.json" ]; do
     mv "$HOME/credentials.json" "$DIR/credentials.json"
     break
   fi
-  echo "File credentials.json belum ada."
-  echo "Klik tombol UPLOAD FILE di jendela SSH ini, pilih file credentials.json, tunggu selesai."
-  read -rp "Lalu tekan Enter... " _ < /dev/tty
+  echo "File credentials.json belum ada. Pilih cara:"
+  echo "  1) Sudah saya upload ke server (tombol Upload file di SSH Google Cloud / SFTP)"
+  echo "  2) Saya tempel isinya di sini"
+  read -rp "Ketik 1 atau 2 lalu Enter: " CARA < /dev/tty
+  if [ "$CARA" = "2" ]; then
+    echo "Buka credentials.json di tablet, salin SEMUA isinya, tempel di sini."
+    echo "Masukan berhenti otomatis setelah isi file lengkap (tanda } terakhir)."
+    : > "$DIR/credentials.json"
+    while IFS= read -r baris < /dev/tty; do
+      printf '%s\n' "$baris" >> "$DIR/credentials.json"
+      case "$baris" in
+        *"}"*) node -e "JSON.parse(require('fs').readFileSync('$DIR/credentials.json','utf8'))" 2>/dev/null && break ;;
+      esac
+    done
+    if ! node -e "JSON.parse(require('fs').readFileSync('$DIR/credentials.json','utf8')).client_email" >/dev/null 2>&1; then
+      echo "Isi credentials.json tidak valid, coba lagi."
+      rm -f "$DIR/credentials.json"
+    fi
+  fi
 done
 chmod 600 "$DIR/credentials.json" "$DIR/.env"
 echo "credentials.json siap."
@@ -76,7 +96,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=$USER
+User=$PENGGUNA
 WorkingDirectory=$DIR
 ExecStart=$(command -v node) src/index.js
 Restart=always

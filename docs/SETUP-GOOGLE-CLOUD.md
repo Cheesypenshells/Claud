@@ -78,7 +78,7 @@ Kembali ke **https://console.cloud.google.com** (project `cps-kantor-ai`):
 4. Lalu skrip meminta **credentials.json**:
    - Di jendela SSH, klik ikon **Upload file** (gambar panah ke atas, di kanan atas).
    - Pilih file `credentials.json` dari tablet dan tunggu sampai selesai.
-   - Kembali ke jendela SSH dan tekan **Enter**.
+   - Kembali ke jendela SSH, ketik `1`, lalu Enter.
 5. Bot mulai berjalan dan menampilkan **Kode pairing**, misalnya `ABCD-1234`.
 6. Di **HP nomor bot**: buka **WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon**, lalu masukkan kodenya.
 7. Kalau muncul `[WA] Tersambung. Bot siap.`, berarti berhasil. Tekan **Ctrl+C** untuk menutup log; bot tetap berjalan.
