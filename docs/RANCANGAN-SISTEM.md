@@ -1,6 +1,8 @@
 # Rancangan Sistem "Kantor AI" Cheesy Pen Shells
 
-Versi draf 1, disusun dari jawaban Pak George (owner). Status: **menunggu konfirmasi owner** sebelum mulai coding.
+Versi draf 2. Disusun dari jawaban Pak George (owner) dan dokumen SOP BAB 1–8.
+Status: **menunggu konfirmasi owner** sebelum mulai coding.
+Detail checklist SOP harian untuk bot ada di [CHECKLIST-SOP-BOT.md](CHECKLIST-SOP-BOT.md).
 
 ---
 
@@ -10,10 +12,10 @@ Versi draf 1, disusun dari jawaban Pak George (owner). Status: **menunggu konfir
  Grup WA "Pengeluaran <Kota>"  ─┐
  (Owner + PIC)                  │
                                 ├──►  Bot WA (nomor khusus)  ──►  AI (baca chat & foto struk)
- Grup WA "Tim <Kota>"          ─┤                                        │
- (PIC + karyawan)               │                                        ▼
+ Grup WA "Event <Kota>"        ─┤                                        │
+ (PIC + senior + DW)            │                                        ▼
                                 │                               Google Sheets (database)
- Grup WA "Gudang"              ─┘                               - bisa dibuka owner dari HP
+ Grup WA "Gudang Pusat"        ─┘                               - bisa dibuka owner dari HP
  (Owner + yang pegang gudang)                                   - bisa dikoreksi manual
                                                                          │
                                 Bot balas / TAG di grup  ◄───────────────┘
@@ -23,7 +25,7 @@ Versi draf 1, disusun dari jawaban Pak George (owner). Status: **menunggu konfir
 Prinsip:
 - **Gratis / semurah mungkin, dikelola sendiri.** Bot WA pakai WhatsApp biasa (bukan API berbayar), data disimpan di Google Sheets.
 - **Bot hanya membaca grup yang didaftarkan.** Chat pribadi owner dan grup lain tidak dibaca.
-- **AI mengusulkan, manusia memutuskan** untuk hal sensitif (denda, poin minus besar). Lihat bagian 8.
+- **Bot mengusulkan, manusia memutuskan** untuk denda dan poin minus. Ini sesuai SOP BAB 4 & BAB 8: *"tidak ada sanksi otomatis hanya karena temuan"* dan *"tidak ada pemotongan upah atau denda otomatis tanpa dasar hukum yang sah"*.
 
 ### Komponen teknis
 | Komponen | Pilihan | Biaya |
@@ -31,41 +33,44 @@ Prinsip:
 | Bot WhatsApp | Library open-source (Baileys / whatsapp-web.js) yang login sebagai "perangkat tertaut" di **nomor WA baru khusus bot** | Gratis (hanya kartu SIM) |
 | Database | Google Sheets | Gratis |
 | AI pembaca chat & foto bukti transfer | Claude API (model kecil/murah) | Bayar per pemakaian, perkiraan puluhan ribu rupiah/bulan |
-| Mesin yang menjalankan bot | Laptop/PC lama di ruko yang menyala 24 jam, atau server gratis (mis. free tier cloud) | Gratis / listrik saja |
+| Mesin yang menjalankan bot | Laptop/PC di ruko yang menyala 24 jam, atau server gratis | Gratis / listrik saja |
 
-> **Catatan risiko:** bot WA non-resmi melanggar ketentuan WhatsApp dan nomornya *bisa* diblokir. Karena itu bot **wajib pakai nomor terpisah**, jangan nomor pribadi/bisnis utama owner.
+> **Catatan risiko:** bot WA non-resmi melanggar ketentuan WhatsApp dan nomornya *bisa* diblokir. Karena itu bot **wajib pakai nomor terpisah**.
 
 ---
 
-## 2. Struktur Grup WhatsApp
+## 2. Struktur Grup WhatsApp (mengikuti SOP BAB 1 Pasal 9)
 
 | Grup | Anggota | Isi yang dicatat bot |
 |---|---|---|
-| `Pengeluaran <Kota> <Bulan>` | Owner, PIC, bot | Bukti transfer, info pengeluaran cash, transfer masuk dari IO, setup event |
-| `Tim <Kota> <Bulan>` | PIC, senior, junior, DW, bot | Absensi, pembagian posisi, foto SOP, laporan bahan harian, jumlah makan, komplain |
-| `Gudang CPS` | Owner, karyawan yang pegang gudang, bot | Barang masuk/keluar/retur gudang, produksi bumbu |
+| `Pengeluaran <Kota>` | Owner, PIC, bot | Setup event, bukti transfer, pengeluaran cash, transfer masuk dari IO |
+| `Event <Kota>` | PIC, senior, DW, kasir, bot | Absensi, pembagian posisi, loading in, kesiapan booth, QC, omzet, stok, closing, loading out |
+| `Gudang Pusat` | Owner, karyawan yang pegang gudang, bot | Barang masuk/keluar gudang, koli, perpindahan antarevent, produksi bumbu |
 | `Kas Ruko` (opsional) | Owner, bot | Gaji, listrik, air, sewa ruko (pembukuan terpisah dari event) |
 
 ---
 
 ## 3. Setup Event (dikirim owner di grup pengeluaran)
 
-Contoh format pesan:
+Kode event mengikuti SOP BAB 2 (contoh `SBY26`), misalnya `JMB26-11` untuk Jambi, November 2026.
 ```
 #event
+Kode: JMB26-11
 Kota: Jambi
 IO: Kepo Market
 Tanggal: 1-14 Nov 2026
 Wilayah harga: Sumatra
+Target omzet: 150.000.000
 Bagi hasil: 27%
 Admin: 500.000
 Listrik/air/gas/galon: dihitung IO (nanti diinfokan)
 Jadwal trf: H+1, Jumat-Minggu ditransfer Senin
-Jam masuk: 10.00
+Jam buka: 11.00   (absen wajib 1 jam sebelum buka = 10.00, SOP BAB 4)
 PIC: Budi
 Senior: Andi, Rudi, Sari
+DW: Joko, Tono
+Kasir: Budi
 ```
-Bot membuat 1 "lembar event" baru di Sheets dan mengonfirmasi balik.
 
 ### Harga jual per wilayah (per pcs)
 | Menu | Jawa | Sumatra (+5rb) | Kalimantan (+10rb) | Min. order |
@@ -80,162 +85,180 @@ Bot membuat 1 "lembar event" baru di Sheets dan mengonfirmasi balik.
 ## 4. Keuangan & Pembukuan
 
 ### 4.1 Pemasukan per event
-- **Omset kotor harian** dilaporkan PIC tiap tutup booth (angka dari kasir).
+- **Omzet terverifikasi harian** dikirim kasir/PIC tiap tutup booth dengan format SOP BAB 6 bagian H, termasuk **jumlah pcs per menu**.
 - **Transfer IO** dicatat dari bukti transfer di grup pengeluaran.
-- Bot menghitung **perkiraan transfer**:
-  `Transfer seharusnya = Omset kotor − potongan bagi hasil (25–30%) − admin − listrik/air/gas/galon`
-- Bot mencocokkan **perkiraan vs transfer yang benar-benar masuk** dan mengikuti jadwal (H+1; Jumat–Minggu dibayar Senin; atau sekali setelah event). Jika lewat jadwal belum masuk / nominal beda → bot ingatkan owner.
+- Bot menghitung perkiraan transfer:
+  `Transfer seharusnya = Omzet − potongan bagi hasil (25–30%) − admin − listrik/air/gas/galon`
+- Bot mencocokkan perkiraan dengan transfer yang masuk sesuai jadwal (H+1; Jumat–Minggu dibayar Senin; atau sekali setelah event). Kalau telat atau nominal beda, owner diingatkan.
 
 ### 4.2 Pengeluaran per event
 Dibaca AI dari chat atau screenshot, mis. *"lalamove 150k"*, *"makan malam 120rb"*, *"ember 1 unit 30rb"*.
-Kategori: Transport/Ekspedisi, Konsumsi, Peralatan, Oyster (beli langsung ke supplier untuk lokasi), Penginapan, Gaji DW, Lain-lain.
+Kategori: Transport/Ekspedisi, Konsumsi, Peralatan, Oyster (beli langsung untuk lokasi), Penginapan, Gaji DW, Lain-lain.
 
 ### 4.3 Bahan dari gudang (dibebankan ke event)
-Bumbu, keju, topping, saus keju tidak dibeli per event, tapi **diambil dari gudang dengan harga pokok (HPP) per pack**.
 ```
 Pemakaian      = Keluar awal + Restock − Sisa (retur ke gudang)
 Biaya bahan    = Pemakaian × HPP per pack
 ```
-Contoh: keluar 10 + restock 10 − sisa 2 = **18 pack terpakai**.
+Contoh bumbu (HPP **Rp 500.000/pack**): keluar 10 + restock 10 − sisa 2 = 18 pack → **Rp 9.000.000**.
 
 ### 4.4 Laba-rugi
-- **Per event:** Transfer bersih IO − pengeluaran event − bahan gudang − gaji (porsi event) − bonus DW.
-- **Per bulan:** jumlah semua event − biaya ruko (gaji tetap yang belum terbagi ke event, listrik, air, sewa) = **laba bersih bulanan**.
+- **Per event:** Transfer bersih IO − pengeluaran event − bahan gudang − gaji (porsi event) − bonus.
+- **Per bulan:** jumlah semua event − biaya ruko = **laba bersih bulanan**.
 
 ---
 
-## 5. Stok Gudang (Ruko Puri Gardena Blok C/9, lantai 1)
+## 5. Stok Gudang & Satuan Baku
 
-Buku stok mencatat setiap mutasi:
-| Tanggal | Barang | Jenis | Jumlah | Tujuan/Asal | HPP/pack | Saldo |
-|---|---|---|---|---|---|---|
-| 1 Nov | Bumbu butter garlic | Keluar | 20 | Event Jambi | … | 180 |
-| 1 Nov | Keju mozzarella (2,3 kg) | Keluar | 50 | Event Jambi | … | 250 |
-| 15 Nov | Bumbu butter garlic | Retur | 2 | Event Jambi | … | 182 |
+Satuan baku mengikuti SOP BAB 2, 3, 6, dan 7:
+| Bahan | Satuan | Isi | HPP |
+|---|---|---|---|
+| Oyster hidup | kg | 1 kg ≈ 4–7 pcs | Beli per event, min. ±100 kg |
+| Bumbu butter garlic | pack | 1,5 kg | Rp 500.000/pack |
+| Mozzarella | pack | 2,3 kg | ? |
+| Saus keju | pack | 1 kg | ? |
+| Topping seafood | pack | 1 kg | ? |
 
-- **Produksi bumbu sendiri:** HPP per pack = total biaya produksi ÷ jumlah pack yang dihasilkan.
-- **Stok opname** berkala: jumlah fisik dibandingkan saldo catatan. Selisih → alert ke owner.
+Buku stok gudang mencatat setiap mutasi (masuk, keluar ke event, retur, rusak) dengan format laporan WA SOP BAB 2 Pasal 9 `[CPS | BARANG KELUAR | KODE EVENT]`. Bot membalas saldo terbaru setiap ada mutasi.
 
 ---
 
-## 6. Deteksi Bahan yang Hilang / Tidak Wajar
+## 6. Deteksi Bahan Hilang / Tidak Wajar
 
-### 6.1 Oyster (bahan utama)
-Patokan dari owner: **100 kg oyster ≈ Rp 10 juta omset (harga Jawa)** → ±Rp 100.000 omset per kg.
-Untuk Sumatra/Kalimantan, patokan disesuaikan dengan kenaikan harga per wilayah.
-```
-Omset per kg = Omset kotor event ÷ kg oyster terpakai
-Jika omset per kg < 95% patokan  →  ALERT (melebihi toleransi rusak 5%)
-```
+Data takaran dari owner:
+| Bahan | Takaran standar | Artinya |
+|---|---|---|
+| Oyster | 1 kg ≈ 4–7 pcs | 100 kg ≈ Rp 10 juta omzet (harga Jawa) |
+| Bumbu | 1 pack per Rp 10 juta omzet | |
+| Mozzarella | 10 g per pcs (varian mozza & seafood mozza) | 1 pack 2,3 kg ≈ 230 pcs |
+| Topping seafood | 10 g per pcs (varian seafood) | 1 pack 1 kg = 100 pcs |
+| Nampan | 1 nampan = 50 pcs | |
 
-### 6.2 Bumbu, keju, topping
-Dihitung dari **resep standar per pcs** (lihat pertanyaan terbuka) dikali jumlah terjual:
-```
-Pemakaian teoritis = Σ (pcs terjual per menu × takaran per pcs)
-Selisih            = Pemakaian aktual − Pemakaian teoritis
-Jika selisih > 5%  →  ALERT, TAG PIC, masuk ke KPI "Kekurangan stok" tim
-```
+### 6.1 Pemeriksaan tiga lapis (dari laporan harian)
+1. **Getok (kg → pcs):** `pcs dibuka ÷ kg oyster terpakai` harus 4–7. Di bawah 4 → alert ("oyster hilang/terbuang di getok").
+2. **Plating → jual:** `pcs di nampan − pcs terjual − pcs ditolak − sisa nampan` harus ≈ 0. Selisih → alert ke plating & kasir.
+3. **Bahan pendamping:**
+   ```
+   Mozzarella teoritis = (pcs mozza + pcs seafood mozza) × 10 g
+   Topping teoritis    = pcs seafood mozza × 10 g
+   Bumbu teoritis      = omzet ÷ 10 juta (pack)
+   Jika pemakaian aktual > teoritis + 5%  →  ALERT, TAG PIC & senior
+   ```
+4. **Cek kasar omzet per kg:** omzet ÷ kg oyster, dibandingkan patokan Rp 100.000/kg (Jawa, disesuaikan untuk Sumatra/Kalimantan). Turun lebih dari 5% → alert.
 
-### 6.3 Laporan bahan harian (grup tim)
-Tiap tutup booth: stok awal, tambahan, sisa per bahan. Bot memeriksa angka masuk akal (sisa hari ini = awal besok) dan menandai yang janggal.
+Selisih yang lewat toleransi 5% masuk ke KPI kelompok "Stok". Jika terbukti lalai, bot mengusulkan denda senilai barang (perlu ACC owner/PIC).
 
 ---
 
 ## 7. SOP, Absensi & Pembagian Posisi
 
-### 7.1 Posisi kerja di booth
-| Posisi | Tugas |
-|---|---|
-| Kasir | PIC (keluarga/owner) |
-| Bakaran / Pemanggang | Memasak semua order dari kasir |
-| Plating | Di belakang pemanggang: seleksi bahan, membumbui oyster mentah, mengambil oyster dari bagian getok |
-| Getok (2 orang) | Atur cooler box & es batu, bersihkan oyster, buka cangkang, kirim ke plating |
+Ringkasan di bawah. Jadwal lengkap, tag WA, dan penanggung jawab tiap foto ada di **[CHECKLIST-SOP-BOT.md](CHECKLIST-SOP-BOT.md)**.
 
-Setiap pagi bot meminta PIC mengisi **pembagian posisi hari itu** (posisi bisa dirolling).
+| Fase SOP | Kapan | Isi laporan |
+|---|---|---|
+| BAB 2 Persiapan gudang | H-2 Jawa / H-5 Sumatra / H-30 Kalimantan | Barang keluar, koli, bahan beku |
+| BAB 3 Loading in | Hari kedatangan | Foto armada & koli, booth depan, gudang belakang, stok awal |
+| BAB 4–6 Operasional harian | Tiap hari | Absen, posisi, foto kesiapan, QC, omzet, stock opname, foto closing |
+| BAB 7 Loading out | Hari terakhir | Stok akhir, koli kering & dingin, serah terima |
+| BAB 8 Pengawasan | Tiap hari | Penilaian harian senior (5 aspek), temuan |
 
-### 7.2 Absensi
-Karyawan kirim di grup tim: `#masuk` (dengan foto di booth) dan `#pulang`. Bot mencatat nama, jam masuk, jam pulang, dan posisi.
-Terlambat = lewat jam masuk + toleransi. **Telat 2x berturut-turut → denda** (nominal menunggu konfirmasi).
-
-### 7.3 Checklist SOP (dari dokumen SOP owner)
-| Fase | Contoh tugas | Bukti | Batas waktu |
-|---|---|---|---|
-| Loading in | Rakit booth, cek peralatan | Foto booth siap | Sebelum buka |
-| Event berjalan (harian) | Sapu & bersihkan lantai booth, booth siap jualan, laporan bahan | Foto + `#sop sapu`, `#sop booth-siap` | Per jam yang ditentukan |
-| Loading out | Packing, hitung stok sisa, kirim ke lokasi berikutnya/gudang | Foto packing + laporan sisa | Hari terakhir |
+**Posisi kerja:** Kasir (PIC/ditunjuk), Grill/Bakar, Plating, Getok (2 orang). Setiap pagi senior/PIC mengirim pembagian posisi; bot memakai data ini untuk tahu siapa yang di-TAG kalau ada tugas yang belum dikerjakan.
 
 **Alur pengecekan bot:**
-1. Batas waktu lewat dan bukti belum ada → bot **TAG PIC + karyawan penanggung jawab** di grup.
-2. Masih belum dikerjakan → tercatat **poin minus SOP** di KPI.
-3. Berulang / keterlaluan → bot memberi **catatan pelanggaran** (poin minus lebih besar) dan, bila ada barang rusak karena lalai, **usulan denda = nilai barang**.
+1. Batas waktu lewat dan bukti belum ada → bot **TAG penanggung jawab + senior + PIC**.
+2. Satu jam setelah di-TAG belum juga dikerjakan → bot mengusulkan **poin minus**.
+3. Berulang / ada barang rusak karena lalai → bot mengusulkan **catatan pelanggaran / denda senilai barang**. Semua usulan perlu `#acc` atau `#tolak` dari PIC/owner.
 
 ---
 
-## 8. KPI Karyawan (skor 0–100)
+## 8. KPI Karyawan — Sistem Poin (maks. 100 poin/bulan)
 
-| Komponen | Bobot | Jenis | Sumber data | Bisa didenda? |
-|---|---|---|---|---|
-| Absensi & ketepatan waktu | 10% | Individu | Absensi bot | Ya (telat 2x berturut) |
-| Kepatuhan SOP | 20% | Individu | Checklist bot | Ya (lalai hitung stok) |
-| Omset | 20% | Kelompok | Omset vs target event | – |
-| Kekurangan stok | 20% | Kelompok | Deteksi bagian 6 | Ya (jika kurang) |
-| Kebersihan | 10% | Kelompok | Foto SOP kebersihan | – |
-| Komplain pelanggan | 10% | Kelompok | Laporan PIC | – |
-| Rasa kepemilikan (attitude, skill, kejujuran) | 10% | Individu | Nilai PIC | – |
+### 8.1 Pembagian bobot: 60% individu, 40% kelompok
+| Komponen | Poin maks. | Jenis | Sumber data |
+|---|---|---|---|
+| Absensi & ketepatan waktu | 15 | Individu | Absen bot (hadir 1 jam sebelum buka) |
+| SOP & jobdesk posisi | 25 | Individu | Checklist foto/laporan sesuai posisi |
+| Penilaian harian senior/PIC: attitude, skill, kejujuran, rasa kepemilikan | 20 | Individu | Form BAB 8 bagian I (5 aspek Baik/Perlu perbaikan) |
+| Omzet vs target event | 15 | Kelompok | Omzet terverifikasi |
+| Ketepatan stok (selisih ≤ 5%) | 10 | Kelompok | Deteksi bagian 6 |
+| Kebersihan & komplain pelanggan | 10 | Kelompok | Foto closing, laporan PIC |
+| Kinerja tim (pembagian tugas, kecepatan) | 5 | Kelompok | Nilai PIC akhir event |
+| **Total** | **100** | 60 individu + 40 kelompok | |
 
-- **Individu (40%)**: absensi, SOP, rasa kepemilikan.
-- **Kelompok (60%)**: omset, stok, kebersihan, komplain. Nilai PIC untuk kinerja tim, pembagian tugas, dan kecepatan kerja masuk ke penilaian kelompok.
-- Setiap akhir event PIC mengisi form singkat nilai 1–5 per karyawan via WA, lalu bot mengonversi.
-- **Peringkat bulanan** dikirim ke owner (bukan ke grup, kecuali owner mau).
-- **Denda & poin minus besar = usulan bot, disetujui PIC/owner** dengan membalas `#setuju` / `#tolak`.
+### 8.2 Poin plus & minus
+```
+Skor bulan = Skor komponen + Poin plus − Poin minus   (dibatasi 0 – 100)
+```
+| Contoh kejadian | Poin |
+|---|---|
+| SOP tidak dikerjakan setelah di-TAG | −10 |
+| Telat 2x berturut-turut | −5 (+ usulan denda) |
+| Lalai sehingga bahan rusak | −10 (+ usulan denda senilai barang) |
+| Bantu masak bumbu di gudang | +20 |
+| Bantu loading/bongkar muat di luar jadwal | +10 |
+| Laporan temuan QC yang mencegah produk buruk terjual | +5 |
+
+Contoh owner: tidak mengerjakan SOP (−10) + bantu masak bumbu (+20) = **selisih +10 poin**.
+Daftar poin plus/minus bisa diubah owner kapan saja di Google Sheets.
+
+### 8.3 Contoh perhitungan (Andi, senior, November)
+| Bagian | Data | Poin |
+|---|---|---|
+| Absensi (15) | 22 dari 24 hari tepat waktu | 13,75 |
+| SOP & jobdesk (25) | 90% tugas selesai tepat waktu | 22,5 |
+| Penilaian senior/PIC (20) | rata-rata 4,5 dari 5 aspek "Baik" | 18 |
+| Omzet (15) | capai 100% target | 15 |
+| Stok (10) | selisih 3% (dalam toleransi) | 10 |
+| Kebersihan & komplain (10) | 1 komplain | 8 |
+| Kinerja tim (5) | nilai PIC 4/5 | 4 |
+| **Skor komponen** | | **91,25** |
+| Poin minus | 1x SOP tidak dikerjakan | −10 |
+| Poin plus | 1x bantu masak bumbu | +20 |
+| **Skor akhir** | 101,25 → dibatasi | **100** |
 
 ---
 
-## 9. Usulan Rumus Gaji & Bonus
+## 9. Gaji & Bonus
+
+Prinsip owner: **poin = persentase klaim bonus.** 100 poin berarti klaim 100% bonus individu, 80 poin berarti 80%.
 
 ### 9.1 Karyawan tetap (senior/junior)
-**a. Gaji pokok** tetap dibayar penuh per bulan, lalu **dibagi ke event** sesuai hari kerja (untuk laporan laba per event):
 ```
-Gaji pokok di event X = Gaji pokok bulanan × (hari kerja di event X ÷ total hari kerja bulan itu)
+Gaji pokok                 tetap per bulan (dibagi ke event sesuai hari kerja untuk laporan laba event)
+Kolam bonus bulan          = Total omzet semua event × tarif (1–3%)
+Bonus maksimal per orang   = Kolam bonus × (hari kerja orang ÷ total hari kerja semua karyawan tetap)
+Bonus diterima             = Bonus maksimal × (Skor poin ÷ 100)
+Gaji bulan                 = Gaji pokok + Bonus diterima − Denda yang sudah di-ACC
 ```
-Contoh: gaji 2 juta, 2 event dengan jumlah hari sama → masing-masing event dibebani 1 juta.
+Bonus yang tidak terklaim (karena poin < 100) kembali ke perusahaan.
 
-**b. Bonus omset (kolam bonus bulanan)**
-```
-Kolam bonus = Total omset semua event dalam sebulan × tarif (1% / 2% / 3%)
-Poin orang  = Hari kerja × (Skor KPI ÷ 100)
-Bonus orang = Kolam bonus × (Poin orang ÷ Total poin semua karyawan tetap)
-```
-Usulan tarif (bisa diubah owner): rata-rata omset per event < 100 jt → 1%; 100–200 jt → 2%; > 200 jt → 3%.
-
-**c. Bonus kerajinan** untuk kerja di luar jaga booth (masak bumbu di gudang, bongkar muat, jaga gudang): nominal tetap per tugas, dicatat bot dari laporan.
-
-**d. Potongan:** denda yang sudah disetujui.
-
-**Contoh simulasi** (total omset sebulan 400 jt, tarif 2% → kolam 8 jt):
-| Karyawan | Hari kerja | KPI | Poin | Bonus omset |
+**Contoh** (omzet sebulan 400 jt, tarif 2% → kolam 8 jt, total hari kerja 6 karyawan = 132 hari):
+| Karyawan | Hari kerja | Bonus maksimal | Poin | Bonus diterima |
 |---|---|---|---|---|
-| A (senior) | 24 | 90 | 21,6 | 1.578.000 |
-| B (senior) | 24 | 80 | 19,2 | 1.403.000 |
-| C (senior) | 20 | 85 | 17,0 | 1.242.000 |
-| D (senior) | 22 | 70 | 15,4 | 1.125.000 |
-| E (senior) | 24 | 95 | 22,8 | 1.666.000 |
-| F (junior) | 18 | 75 | 13,5 | 986.000 |
-| **Total** | | | **109,5** | **8.000.000** |
+| A | 24 | 1.454.545 | 100 | 1.454.545 |
+| B | 24 | 1.454.545 | 80 | 1.163.636 |
+| C | 20 | 1.212.121 | 85 | 1.030.303 |
+| D | 22 | 1.333.333 | 70 | 933.333 |
+| E | 24 | 1.454.545 | 95 | 1.381.818 |
+| F (junior) | 18 | 1.090.909 | 75 | 818.182 |
 
-Gaji A = 2.000.000 (pokok) + 1.578.000 (bonus omset) + bonus kerajinan − denda ≈ **3,6 juta+**.
+### 9.2 Daily Worker (DW) — grill/plating/getok
+```
+Bonus harian dasar: omzet event < 100 jt → 0 | 100–200 jt → 50.000 | ≥ 200 jt → 100.000–150.000
+Bonus diterima    = Bonus harian dasar × hari kerja × (Skor poin event ÷ 100)
+Gaji DW           = Upah harian × hari kerja + Bonus diterima − Denda yang sudah di-ACC
+```
 
-### 9.2 Daily Worker (DW)
-```
-Gaji DW = (Upah harian + Bonus harian) × hari kerja − denda
-```
-| Total omset event | Bonus harian dasar |
+### 9.3 Kasir DW
+Kasir mencatat pesanan dan mendorong pelanggan belanja lebih banyak lewat promo, jadi bonusnya dihitung **per hari** dari omzet harian:
+| Omzet harian | Bonus |
 |---|---|
-| < 100 jt | 0 |
-| 100–200 jt | 50.000 |
-| ≥ 200 jt | 100.000 – 150.000 |
+| ≥ 10 jt | 100.000 |
+| ≥ 20 jt | 200.000 |
+| ≥ 30 jt | 250.000 |
 
-Usulan penyesuaian dengan KPI individu: KPI ≥ 90 → bonus penuh/batas atas; 70–89 → bonus dasar; 60–69 → setengah; < 60 → tidak dapat bonus.
+**Bonus followers Instagram @cheesypenshells:** Rp 50.000 untuk setiap kelipatan penuh 100 followers baru per hari. Contoh: +250 followers = 2 × 50.000 = Rp 100.000; +90 followers = Rp 0.
+Bukti: screenshot jumlah followers saat buka dan saat tutup, dikirim ke grup event. Bot membaca angkanya dan menghitung selisih.
 
 ---
 
@@ -243,32 +266,34 @@ Usulan penyesuaian dengan KPI individu: KPI ≥ 90 → bonus penuh/batas atas; 7
 
 | Kapan | Laporan | Dikirim ke |
 |---|---|---|
-| Tiap malam | Rekap hari: omset, pengeluaran, absensi, SOP yang belum beres, alert stok | Grup pengeluaran (versi keuangan) & grup tim (versi operasional) |
+| Tiap malam | Rekap hari: omzet, pengeluaran, absensi, SOP yang belum beres, alert stok | Grup pengeluaran (keuangan) & grup event (operasional) |
 | Akhir event | Laba-rugi event, pemakaian bahan, skor KPI tim | Owner |
-| Akhir bulan | Pembukuan bulanan, kas ruko, peringkat KPI, **draf slip gaji & bonus** semua karyawan | Owner |
-| Kapan saja | Perintah `#rekap`, `#stok`, `#gaji Andi` | Owner |
+| Akhir bulan | Pembukuan bulanan, kas ruko, peringkat poin, **draf slip gaji & bonus** | Owner |
+| Kapan saja | `#rekap`, `#stok`, `#poin Andi`, `#gaji Andi` | Owner |
 
 ---
 
 ## 11. Tahapan Pengerjaan
 
-1. **Tahap 1 – Fondasi & Keuangan:** bot WA, Google Sheets, setup event, pencatatan pengeluaran & transfer IO, rekap per event & bulanan, kas ruko.
-2. **Tahap 2 – Stok:** buku gudang, mutasi keluar/restock/retur, HPP, deteksi bahan tidak wajar.
-3. **Tahap 3 – SOP & Absensi:** absensi, pembagian posisi, checklist SOP dengan TAG otomatis.
-4. **Tahap 4 – KPI & Gaji:** skor KPI, peringkat, usulan denda, draf gaji & bonus bulanan.
+1. **Tahap 1 – Fondasi & Keuangan:** bot WA, Google Sheets, setup event, pengeluaran & transfer IO, rekap event & bulanan, kas ruko.
+2. **Tahap 2 – Stok:** buku gudang, mutasi, HPP, pemeriksaan tiga lapis (bagian 6).
+3. **Tahap 3 – SOP & Absensi:** absensi, pembagian posisi, checklist foto dengan TAG otomatis.
+4. **Tahap 4 – Poin & Gaji:** skor poin, peringkat, usulan denda, draf gaji & bonus bulanan.
 
 ---
 
-## 12. Pertanyaan Terbuka (perlu jawaban owner)
+## 12. Pertanyaan Terbuka
 
-1. **HPP bumbu:** Rp 500 ribu itu untuk **1 pack** atau untuk **seluruh 200 pack** (berarti Rp 2.500/pack)? Pada contoh, 18 pack × 500 rb = 9 juta.
-2. **Takaran:** 1 kg oyster ≈ berapa pcs? 1 pack bumbu / 1 pack keju (2,3 kg) / topping cukup untuk berapa pcs per menu?
-3. **Rincian penjualan:** kasir mencatat jumlah pcs per menu, atau hanya total omset? Kasir pakai aplikasi/sistem IO?
-4. **Absensi:** toleransi telat berapa menit? Nominal denda telat 2x berturut-turut?
-5. **Gaji:** daftar nama karyawan tetap + gaji pokok masing-masing; upah harian DW berapa?
-6. **Denda & poin minus:** otomatis oleh bot, atau usulan bot lalu disetujui PIC/owner (usulan saya)?
-7. **Tarif bonus 1–3%:** setuju dengan usulan di 9.1b atau punya patokan sendiri?
-8. **Perangkat:** ada laptop/PC di ruko yang bisa menyala 24 jam? Siap beli 1 nomor WA baru khusus bot?
-9. **Biaya AI** untuk membaca screenshot (perkiraan puluhan ribu/bulan) diterima? Alternatif gratis: semua pengeluaran diketik dengan format tetap tanpa foto.
-10. **Akun Google** yang dipakai untuk Google Sheets.
-11. **Dokumen SOP** (loading in, event berjalan, loading out) mohon dikirim untuk dijadikan checklist.
+**Penentu mulai coding:**
+1. **Perangkat:** ada laptop/PC di ruko yang bisa menyala 24 jam? Siap beli 1 nomor WA baru khusus bot?
+2. **Biaya AI** untuk membaca screenshot (perkiraan puluhan ribu/bulan) diterima?
+3. **Akun Google** yang dipakai untuk Google Sheets.
+
+**Untuk perhitungan:**
+4. Bobot KPI pada 8.1 dan daftar poin plus/minus pada 8.2 sudah sesuai?
+5. Tarif kolam bonus 1–3%: kapan 1%, 2%, 3%? (usulan: rata-rata omzet event < 100 jt → 1%, 100–200 jt → 2%, > 200 jt → 3%)
+6. Bonus kasir: omzet **harian** (bukan total event)? Dan di antara tingkat, misalnya omzet 15 jt, dapat 100 ribu?
+7. Daftar nama karyawan tetap + gaji pokok; upah harian DW dan upah harian kasir.
+8. Nominal denda telat 2x berturut-turut.
+9. HPP mozzarella, saus keju, dan topping per pack. Saus keju dipakai berapa gram per pcs / di menu apa?
+10. Mozzarella: SOP BAB 4/5 menulis 10–15 g per pcs, sedangkan owner menyebut 10 g. Patokan resmi yang mana?
