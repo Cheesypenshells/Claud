@@ -5,6 +5,7 @@
 import {
   makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers,
 } from 'baileys';
+import { rmSync } from 'node:fs';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import { angkaId } from './util.js';
@@ -64,7 +65,9 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
       if (u.connection === 'close') {
         const kodeStatus = u.lastDisconnect?.error?.output?.statusCode;
         if (kodeStatus === DisconnectReason.loggedOut) {
-          console.error(`[WA] Bot keluar dari WhatsApp. Hapus folder "${folderLogin}" lalu jalankan ulang untuk login lagi.`);
+          // Login lama tidak berlaku lagi: hapus, lalu keluar. Saat dijalankan ulang, bot meminta pairing baru.
+          console.error('[WA] Bot keluar dari WhatsApp. Data login dihapus; jalankan ulang bot untuk pairing lagi.');
+          rmSync(folderLogin, { recursive: true, force: true });
           process.exit(1);
         }
         console.log('[WA] Koneksi terputus, menyambung ulang dalam 5 detik...');

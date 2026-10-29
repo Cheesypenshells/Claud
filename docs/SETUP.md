@@ -1,4 +1,6 @@
-# Cara Memasang Bot (Tahap 1)
+# Cara Memasang Bot di Laptop (Alternatif)
+
+> Cheesy Pen Shells memakai server Google Cloud: lihat [SETUP-GOOGLE-CLOUD.md](SETUP-GOOGLE-CLOUD.md). Panduan ini hanya untuk kalau suatu saat bot dijalankan di laptop.
 
 Panduan ini untuk menjalankan bot di **laptop/PC** (Windows, Mac, atau Linux).
 Kira-kira butuh 30–60 menit untuk pertama kali. Setelah itu cukup menjalankan `npm start`.
