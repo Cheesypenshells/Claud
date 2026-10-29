@@ -11,7 +11,7 @@ Detail checklist SOP harian untuk bot ada di [CHECKLIST-SOP-BOT.md](CHECKLIST-SO
 ```
  Grup WA "Pengeluaran <Kota>"  ─┐
  (Owner + PIC)                  │
-                                ├──►  Bot WA (nomor khusus)  ──►  AI (baca chat & foto struk)
+                                ├──►  Bot WA (nomor khusus)  ──►  Pembaca format pesan
  Grup WA "Event <Kota>"        ─┤                                        │
  (PIC + senior + DW)            │                                        ▼
                                 │                               Google Sheets (database)
@@ -23,7 +23,8 @@ Detail checklist SOP harian untuk bot ada di [CHECKLIST-SOP-BOT.md](CHECKLIST-SO
 ```
 
 Prinsip:
-- **Gratis / semurah mungkin, dikelola sendiri.** Bot WA pakai WhatsApp biasa (bukan API berbayar), data disimpan di Google Sheets.
+- **Gratis, dikelola sendiri.** Bot WA pakai WhatsApp biasa (bukan API berbayar), data disimpan di Google Sheets.
+- **Semua laporan berupa teks dengan format WhatsApp** (keputusan owner). Bot tidak membaca isi foto. Jam laporan diambil dari waktu pesan WhatsApp. Harga pengeluaran selalu ditulis.
 - **Bot hanya membaca grup yang didaftarkan.** Chat pribadi owner dan grup lain tidak dibaca.
 - **Bot mengusulkan, manusia memutuskan** untuk denda dan poin minus. Ini sesuai SOP BAB 4 & BAB 8: *"tidak ada sanksi otomatis hanya karena temuan"* dan *"tidak ada pemotongan upah atau denda otomatis tanpa dasar hukum yang sah"*.
 
@@ -32,7 +33,6 @@ Prinsip:
 |---|---|---|
 | Bot WhatsApp | Library open-source (Baileys / whatsapp-web.js) yang login sebagai "perangkat tertaut" di **nomor WA baru khusus bot** | Gratis (hanya kartu SIM) |
 | Database | Google Sheets | Gratis |
-| AI pembaca chat & foto bukti transfer | Claude API (model kecil/murah) | Bayar per pemakaian, perkiraan puluhan ribu rupiah/bulan |
 | Mesin yang menjalankan bot | Laptop/PC di ruko yang menyala 24 jam, atau server gratis | Gratis / listrik saja |
 
 > **Catatan risiko:** bot WA non-resmi melanggar ketentuan WhatsApp dan nomornya *bisa* diblokir. Karena itu bot **wajib pakai nomor terpisah**.
@@ -92,7 +92,7 @@ Kasir: Budi
 - Bot mencocokkan perkiraan dengan transfer yang masuk sesuai jadwal (H+1; Jumat–Minggu dibayar Senin; atau sekali setelah event). Kalau telat atau nominal beda, owner diingatkan.
 
 ### 4.2 Pengeluaran per event
-Dibaca AI dari chat atau screenshot, mis. *"lalamove 150k"*, *"makan malam 120rb"*, *"ember 1 unit 30rb"*.
+Ditulis di chat dengan harga, mis. *"lalamove 150k"*, *"makan malam 120rb"*, *"ember 2 unit @30rb"*.
 Kategori: Transport/Ekspedisi, Konsumsi, Peralatan, Oyster (beli langsung untuk lokasi), Penginapan, Gaji DW, Lain-lain.
 
 ### 4.3 Bahan dari gudang (dibebankan ke event)
@@ -284,10 +284,13 @@ Bukti: screenshot jumlah followers saat buka dan saat tutup, dikirim ke grup eve
 
 ## 12. Pertanyaan Terbuka
 
-**Penentu mulai coding:**
-1. **Perangkat:** ada laptop/PC di ruko yang bisa menyala 24 jam? Siap beli 1 nomor WA baru khusus bot?
-2. **Biaya AI** untuk membaca screenshot (perkiraan puluhan ribu/bulan) diterima?
-3. **Akun Google** yang dipakai untuk Google Sheets.
+**Sudah dijawab:**
+- Perangkat: laptop menyala selama jam kerja; nomor WA baru khusus bot akan dibeli owner.
+- Google Sheets memakai akun cheesypenshells@gmail.com.
+- Tanpa AI pembaca foto: semua laporan lewat format teks WhatsApp, harga pengeluaran selalu ditulis.
+
+**Untuk Tahap 3 (SOP):**
+3. Bukti SOP (foto booth, cooler, kebersihan): cukup dicek bahwa pesan bertag (mis. `#bersih`) **berisi foto**, tanpa membaca isi fotonya. Setuju?
 
 **Untuk perhitungan:**
 4. Bobot KPI pada 8.1 dan daftar poin plus/minus pada 8.2 sudah sesuai?

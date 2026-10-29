@@ -13,14 +13,14 @@ const G_RUKO = 'ruko@g.us';
 // 3 Nov 2026, 14.00 WIB
 const WAKTU = new Date('2026-11-03T07:00:00Z');
 
-function setup({ pembaca = null } = {}) {
+function setup() {
   const store = new MemoryStore();
-  const ctx = { store, pembaca, ownerIds: new Set([OWNER]) };
+  const ctx = { store, ownerIds: new Set([OWNER]) };
   let n = 0;
   const kirim = async (groupId, senderId, text, extra = {}) => {
     const res = await handlePesan(ctx, {
       id: `m${++n}`, groupId, groupName: groupId, senderId, senderName: { [OWNER]: 'George', [PIC]: 'Budi' }[senderId] || 'Joko',
-      text, image: null, waktu: WAKTU, ...extra,
+      text, adaFoto: false, waktu: WAKTU, ...extra,
     });
     return res.map((r) => r.text).join('\n');
   };
@@ -107,27 +107,12 @@ test('buku ruko dan rekap bulanan khusus owner', async () => {
   assert.match(bulan, /Total biaya ruko: -Rp 2.850.000/);
 });
 
-test('foto: caption bernominal tanpa AI, foto tanpa nominal memakai AI', async () => {
-  const foto = { buffer: Buffer.from('x'), mimetype: 'image/jpeg' };
-
-  const tanpaAI = setup();
-  await tanpaAI.kirim(G_KELUAR, OWNER, BLOK_EVENT);
-  assert.match(await tanpaAI.kirim(G_KELUAR, PIC, 'lalamove 150rb', { image: foto }), /\[Transport & Ekspedisi, TRANSFER\]/);
-  assert.match(await tanpaAI.kirim(G_KELUAR, PIC, 'bukti lalamove', { image: foto }), /tulis nominal/);
-
-  const pembaca = {
-    async bacaFoto({ mode }) {
-      return { items: [{ keterangan: 'Lalamove ke venue', nominal: 175000, kategori: 'Transport & Ekspedisi', metode: 'TRANSFER' }], catatan: '', mode };
-    },
-  };
-  const denganAI = setup({ pembaca });
-  await denganAI.kirim(G_KELUAR, OWNER, BLOK_EVENT);
-  const r = await denganAI.kirim(G_KELUAR, PIC, '', { image: foto });
-  assert.match(r, /Lalamove ke venue - \*Rp 175.000\*/);
-  assert.match(r, /Dibaca otomatis dari foto/);
-  const trf = await denganAI.kirim(G_KELUAR, OWNER, '#trf', { image: foto });
-  assert.match(trf, /Transfer masuk dari IO tercatat/);
-  assert.match(trf, /Rp 175.000/);
+test('foto: harga diambil dari caption, foto tanpa harga diminta ditulis', async () => {
+  const { kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, PIC, 'lalamove 150rb', { adaFoto: true }), /\[Transport & Ekspedisi, TRANSFER\]/);
+  assert.match(await kirim(G_KELUAR, PIC, 'bukti lalamove', { adaFoto: true }), /tulis harga/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#trf', { adaFoto: true }), /tulis harga/);
 });
 
 test('penjadwal: pengingat omzet, rekap malam, pengingat transfer telat', async () => {

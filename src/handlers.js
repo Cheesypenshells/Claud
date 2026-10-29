@@ -1,8 +1,8 @@
 // Logika utama bot: menerima satu pesan grup, mengembalikan balasan.
 // Tidak bergantung pada WhatsApp secara langsung supaya bisa dites.
 //
-// pesan = { id, groupId, groupName, senderId, senderName, text, image: { buffer, mimetype } | null, waktu: Date }
-// ctx   = { store, pembaca (boleh null), ownerIds: Set<string> }
+// pesan = { id, groupId, groupName, senderId, senderName, text, adaFoto: boolean, waktu: Date }
+// ctx   = { store, ownerIds: Set<string> }
 // hasil = array balasan { text } untuk dikirim ke grup yang sama.
 
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
@@ -19,7 +19,7 @@ const BANTUAN = {
   lalamove 150k
   makan malam 120rb cash
   ember 2 unit @30rb
-• Kirim foto bukti trf/nota + keterangan di caption
+• Foto bukti boleh dikirim, tapi harga tetap ditulis di caption
 • #trf 3.500.000 omzet 1-2 Nov  (transfer masuk dari IO)
 • #potongan listrik 250rb  (potongan IO: listrik/air/gas/galon)
 • #omzet 12,5jt  (omzet harian, kalau tidak dikirim di grup event)
@@ -91,44 +91,22 @@ function barisItem(t) {
   return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}`;
 }
 
-// Pengeluaran / transfer masuk dari teks dan/atau foto.
+// Pengeluaran / transfer masuk. Nominal selalu dari teks (pesan atau caption foto).
 async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
-  const adaFoto = Boolean(pesan.image);
-  let items = jenis === JENIS.KELUAR || jenis === JENIS.POTONGAN_IO
-    ? parsePengeluaran(teks, { adaFoto })
-    : [];
-  let sumber = adaFoto ? 'foto' : 'teks';
-  let catatanAI = '';
-
+  let items = [];
   if (jenis === JENIS.MASUK_IO) {
     const nominal = parseMoney(teks);
     if (nominal) {
       const ket = teks.replace(/(rp\.?\s*)?[\d.,]+\s*(juta|jt|ribu|rb|k)?/i, '').trim();
       items = [{ keterangan: ket || 'Transfer omzet dari IO', nominal, kategori: 'Transfer IO', metode: 'TRANSFER' }];
     }
-  }
-
-  if (!items.length && adaFoto && ctx.pembaca) {
-    const hasil = await ctx.pembaca.bacaFoto({
-      buffer: pesan.image.buffer,
-      mimetype: pesan.image.mimetype,
-      caption: teks,
-      mode: jenis,
-    });
-    if (hasil) {
-      items = hasil.items.map((i) => (jenis === JENIS.MASUK_IO
-        ? { keterangan: teks || i.keterangan || 'Transfer omzet dari IO', nominal: i.nominal, kategori: 'Transfer IO', metode: 'TRANSFER' }
-        : { keterangan: i.keterangan, nominal: i.nominal, kategori: i.kategori, metode: i.metode }));
-      sumber = 'foto+AI';
-      catatanAI = hasil.catatan || '';
-    }
+  } else {
+    items = parsePengeluaran(teks, { adaFoto: pesan.adaFoto });
   }
 
   if (!items.length) {
-    if (adaFoto) {
-      return balas(ctx.pembaca
-        ? '⚠️ Nominal di foto belum terbaca. Balas dengan mengetik nominal dan keterangannya, contoh: *lalamove 150rb*'
-        : '📷 Foto diterima. Mohon tulis nominal dan keterangan di caption atau pesan berikutnya, contoh: *lalamove 150rb*');
+    if (pesan.adaFoto || jenis !== JENIS.KELUAR) {
+      return balas('⚠️ Nominal belum ada. Mohon tulis harga dan keterangannya, contoh: *lalamove 150rb*');
     }
     return [];
   }
@@ -140,7 +118,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     kode_event: kodeEvent,
     buku,
     jenis,
-    sumber,
+    sumber: pesan.adaFoto ? 'foto+teks' : 'teks',
     pengirim: namaPengirim(pesan),
     dicatat: waktuLokal(pesan.waktu),
   }, items);
@@ -151,8 +129,6 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     [JENIS.POTONGAN_IO]: 'Potongan IO tercatat',
   }[jenis];
   const baris = [`✅ *${judul}* (${kodeEvent})`, ...tersimpan.map(barisItem)];
-  if (sumber === 'foto+AI') baris.push('_Dibaca otomatis dari foto, mohon cek angkanya._');
-  if (catatanAI) baris.push(`_Catatan: ${catatanAI}_`);
 
   if (buku === BUKU.EVENT && jenis === JENIS.KELUAR) {
     const semua = await ctx.store.all('Transaksi');
@@ -375,7 +351,7 @@ export async function handlePesan(ctx, pesan) {
   }
 
   // Grup pengeluaran event.
-  if (!event) return cmd || pesan.image || parseMoney(teks) ? balas('⚠️ Event untuk grup ini belum dibuat. Owner kirim blok *#event* dulu.') : [];
+  if (!event) return cmd || pesan.adaFoto || parseMoney(teks) ? balas('⚠️ Event untuk grup ini belum dibuat. Owner kirim blok *#event* dulu.') : [];
 
   if (cmd) {
     switch (cmd.perintah) {

@@ -54,7 +54,7 @@ Total pengeluaran event: Rp 330.000
 - **Format nominal yang dikenali:** `150k`, `150rb`, `150 ribu`, `1,5jt`, `Rp 150.000`, `150000`.
 - **Chat biasa tanpa nominal** ("oke pak", "siap") tidak dicatat.
 - **Baris "total ..."** diabaikan supaya tidak terhitung dua kali.
-- **Foto bukti transfer/nota:** kirim foto dengan caption, misalnya `lalamove 150rb`. Kalau API key Claude dipasang, foto tanpa nominal pun dibaca otomatis. Angka hasil bacaan tetap perlu dicek.
+- **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.
 - **Salah catat:** `#batal T0002`. Bisa dilakukan owner atau orang yang mengirim.
 - **Ganti kategori:** `#kategori T0001 Transport`.
 
@@ -66,7 +66,7 @@ Kategori: Oyster, Gaji & Upah, Konsumsi, Penginapan, Transport & Ekspedisi, Util
 
 | Kejadian | Ketik |
 |---|---|
-| Omzet ditransfer IO | `#trf 7.500.000 omzet 3 Nov`, atau kirim foto bukti dengan caption `#trf` |
+| Omzet ditransfer IO | `#trf 7.500.000 omzet 3 Nov` |
 | IO memotong listrik/air/gas/galon | `#potongan listrik 250rb` (bisa beberapa baris) |
 
 Bot menghitung **perkiraan transfer**:

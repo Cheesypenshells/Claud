@@ -12,9 +12,6 @@ export const config = {
   spreadsheetId: process.env.SPREADSHEET_ID || '',
   googleKeyFile: process.env.GOOGLE_KEY_FILE || 'credentials.json',
 
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
-  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
-
   jam: {
     pengingatOmzet: process.env.JAM_PENGINGAT_OMZET ?? '23:00',
     rekapMalam: process.env.JAM_REKAP_MALAM ?? '23:30',

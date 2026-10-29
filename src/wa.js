@@ -1,9 +1,9 @@
 // Koneksi WhatsApp (Baileys). Bot login sebagai "perangkat tertaut" di nomor khusus bot.
 // Hanya pesan dari grup yang diteruskan ke handler; chat pribadi diabaikan.
+// Foto tidak diunduh; bot hanya mencatat bahwa pesan berisi foto.
 
 import {
-  makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage,
-  fetchLatestBaileysVersion, Browsers,
+  makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers,
 } from 'baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
@@ -19,10 +19,8 @@ function isiPesan(m) {
     || inti.imageMessage?.caption
     || inti.documentMessage?.caption
     || '';
-  let media = null;
-  if (inti.imageMessage) media = { mimetype: inti.imageMessage.mimetype || 'image/jpeg' };
-  else if (inti.documentMessage?.mimetype?.startsWith('image/')) media = { mimetype: inti.documentMessage.mimetype };
-  return { teks, media };
+  const adaFoto = Boolean(inti.imageMessage || inti.documentMessage?.mimetype?.startsWith('image/'));
+  return { teks, adaFoto };
 }
 
 export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
@@ -79,22 +77,12 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
       for (const m of messages) {
         const groupId = m.key.remoteJid;
         if (!groupId?.endsWith('@g.us') || m.key.fromMe || !m.message) continue;
-        const { teks, media } = isiPesan(m);
-        if (!teks && !media) continue;
+        const { teks, adaFoto } = isiPesan(m);
+        if (!teks && !adaFoto) continue;
 
         if (!namaGrup.has(groupId)) {
           const meta = await sock.groupMetadata(groupId).catch(() => null);
           namaGrup.set(groupId, meta?.subject || groupId);
-        }
-
-        let image = null;
-        if (media) {
-          try {
-            const buffer = await downloadMediaMessage(m, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage });
-            image = { buffer, mimetype: media.mimetype };
-          } catch (err) {
-            console.error('[WA] Gagal mengunduh foto:', err.message);
-          }
         }
 
         const pesan = {
@@ -104,7 +92,7 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
           senderId: angkaId(m.key.participantPn || m.key.participant),
           senderName: m.pushName || '',
           text: teks,
-          image,
+          adaFoto,
           waktu: new Date(Number(m.messageTimestamp) * 1000),
         };
         await onPesan(pesan, (text) => kirim(groupId, text, m));

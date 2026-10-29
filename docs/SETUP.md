@@ -7,7 +7,6 @@ Yang perlu disiapkan:
 - Laptop/PC yang bisa menyala selama jam kerja (sekitar 07.00–01.00).
 - **Nomor WhatsApp baru khusus bot** yang sudah aktif di sebuah HP.
 - Akun Google **cheesypenshells@gmail.com**.
-- (Opsional) API key Claude untuk membaca foto bukti transfer.
 
 ---
 
@@ -53,15 +52,7 @@ Yang perlu disiapkan:
 
 Saat bot pertama kali jalan, tab `Grup`, `Event`, `Transaksi`, dan `Omzet` akan dibuat otomatis.
 
-## 4. (Opsional) API key Claude untuk membaca foto
-
-Tanpa langkah ini bot tetap jalan. Bedanya, foto bukti transfer harus disertai nominal di caption.
-
-1. Buka https://console.anthropic.com, daftar/login, lalu isi saldo (Billing).
-2. Menu **API Keys > Create Key**, salin kuncinya.
-3. Biayanya dihitung per foto yang dibaca. Pemakaian bisa dipantau di menu **Usage**.
-
-## 5. Isi pengaturan
+## 4. Isi pengaturan
 
 1. Salin file `.env.example` menjadi `.env` (di folder yang sama).
 2. Buka `.env` dengan Notepad dan isi:
@@ -69,11 +60,10 @@ Tanpa langkah ini bot tetap jalan. Bedanya, foto bukti transfer harus disertai n
    NOMOR_BOT=6281xxxxxxxxx           (nomor WA khusus bot)
    SPREADSHEET_ID=1AbC...xyz         (dari langkah 3a)
    GOOGLE_KEY_FILE=credentials.json
-   ANTHROPIC_API_KEY=sk-ant-...      (opsional, dari langkah 4)
-   OWNER_IDS=                        (diisi di langkah 7)
+   OWNER_IDS=                        (diisi di langkah 6)
    ```
 
-## 6. Jalankan bot dan tautkan WhatsApp
+## 5. Jalankan bot dan tautkan WhatsApp
 
 1. Di Command Prompt, ketik:
    ```
@@ -85,14 +75,14 @@ Tanpa langkah ini bot tetap jalan. Bedanya, foto bukti transfer harus disertai n
 
 Login tersimpan di folder `auth`, jadi lain kali cukup `npm start` tanpa pairing ulang.
 
-## 7. Daftarkan owner
+## 6. Daftarkan owner
 
 1. Masukkan nomor bot ke grup WhatsApp yang mau dipakai.
 2. Di grup mana saja, ketik `#idsaya`. Bot membalas ID Bapak, misalnya `6281234567890`.
 3. Isi ID itu di `.env`: `OWNER_IDS=6281234567890` (kalau lebih dari satu orang, pisahkan dengan koma).
 4. Matikan bot (tekan `Ctrl + C`), lalu jalankan lagi `npm start`.
 
-## 8. Daftarkan grup
+## 7. Daftarkan grup
 
 | Grup | Yang dikirim owner di grup itu |
 |---|---|
@@ -110,5 +100,5 @@ Grup yang tidak didaftarkan **tidak dibaca** oleh bot.
 - **Bot hanya bekerja saat laptop menyala dan `npm start` berjalan.** Jangan tutup jendela Command Prompt. Matikan mode sleep laptop di pengaturan daya.
 - Pesan yang masuk saat bot mati biasanya tetap diproses setelah bot menyala lagi. Namun pengingat terjadwal (rekap malam, pengingat omzet) hanya terkirim kalau bot sedang menyala pada jam tersebut.
 - **HP nomor bot harus tetap aktif** dan tersambung internet minimal sesekali. Kalau HP utama tidak online selama sekitar 14 hari, WhatsApp akan melepas perangkat tertaut.
-- Kalau muncul pesan "Bot keluar dari WhatsApp", hapus folder `auth` lalu ulangi langkah 6.
+- Kalau muncul pesan "Bot keluar dari WhatsApp", hapus folder `auth` lalu ulangi langkah 5.
 - File `.env`, `credentials.json`, dan folder `auth` berisi kunci rahasia. **Jangan dikirim ke siapa pun dan jangan di-upload ke GitHub.**

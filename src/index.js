@@ -1,9 +1,8 @@
-// Titik masuk: menyambungkan WhatsApp, Google Sheets, AI, dan penjadwal.
+// Titik masuk: menyambungkan WhatsApp, Google Sheets, dan penjadwal.
 
 import { config } from './config.js';
 import { SheetsStore } from './store/sheets.js';
 import { MemoryStore } from './store/memory.js';
-import { Pembaca } from './ai.js';
 import { handlePesan } from './handlers.js';
 import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
@@ -19,13 +18,9 @@ async function main() {
     console.warn('[Sheets] SPREADSHEET_ID kosong: data hanya disimpan sementara di memori (hilang saat bot dimatikan).');
   }
 
-  const pembaca = config.anthropicApiKey
-    ? new Pembaca({ apiKey: config.anthropicApiKey, model: config.anthropicModel })
-    : null;
-  console.log(pembaca ? '[AI] Pembaca foto aktif.' : '[AI] Pembaca foto nonaktif (ANTHROPIC_API_KEY kosong).');
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
-  const ctx = { store, pembaca, ownerIds: config.ownerIds };
+  const ctx = { store, ownerIds: config.ownerIds };
 
   // Pesan diproses satu per satu supaya nomor catatan (T0001, T0002, ...) tidak bentrok.
   let antrean = Promise.resolve();

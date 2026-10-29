@@ -1,4 +1,4 @@
-// Mengubah pesan WhatsApp menjadi data terstruktur tanpa AI.
+// Mengubah pesan WhatsApp menjadi data terstruktur.
 
 import { findMoney, parseMoney, parseRentangTanggal, bersihkan } from './util.js';
 
