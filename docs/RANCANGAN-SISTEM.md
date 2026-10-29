@@ -1,7 +1,7 @@
 # Rancangan Sistem "Kantor AI" Cheesy Pen Shells
 
 Versi draf 2. Disusun dari jawaban Pak George (owner) dan dokumen SOP BAB 1–8.
-Status: **menunggu konfirmasi owner** sebelum mulai coding.
+Status: **Tahap 1 (pembukuan) sudah dibuat**, lihat [SETUP.md](SETUP.md) dan [PANDUAN.md](PANDUAN.md). Tahap 2–4 menunggu jawaban pertanyaan terbuka.
 Detail checklist SOP harian untuk bot ada di [CHECKLIST-SOP-BOT.md](CHECKLIST-SOP-BOT.md).
 
 ---
