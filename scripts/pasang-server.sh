@@ -8,7 +8,9 @@ REPO="https://github.com/Cheesypenshells/Claud.git"
 BRANCH="${CPS_BRANCH:-claude/cheesy-pen-shells-management-nq92xx}"
 DIR="$HOME/cps-bot"
 
-tanya() { local var; read -rp "$1" var < /dev/tty; echo "$var" | tr -d '[:space:]'; }
+tanya() { local var; read -rp "$1" var < /dev/tty; echo "$var" | tr -cd '0-9A-Za-z_-'; }
+# Nomor boleh ditulis 0877... atau 62877...; disimpan sebagai 62877...
+tanyaNomor() { tanya "$1" | tr -cd '0-9' | sed 's/^0/62/'; }
 judul() { echo; echo "=== $1 ==="; }
 
 judul "1/6 Menyiapkan memori tambahan (swap)"
@@ -43,8 +45,8 @@ npm ci --omit=dev --no-audit --no-fund --loglevel=error
 judul "4/6 Pengaturan"
 if [ ! -f .env ]; then
   cp .env.example .env
-  NOMOR_BOT=$(tanya "Nomor WhatsApp KHUSUS BOT (contoh 6281234567890): ")
-  NOMOR_OWNER=$(tanya "Nomor WhatsApp OWNER/Pak George (contoh 6281234567890): ")
+  NOMOR_BOT=$(tanyaNomor "Nomor WhatsApp KHUSUS BOT (contoh 081234567890): ")
+  NOMOR_OWNER=$(tanyaNomor "Nomor WhatsApp OWNER/Pak George (contoh 081234567890): ")
   SHEET=$(tanya "ID Google Spreadsheet (bagian URL di antara /d/ dan /edit): ")
   sed -i "s/^NOMOR_BOT=.*/NOMOR_BOT=${NOMOR_BOT}/" .env
   sed -i "s/^OWNER_IDS=.*/OWNER_IDS=${NOMOR_OWNER}/" .env

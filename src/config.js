@@ -2,11 +2,13 @@
 
 import 'dotenv/config';
 
-const daftar = (s) => String(s || '').split(/[,\s]+/).map((x) => x.replace(/\D/g, '')).filter(Boolean);
+// Nomor boleh ditulis 0877... atau 62877...; disimpan dalam format 62877...
+export const nomorWa = (s) => String(s || '').replace(/\D/g, '').replace(/^0/, '62');
+const daftar = (s) => String(s || '').split(/[,\s]+/).map(nomorWa).filter(Boolean);
 
 export const config = {
   ownerIds: new Set(daftar(process.env.OWNER_IDS)),
-  nomorBot: String(process.env.NOMOR_BOT || '').replace(/\D/g, ''),
+  nomorBot: nomorWa(process.env.NOMOR_BOT),
   folderLogin: process.env.FOLDER_LOGIN_WA || 'auth',
 
   spreadsheetId: process.env.SPREADSHEET_ID || '',
