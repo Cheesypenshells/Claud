@@ -10,8 +10,9 @@ Bot WhatsApp "kantor AI" untuk Cheesy Pen Shells: pembukuan per event dan per bu
 - Tahap 4 – Poin KPI, peringkat, gaji & bonus
 
 ## Dokumen
-- [Cara memasang bot di VPS lokal dari tablet](docs/SETUP-VPS.md) (dipakai)
-- [Cara memasang bot di Google Cloud dari tablet](docs/SETUP-GOOGLE-CLOUD.md) (alternatif)
+- [Cara memasang bot di HP Android](docs/SETUP-HP.md) (dipakai sekarang)
+- [Cara memasang bot di VPS lokal](docs/SETUP-VPS.md) (alternatif)
+- [Cara memasang bot di Google Cloud](docs/SETUP-GOOGLE-CLOUD.md) (alternatif)
 - [Cara memasang bot di laptop](docs/SETUP.md) (alternatif)
 - [Panduan pemakaian](docs/PANDUAN.md)
 - [Rancangan sistem](docs/RANCANGAN-SISTEM.md)

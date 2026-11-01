@@ -5,12 +5,38 @@
 import {
   makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers,
 } from 'baileys';
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import { angkaId } from './util.js';
 
 const logger = pino({ level: 'silent' });
+
+// Pesan yang masuk saat bot mati dikirim ulang WhatsApp ketika bot menyala (jenis 'append').
+// Yang lebih lama dari batas ini diabaikan supaya riwayat chat lama tidak ikut tercatat.
+const BATAS_TERTUNDA_MS = 3 * 24 * 60 * 60 * 1000;
+const SIMPAN_ID_TERAKHIR = 3000;
+
+// Daftar ID pesan yang sudah diproses, disimpan di disk supaya tidak tercatat dua kali setelah restart.
+export function buatPencatatId(file) {
+  let ids = [];
+  try {
+    if (existsSync(file)) ids = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    ids = [];
+  }
+  const set = new Set(ids);
+  return {
+    sudah: (id) => set.has(id),
+    tandai(id) {
+      set.add(id);
+      ids.push(id);
+      if (ids.length > SIMPAN_ID_TERAKHIR) set.delete(ids.shift());
+      writeFileSync(file, JSON.stringify(ids));
+    },
+  };
+}
 
 function isiPesan(m) {
   const msg = m.message || {};
@@ -28,6 +54,7 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
   const { state, saveCreds } = await useMultiFileAuthState(folderLogin);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
   const namaGrup = new Map();
+  const pencatat = buatPencatatId(path.join(folderLogin, 'terproses.json'));
   let sock;
   let sudahMintaKode = false;
 
@@ -76,10 +103,13 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
+      if (type !== 'notify' && type !== 'append') return;
       for (const m of messages) {
         const groupId = m.key.remoteJid;
         if (!groupId?.endsWith('@g.us') || m.key.fromMe || !m.message) continue;
+        if (pencatat.sudah(m.key.id)) continue;
+        const waktu = new Date(Number(m.messageTimestamp) * 1000);
+        if (type === 'append' && Date.now() - waktu.getTime() > BATAS_TERTUNDA_MS) continue;
         const { teks, adaFoto } = isiPesan(m);
         if (!teks && !adaFoto) continue;
 
@@ -96,8 +126,9 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
           senderName: m.pushName || '',
           text: teks,
           adaFoto,
-          waktu: new Date(Number(m.messageTimestamp) * 1000),
+          waktu,
         };
+        pencatat.tandai(m.key.id);
         await onPesan(pesan, (text) => kirim(groupId, text, m));
       }
     });
