@@ -1,6 +1,7 @@
 // Penyimpanan di Google Sheets. Setiap tab di schema.js menjadi satu sheet.
 // Data dibaca ulang paling lama tiap CACHE_MS supaya koreksi manual owner ikut terbaca.
 
+import { readFileSync } from 'node:fs';
 import { sheets as sheetsApi, auth as googleAuth } from '@googleapis/sheets';
 import { TABS } from '../schema.js';
 
@@ -16,7 +17,7 @@ export class SheetsStore {
   constructor({ spreadsheetId, keyFile }) {
     this.spreadsheetId = spreadsheetId;
     const auth = new googleAuth.GoogleAuth({
-      keyFile,
+      credentials: JSON.parse(readFileSync(keyFile, 'utf8')),
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     this.api = sheetsApi({ version: 'v4', auth });
