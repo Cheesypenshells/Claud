@@ -25,15 +25,22 @@ Lakukan dari **HP Android yang akan menjalankan bot**, supaya file `credentials.
 ## Langkah 2. Pasang Termux
 
 1. Buka browser HP, lalu kunjungi **https://f-droid.org/packages/com.termux/**.
-2. Gulir ke bagian **Download APK**, unduh, lalu pasang. Kalau diminta, izinkan "Instal dari sumber tidak dikenal".
+2. Gulir ke bagian **Download APK**, unduh, lalu buka filenya untuk memasang.
+   Di Samsung akan muncul peringatan: ketuk **Pengaturan**, aktifkan **Izinkan dari sumber ini**, lalu kembali dan ketuk **Pasang**.
+   Kalau muncul peringatan **Play Protect**, pilih **Detail lainnya > Tetap pasang**.
    Jangan pakai Termux dari Play Store, karena versinya sudah lama dan sering gagal.
 3. Buka aplikasi **Termux**. Muncul layar hitam dengan tanda `$`.
 
 ## Langkah 3. Matikan penghemat baterai untuk Termux
 
-Supaya bot tidak dimatikan HP saat berjalan:
-1. **Setelan > Aplikasi > Termux > Baterai**, lalu pilih **Tidak dibatasi / Unrestricted** (nama menu berbeda tiap merek HP).
-2. Di Xiaomi/Oppo/Vivo, aktifkan juga **Mulai otomatis / Autostart** untuk Termux.
+Supaya bot tidak dimatikan HP saat berjalan.
+
+**Samsung (One UI):**
+1. **Pengaturan > Aplikasi > Termux > Baterai**, lalu pilih **Tidak dibatasi**.
+2. **Pengaturan > Baterai** (atau **Perawatan baterai dan perangkat > Baterai**) **> Batas penggunaan latar belakang > Aplikasi yang tidak pernah ditidurkan > tombol +**, lalu centang **Termux** dan pilih **Tambah**.
+3. Di menu yang sama, matikan **Tidurkan aplikasi yang tidak digunakan**.
+
+**Merek lain:** **Setelan > Aplikasi > Termux > Baterai > Tidak dibatasi**. Di Xiaomi/Oppo/Vivo, aktifkan juga **Mulai otomatis / Autostart** untuk Termux.
 
 ## Langkah 4. Pasang bot (satu perintah)
 
