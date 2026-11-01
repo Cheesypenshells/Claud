@@ -16,8 +16,10 @@ function kolom(n) {
 export class SheetsStore {
   constructor({ spreadsheetId, keyFile }) {
     this.spreadsheetId = spreadsheetId;
-    const auth = new googleAuth.GoogleAuth({
-      credentials: JSON.parse(readFileSync(keyFile, 'utf8')),
+    const kunci = JSON.parse(readFileSync(keyFile, 'utf8'));
+    const auth = new googleAuth.JWT({
+      email: kunci.client_email,
+      key: kunci.private_key,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
     this.api = sheetsApi({ version: 'v4', auth });
