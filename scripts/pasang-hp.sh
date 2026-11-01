@@ -8,7 +8,9 @@ REPO="https://github.com/Cheesypenshells/Claud.git"
 BRANCH="${CPS_BRANCH:-claude/cheesy-pen-shells-management-nq92xx}"
 DIR="$HOME/cps-bot"
 
-tanya() { local var; read -rp "$1" var < /dev/tty; echo "$var" | tr -cd '0-9A-Za-z_-'; }
+# Buang ketikan yang masuk selama proses pemasangan, supaya tidak terbaca sebagai jawaban.
+buangKetikan() { while read -r -t 0.2 _ < /dev/tty; do :; done 2>/dev/null || true; }
+tanya() { local var; buangKetikan; read -rp "$1" var < /dev/tty; echo "$var" | tr -cd '0-9A-Za-z_-'; }
 # Nomor boleh ditulis 0877... atau 62877...; disimpan sebagai 62877...
 tanyaNomor() { tanya "$1" | tr -cd '0-9' | sed 's/^0/62/'; }
 judul() { echo; echo "=== $1 ==="; }
