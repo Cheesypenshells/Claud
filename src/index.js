@@ -32,6 +32,7 @@ async function main() {
   const wa = await mulaiWhatsApp({
     folderLogin: config.folderLogin,
     nomorBot: config.nomorBot,
+    kodePairing: config.kodePairing,
     onPesan: (pesan, balasKe) => jalankan(async () => {
       const balasan = await handlePesan(ctx, pesan);
       for (const b of balasan) await balasKe(b.text);

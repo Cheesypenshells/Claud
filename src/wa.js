@@ -50,7 +50,7 @@ function isiPesan(m) {
   return { teks, adaFoto };
 }
 
-export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
+export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan }) {
   const { state, saveCreds } = await useMultiFileAuthState(folderLogin);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
   const namaGrup = new Map();
@@ -87,8 +87,11 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
       }
       if (u.qr && nomorBot && !sudahMintaKode && !sock.authState.creds.registered) {
         sudahMintaKode = true;
-        const kode = await sock.requestPairingCode(nomorBot);
-        console.log(`\nKode pairing: ${kode}\nDi HP nomor bot: WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon\n`);
+        const kode = await sock.requestPairingCode(nomorBot, kodePairing || undefined);
+        console.log(`\nKode pairing: ${kode}`);
+        console.log('Di HP nomor bot, ketuk notifikasi WhatsApp "masukkan kode", atau buka');
+        console.log('WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon saja,');
+        console.log(`lalu ketik ${kode}. Kode tetap sama walau bot menyambung ulang.\n`);
       }
       if (u.connection === 'open') console.log('[WA] Tersambung. Bot siap.');
       if (u.connection === 'close') {

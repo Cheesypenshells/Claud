@@ -9,6 +9,8 @@ const daftar = (s) => String(s || '').split(/[,\s]+/).map(nomorWa).filter(Boolea
 export const config = {
   ownerIds: new Set(daftar(process.env.OWNER_IDS)),
   nomorBot: nomorWa(process.env.NOMOR_BOT),
+  // Kode pairing tetap (8 karakter, tanpa huruf I, L, O, U) supaya mudah diketik di HP nomor bot.
+  kodePairing: (process.env.KODE_PAIRING || 'CHEESY26').toUpperCase(),
   folderLogin: process.env.FOLDER_LOGIN_WA || 'auth',
 
   spreadsheetId: process.env.SPREADSHEET_ID || '',

@@ -59,11 +59,15 @@ Supaya bot tidak dimatikan HP saat berjalan.
 
 ## Langkah 5. Tautkan nomor bot
 
-1. Di **HP nomor bot**: buka **WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon**.
-2. Masukkan kode pairing dari Termux.
-3. Kalau di Termux muncul `[WA] Tersambung. Bot siap.`, berarti berhasil.
+Kode pairing bot selalu **CHEESY26**.
 
-Kalau nomor bot ada di HP yang sama dengan Termux, pindah dulu ke WhatsApp nomor bot untuk memasukkan kode, lalu kembali ke Termux.
+1. Saat Termux menampilkan `Kode pairing: CHEESY26`, buka WhatsApp **nomor bot** (misalnya WhatsApp Business).
+2. Ketuk notifikasi WhatsApp **"Masukkan kode untuk menautkan perangkat"**. Kalau notifikasinya tidak muncul, buka **⋮ > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon saja**.
+3. Ketik **CHEESY26**.
+4. Kembali ke Termux. Kalau muncul `[WA] Tersambung. Bot siap.`, berarti berhasil.
+
+Kalau gagal, matikan bot (CTRL + C), ketik `bot reset`, lalu ulangi langkah di atas.
+Kalau WhatsApp menampilkan "coba lagi nanti", tunggu 10–15 menit dulu.
 
 ## Langkah 6. Daftarkan grup WhatsApp
 
