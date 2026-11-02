@@ -67,6 +67,8 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, onPesan }) {
   };
 
   const sambung = () => {
+    // Kode pairing kedaluwarsa dalam beberapa menit; minta kode baru setiap kali menyambung ulang.
+    sudahMintaKode = false;
     sock = makeWASocket({
       version,
       auth: state,
