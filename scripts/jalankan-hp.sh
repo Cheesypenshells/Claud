@@ -1,6 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Menjalankan bot di Termux. Biarkan Termux terbuka; untuk berhenti tekan Ctrl+C (atau tutup sesi Termux).
 cd "$HOME/cps-bot"
+
+# bot reset : hapus login WhatsApp lama (kalau pairing gagal), lalu jalankan
+# bot qr    : login pakai QR code (di-scan dari HP nomor bot), bukan kode pairing
+case "${1:-}" in
+  reset) rm -rf auth; echo "Login WhatsApp lama dihapus." ;;
+  qr) rm -rf auth; export NOMOR_BOT=""; echo "Mode QR: scan QR yang muncul dari HP nomor bot." ;;
+esac
 termux-wake-lock 2>/dev/null || true
 trap 'termux-wake-unlock 2>/dev/null; echo; echo "Bot dimatikan."; exit 0' INT TERM
 
