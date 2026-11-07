@@ -17,7 +17,8 @@ const PENGISI = new Set([
   'ya', 'iya', 'yg', 'yang', 'itu', 'ini', 'tadi', 'semua', 'semuanya', 'sekalian', 'kak', 'bot', 'tolong', 'pls', 'dong',
   'jadi', 'diganti', 'ganti', 'ubah', 'diubah', 'harusnya', 'seharusnya', 'benarnya', 'yang', 'benar', 'bener', 'bukan', 'tapi',
   'masuk', 'masukin', 'kategori', 'ke', 'nominal', 'harga', 'harganya', 'nya', 'pakai', 'pake', 'dari', 'untuk', 'jd', 'aja', 'saja',
-  'dan', 'sama', 'juga', 'tanggalnya', 'tgl', 'tanggal', 'no', 'nomor', 'catatan',
+  'dan', 'sama', 'juga', 'tanggalnya', 'tgl', 'tanggal', 'no', 'nomor', 'catatan', 'bagian', 'bagiannya', 'punya', 'pakai',
+  'mohon', 'diganti', 'ganti', 'tolongin', 'yah', 'kok', 'tuh', 'nih', 'loh', 'lho', 'udah', 'sudah',
 ]);
 
 export function idDariTeks(teks) {
@@ -53,7 +54,9 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
   if (!Object.keys(hasil).length) return null;
   // Sisa kata selain kata pengisi berarti kalimat lain (misalnya pengeluaran baru): jangan dianggap koreksi.
   const lain = bersihkan(sisa).split(/\s+/).filter((w) => w && !PENGISI.has(w) && !/^(non|konsumtif|kering|barang|baku|bahan|ekspedisi)$/.test(w));
-  if (lain.length > (hasil.kategori ? 2 : 0)) return null;
+  // Tanpa harga, koreksi uang siapa/tanggal boleh diselipi beberapa kata lain ("yang transport ... itu").
+  const batasKataLain = hasil.nominal ? 0 : (hasil.siapa || hasil.tanggal ? 4 : 2);
+  if (lain.length > batasKataLain) return null;
   return hasil;
 }
 

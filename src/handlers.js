@@ -480,6 +480,10 @@ export async function handlePesan(ctx, pesan) {
     if (ids.length) {
       const hasil = await koreksiCatatan(ctx, pesan, event, ids, isOwner);
       if (hasil) return hasil;
+      // Reply ke catatan tanpa harga baru tapi tidak dipahami: beri contoh, jangan diam.
+      if (!parseMoney(teks)) {
+        return balas('🤔 Maaf, koreksinya belum saya pahami. Reply pesan catatan dengan salah satu contoh ini:\n• *uang valen* (atau mama / kas)\n• *grab uang valen* (kalau hanya satu item)\n• *tanggal 3 okt*\n• *masuk konsumsi*\n• *harusnya 50rb* (kalau isinya satu catatan)\n• *batal*');
+      }
     }
   }
 

@@ -423,3 +423,15 @@ test('reply menyebut salah satu item: hanya item itu yang diubah; uang X sesudah
   assert.equal((await cari('T0002')).dibayar_oleh, 'Mama');
   assert.equal((await cari('T0003')).dibayar_oleh, 'Budi');
 });
+
+test('reply koreksi dengan kata tambahan tetap dipahami; yang tidak dipahami dijawab contoh', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Makan 64k, pakai uang mama, grab bandara pulang150k');
+  const cari = async (id) => (await store.all('Transaksi')).find((t) => t.id === id);
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Yang transport grab bandara pulang itu uang valen' }), /Sudah diubah.*T0002/s);
+  assert.equal((await cari('T0002')).dibayar_oleh, 'Valen');
+  assert.equal((await cari('T0001')).dibayar_oleh, 'Mama');
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Bagian grab bandara pulang itu uang mama' }), /uang Mama/);
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'ini gimana ya maksudnya' }), /belum saya pahami/);
+});
