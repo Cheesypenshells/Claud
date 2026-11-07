@@ -16,7 +16,7 @@ const WAKTU = new Date('2026-11-03T07:00:00Z');
 
 function setup() {
   const store = new MemoryStore();
-  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null) };
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
   let n = 0;
   const kirim = async (groupId, senderId, text, extra = {}) => {
     const res = await handlePesan(ctx, {
@@ -362,4 +362,50 @@ test('uang siapa: dari pesan, default pengirim, ubah, penggantian', async () => 
   const r2 = hitungEvent((await store.all('Event'))[0], { transaksi: trx, tim: await store.all('Tim Event') });
   assert.equal(r2.totalBiaya, 150000 + 200000 + 300000 + 50000 + 25000 + 500000); // + admin IO 500rb
   assert.equal(r2.penggantian.find((u) => u.nama === 'Mama').sisa, 250000);
+});
+
+test('koreksi dengan reply pesan bot: uang siapa, tanggal, kategori, nominal, batal', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Hotel 236.406 tanggal 2-3 nov\nplastik paper tray dll total330k');
+  const kutip = (teks) => ({ kutipan: { teks: r, pengirim: '' }, text: teks });
+  const cari = async (id) => (await store.all('Transaksi')).find((t) => t.id === id);
+
+  assert.match(await kirim(G_KELUAR, PIC, '', kutip('Uang valen')), /Sudah diubah.*uang Valen/s);
+  assert.equal((await cari('T0001')).dibayar_oleh, 'Valen');
+  assert.equal((await cari('T0002')).dibayar_oleh, 'Valen');
+
+  assert.match(await kirim(G_KELUAR, PIC, '', kutip('tanggal 4 nov')), /tanggal 2026-11-04/);
+  assert.equal((await cari('T0002')).tanggal, '2026-11-04');
+
+  // Nominal hanya kalau pesan yang di-reply berisi satu catatan
+  const satu = await kirim(G_KELUAR, PIC, 'parkir 5rb');
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: satu }, text: 'harusnya 7rb' }), /nominal Rp 7.000/);
+  assert.equal((await cari('T0003')).nominal, 7000);
+  // Reply berisi pengeluaran baru tetap dicatat sebagai pengeluaran baru
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: satu }, text: 'makan 50rb' }), /T0004 makan/);
+  // Karyawan lain tidak boleh mengubah catatan PIC
+  assert.match(await kirim(G_KELUAR, KARYAWAN, '', kutip('uang mama')), /Hanya owner atau pengirim asli/);
+
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: satu }, text: 'batal' }), /Dibatalkan.*T0003/s);
+  assert.equal((await cari('T0003')).status, 'BATAL');
+});
+
+test('pesan "uang valen" tanpa reply tepat setelah mencatat berlaku untuk catatan itu', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'Plastik paper tray dll total330k');
+  assert.match(await kirim(G_KELUAR, PIC, 'Uang valen'), /Sudah diubah.*T0001 Plastik paper tray dll .*uang Valen/s);
+  assert.equal((await store.all('Transaksi'))[0].dibayar_oleh, 'Valen');
+});
+
+test('koreksi: kategori hanya kalau diminta jelas', async () => {
+  const { bacaKoreksi } = await import('../src/koreksi.js');
+  const o = { hariIni: '2026-11-08', satuCatatan: true };
+  assert.equal(bacaKoreksi('bayar hotel', o), null);
+  assert.deepEqual(bacaKoreksi('masuk konsumsi', o), { kategori: 'Konsumsi' });
+  assert.deepEqual(bacaKoreksi('yang ini masuk non konsumtif ya', o), { kategori: 'Barang Kering Non-Konsumtif' });
+  assert.deepEqual(bacaKoreksi('Uang valen', o), { siapa: 'Valen' });
+  assert.equal(bacaKoreksi('oke siap', o), null);
+  assert.equal(bacaKoreksi('parkir 5rb', o), null);
 });

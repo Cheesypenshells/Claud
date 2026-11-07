@@ -33,7 +33,7 @@ const ATURAN_KATEGORI = [
   [KATEGORI.TRANSPORT, ['lalamove', 'gojek', 'gocar', 'goride', 'gosend', 'grab', 'maxim', 'ojek', 'ojol', 'bensin', 'bbm', 'solar', 'pertalite', 'pertamax', 'tol', 'parkir', 'travel', 'tiket', 'pesawat', 'kereta', 'bus', 'ekspedisi', 'cargo', 'kargo', 'ongkir', 'truk', 'pickup', 'pick up', 'deliveree', 'jne', 'jnt', 'j&t', 'sicepat', 'angkut', 'kirim', 'transport', 'taksi', 'taxi', 'kapal', 'bagasi']],
   [KATEGORI.RUKO, ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
   // Sewa alat & biaya admin lapangan (pembukuan lama: tab "admin"), bukan kelalaian.
-  [KATEGORI.ADMIN, ['sewa', 'rental', 'kuota', 'pulsa', 'cctv', 'laundry', 'laundrey', 'londri', 'print', 'fotokopi', 'materai', 'biaya admin', 'admin bank']],
+  [KATEGORI.ADMIN, ['biaya freezer', 'freezer lombok', 'sewa', 'rental', 'kuota', 'pulsa', 'cctv', 'laundry', 'laundrey', 'londri', 'print', 'fotokopi', 'materai', 'biaya admin', 'admin bank']],
   [KATEGORI.NON_KONSUMTIF, ['mr diy', 'mrdiy', 'ace hardware', 'informa', 'botol spray', 'spray', 'sapu', 'pel', 'etalase', 'ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'cool box', 'freezer', 'rak', 'obeng', 'tang', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'tali', 'kompor', 'regulator', 'selang', 'panci', 'wajan', 'capit', 'spatula', 'termos', 'banner', 'spanduk']],
   [KATEGORI.KONSUMTIF, ['sumpit', 'wrap', 'kertas', 'kotak', 'box', 'packaging', 'kemasan', 'kantong', 'plastik', 'kresek', 'sarung tangan', 'tisu', 'tissue', 'mika', 'cup', 'garpu', 'sendok', 'tusuk', 'sedotan', 'lakban', 'label', 'stiker', 'sabun']],
   [KATEGORI.BAHAN_LAIN, ['bumbu', 'keju', 'mozzarella', 'mozza', 'saus', 'saos', 'topping', 'cumi']],
@@ -88,15 +88,37 @@ export function parsePengeluaran(teks, opsi = {}) {
 // Seperti parsePengeluaran, ditambah daftar baris bernominal yang tidak dicatat beserta alasannya.
 // Tanggal yang ditulis di baris pengeluaran: "makan siang 22 sept 53rb", "tgl 22/9 bensin 50rb".
 // hariIni = tanggal pesan (YYYY-MM-DD) untuk menentukan tahun. Mengembalikan { tanggal, sisa }.
-const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?\\b(\\d{1,2})\\s*(${Object.keys(BULAN).sort((a, b) => b.length - a.length).join('|')})\\b\\.?`, 'i');
+// Rentang "tanggal2-3 okt" dicatat di tanggal pertama.
+const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?(?<!\\d)(\\d{1,2})(?:\\s*-\\s*\\d{1,2})?\\s*(${Object.keys(BULAN).sort((a, b) => b.length - a.length).join('|')})\\b\\.?`, 'i');
 const RE_TANGGAL_ANGKA = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})[/-](\d{1,2})\b/i;
-export function ambilTanggal(baris, hariIni) {
+// Tanpa bulan: "tanggal 25", "tanggal26 sore", "27 pagi" -> bulan dipilih supaya masuk masa event
+// (rentang { mulai, selesai }), atau bulan pesan kalau tidak ada event.
+const RE_TANGGAL_HARI = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})(?!\d)(?![.,]\d)(?!\s*(?:rb|ribu|k|jt|juta)\b)|(?<![\d.,]|[x×*@]\s{0,2})(\d{1,2})(?=\s+(?:pagi|siang|sore)\b)/i;
+function tanggalTanpaBulan(hari, hariIni, rentang) {
+  const ymd = (y, b) => `${y}-${String(b).padStart(2, '0')}-${String(hari).padStart(2, '0')}`;
+  if (rentang?.mulai && rentang?.selesai) {
+    const awal = tambahHari(rentang.mulai, -7);
+    for (let d = awal; d <= rentang.selesai; d = tambahHari(d, 1)) if (Number(d.slice(8, 10)) === hari) return d;
+  }
+  let [y, b] = hariIni.split('-').map(Number);
+  if (hari > Number(hariIni.slice(8, 10))) { b -= 1; if (!b) { b = 12; y -= 1; } }
+  return ymd(y, b);
+}
+
+export function ambilTanggal(baris, hariIni, rentang = null) {
   const teks = String(baris ?? '');
   let m = teks.match(RE_TANGGAL_KATA);
   let hari; let bulan;
   if (m) { hari = Number(m[1]); bulan = BULAN[m[2].toLowerCase()]; } else {
     m = teks.match(RE_TANGGAL_ANGKA);
     if (m) { hari = Number(m[1]); bulan = Number(m[2]); }
+  }
+  if (!m && hariIni) {
+    const h = teks.match(RE_TANGGAL_HARI);
+    const n = h ? Number(h[1] || h[2]) : 0;
+    if (n >= 1 && n <= 31) {
+      return { tanggal: tanggalTanpaBulan(n, hariIni, rentang), sisa: bersihkan(teks.slice(0, h.index) + ' ' + teks.slice(h.index + h[0].length)) };
+    }
   }
   if (!m || !hariIni || hari < 1 || hari > 31 || !bulan || bulan > 12) return { tanggal: '', sisa: teks };
   let tahun = Number(hariIni.slice(0, 4));
@@ -131,7 +153,7 @@ export function ambilUangSemua(teks) {
   return { siapa, sisa: String(teks).replace(m[0], ' ').replace(/[ \t]+/g, ' ').replace(/\s*,\s*(?=\n|$)/g, '') };
 }
 
-export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } = {}) {
+export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', rentang = null } = {}) {
   const dilewati = [];
   const { siapa: siapaSemua, sisa: teksBersih } = ambilUangSemua(teks);
   const semuaBaris = teksBersih.split(/\n+/).map((b) => b.trim()).filter(Boolean).flatMap(pecahBaris);
@@ -140,11 +162,11 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } =
   const barisTanpaNominal = semuaBaris.filter((b) => !findMoney(b).length).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
   const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
-  const tanggalPesan = ambilTanggal(barisTanpaNominal, hariIni).tanggal;
+  const tanggalPesan = ambilTanggal(barisTanpaNominal, hariIni, rentang).tanggal;
   const items = [];
   for (const barisMentah of semuaBaris) {
     const { siapa, sisa: tanpaSiapa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
-    const { tanggal, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni);
+    const { tanggal, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni, rentang);
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
     if (!uang.length) continue;
@@ -168,6 +190,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } =
       (baris.slice(0, u.index) + baris.slice(u.index + u.panjang))
         .replace(/@\s*$/, '')
         .replace(/\b(cash|tunai|trf|tf|transfer)\b/gi, '')
+        .replace(/\b(total|totalnya|semuanya|harga|harganya)\s*$/i, '')
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');
     if (!keterangan) keterangan = 'Pengeluaran';

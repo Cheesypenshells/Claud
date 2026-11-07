@@ -50,7 +50,7 @@ export function tanyaKeterangan(ctx, pesan, nominal) {
 const PILIHAN_KATEGORI = DAFTAR_KATEGORI.filter((k) => k !== KATEGORI.LAIN && k !== KATEGORI.RUKO);
 
 // Nama kategori yang bisa ditulis dengan kata-kata, contoh "masuk non konsumtif".
-const SEBUTAN_KATEGORI = [
+export const SEBUTAN_KATEGORI = [
   [/non[\s-]?konsumtif|kelalaian/, KATEGORI.NON_KONSUMTIF], [/konsumtif/, KATEGORI.KONSUMTIF],
   [/transport|ekspedisi/, KATEGORI.TRANSPORT], [/konsumsi|makan/, KATEGORI.KONSUMSI], [/iklan|endorse/, KATEGORI.IKLAN],
   [/tak terduga|tidak terduga/, KATEGORI.TAK_TERDUGA], [/penginapan|hotel/, KATEGORI.PENGINAPAN], [/admin|sewa/, KATEGORI.ADMIN],

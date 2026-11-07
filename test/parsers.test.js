@@ -173,3 +173,23 @@ test('"semua uang valen" berlaku untuk semua item di pesan, di mana pun ditulis'
   // Tanpa "semua": hanya item yang menyebutnya
   assert.deepEqual(p('hotel 300rb uang valen, makan 20rb').items.map((i) => i.dibayar_oleh), ['Valen', '']);
 });
+
+test('tanggal tanpa spasi / tanpa bulan / rentang dibaca, bulan ikut masa event', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const o = { hariIni: '2026-11-08', rentang: { mulai: '2026-09-24', selesai: '2026-10-11' } };
+  const t = (x) => p(x, o).items.map((i) => [i.keterangan, i.tanggal]);
+  assert.deepEqual(t('Makan malam karyawan tanggal27 sept 224rb'), [['Makan malam karyawan', '2026-09-27']]);
+  assert.deepEqual(t('makan karyawan tanggal26 sore 66.110'), [['makan karyawan sore', '2026-09-26']]);
+  assert.deepEqual(t('makan karyawan 27 pagi 52.500'), [['makan karyawan pagi', '2026-09-27']]);
+  assert.deepEqual(t('makan tanggal 3 50rb'), [['makan', '2026-10-03']]);
+  assert.deepEqual(t('Hotel236.406k tanggal2-3 okt'), [['Hotel', '2026-10-02']]);
+  assert.deepEqual(t('Plastik paper tray dll total330k'), [['Plastik paper tray dll', undefined]]);
+  assert.deepEqual(t('es 2 dus 30rb'), [['es 2 dus', undefined]]);
+});
+
+test('"x 2 malam" adalah jumlah malam, bukan tanggal', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const [i] = p('hotel 350rb x 2 malam', { hariIni: '2026-11-08' }).items;
+  assert.equal(i.nominal, 700000);
+  assert.equal(i.tanggal, undefined);
+});

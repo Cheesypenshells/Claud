@@ -13,6 +13,7 @@ import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.j
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
 import { KATEGORI } from './parsers.js';
+import { idDariTeks, bacaKoreksi, BATAS_LANJUTAN_MS } from './koreksi.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -135,7 +136,8 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
       items = [{ keterangan: ket || 'Transfer omzet dari IO', nominal, kategori: 'Transfer IO', metode: 'TRANSFER' }];
     }
   } else {
-    ({ items, dilewati } = parsePengeluaranDetail(teks, { adaFoto: pesan.adaFoto, hariIni: tanggalLokal(pesan.waktu) }));
+    const ev = await cariEvent(ctx.store, kodeEvent);
+    ({ items, dilewati } = parsePengeluaranDetail(teks, { adaFoto: pesan.adaFoto, hariIni: tanggalLokal(pesan.waktu), rentang: ev ? { mulai: ev.mulai, selesai: ev.selesai } : null }));
   }
 
   // Ada angka tapi isinya obrolan/koreksi: jangan dicatat, tunjukkan catatan terakhir & cara membatalkannya.
@@ -194,6 +196,9 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     dicatat: waktuLokal(pesan.waktu),
   }, items);
 
+  // Diingat sebentar supaya pesan lanjutan seperti "uang valen" berlaku untuk catatan ini.
+  if (ctx.terakhir) ctx.terakhir.set(`${pesan.groupId}|${pesan.senderId}`, { ids: tersimpan.map((t) => t.id), waktu: Date.now() });
+
   const judul = {
     [JENIS.KELUAR]: 'Pengeluaran tercatat',
     [JENIS.MASUK_IO]: 'Transfer masuk dari IO tercatat',
@@ -209,8 +214,11 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
       .reduce((s, t) => s + Number(t.nominal || 0), 0);
     baris.push(`Total pengeluaran event: ${rupiah(total)}`);
   }
-  baris.push(`Salah? balas *#batal ${tersimpan[0].id}*`);
-  if (jenis === JENIS.KELUAR) baris.push(`Bukan uang ${tersimpan[0].dibayar_oleh}? balas *#uang ${tersimpan[0].id} mama* (atau nama lain / kas)`);
+  if (jenis === JENIS.KELUAR) {
+    baris.push(`_Ada yang salah? Reply pesan ini, contoh: *uang valen* · *batal* · *tanggal 3 okt* · *masuk konsumsi*${tersimpan.length === 1 ? ' · *harusnya 50rb*' : ''}_`);
+  } else {
+    baris.push(`Salah? balas *#batal ${tersimpan[0].id}*`);
+  }
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
@@ -337,6 +345,33 @@ async function perintahDaftar(ctx, pesan, grup, cmd) {
   return balas(`✅ Grup ini terdaftar sebagai *grup ${jenis}*${kode ? ` untuk event ${kode}` : ''}.\nKetik *#bantuan* untuk daftar perintah.`);
 }
 
+// Koreksi lewat reply pesan bot (atau pesan singkat tepat setelah mencatat). null kalau bukan koreksi.
+async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
+  const semua = await ctx.store.all('Transaksi');
+  const target = ids.map((id) => semua.find((t) => String(t.id).toUpperCase() === id)).filter(Boolean);
+  if (!target.length) return null;
+  const k = bacaKoreksi(pesan.text, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: target.length === 1, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
+  if (!k) return null;
+  const boleh = target.filter((t) => isOwner || String(t.pengirim).includes(`(${pesan.senderId})`));
+  if (!boleh.length) return balas('⚠️ Hanya owner atau pengirim asli yang bisa mengubah catatan ini.');
+  const aktif = boleh.filter((t) => t.status !== STATUS.BATAL);
+  if (!aktif.length) return balas(`Catatan ${boleh.map((t) => t.id).join(', ')} sudah dibatalkan.`);
+  if (k.batal) {
+    for (const t of aktif) await ctx.store.update('Transaksi', 'id', t.id, { status: STATUS.BATAL });
+    return balas(`🗑️ *Dibatalkan:*\n${aktif.map((t) => `${t.id} ${t.keterangan} ${rupiah(t.nominal)}`).join('\n')}`);
+  }
+  const patch = {};
+  if (k.siapa) patch.dibayar_oleh = await tentukanUangSiapa(ctx, pesan, event?.kode || '', k.siapa);
+  if (k.tanggal) patch.tanggal = k.tanggal;
+  if (k.kategori) patch.kategori = k.kategori;
+  if (k.nominal) patch.nominal = k.nominal;
+  const hasil = [];
+  for (const t of aktif) hasil.push(await ctx.store.update('Transaksi', 'id', t.id, patch) || { ...t, ...patch });
+  const apa = [patch.dibayar_oleh && `uang ${patch.dibayar_oleh}`, patch.tanggal && `tanggal ${patch.tanggal}`, patch.kategori && `kategori ${patch.kategori}`, patch.nominal && `nominal ${rupiah(patch.nominal)}`].filter(Boolean).join(', ');
+  const lewat = boleh.length < target.length ? `\n_${target.length - boleh.length} catatan milik orang lain tidak diubah._` : '';
+  return balas(`✅ *Sudah diubah* (${apa}):\n${hasil.map((t) => barisItem(t, tanggalLokal(pesan.waktu))).join('\n')}${lewat}`);
+}
+
 async function perintahBatal(ctx, pesan, cmd, isOwner) {
   const id = (cmd.argumen[0] || '').toUpperCase();
   const semua = await ctx.store.all('Transaksi');
@@ -438,6 +473,15 @@ export async function handlePesan(ctx, pesan) {
   const event = await cariEvent(ctx.store, grup.kode_event);
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
 
+  // Reply ke pesan bot yang berisi nomor catatan: "uang valen", "batal", "tanggal 3 okt", "masuk konsumsi".
+  if (!cmd && pesan.kutipan) {
+    const ids = idDariTeks(pesan.kutipan.teks);
+    if (ids.length) {
+      const hasil = await koreksiCatatan(ctx, pesan, event, ids, isOwner);
+      if (hasil) return hasil;
+    }
+  }
+
   // Jawaban atas pertanyaan bot sebelumnya (harga / jumlah bahan / nama bahan / kategori).
   if (!cmd && ctx.sesi) {
     const jawab = jawabLengkapi(ctx, pesan, await ctx.store.all('Harga Bahan'));
@@ -459,6 +503,12 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
+  // Pesan singkat tanpa reply tepat setelah mencatat ("Uang valen", "tanggal 3 okt"): untuk catatan terakhir pengirim.
+  const lanjutan = !cmd && !pesan.kutipan && ctx.terakhir?.get(`${pesan.groupId}|${pesan.senderId}`);
+  if (lanjutan && Date.now() - lanjutan.waktu < BATAS_LANJUTAN_MS && !/^\s*(batal|hapus|cancel)\b/i.test(teks)) {
+    const hasil = await koreksiCatatan(ctx, pesan, event, lanjutan.ids, isOwner);
+    if (hasil) return hasil;
+  }
   if (cmd) {
     switch (cmd.perintah) {
       case 'rekap': return perintahRekap(ctx, pesan, grup, cmd, isOwner);
