@@ -16,6 +16,7 @@ Bot WhatsApp "kantor AI" untuk Cheesy Pen Shells: pembukuan per event dan per bu
 - [Cara memasang bot di laptop](docs/SETUP.md) (alternatif)
 - [Panduan pemakaian](docs/PANDUAN.md)
 - [Rancangan sistem](docs/RANCANGAN-SISTEM.md)
+- [Spesifikasi sheet Main per event](docs/SPEK-MAIN-EVENT.md)
 - [Checklist SOP untuk bot](docs/CHECKLIST-SOP-BOT.md)
 
 ## Untuk developer
