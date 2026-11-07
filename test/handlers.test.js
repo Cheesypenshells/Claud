@@ -263,7 +263,9 @@ test('kalimat biasa tentang bahan dicatat tanpa #perintah', async () => {
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
   assert.match(await kirim(G_KELUAR, PIC, 'kiriman 10 pack keju'), /Bahan keluar dari gudang[\s\S]*Mozzarella 10 pack/);
   assert.match(await kirim(G_KELUAR, PIC, 'restock bumbu garlic 2 pack'), /Restock bahan[\s\S]*Bumbu Garlic 2 pack/);
-  assert.match(await kirim(G_KELUAR, PIC, 'sisa 3 pack keju dikembalikan'), /terpakai \*7 pack\*/);
+  assert.match(await kirim(G_KELUAR, PIC, 'barang datang 5 pack keju'), /Restock bahan[\s\S]*Mozzarella 5 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'kiriman restock 2 pack keju'), /Restock bahan[\s\S]*Mozzarella 2 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'sisa 3 pack keju dikembalikan'), /terpakai \*14 pack\*/);
   // ada harga -> tetap pengeluaran biasa
   assert.match(await kirim(G_KELUAR, PIC, 'kirim barang lalamove 150rb'), /Pengeluaran tercatat/);
   // chat biasa tanpa bahan tetap diabaikan

@@ -64,7 +64,8 @@ const BANTUAN = {
 function gerakBahanDariKalimat(teks) {
   const t = ` ${String(teks).toLowerCase()} `;
   if (/\s(sisa|kembali|dikembalikan|retur|balik)\s/.test(t)) return 'kembali';
-  if (/\s(restock|restok|tambahan bahan|tambah bahan)\s/.test(t)) return 'restock';
+  // Barang yang datang ke booth di tengah event disebut restock.
+  if (/\s(restock|restok|tambahan bahan|tambah bahan|datang|tiba|sampai)\s/.test(t)) return 'restock';
   if (/\s(kirim|kiriman|dikirim|bawa|dibawa|keluar|bahan keluar)\s/.test(t)) return 'keluar';
   return null;
 }
