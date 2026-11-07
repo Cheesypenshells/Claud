@@ -35,6 +35,10 @@ export class MemoryStore {
 
   async hapusTab() {}
 
+  async tulisBanyakTabel(spreadsheetId, daftar) {
+    for (const d of daftar) this.tabel[`${spreadsheetId}/${d.tab}`] = { total: d.total, baris: d.baris };
+  }
+
   async bacaInputManual() {
     return this.inputManual || {};
   }

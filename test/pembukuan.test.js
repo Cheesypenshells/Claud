@@ -53,7 +53,12 @@ test('event baru memakai file cadangan, rekap & gaji tertulis di PEMBUKUAN', asy
   assert.equal((await store.all('Event'))[0].file_event, 'F1');
   assert.equal(store.fileData.F1.kode, 'LMB26-09');
   assert.ok(store.fileData.F1.baris.some((b) => b[1] === 'RINGKASAN'));
-  assert.equal(store.tabel['F1/Transaksi'].length, 3);
+  // satu tab per kategori, total di atas
+  assert.equal(store.tabel['F1/Transport'].total, 150000);
+  assert.equal(store.tabel['F1/Penginapan'].total, 600000);
+  assert.equal(store.tabel['F1/BK Non-Konsumtif'].total, 25000);
+  assert.equal(store.tabel['F1/Konsumsi'].baris.length, 0);
+  assert.equal(store.tabel['F1/Semua Transaksi'].baris.length, 3);
 
   const rekap = store.tabel['PEMBUKUAN/Rekap Event'];
   assert.equal(rekap.length, 2); // 1 event + baris TOTAL
@@ -125,6 +130,10 @@ test('input event lama (manual) dihitung dengan mesin yang sama', async () => {
   assert.equal(kediri[kol('Fee PIC %')], 10);
   assert.equal(kediri[kol('Bahan Baku')], 10 * 234000);
   assert.equal(kediri[kol('Sisa Bahan Kembali')], 2 * 234000);
+  // tab Bahan Baku memuat bahan dari gudang, totalnya sama dengan biaya bahan baku
+  const fileKediri = (await store.all('Pengaturan')).find((r) => r.kunci === 'file_event_KDR26-09').nilai;
+  assert.equal(store.tabel[`${fileKediri}/Bahan Baku`].total, 10 * 234000);
+  assert.equal(store.tabel[`${fileKediri}/Transport`].baris[0][4], 'George');
   // file event diambil dari cadangan dan dicatat di Pengaturan (tidak dobel saat dihitung ulang)
   assert.equal(store.files[0].nama, 'KEDIRI - JANGKRIK (3 - 5 Sep 2026)');
   await perbaruiPembukuan(store);

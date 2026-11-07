@@ -4,7 +4,7 @@
 import { hitungEvent, barisDataMain } from './laporan.js';
 import { bacaData } from './main.js';
 import { JENIS } from './schema.js';
-import { PERAN } from './parsers.js';
+import { PERAN, KATEGORI } from './parsers.js';
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
@@ -126,20 +126,73 @@ export const KOLOM_PENGGANTIAN = [
 
 export const barisPenggantian = (r) => r.penggantian.map((u) => [r.event.kode, r.event.kota, u.nama, u.dibayar, u.diganti, u.sisa, u.catatan]);
 
-// ---------- Transaksi per event ----------
+// ---------- Pengeluaran per kategori (file event) ----------
+
+// Satu tab per kategori, seperti pembukuan lama (admin, hotel, transportation, food and bev, ...).
+export const TAB_KATEGORI = [
+  { tab: 'Transport', judul: 'TRANSPORT & EKSPEDISI', kategori: [KATEGORI.TRANSPORT], warna: '#1A73E8' },
+  { tab: 'Penginapan', judul: 'PENGINAPAN / HOTEL', kategori: [KATEGORI.PENGINAPAN], warna: '#8E24AA' },
+  { tab: 'Konsumsi', judul: 'KONSUMSI (MAKAN & MINUM)', kategori: [KATEGORI.KONSUMSI], warna: '#0B8043' },
+  { tab: 'Bahan Baku', judul: 'BAHAN BAKU (gudang + beli di lokasi)', kategori: [KATEGORI.OYSTER, KATEGORI.BAHAN_LAIN], gudang: true, warna: '#C2185B' },
+  { tab: 'Bahan Operasional', judul: 'BAHAN OPERASIONAL (es, gas, lemon)', kategori: [KATEGORI.OPERASIONAL], warna: '#E37400' },
+  { tab: 'BK Konsumtif', judul: 'BARANG KERING KONSUMTIF', kategori: [KATEGORI.KONSUMTIF], warna: '#00897B' },
+  { tab: 'BK Non-Konsumtif', judul: 'BARANG KERING NON-KONSUMTIF ⚠️ KELALAIAN', kategori: [KATEGORI.NON_KONSUMTIF, 'Peralatan'], warna: '#D93025' },
+  { tab: 'Admin & Sewa', judul: 'ADMIN & SEWA', kategori: [KATEGORI.ADMIN], warna: '#5F6368' },
+  { tab: 'Iklan', judul: 'IKLAN & ENDORSE', kategori: [KATEGORI.IKLAN], warna: '#F9AB00' },
+  { tab: 'Tak Terduga', judul: 'TAK TERDUGA', kategori: [KATEGORI.TAK_TERDUGA], warna: '#B31412' },
+  { tab: 'Gaji & Upah', judul: 'GAJI & UPAH (yang dibayar lewat grup)', kategori: [KATEGORI.GAJI], warna: '#6D4C41' },
+  { tab: 'Lain-lain', judul: 'LAIN-LAIN', kategori: null, warna: '#9AA0A6' },
+];
+
+const KOLOM_KATEGORI = [
+  { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Keterangan', lebar: 280 },
+  { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Uang Siapa', lebar: 120 }, { label: 'Metode', lebar: 90 },
+  { label: 'Dicatat Oleh', lebar: 190 },
+];
+
+const KOLOM_IO = [
+  { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Jenis', lebar: 120 }, { label: 'Keterangan', lebar: 260 },
+  { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Dicatat Oleh', lebar: 190 },
+];
 
 export const KOLOM_TRANSAKSI_EVENT = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Jenis', lebar: 115 }, { label: 'Kategori', lebar: 190 },
   { label: 'Keterangan', lebar: 260 }, { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Metode', lebar: 95 },
-  { label: 'Uang Siapa', lebar: 120 },
-  { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 80 },
+  { label: 'Uang Siapa', lebar: 120 }, { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 80 },
 ];
 
-function barisTransaksiEvent(transaksi, kode) {
-  return transaksi
-    .filter((t) => t.kode_event === kode)
-    .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.id).localeCompare(String(b.id)))
-    .map((t) => [t.tanggal, t.id, t.jenis === JENIS.KELUAR ? 'Pengeluaran' : t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, t.status]);
+const urutTanggal = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.id).localeCompare(String(b.id));
+
+export function tabelKategoriEvent(r, transaksi) {
+  const kode = r.event.kode;
+  const milik = transaksi.filter((t) => t.kode_event === kode).sort(urutTanggal);
+  const aktif = milik.filter((t) => t.status !== 'BATAL');
+  const keluar = aktif.filter((t) => t.jenis === JENIS.KELUAR);
+  const dikenal = new Set(TAB_KATEGORI.flatMap((k) => k.kategori || []));
+  const baris = (t) => [t.tanggal, t.id, t.keterangan, Number(t.nominal) || 0, t.dibayar_oleh || '', t.metode || '', t.pengirim];
+
+  const tabel = TAB_KATEGORI.map((k) => {
+    const isi = keluar.filter((t) => (k.kategori ? k.kategori.includes(t.kategori) : !dikenal.has(t.kategori))).map(baris);
+    if (k.gudang) {
+      for (const b of r.barisBahan.filter((x) => x.keluar || x.restock)) {
+        isi.push(['', 'Gudang', `${b.bahan} dari gudang: keluar ${b.keluar} + restock ${b.restock} ${b.satuan} × ${b.harga.toLocaleString('id-ID')}`, b.nilaiBawa, 'Gudang', '', 'Bot (dari laporan bahan)']);
+      }
+    }
+    return { tab: k.tab, judul: k.judul, warna: k.warna, kolom: KOLOM_KATEGORI, baris: isi, total: isi.reduce((s, x) => s + (Number(x[3]) || 0), 0) };
+  });
+
+  const io = aktif.filter((t) => t.jenis === JENIS.MASUK_IO || t.jenis === JENIS.POTONGAN_IO || t.jenis === JENIS.PENGGANTIAN)
+    .map((t) => [t.tanggal, t.id, t.jenis, t.keterangan, Number(t.nominal) || 0, t.pengirim]);
+  tabel.push({
+    tab: 'Transfer & Penggantian', judul: 'TRANSFER DARI IO, POTONGAN IO & PENGGANTIAN UANG (total = transfer masuk dari IO)', warna: '#0B8043', kolom: KOLOM_IO, baris: io,
+    total: aktif.filter((t) => t.jenis === JENIS.MASUK_IO).reduce((s, t) => s + (Number(t.nominal) || 0), 0),
+  });
+  tabel.push({
+    tab: 'Semua Transaksi', judul: 'SEMUA CATATAN (termasuk yang dibatalkan; total = pengeluaran aktif)', warna: '#5F6368', kolom: KOLOM_TRANSAKSI_EVENT,
+    baris: milik.map((t) => [t.tanggal, t.id, t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, t.status]),
+    total: keluar.reduce((s, t) => s + (Number(t.nominal) || 0), 0),
+  });
+  return tabel;
 }
 
 // ---------- Proses utama ----------
@@ -188,12 +241,13 @@ export async function perbaruiPembukuan(store) {
     }
 
     // Judul file ikut berubah kalau kota/IO/tanggal event diubah.
-    const isi = JSON.stringify({ judul: judulFileEvent(e), main: barisDataMain(r), trx: barisTransaksiEvent(data.transaksi, e.kode) });
+    const tabel = tabelKategoriEvent(r, data.transaksi);
+    const isi = JSON.stringify({ judul: judulFileEvent(e), main: barisDataMain(r), tabel });
     if (terakhirDitulis.get(fileId) === isi) continue;
     const lama = terakhirDitulis.get(fileId);
     if (lama && JSON.parse(lama).judul !== judulFileEvent(e)) await store.gantiNamaFile(fileId, judulFileEvent(e));
     await store.tulisDataMainDi(fileId, barisDataMain(r));
-    await store.tulisTabel(fileId, 'Transaksi', { kolom: KOLOM_TRANSAKSI_EVENT, baris: barisTransaksiEvent(data.transaksi, e.kode), warna: '#0B8043', index: 1 });
+    await store.tulisBanyakTabel(fileId, tabel, { hapus: ['Transaksi'], mulaiIndex: 1 });
     terakhirDitulis.set(fileId, isi);
   }
 

@@ -386,6 +386,53 @@ export class SheetsStore {
     return Object.fromEntries(TAB_INPUT.map((t, i) => [t.nama, res.data.valueRanges[i]?.values || []]));
   }
 
+  // Menulis beberapa tab sekaligus dalam ±4 permintaan ke Google (hemat kuota).
+  // daftar: [{ tab, judul, total, kolom: [{label, lebar, format}], baris, warna }]
+  // Baris 1: judul + TOTAL, baris 3: judul kolom, baris 4 dst: data.
+  async tulisBanyakTabel(spreadsheetId, daftar, { hapus = [], mulaiIndex } = {}) {
+    let meta = await this.api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title,index),bandedRanges.bandedRangeId)' });
+    const cari = (t) => meta.data.sheets.find((x) => x.properties.title === t);
+    const tambah = daftar.filter((d) => !cari(d.tab)).map((d) => ({ addSheet: { properties: { title: d.tab } } }));
+    const buang = meta.data.sheets.filter((x) => hapus.includes(x.properties.title)).map((x) => ({ deleteSheet: { sheetId: x.properties.sheetId } }));
+    if (tambah.length || buang.length) {
+      await this.api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: [...tambah, ...buang] } });
+      meta = await this.api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title,index),bandedRanges.bandedRangeId)' });
+    }
+    await this.api.spreadsheets.values.batchClear({ spreadsheetId, requestBody: { ranges: daftar.map((d) => `${q(d.tab)}!A:Z`) } });
+    await this.api.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: daftar.map((d) => ({
+          range: `${q(d.tab)}!A1`,
+          values: [[d.judul, '', 'TOTAL', d.total, `${d.baris.length} catatan`], [], d.kolom.map((c) => c.label), ...d.baris],
+        })),
+      },
+    });
+    const req = [];
+    const indeksAwal = mulaiIndex ?? Math.min(...daftar.map((d) => cari(d.tab).properties.index));
+    daftar.forEach((d, urut) => {
+      const s = cari(d.tab);
+      const sheetId = s.properties.sheetId;
+      const n = d.kolom.length;
+      const w = d.warna || '#0B8043';
+      req.push({ updateSheetProperties: { properties: { sheetId, index: indeksAwal + urut, tabColorStyle: { rgbColor: warna(w) }, gridProperties: { frozenRowCount: 3 } }, fields: 'index,tabColorStyle,gridProperties.frozenRowCount' } });
+      for (const b of s.bandedRanges || []) req.push({ deleteBanding: { bandedRangeId: b.bandedRangeId } });
+      req.push(
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: Math.max(n, 5) }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 13, foregroundColorStyle: { rgbColor: warna(w) } }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat(textFormat,verticalAlignment)' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 3, endColumnIndex: 4 }, cell: { userEnteredFormat: { numberFormat: FORMAT_ANGKA.rupiah, backgroundColorStyle: { rgbColor: warna(w, 0.8) }, horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat(numberFormat,backgroundColorStyle,horizontalAlignment)' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 34 }, fields: 'pixelSize' } },
+        { addBanding: { bandedRange: { range: { sheetId, startRowIndex: 2, endRowIndex: 3 + d.baris.length, startColumnIndex: 0, endColumnIndex: n }, rowProperties: { headerColorStyle: { rgbColor: warna(w) }, firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } }, secondBandColorStyle: { rgbColor: warna(w, 0.9) } } } } },
+        { repeatCell: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,horizontalAlignment,wrapStrategy)' } },
+      );
+      d.kolom.forEach((c, i) => {
+        req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: c.lebar || 120 }, fields: 'pixelSize' } });
+        if (c.format) req.push({ repeatCell: { range: { sheetId, startRowIndex: 3, startColumnIndex: i, endColumnIndex: i + 1 }, cell: { userEnteredFormat: { numberFormat: FORMAT_ANGKA[c.format], horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat(numberFormat,horizontalAlignment)' } });
+      });
+    });
+    await this.api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req } });
+  }
+
   // Tab "Main" & "Data Main" versi lama di PEMBUKUAN tidak dipakai lagi (pindah ke file per event).
   async hapusTab(spreadsheetId, namaTab) {
     const meta = await this.api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title))' });
