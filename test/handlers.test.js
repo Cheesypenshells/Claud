@@ -464,3 +464,15 @@ test('Rp 1 juta ke atas dengan desimal "1081.171k"; rentang "dari tanggal22 sept
   assert.equal(p('bayar 1500.000').items[0].nominal, 1500000);
   assert.equal(p('Itu untuk tiket pesawat 1710k').items[0].keterangan, 'tiket pesawat');
 });
+
+test('pengaman dobel: nominal sama dengan catatan lama ditanya dulu, "catat" untuk tetap mencatat', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'Hotel valen 1081.171k');
+  const r = await kirim(G_KELUAR, PIC, 'Hotel 1081.171k, parkir 5rb');
+  assert.match(r, /T0002 parkir/);
+  assert.match(r, /sepertinya dobel.*sama dengan \*T0001\*/s);
+  assert.equal((await store.all('Transaksi')).length, 2);
+  assert.match(await kirim(G_KELUAR, PIC, 'catat'), /T0003 Hotel - \*Rp 1.081.171\*/);
+  assert.equal((await store.all('Transaksi')).length, 3);
+});

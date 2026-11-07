@@ -126,9 +126,10 @@ function barisItem(t, hariIni) {
 }
 
 // Pengeluaran / transfer masuk. Nominal selalu dari teks (pesan atau caption foto).
-async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
+async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap = null }) {
   let items = [];
   let dilewati = [];
+  if (itemsSiap) return simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items: itemsSiap, dilewati, paksa: true });
   if (jenis === JENIS.MASUK_IO) {
     const nominal = parseMoney(teks);
     if (nominal) {
@@ -185,6 +186,33 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
   if (jenis === JENIS.KELUAR) {
     for (const i of items) i.dibayar_oleh = await tentukanUangSiapa(ctx, pesan, kodeEvent, i.dibayar_oleh);
   }
+  return simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilewati });
+}
+
+const kunciDobel = (pesan) => `dobel|${pesan.groupId}|${pesan.senderId}`;
+
+async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilewati, paksa = false }) {
+  // Pengaman dobel: nominal >= 50rb yang sama persis dengan catatan aktif di event ini tidak langsung
+  // dicatat (biasanya koreksi yang terkirim sebagai pesan baru). Pengirim bisa membalas "catat".
+  let dobel = [];
+  if (jenis === JENIS.KELUAR && !paksa) {
+    const ada = (await ctx.store.all('Transaksi'))
+      .filter((t) => t.kode_event === kodeEvent && t.jenis === JENIS.KELUAR && t.status !== STATUS.BATAL);
+    const kata = (x) => String(x).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+    const mirip = (i, t) => i.kategori === t.kategori || kata(i.keterangan).some((w) => kata(t.keterangan).includes(w));
+    dobel = items.map((i) => ({ i, lama: Number(i.nominal) >= 50000 && ada.find((t) => Number(t.nominal) === Number(i.nominal) && mirip(i, t)) }))
+      .filter((x) => x.lama);
+    if (dobel.length) {
+      items = items.filter((i) => !dobel.some((d) => d.i === i));
+      if (ctx.sesi) ctx.sesi.set(kunciDobel(pesan), { items: dobel.map((d) => d.i), buku, kodeEvent, waktu: Date.now() });
+    }
+  }
+  const pesanDobel = dobel.length ? [
+    '⚠️ *Belum saya catat, sepertinya dobel:*',
+    ...dobel.map((d) => `• ${d.i.keterangan} ${rupiah(d.i.nominal)} = sama dengan *${d.lama.id}* ${d.lama.keterangan}`),
+    '_Kalau memang pengeluaran lain, balas *catat*. Kalau mau mengoreksi catatan lama, reply pesan catatannya._',
+  ] : [];
+  if (!items.length) return balas(pesanDobel.join('\n'));
 
   const tersimpan = await simpanTransaksi(ctx.store, {
     tanggal: tanggalLokal(pesan.waktu),
@@ -222,6 +250,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
+  if (pesanDobel.length) baris.push('', ...pesanDobel);
   return balas(baris.join('\n'));
 }
 
@@ -473,6 +502,15 @@ export async function handlePesan(ctx, pesan) {
 
   const event = await cariEvent(ctx.store, grup.kode_event);
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
+
+  // Jawaban "catat" atas peringatan dobel.
+  if (!cmd && ctx.sesi && /^(catat|catat aja|catat saja|ya catat|iya catat|tetap catat|lanjut catat)$/i.test(teks)) {
+    const d = ctx.sesi.get(kunciDobel(pesan));
+    if (d && Date.now() - d.waktu < 60 * 60 * 1000) {
+      ctx.sesi.hapus(kunciDobel(pesan));
+      return catatUang(ctx, pesan, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: d.items });
+    }
+  }
 
   // Reply ke pesan bot yang berisi nomor catatan: "uang valen", "batal", "tanggal 3 okt", "masuk konsumsi".
   if (!cmd && pesan.kutipan) {
