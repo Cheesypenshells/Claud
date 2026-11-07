@@ -224,7 +224,10 @@ async function perintahEvent(ctx, pesan, grup, cmd) {
   }
 
   const event = await cariEvent(ctx.store, data.kode);
-  const orang = parseTim(cmd.badan);
+  // PIC yang merangkap kasir tidak dihitung sebagai kasir berbayar (PIC = owner/keluarga, tanpa upah).
+  const daftarOrang = parseTim(cmd.badan);
+  const namaPic = daftarOrang.filter((o) => o.peran === 'PIC').map((o) => o.nama.toLowerCase());
+  const orang = daftarOrang.filter((o) => !(o.peran === 'Kasir' && namaPic.includes(o.nama.toLowerCase())));
   if (orang.length) await tambahTim(ctx, pesan, event, orang);
   const tim = await daftarTim(ctx, event);
 

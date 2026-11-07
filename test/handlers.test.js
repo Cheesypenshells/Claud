@@ -196,7 +196,7 @@ test('tanya-jawab: grup baru, setup event, ubah data lewat chat', async () => {
 
   assert.equal(await kirim(G_KELUAR, PIC, '1'), ''); // bukan owner: diabaikan
   assert.match(await kirim(G_KELUAR, OWNER, '1'), /\(1\/13\) Lokasi/);
-  const jawaban = ['Jambi', 'Kepo Market', '2-8 Nov 2026', '2', 'ok', '500rb', '1', '11.00', '150jt', 'Budi', 'Andi', 'Joko, Tono 120rb', 'Sari'];
+  const jawaban = ['Lokasi di jambi', 'Kepo Market', '2-8 Nov 2026', '2', 'ok', '500rb', '1', '11.00', '150jt', 'Budi', 'Andi', 'Joko, Tono 120rb', 'Sari'];
   let r = '';
   for (const j of jawaban.slice(0, 2)) r = await kirim(G_KELUAR, OWNER, j);
   assert.match(await kirim(G_KELUAR, OWNER, 'besok'), /Format tanggal belum terbaca/);
@@ -216,6 +216,7 @@ test('tanya-jawab: grup baru, setup event, ubah data lewat chat', async () => {
   assert.equal(ev.wilayah, 'Sumatra');
   assert.equal(ev.target_omzet, 150000000);
   assert.equal((await store.all('Tim Event')).length, 5);
+  assert.equal(ev.kota, 'Jambi');
 
   // setelah tersimpan, chat biasa kembali jadi pencatatan pengeluaran
   assert.match(await kirim(G_KELUAR, OWNER, 'lalamove 150k'), /Pengeluaran tercatat/);
@@ -245,4 +246,12 @@ test('kode event otomatis', async () => {
   assert.equal(buatKodeEvent('Palembang', '2026-12-01'), 'PLM26-12');
   assert.equal(buatKodeEvent('Jambi', '2026-11-20', ['JMB26-11']), 'JMB26-11-2');
   assert.equal(buatKodeEvent('Bali', '2027-01-05'), 'BAL27-01');
+});
+
+test('PIC yang merangkap kasir tidak dihitung sebagai kasir berbayar', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nKasir: Budi`);
+  const tim = await store.all('Tim Event');
+  assert.equal(tim.length, 1);
+  assert.equal(tim[0].peran, 'PIC');
 });

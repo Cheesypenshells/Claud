@@ -8,7 +8,14 @@ const LEWATI = /^(-|lewati|skip|tidak ada|ga ada|gak ada|tidak|kosong)$/i;
 
 // Pertanyaan setup event, berurutan. `ambil` mengubah jawaban menjadi nilai, atau null kalau tidak valid.
 export const PERTANYAAN_EVENT = [
-  { kunci: 'kota', tanya: 'Lokasi / kota event di mana?', contoh: 'Jambi', ambil: (t) => bersihkan(t) || null },
+  {
+    kunci: 'kota', tanya: 'Lokasi / kota event di mana?', contoh: 'Jambi',
+    // "Lokasi di Lombok" / "di kota Jambi" -> "Lombok" / "Jambi"
+    ambil: (t) => {
+      const k = bersihkan(t).replace(/^((lokasi|lokasinya|kota|kotanya|event|eventnya|tempat|tempatnya|di|ke)\s+)+/i, '');
+      return k ? k.charAt(0).toUpperCase() + k.slice(1) : null;
+    },
+  },
   { kunci: 'io', tanya: 'Nama Event Organizer (IO)?', contoh: 'Kepo Market', ambil: (t) => bersihkan(t) || null },
   {
     kunci: 'tanggal', tanya: 'Tanggal event?', contoh: '1-14 Nov 2026',
