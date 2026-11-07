@@ -4,13 +4,13 @@
 import { readFileSync } from 'node:fs';
 import { sheets as sheetsApi, auth as googleAuth } from '@googleapis/sheets';
 import { KOLOM, JENIS_LAMA } from '../schema.js';
-import { siapkanMain, tulisDataMain, pilihEventDefault } from './mainSheet.js';
+import { siapkanMain, tulisDataMain } from './mainSheet.js';
 
 const CACHE_MS = 30_000;
 const FORMAT_ANGKA = {
   rupiah: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
   persen: { type: 'NUMBER', pattern: '0.##"%"' },
-  angka: { type: 'NUMBER', pattern: '#,##0.##' },
+  angka: { type: 'NUMBER', pattern: '#,##0' },
 };
 
 // Nama tab di rumus/rentang harus diberi kutip kalau ada spasi, misalnya 'Tim Event'!A1.
@@ -45,8 +45,10 @@ export class SheetsStore {
     const auth = new googleAuth.JWT({
       email: kunci.client_email,
       key: kunci.private_key,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      // drive: untuk memakai & memberi nama file cadangan di folder EVENT
+      scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
     });
+    this.auth = auth;
     this.api = sheetsApi({ version: 'v4', auth });
     this.cache = new Map();
   }
@@ -240,16 +242,96 @@ export class SheetsStore {
     }
   }
 
-  async siapkanMain() {
-    await siapkanMain(this.api, this.spreadsheetId);
+  // ---------- File lain (file per event, GUDANG, KPI) ----------
+
+  async drive(path, { method = 'GET', body } = {}) {
+    const { token } = await this.auth.getAccessToken();
+    const res = await fetch(`https://www.googleapis.com/drive/v3/${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`Drive ${res.status}: ${data.error?.message || res.statusText}`);
+    return data;
   }
 
-  async tulisDataMain(baris) {
-    await tulisDataMain(this.api, this.spreadsheetId, baris);
+  // File spreadsheet di folder yang namanya mengandung teks tertentu (urut nama).
+  async cariFileDiFolder(folderId, mengandung) {
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and mimeType='application/vnd.google-apps.spreadsheet' and name contains '${mengandung.replace(/'/g, "\\'")}'`);
+    const data = await this.drive(`files?q=${q}&orderBy=name&fields=files(id,name)&pageSize=100`);
+    return data.files || [];
   }
 
-  async pilihEventDefault(kode) {
-    await pilihEventDefault(this.api, this.spreadsheetId, kode);
+  async gantiNamaFile(fileId, nama) {
+    await this.drive(`files/${fileId}`, { method: 'PATCH', body: { name: nama } });
+  }
+
+  async siapkanFileEvent(fileId, kode, judul) {
+    await siapkanMain(this.api, fileId, { tab: 'Ringkasan', kode, judul });
+    // Hapus tab bawaan file kosong ("Sheet1"/"Lembar1").
+    const meta = await this.api.spreadsheets.get({ spreadsheetId: fileId, fields: 'sheets(properties(sheetId,title))' });
+    const hapus = meta.data.sheets.filter((x) => /^(Sheet|Lembar)\s?\d+$/i.test(x.properties.title));
+    if (hapus.length) {
+      await this.api.spreadsheets.batchUpdate({
+        spreadsheetId: fileId,
+        requestBody: { requests: hapus.map((x) => ({ deleteSheet: { sheetId: x.properties.sheetId } })) },
+      });
+    }
+  }
+
+  async tulisDataMainDi(fileId, baris) {
+    await tulisDataMain(this.api, fileId, baris);
+  }
+
+  // Menulis ulang satu tab tabel (judul + baris) di spreadsheet mana pun, lengkap dengan tampilan.
+  // kolom: [{ label, lebar, format: 'rupiah'|'persen'|'angka' }]
+  async tulisTabel(spreadsheetId, tab, { kolom, baris, warna: hex = '#E8710A', index, barisTotal = false }) {
+    const meta = await this.api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title),bandedRanges.bandedRangeId)' });
+    let s = meta.data.sheets.find((x) => x.properties.title === tab);
+    if (!s) {
+      const r = await this.api.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title: tab, ...(index !== undefined ? { index } : {}) } } }] },
+      });
+      s = { properties: r.data.replies[0].addSheet.properties, bandedRanges: [] };
+    }
+    const sheetId = s.properties.sheetId;
+    await this.api.spreadsheets.values.clear({ spreadsheetId, range: `${q(tab)}!A:ZZ` });
+    await this.api.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${q(tab)}!A1`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [kolom.map((c) => c.label), ...baris] },
+    });
+    const n = kolom.length;
+    const req = [
+      { updateSheetProperties: { properties: { sheetId, ...(index !== undefined ? { index } : {}), gridProperties: { frozenRowCount: 1, frozenColumnCount: 2 }, tabColorStyle: { rgbColor: warna(hex) } }, fields: `${index !== undefined ? 'index,' : ''}gridProperties(frozenRowCount,frozenColumnCount),tabColorStyle` } },
+      ...(s.bandedRanges || []).map((b) => ({ deleteBanding: { bandedRangeId: b.bandedRangeId } })),
+      { addBanding: { bandedRange: { range: { sheetId, startRowIndex: 0, endRowIndex: baris.length + 1, startColumnIndex: 0, endColumnIndex: n }, rowProperties: { headerColorStyle: { rgbColor: warna(hex) }, firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } }, secondBandColorStyle: { rgbColor: warna(hex, 0.9) } } } } },
+      { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)' } },
+      { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 48 }, fields: 'pixelSize' } },
+      { repeatCell: { range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: false }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat(textFormat.bold,verticalAlignment)' } },
+    ];
+    kolom.forEach((c, i) => {
+      req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: c.lebar || 120 }, fields: 'pixelSize' } });
+      if (c.format) {
+        req.push({ repeatCell: { range: { sheetId, startRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 }, cell: { userEnteredFormat: { numberFormat: FORMAT_ANGKA[c.format], horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat(numberFormat,horizontalAlignment)' } });
+      }
+    });
+    if (barisTotal && baris.length) {
+      req.push({ repeatCell: { range: { sheetId, startRowIndex: baris.length, endRowIndex: baris.length + 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna(hex, 0.7) } } }, fields: 'userEnteredFormat(textFormat.bold,backgroundColorStyle)' } });
+    }
+    await this.api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req } });
+  }
+
+  // Tab "Main" & "Data Main" versi lama di PEMBUKUAN tidak dipakai lagi (pindah ke file per event).
+  async hapusTab(spreadsheetId, namaTab) {
+    const meta = await this.api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title))' });
+    const hapus = meta.data.sheets.filter((x) => namaTab.includes(x.properties.title));
+    if (hapus.length) {
+      await this.api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: hapus.map((x) => ({ deleteSheet: { sheetId: x.properties.sheetId } })) } });
+    }
   }
 
   async baca(tab) {

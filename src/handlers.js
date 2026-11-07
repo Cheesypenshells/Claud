@@ -11,7 +11,7 @@ import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo 
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import {
-  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, PERINTAH_BAHAN,
+  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
 
 const BANTUAN = {
@@ -52,6 +52,7 @@ const BANTUAN = {
 • #eventbaru - bot bertanya data event satu per satu
 • #mulai - bot menanyakan grup ini untuk apa
 • #ubah bagi hasil 27 / #ubah tanggal 1-16 Nov 2026 - ubah data event
+• #owner tidak / 1 hari / setengah / penuh - kehadiran owner (fee PIC 25/20/15/10%)
 • #daftar pengeluaran KODE | #daftar event KODE | #daftar ruko | #daftar gudang
 • #event (blok setup event sekaligus, lihat panduan)
 • #rekap bulan [YYYY-MM]`,
@@ -423,6 +424,9 @@ export async function handlePesan(ctx, pesan) {
         return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.MASUK_IO, kodeEvent: event.kode, teks: teksTanpaPerintah });
       case 'potongan':
         return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.POTONGAN_IO, kodeEvent: event.kode, teks: teksTanpaPerintah });
+      case 'owner':
+        if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
+        return perintahOwner(ctx, pesan, event, cmd);
       case 'ubah': {
         if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
         const blok = blokUbah(event, teksTanpaPerintah);

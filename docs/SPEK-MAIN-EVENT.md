@@ -104,5 +104,16 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 - Saat grup event baru dibuat, **bot bertanya satu per satu** di grup: lokasi, tanggal, IO, bagi hasil, PIC, karyawan (tetap, DW, kasir), upah DW lokasi itu, dll., lalu mengisi tabel sendiri.
 - Owner bisa mengubah data lewat chat, misalnya karyawan berhenti/menghilang di tengah event → bot menghapus/menonaktifkan orang itu mulai tanggal tersebut.
 
+## 9b. Fee PIC
+- Fee PIC = maksimal **25% dari laba bersih** (setelah semua biaya).
+- Dikurangi menurut kehadiran owner: datang 1 hari −5% (20%), setengah event −10% (15%), dari awal sampai akhir −15% (10%).
+- Rugi → fee Rp 0. Laba bersih akhir = laba − fee PIC.
+
+## 9c. Susunan file (keputusan owner)
+1. **PEMBUKUAN** – rekap semua event dalam satu tabel + gaji per event.
+2. **EVENT** – folder berisi satu spreadsheet per event (isi bagian 1–8 dokumen ini).
+3. **GUDANG** – stok bahan baku & barang gudang.
+4. **KPI KARYAWAN** – KPI, akumulasi bonus, perhitungan detail.
+
 ## 10. Pertanyaan Terbuka
 Semua sudah terjawab.

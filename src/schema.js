@@ -27,6 +27,8 @@ export const KOLOM = {
       k('kasir', 'Kasir', 110),
       k('status', 'Status', 95, { catatan: 'AKTIF atau SELESAI' }),
       k('dibuat', 'Dibuat', 140),
+      k('owner_hadir', 'Kehadiran Owner', 130, { catatan: 'tidak / 1 hari / setengah / penuh. Menentukan fee PIC: 25% / 20% / 15% / 10% dari laba bersih. Diubah lewat #owner di grup' }),
+      k('file_event', 'ID File Event', 200, { catatan: 'Diisi otomatis oleh bot: spreadsheet event di folder EVENT', sembunyi: true }),
     ],
   },
   Transaksi: {
@@ -82,7 +84,7 @@ export const KOLOM = {
       k('kode_event', 'Kode Event', 110),
       k('bahan', 'Bahan', 140),
       k('gerak', 'Keluar / Restock / Kembali', 150, { catatan: 'Keluar = dibawa dari gudang ke event, Restock = tambahan di tengah event, Kembali = sisa dikembalikan ke gudang' }),
-      k('jumlah', 'Jumlah', 90, { format: 'angka' }),
+      k('jumlah', 'Jumlah', 90),
       k('satuan', 'Satuan', 85),
       k('pengirim', 'Dicatat Oleh', 200),
       k('status', 'Status', 85),
@@ -121,6 +123,14 @@ export const KOLOM = {
       k('sumatra', 'Harga Jual Sumatra (per pcs)', 170, { format: 'rupiah' }),
       k('kalimantan', 'Harga Jual Kalimantan (per pcs)', 185, { format: 'rupiah' }),
       k('alias', 'Kata yang Dikenali Bot', 320),
+    ],
+  },
+  Pengaturan: {
+    warna: '#5F6368',
+    kolom: [
+      k('kunci', 'Pengaturan', 160),
+      k('nilai', 'Nilai', 380),
+      k('keterangan', 'Keterangan', 360),
     ],
   },
   Grup: {

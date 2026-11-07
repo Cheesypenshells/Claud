@@ -156,3 +156,24 @@ export async function perintahGratis(ctx, pesan, event, cmd) {
     : `⚠️ *Budget porsi gratis terlewati!* Terpakai ${rupiah(terpakai)} dari ${rupiah(ATURAN.budgetPorsiGratis)} (lebih ${rupiah(-sisa)})`;
   return balas(`🎁 *Porsi gratis tercatat* (${event.kode})\n${baris.join('\n')}\nNilai harga jual: *${rupiah(total)}*\n\n${infoBudget}`);
 }
+
+// ---------- Kehadiran owner (menentukan fee PIC) ----------
+// #owner tidak | #owner 1 hari | #owner setengah | #owner penuh | #owner 4 hari
+export async function perintahOwner(ctx, pesan, event, cmd) {
+  const t = cmd.argumen.join(' ').toLowerCase();
+  let nilai = null;
+  if (/^(tidak|ga|gak|nggak|0)(\s|$)|^0 hari/.test(t)) nilai = 'tidak';
+  else if (/penuh|full|semua|awal sampai akhir/.test(t)) nilai = 'penuh';
+  else if (/setengah|separuh|half/.test(t)) nilai = 'setengah';
+  else if (/(\d+)\s*hari/.test(t)) {
+    const hari = Number(t.match(/(\d+)\s*hari/)[1]);
+    const lama = Math.round((new Date(`${event.selesai}T00:00:00Z`) - new Date(`${event.mulai}T00:00:00Z`)) / 86400000) + 1;
+    nilai = hari <= 0 ? 'tidak' : hari >= lama ? 'penuh' : hari >= lama / 2 ? 'setengah' : '1 hari';
+  }
+  if (!nilai) {
+    return balas('Format: *#owner tidak* | *#owner 1 hari* | *#owner setengah* | *#owner penuh* (atau jumlah hari, contoh #owner 4 hari)\nFee PIC: tidak datang 25%, 1 hari 20%, setengah event 15%, penuh 10% dari laba bersih.');
+  }
+  await ctx.store.update('Event', 'kode', event.kode, { owner_hadir: nilai });
+  const persen = { tidak: 25, '1 hari': 20, setengah: 15, penuh: 10 }[nilai];
+  return balas(`✅ Kehadiran owner di ${event.kode}: *${nilai}*\nFee PIC menjadi *${persen}%* dari laba bersih.`);
+}

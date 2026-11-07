@@ -39,34 +39,40 @@ function barisData(b) {
   return b.mulai + (b.tanpaJudulKolom ? 1 : 2); // baris pertama data (1-based)
 }
 
-export async function siapkanMain(api, spreadsheetId) {
+// opsi.tab  : nama tab tampilan (default 'Main')
+// opsi.kode : kalau diisi, file ini khusus satu event (C2 berisi kode tetap, tanpa pilihan)
+// opsi.judul: judul besar di B1
+export async function siapkanMain(api, spreadsheetId, opsi = {}) {
+  const tab = opsi.tab || TAB_MAIN;
+  const qt = `'${tab}'`;
   let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts.chartId,conditionalFormats)' });
   const cari = (t) => meta.data.sheets.find((s) => s.properties.title === t);
   const tambah = [];
-  if (!cari(TAB_MAIN)) tambah.push({ addSheet: { properties: { title: TAB_MAIN, index: 0, gridProperties: { columnCount: 26, rowCount: 140 } } } });
+  if (!cari(tab)) tambah.push({ addSheet: { properties: { title: tab, index: 0, gridProperties: { columnCount: 26, rowCount: 140 } } } });
   if (!cari(TAB_DATA_MAIN)) tambah.push({ addSheet: { properties: { title: TAB_DATA_MAIN, hidden: true } } });
   if (tambah.length) {
     await api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: tambah } });
     meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts.chartId,conditionalFormats)' });
   }
-  const main = cari(TAB_MAIN);
+  const main = cari(tab);
   const sheetId = main.properties.sheetId;
 
   // Isi: judul, pilihan event, rumus tiap bagian. Pilihan event di C2 dipertahankan.
-  const pilihan = (await api.spreadsheets.values.get({ spreadsheetId, range: `${TAB_MAIN}!C2` })).data.values?.[0]?.[0] || '';
+  const pilihan = (await api.spreadsheets.values.get({ spreadsheetId, range: `${qt}!C2` })).data.values?.[0]?.[0] || '';
   const nilai = [
-    { range: `${TAB_MAIN}!B1`, values: [['MAIN – BEDAH UNTUNG / RUGI PER EVENT']] },
-    { range: `${TAB_MAIN}!B2`, values: [['Pilih event ▶']] },
-    { range: `${TAB_MAIN}!E2`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="INFO");"Pilih kode event di kotak kuning")`]] },
-    { range: `${TAB_MAIN}!B3`, values: [['Angka diperbarui otomatis oleh bot setiap ada laporan baru di grup WhatsApp.']] },
+    { range: `${qt}!B1`, values: [[opsi.judul || 'MAIN – BEDAH UNTUNG / RUGI PER EVENT']] },
+    { range: `${qt}!B2`, values: [[opsi.kode ? 'Kode event ▶' : 'Pilih event ▶']] },
+    ...(opsi.kode ? [{ range: `${qt}!C2`, values: [[opsi.kode]] }] : []),
+    { range: `${qt}!E2`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="INFO");"Pilih kode event di kotak kuning")`]] },
+    { range: `${qt}!B3`, values: [['Angka diperbarui otomatis oleh bot setiap ada laporan baru di grup WhatsApp.']] },
   ];
   for (const b of BAGIAN) {
-    nilai.push({ range: `${TAB_MAIN}!B${b.mulai}`, values: [[b.judul]] });
-    if (!b.tanpaJudulKolom) nilai.push({ range: `${TAB_MAIN}!B${b.mulai + 1}`, values: [b.kolom] });
-    nilai.push({ range: `${TAB_MAIN}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
+    nilai.push({ range: `${qt}!B${b.mulai}`, values: [[b.judul]] });
+    if (!b.tanpaJudulKolom) nilai.push({ range: `${qt}!B${b.mulai + 1}`, values: [b.kolom] });
+    nilai.push({ range: `${qt}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
   }
   const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
-  nilai.push({ range: `${TAB_MAIN}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
+  nilai.push({ range: `${qt}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   await api.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: 'USER_ENTERED', data: nilai } });
 
   // Tampilan.
@@ -90,12 +96,14 @@ export async function siapkanMain(api, spreadsheetId) {
   format(sel(2, 2, 4, 10), { textFormat: { italic: true, foregroundColorStyle: { rgbColor: warna('#5F6368') } }, verticalAlignment: 'MIDDLE' }, 'textFormat,verticalAlignment');
   format(sel(3, 3, 1, 10), { textFormat: { italic: true, fontSize: 9, foregroundColorStyle: { rgbColor: warna('#9AA0A6') } } }, 'textFormat');
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 34 }, fields: 'pixelSize' } });
-  req.push({
-    setDataValidation: {
-      range: sel(2, 2, 2, 3),
-      rule: { condition: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=Event!$A$2:$A' }] }, showCustomUi: true, strict: false },
-    },
-  });
+  req.push(opsi.kode
+    ? { setDataValidation: { range: sel(2, 2, 2, 3) } }
+    : {
+      setDataValidation: {
+        range: sel(2, 2, 2, 3),
+        rule: { condition: { type: 'ONE_OF_RANGE', values: [{ userEnteredValue: '=Event!$A$2:$A' }] }, showCustomUi: true, strict: false },
+      },
+    });
 
   for (const b of BAGIAN) {
     const lebar = 1 + Math.max(b.kolom.length, 2);
@@ -120,7 +128,8 @@ export async function siapkanMain(api, spreadsheetId) {
 
   // Ringkasan: baris LABA / RUGI tebal besar; hijau kalau untung, merah kalau rugi.
   const ring = BAGIAN[0];
-  const barisLaba = barisData(ring) + 3;
+  const barisLaba = barisData(ring) + 5; // baris "LABA BERSIH"
+  format(sel(barisData(ring) + 3, barisData(ring) + 3, 1, 3), { textFormat: { bold: true } }, 'textFormat');
   format(sel(barisLaba, barisLaba, 1, 3), { textFormat: { bold: true, fontSize: 13 } }, 'textFormat');
   for (let n = (main.conditionalFormats || []).length - 1; n >= 0; n -= 1) req.push({ deleteConditionalFormatRule: { sheetId, index: n } });
   const aturan = (rumus, hex) => req.push({
@@ -176,8 +185,8 @@ export async function tulisDataMain(api, spreadsheetId, baris) {
 }
 
 // Isi pilihan event di C2 kalau masih kosong.
-export async function pilihEventDefault(api, spreadsheetId, kode) {
-  const ada = (await api.spreadsheets.values.get({ spreadsheetId, range: `${TAB_MAIN}!C2` })).data.values?.[0]?.[0];
+export async function pilihEventDefault(api, spreadsheetId, kode, tab = TAB_MAIN) {
+  const ada = (await api.spreadsheets.values.get({ spreadsheetId, range: `'${tab}'!C2` })).data.values?.[0]?.[0];
   if (ada || !kode) return;
-  await api.spreadsheets.values.update({ spreadsheetId, range: `${TAB_MAIN}!C2`, valueInputOption: 'RAW', requestBody: { values: [[kode]] } });
+  await api.spreadsheets.values.update({ spreadsheetId, range: `'${tab}'!C2`, valueInputOption: 'RAW', requestBody: { values: [[kode]] } });
 }

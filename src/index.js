@@ -9,7 +9,8 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
-import { isiHargaAwal, perbaruiMain } from './main.js';
+import { isiHargaAwal } from './main.js';
+import { perbaruiPembukuan } from './pembukuan.js';
 
 async function main() {
   let store;
@@ -23,9 +24,13 @@ async function main() {
   }
 
   await isiHargaAwal(store);
-  await store.siapkanMain();
-  await perbaruiMain(store);
-  console.log('[Sheets] Sheet Main siap.');
+  await store.hapusTab(store.spreadsheetId, ['Main', 'Data Main']); // diganti file per event di folder EVENT
+  const perbarui = async () => {
+    const { catatan } = await perbaruiPembukuan(store);
+    for (const c of catatan) console.warn(`[Pembukuan] ${c}`);
+  };
+  await perbarui();
+  console.log('[Sheets] PEMBUKUAN & file event siap.');
 
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
@@ -63,7 +68,7 @@ async function main() {
   setInterval(() => jalankan(async () => {
     if (!perluPerbaruiMain) return;
     perluPerbaruiMain = false;
-    await perbaruiMain(store);
+    await perbarui();
   }), 30_000);
 }
 

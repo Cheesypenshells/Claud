@@ -206,10 +206,20 @@ Bahan yang dikenali dan harganya ada di tab **Harga Bahan** (bisa diubah).
 
 ---
 
-## 9. Sheet Main
+## 9. Susunan file di Google Drive
 
-Tab **Main** (paling kiri) membedah satu event: untung atau rugi.
-1. Pilih kode event di **kotak kuning** (sel C2).
-2. Semua tabel terisi otomatis: ringkasan laba/rugi, omzet harian + grafik, rincian biaya, budget makan, tim & gaji, iklan, porsi gratis, dan sisa bahan baku.
+Semua file bot ada di **PROJECT CHEESY PEN SHELLS > 0. KANTOR AI (BOT)**:
 
-Angka diperbarui oleh bot paling lambat 30 detik setelah ada laporan baru, selama bot menyala.
+| File | Isi |
+|---|---|
+| **PEMBUKUAN** | Tab **Rekap Event**: satu baris per event, berisi tim, omzet, dibayar ke IO, semua biaya, gaji, fee PIC, **laba bersih**, dan link ke file event. Tab **Gaji per Event**: rincian per orang. Tab lain adalah data mentah bot. |
+| **EVENT** (folder) | Satu spreadsheet per event, misalnya *LOMBOK - JANGKRIK (24 Sep - 11 Okt 2026)*. Tab **Ringkasan** membedah untung/rugi (omzet harian + grafik, biaya, budget makan, tim & gaji, iklan, porsi gratis, sisa bahan). Tab **Transaksi** berisi semua catatan event itu. |
+| **GUDANG** | Stok bahan baku di gudang (segera dibuat). |
+| **KPI KARYAWAN** | KPI, bonus, dan perhitungan detail (segera dibuat). |
+
+**File event dibuat otomatis.** Setiap ada event baru, bot memakai salah satu file bernama **"(kosong) cadangan event"** di folder EVENT, lalu mengganti namanya. Kalau file cadangan habis, buat spreadsheet kosong baru di folder EVENT dan beri nama **(kosong)**.
+
+**Fee PIC** = 25% dari laba bersih, dikurangi sesuai kehadiran owner. Ketik di grup pengeluaran:
+`#owner tidak` (25%) | `#owner 1 hari` (20%) | `#owner setengah` (15%) | `#owner penuh` (10%), atau `#owner 4 hari`.
+
+Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot menyala.

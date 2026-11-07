@@ -6,7 +6,34 @@ import { TABS } from '../schema.js';
 export class MemoryStore {
   constructor() {
     this.data = Object.fromEntries(Object.keys(TABS).map((t) => [t, []]));
+    this.spreadsheetId = 'PEMBUKUAN';
+    this.files = []; // file di "Drive" tiruan: { id, nama, folder }
+    this.fileData = {};
+    this.tabel = {};
   }
+
+  async cariFileDiFolder(folderId, mengandung) {
+    return this.files.filter((f) => f.folder === folderId && f.nama.includes(mengandung)).map((f) => ({ id: f.id, name: f.nama }));
+  }
+
+  async gantiNamaFile(fileId, nama) {
+    const f = this.files.find((x) => x.id === fileId);
+    if (f) f.nama = nama;
+  }
+
+  async siapkanFileEvent(fileId, kode) {
+    this.fileData[fileId] = { kode, baris: [] };
+  }
+
+  async tulisDataMainDi(fileId, baris) {
+    this.fileData[fileId] = { ...this.fileData[fileId], baris };
+  }
+
+  async tulisTabel(spreadsheetId, tab, { baris }) {
+    this.tabel[`${spreadsheetId}/${tab}`] = baris;
+  }
+
+  async hapusTab() {}
 
   async init() {}
 

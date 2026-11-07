@@ -20,13 +20,22 @@ export const ATURAN = {
   budgetMakanKaryawan: 30000,
   budgetMakanPic: 100000,
   budgetPorsiGratis: 500000, // per event, dinilai dengan harga jual
+  // Fee PIC: maksimal 25% dari laba bersih, dikurangi menurut kehadiran owner di event.
+  feePicMaks: 25,
+  potonganFeePic: { tidak: 0, '1 hari': 5, setengah: 10, penuh: 15 },
 };
+
+// Kehadiran owner tersimpan di Event.owner_hadir: tidak / 1 hari / setengah / penuh.
+export function persenFeePic(ownerHadir) {
+  const k = String(ownerHadir || 'tidak').toLowerCase();
+  return ATURAN.feePicMaks - (ATURAN.potonganFeePic[k] ?? 0);
+}
 
 // Kategori lama (versi awal bot) dibaca sebagai kategori baru.
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 9, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -161,12 +170,17 @@ export function hitungEvent(event, data) {
     ['Lain-lain', lainnya, ''],
   ];
   const totalBiaya = biaya.reduce((s, b) => s + b[1], 0);
-  const laba = omzetBersih - totalBiaya + nilaiSisaKembali;
+  const labaSebelumFee = omzetBersih - totalBiaya + nilaiSisaKembali;
+  const feePicPersen = persenFeePic(event.owner_hadir);
+  const feePic = labaSebelumFee > 0 ? (labaSebelumFee * feePicPersen) / 100 : 0;
+  const laba = labaSebelumFee - feePic;
+  const namaPic = orang.filter((o) => o.peran === PERAN.PIC).map((o) => o.nama);
 
   const nilaiGratis = barisGratis.reduce((s, g) => s + g.nilai, 0);
 
   return {
     event, hari, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
+    labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
     iklan: keluar.filter((t) => t.kategori === KATEGORI.IKLAN),
   };
@@ -188,7 +202,9 @@ export function barisDataMain(r) {
     ['Omzet (setelah refund)', r.omzetBersih],
     ['Total biaya', r.totalBiaya],
     ['Sisa bahan dikembalikan ke gudang', r.nilaiSisaKembali],
-    ['LABA / RUGI', r.laba],
+    ['Laba sebelum fee PIC', r.labaSebelumFee],
+    [`Fee PIC ${r.feePicPersen}%${r.namaPic.length ? ` (${r.namaPic.join(', ')})` : ''}`, r.feePic],
+    ['LABA BERSIH', r.laba],
     ['Status', r.laba >= 0 ? '✅ UNTUNG' : '❌ RUGI'],
     ['Margin', persen(Number(margin.toFixed(1)))],
     ['Hari jualan', `${jumlahHari} hari`],

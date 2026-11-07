@@ -84,7 +84,11 @@ test('hitungEvent: biaya per kategori, gaji, bonus, bahan, laba', () => {
 
   // Sisa bahan kembali: 3 pack mozzarella
   assert.equal(r.nilaiSisaKembali, 3 * 234000);
-  assert.equal(r.laba, r.omzetBersih - r.totalBiaya + r.nilaiSisaKembali);
+  assert.equal(r.labaSebelumFee, r.omzetBersih - r.totalBiaya + r.nilaiSisaKembali);
+  // Owner tidak datang: fee PIC 25% dari laba
+  assert.equal(r.feePicPersen, 25);
+  assert.equal(r.feePic, r.labaSebelumFee * 0.25);
+  assert.equal(r.laba, r.labaSebelumFee - r.feePic);
 
   // Porsi gratis dinilai harga jual Sumatra: 12 pcs x 25rb
   assert.equal(r.barisGratis[0].nilai, 300000);
@@ -116,4 +120,15 @@ test('barisDataMain: bagian lengkap dan tidak melebihi batas baris sheet Main', 
   assert.equal(ringkasan['Hari jualan'], '3 hari');
   assert.equal(bagian('BAHAN').find((x) => x[3] === 'Mozzarella')[8], '12');
   assert.ok(baris.every((x) => x.length <= 12));
+});
+
+test('fee PIC berkurang sesuai kehadiran owner, nol kalau rugi', () => {
+  const persen = (owner_hadir) => hitungEvent({ ...event, owner_hadir }, data).feePicPersen;
+  assert.equal(persen('tidak'), 25);
+  assert.equal(persen('1 hari'), 20);
+  assert.equal(persen('setengah'), 15);
+  assert.equal(persen('penuh'), 10);
+  const rugi = hitungEvent(event, { ...data, omzet: omzet.map((o) => ({ ...o, omzet: 1000000 })) });
+  assert.ok(rugi.labaSebelumFee < 0);
+  assert.equal(rugi.feePic, 0);
 });
