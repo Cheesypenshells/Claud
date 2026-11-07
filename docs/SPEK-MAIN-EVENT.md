@@ -1,7 +1,7 @@
 # Spesifikasi Sheet "Main" per Event
 
 Tujuan: membedah **satu event, untung atau rugi**. Disusun dari jawaban Pak George (owner).
-Status: **menunggu jawaban pertanyaan terbuka (bagian 9)** sebelum dibangun.
+Status: **sedang dibangun**.
 
 ---
 
@@ -56,7 +56,8 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 ### Karyawan tetap
 - Gaji pokok **Rp 2.500.000/bulan**.
 - Maksimal **2 karyawan tetap per lokasi event**.
-- **Bonus event = 2% dari omzet event**, dibagi rata ke karyawan tetap di event itu (2 orang → masing-masing **1%**).
+- **Bonus event dari omzet event:** 2 karyawan tetap → masing-masing **1%**; hanya 1 karyawan tetap → **1,5%**.
+- Aturan lama "omzet sebulan ≥ 500 jt → Rp 1 jt per event" **tidak dipakai lagi**.
 - Bonus yang diterima = bonus × **poin KPI** (100 poin = 100% bonus; sistem poin di RANCANGAN-SISTEM.md bagian 8 tetap dipakai).
 - Event dengan omzet **< Rp 50 juta**: tidak ada bonus event.
 - **Bonus kerajinan Rp 500.000/bulan** kalau laporan baik dan absensi tepat waktu.
@@ -77,8 +78,7 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 
 ## 6. Budget Makan (akumulasi selama event)
 - Budget per karyawan per hari: **Rp 30.000** (2× makan × Rp 15.000).
-- Hari dengan omzet **> Rp 30 juta**: budget naik, bisa sampai **Rp 100.000** per orang per hari.
-- PIC: maksimal **Rp 100.000/hari**.
+- Budget PIC: **Rp 100.000/hari**.
 - Budget **dijumlahkan selama event**. Tabel menampilkan: total budget, sudah terpakai (dari chat konsumsi), **sisa budget**.
 - Sisa budget biasanya dipakai untuk **makan bersama di akhir event** (malam terakhir).
 
@@ -96,7 +96,7 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 | Oyster | kg | Rp 15.000/kg |
 | Mozzarella | pack 2,3 kg | Rp 234.000/pack |
 | Bumbu garlic | pack | Rp 500.000/pack |
-| Bumbu merah | pack | Rp 500.000/pack (menu **Sweet n Spicy**; ditawarkan sebagai pengganti kalau bumbu garlic habis) |
+| Bumbu merah | pack | Rp 500.000/pack (menu **Sweet n Spicy**, harga jual sama dengan garlic; ditawarkan sebagai pengganti kalau bumbu garlic habis) |
 | Topping cumi | kantong | Rp 150.000/kantong |
 | Saus keju | kg (pack 1 kg) | Rp 38.000/kg |
 
@@ -105,7 +105,4 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 - Owner bisa mengubah data lewat chat, misalnya karyawan berhenti/menghilang di tengah event → bot menghapus/menonaktifkan orang itu mulai tanggal tersebut.
 
 ## 10. Pertanyaan Terbuka
-1. Kalau di satu event hanya ada **1 karyawan tetap**, ia dapat 1% atau seluruh 2%?
-2. Aturan lama "omzet sebulan ≥ 500 jt → Rp 1 jt per event" **diganti** aturan 2% ini?
-3. Budget makan Rp 100.000/orang berlaku **otomatis** untuk setiap hari dengan omzet > 30 jt, atau owner yang menentukan?
-4. Harga jual menu **Sweet n Spicy** sama dengan garlic?
+Semua sudah terjawab.
