@@ -149,3 +149,18 @@ test('tanggal di baris pengeluaran: "makan siang 22 sept 53rb"', async () => {
   // Pesan bulan Januari yang menyebut Desember = tahun lalu
   assert.equal(p('hotel 28 des 300rb', { hariIni: '2027-01-03' }).items[0].tanggal, '2026-12-28');
 });
+
+test('satu baris beberapa pengeluaran dipisah koma', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const { items, dilewati } = p('Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept', { hariIni: '2026-11-08' });
+  assert.equal(dilewati.length, 0);
+  assert.deepEqual(items.map((i) => [i.keterangan, i.nominal, i.tanggal]), [
+    ['Listrik', 353000, undefined], ['minuman', 11000, '2026-09-25'], ['lemon dan softex', 24000, '2026-09-25'],
+  ]);
+  assert.equal(items[1].kategori, 'Konsumsi');
+  // Bagian tanpa harga yang pendek berlaku untuk semua: uang siapa
+  assert.deepEqual(p('es batu 20rb, gas 25rb, uang mama').items.map((i) => i.dibayar_oleh), ['Mama', 'Mama']);
+  // Koma desimal tidak dipecah; kalimat obrolan tetap tidak dicatat
+  assert.equal(p('minum karyawan 67,865 ribu').items[0].nominal, 67865);
+  assert.equal(p('Lalamove kerang ke P2 dan minum karyawan , lalamovenya harganya150k, dan untuk minum 67,865 ribu').items.length, 0);
+});

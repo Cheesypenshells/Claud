@@ -164,6 +164,8 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
   }
 
   if (jenis === JENIS.POTONGAN_IO) items = items.map((i) => ({ ...i, kategori: 'Potongan IO' }));
+  // Listrik/wifi yang dibayar di lokasi event bukan biaya ruko: masuk Admin & Sewa event.
+  if (buku === BUKU.EVENT) items = items.map((i) => (i.kategori === KATEGORI.RUKO ? { ...i, kategori: KATEGORI.ADMIN } : i));
 
   // Kategori yang pernah dipilih owner/PIC untuk keterangan serupa (tab Kamus Kategori).
   if (items.some((i) => i.kategori === KATEGORI.LAIN)) {

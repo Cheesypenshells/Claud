@@ -28,7 +28,7 @@ const ATURAN_KATEGORI = [
   [KATEGORI.GAJI, ['gaji', 'upah', 'dw', 'bonus', 'honor', 'kasbon', 'fee']],
   [KATEGORI.IKLAN, ['iklan', 'endorse', 'endorsement', 'influencer', 'selebgram', 'kol', 'ads', 'promosi', 'konten', 'content creator']],
   [KATEGORI.TAK_TERDUGA, ['sakit', 'obat', 'klinik', 'dokter', 'rumah sakit', 'puskesmas', 'ganti rugi', 'tak terduga', 'tidak terduga', 'darurat', 'kecelakaan', 'denda']],
-  [KATEGORI.KONSUMSI, ['makan', 'minum', 'air minum', 'nasi', 'kopi', 'snack', 'sarapan', 'aqua', 'gofood', 'grabfood', 'shopeefood', 'konsumsi', 'teh']],
+  [KATEGORI.KONSUMSI, ['makan', 'minum', 'minuman', 'makanan', 'air minum', 'nasi', 'kopi', 'snack', 'sarapan', 'aqua', 'gofood', 'grabfood', 'shopeefood', 'konsumsi', 'teh']],
   [KATEGORI.PENGINAPAN, ['hotel', 'kos', 'kost', 'penginapan', 'airbnb', 'homestay', 'oyo', 'reddoorz', 'sewa kamar', 'guest house', 'losmen', 'wisma']],
   [KATEGORI.TRANSPORT, ['lalamove', 'gojek', 'gocar', 'goride', 'gosend', 'grab', 'maxim', 'ojek', 'ojol', 'bensin', 'bbm', 'solar', 'pertalite', 'pertamax', 'tol', 'parkir', 'travel', 'tiket', 'pesawat', 'kereta', 'bus', 'ekspedisi', 'cargo', 'kargo', 'ongkir', 'truk', 'pickup', 'pick up', 'deliveree', 'jne', 'jnt', 'j&t', 'sicepat', 'angkut', 'kirim', 'transport', 'taksi', 'taxi', 'kapal', 'bagasi']],
   [KATEGORI.RUKO, ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
@@ -106,14 +106,32 @@ export function ambilTanggal(baris, hariIni) {
   return { tanggal: ymd(tahun), sisa: bersihkan(teks.slice(0, m.index) + ' ' + teks.slice(m.index + m[0].length)) };
 }
 
+// Satu baris berisi beberapa pengeluaran dipisah koma/titik koma:
+//   "Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept"
+// Dipecah hanya kalau bagian pertama berharga, setiap bagian paling banyak satu harga, ada >= 2 harga,
+// dan bagian tanpa harga hanya keterangan pendek (tanggal, "uang mama", "cash"). Koma desimal
+// ("67,865 ribu") tidak terpecah karena tidak diikuti spasi.
+export function pecahBaris(baris) {
+  const bagian = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean);
+  if (bagian.length < 2) return [baris];
+  const harga = bagian.map((b) => findMoney(b).length);
+  if (!harga[0] || harga.some((n) => n > 1) || harga.filter(Boolean).length < 2) return [baris];
+  const pendek = (b) => b.split(/\s+/).length <= 4;
+  if (bagian.some((b, i) => !harga[i] && !pendek(b))) return [baris];
+  return bagian;
+}
+
 export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } = {}) {
   const dilewati = [];
-  // Metode untuk semua baris diambil dari baris tanpa nominal ("cash semua") atau dari foto bukti trf.
-  const barisTanpaNominal = String(teks ?? '').split(/\n+/).filter((b) => !findMoney(b).length).join(' ');
+  const semuaBaris = String(teks ?? '').split(/\n+/).flatMap(pecahBaris);
+  // Metode, uang siapa & tanggal untuk semua baris diambil dari baris tanpa nominal
+  // ("cash semua", "uang mama", "tanggal 25 sept") atau dari foto bukti trf.
+  const barisTanpaNominal = semuaBaris.filter((b) => !findMoney(b).length).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
   const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
+  const tanggalPesan = ambilTanggal(barisTanpaNominal, hariIni).tanggal;
   const items = [];
-  for (const barisMentah of String(teks ?? '').split(/\n+/)) {
+  for (const barisMentah of semuaBaris) {
     const { siapa, sisa: tanpaSiapa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
     const { tanggal, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni);
     if (!baris || /^total\b/i.test(baris)) continue;
@@ -149,7 +167,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } =
       kategori: tebakKategori(baris),
       metode: tebakMetode(baris, false) || metodePesan,
       dibayar_oleh: siapa || siapaPesan || '',
-      ...(tanggal ? { tanggal } : {}),
+      ...(tanggal || tanggalPesan ? { tanggal: tanggal || tanggalPesan } : {}),
     });
   }
   return { items, dilewati };
