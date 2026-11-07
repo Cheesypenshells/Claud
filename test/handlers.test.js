@@ -269,3 +269,36 @@ test('kalimat biasa tentang bahan dicatat tanpa #perintah', async () => {
   // chat biasa tanpa bahan tetap diabaikan
   assert.equal(await kirim(G_KELUAR, PIC, 'besok kirim jam 8 ya'), '');
 });
+
+test('bot bertanya balik kalau laporan kurang lengkap', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+
+  // pembelian tanpa harga -> ditanya harga -> dicatat
+  assert.match(await kirim(G_KELUAR, PIC, 'beli sapu'), /Berapa harga untuk \*"beli sapu"\*/);
+  assert.match(await kirim(G_KELUAR, PIC, '25rb'), /beli sapu - \*Rp 25.000\* \[Barang Kering Non-Konsumtif\]/);
+
+  // orang lain yang menjawab tidak dianggap jawaban
+  assert.match(await kirim(G_KELUAR, PIC, 'bayar hotel'), /Berapa harga/);
+  assert.match(await kirim(G_KELUAR, KARYAWAN, '300rb'), /Pengeluaran \*Rp 300.000\* ini untuk apa/);
+  assert.match(await kirim(G_KELUAR, PIC, '300rb'), /bayar hotel - \*Rp 300.000\* \[Penginapan\]/);
+  assert.match(await kirim(G_KELUAR, KARYAWAN, 'lalamove ke venue'), /lalamove ke venue - \*Rp 300.000\* \[Transport & Ekspedisi\]/);
+
+  // bahan tanpa jumlah / tanpa nama
+  assert.match(await kirim(G_KELUAR, PIC, 'kiriman keju'), /Berapa \*pack Mozzarella\*/);
+  assert.match(await kirim(G_KELUAR, PIC, '12'), /Mozzarella 12 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'kiriman 5 pack'), /Bahan apa yang 5 itu/);
+  assert.match(await kirim(G_KELUAR, PIC, '3'), /Bumbu Garlic 5 pack/);
+
+  // kategori belum jelas -> ditawarkan pilihan
+  const r = await kirim(G_KELUAR, PIC, 'sumbangan acara 50rb');
+  assert.match(r, /Kategorinya belum jelas/);
+  assert.match(await kirim(G_KELUAR, PIC, '4'), /sekarang kategori \*Tak Terduga\*/);
+
+  // batal & jawaban bukan angka
+  assert.match(await kirim(G_KELUAR, PIC, 'beli gas'), /Berapa harga/);
+  assert.match(await kirim(G_KELUAR, PIC, 'batal'), /tidak dicatat/);
+  assert.equal(await kirim(G_KELUAR, PIC, 'oke siap'), '');
+});

@@ -10,6 +10,8 @@ import { parsePerintah, parseEvent, parsePengeluaran, parseOmzet, parseTim, DAFT
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
+import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
+import { KATEGORI } from './parsers.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -132,7 +134,14 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     if (pesan.adaFoto || jenis !== JENIS.KELUAR) {
       return balas('⚠️ Nominal belum ada. Mohon tulis harga dan keterangannya, contoh: *lalamove 150rb*');
     }
+    // Laporan pembelian tanpa harga, contoh "beli sapu": tanyakan harganya.
+    if (ctx.sesi && perluTanyaHarga(teks)) return balas(tanyaHarga(ctx, pesan, teks));
     return [];
+  }
+
+  // Hanya nominal tanpa keterangan (contoh "300rb"): tanyakan untuk apa.
+  if (ctx.sesi && jenis === JENIS.KELUAR && !pesan.adaFoto && items.length === 1 && items[0].keterangan === 'Pengeluaran') {
+    return balas(tanyaKeterangan(ctx, pesan, items[0].nominal));
   }
 
   if (jenis === JENIS.POTONGAN_IO) items = items.map((i) => ({ ...i, kategori: 'Potongan IO' }));
@@ -162,6 +171,9 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     baris.push(`Total pengeluaran event: ${rupiah(total)}`);
   }
   baris.push(`Salah? balas *#batal ${tersimpan[0].id}*`);
+  if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
+    baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id));
+  }
   return balas(baris.join('\n'));
 }
 
@@ -386,6 +398,18 @@ export async function handlePesan(ctx, pesan) {
   const event = await cariEvent(ctx.store, grup.kode_event);
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
 
+  // Jawaban atas pertanyaan bot sebelumnya (harga / jumlah bahan / nama bahan / kategori).
+  if (!cmd && ctx.sesi) {
+    const jawab = jawabLengkapi(ctx, pesan, await ctx.store.all('Harga Bahan'));
+    if (jawab?.balasan) return balas(jawab.balasan);
+    if (jawab?.kategori) return perintahKategori(ctx, { argumen: [jawab.kategori.id, jawab.kategori.kategori] });
+    if (jawab?.bahan && event) return perintahBahan(ctx, pesan, event, { perintah: jawab.bahan.gerak, sisaBaris: jawab.bahan.teks, badan: '', argumen: [] });
+    if (jawab?.pengeluaran) {
+      if (grup.jenis === 'ruko') return catatUang(ctx, pesan, { buku: BUKU.RUKO, jenis: JENIS.KELUAR, kodeEvent: 'RUKO', teks: jawab.pengeluaran });
+      if (event) return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: event.kode, teks: jawab.pengeluaran });
+    }
+  }
+
   if (cmd) {
     switch (cmd.perintah) {
       case 'rekap': return perintahRekap(ctx, pesan, grup, cmd, isOwner);
@@ -421,6 +445,9 @@ export async function handlePesan(ctx, pesan) {
     if (gerak) {
       const hasil = await perintahBahan(ctx, pesan, event, { perintah: gerak, sisaBaris: teks, badan: '', argumen: [] });
       if (!/^Format:/.test(hasil[0]?.text || '')) return hasil;
+      // Kurang jumlah atau nama bahan: tanyakan.
+      const tanya = ctx.sesi && tanyaBahan(ctx, pesan, teks, gerak, await ctx.store.all('Harga Bahan'));
+      if (tanya) return balas(tanya);
     }
   }
 

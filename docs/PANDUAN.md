@@ -73,6 +73,13 @@ Total pengeluaran event: Rp 330.000
 - **Format nominal yang dikenali:** `150k`, `150rb`, `150 ribu`, `1,5jt`, `Rp 150.000`, `150000`.
 - **Chat biasa tanpa nominal** ("oke pak", "siap") tidak dicatat.
 - **Baris "total ..."** diabaikan supaya tidak terhitung dua kali.
+- **Laporan kurang lengkap? Bot bertanya balik** ke pengirimnya (orang lain yang menjawab tidak dihitung):
+  - `beli sapu` → bot bertanya harganya → balas `25rb`
+  - `300rb` saja → bot bertanya untuk apa → balas `lalamove ke venue`
+  - `kiriman keju` → bot bertanya berapa pack → balas `10`
+  - `kiriman 5 pack` → bot bertanya bahan apa → balas nomor/nama bahan
+  - kategori tidak dikenali → bot menawarkan pilihan kategori → balas nomornya
+  Balas **batal** kalau ternyata bukan laporan. Pertanyaan kedaluwarsa setelah 1 jam.
 - **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.
 - **Salah catat:** `#batal T0002`. Bisa dilakukan owner atau orang yang mengirim.
 - **Ganti kategori:** `#kategori T0001 Transport`.
