@@ -211,3 +211,21 @@ test('"siang ... dan malam nya ..." dipecah, keterangan & tanggal ikut bagian se
   assert.deepEqual(p('es 20rb dan gas 25rb').items.map((i) => i.keterangan), ['es', 'gas']);
   assert.equal(p('lemon dan softex 24k').items.length, 1);
 });
+
+test('baris panjang tanpa pemisah rapi: tiap harga jadi satu catatan, tanggal terakhir berlaku', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const o = { hariIni: '2026-11-08', rentang: { mulai: '2026-09-24', selesai: '2026-10-11' } };
+  const { items } = p('Makan malam tanggal6 okt37,5k, makan tanggal 7 okt, pagi42.7k dan malam43.7k makan tanggal8 okt53.5k paginya dan siang nya25.5k malam nya tanggal9 okt paginya52.1k dan malam nya58.44k semua uang valen', o);
+  assert.deepEqual(items.map((i) => [i.keterangan, i.nominal, i.tanggal]), [
+    ['Makan malam', 37500, '2026-10-06'],
+    ['makan pagi', 42700, '2026-10-07'],
+    ['makan malam', 43700, '2026-10-07'],
+    ['makan pagi', 53500, '2026-10-08'],
+    ['makan siang', 25500, '2026-10-08'],
+    ['makan pagi', 52100, '2026-10-09'],
+    ['makan malam', 58440, '2026-10-09'],
+  ]);
+  assert.ok(items.every((i) => i.dibayar_oleh === 'Valen' && i.kategori === 'Konsumsi'));
+  assert.deepEqual(p('Makan pagi tanggal5 okt 45.35k, dan malam 39.4k', o).items.map((i) => [i.keterangan, i.tanggal]),
+    [['Makan pagi', '2026-10-05'], ['Makan malam', '2026-10-05']]);
+});

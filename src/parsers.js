@@ -89,7 +89,7 @@ export function parsePengeluaran(teks, opsi = {}) {
 // Tanggal yang ditulis di baris pengeluaran: "makan siang 22 sept 53rb", "tgl 22/9 bensin 50rb".
 // hariIni = tanggal pesan (YYYY-MM-DD) untuk menentukan tahun. Mengembalikan { tanggal, sisa }.
 // Rentang "tanggal2-3 okt" dicatat di tanggal pertama.
-const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?(?<!\\d)(\\d{1,2})(?:\\s*-\\s*\\d{1,2})?\\s*(${Object.keys(BULAN).sort((a, b) => b.length - a.length).join('|')})\\b\\.?`, 'i');
+const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?(?<!\\d)(\\d{1,2})(?:\\s*-\\s*\\d{1,2})?\\s*(${Object.keys(BULAN).sort((a, b) => b.length - a.length).join('|')})(?![a-z])\\.?`, 'i');
 const RE_TANGGAL_ANGKA = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})[/-](\d{1,2})\b/i;
 // Tanpa bulan: "tanggal 25", "tanggal26 sore", "27 pagi" -> bulan dipilih supaya masuk masa event
 // (rentang { mulai, selesai }), atau bulan pesan kalau tidak ada event.
@@ -141,19 +141,49 @@ function pecahSambung(b) {
   return p.length > 1 && p.every((x) => findMoney(x).length === 1) ? p : [b];
 }
 
+// Baris tanpa pemisah yang rapi: "Makan malam tanggal6 okt37,5k, makan tanggal 7 okt, pagi42.7k dan
+// malam43.7k makan tanggal8 okt53.5k paginya ...". Setiap harga jadi satu bagian: teks sejak harga
+// sebelumnya sampai harga ini. Kata waktu tepat sesudah harga ("53.5k paginya") ikut harga itu,
+// begitu juga "x 3 malam". Tidak dipakai untuk kalimat obrolan.
+const RE_WAKTU = /(pagi|siang|sore|malam)(nya)?/i;
+function pecahRangkai(baris) {
+  const uang = findMoney(baris);
+  if (uang.length < 2) return [baris];
+  const t = String(baris).toLowerCase();
+  if (t.includes('?') || KATA_DISKUSI.some((k) => new RegExp(`(^|[^a-z])${k}($|[^a-z])`).test(t))) return [baris];
+  const hasil = [];
+  let mulai = 0;
+  uang.forEach((u) => {
+    let akhir = u.index + u.panjang;
+    const sesudah = baris.slice(akhir);
+    const kali = sesudah.match(/^\s*[x×*]\s*\d+(\s*(malam|hari|orang|porsi|pcs|unit|kamar|pack|dus|box|buah))?\b/i);
+    const waktu = sesudah.match(new RegExp(`^\\s*${RE_WAKTU.source}\\b`, 'i'));
+    if (kali) akhir += kali[0].length;
+    else if (waktu && !RE_WAKTU.test(baris.slice(mulai, u.index))) akhir += waktu[0].length;
+    hasil.push(baris.slice(mulai, akhir));
+    mulai = akhir;
+  });
+  // Kalimat bercerita ("... lalamovenya harganya150k, dan untuk minum ...") bukan laporan.
+  const sebelumHarga = (x) => x.slice(0, findMoney(x)[0]?.index ?? x.length).trim().split(/\s+/).filter(Boolean).length;
+  if (hasil.some((x) => sebelumHarga(x) > 8) || /\bharga\s*nya|\bharganya/.test(t)) return [baris];
+  const ekor = baris.slice(mulai).trim();
+  if (ekor) hasil[hasil.length - 1] += ` ${ekor}`;
+  return hasil.map((x) => x.replace(/^[\s,;]+|[\s,;]+$/g, '')).filter(Boolean);
+}
+
 export function pecahBaris(baris) {
   const bagian = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean).flatMap(pecahSambung);
-  if (bagian.length < 2) return [baris];
-  const harga = bagian.map((b) => findMoney(b).length);
-  if (harga.some((n) => n > 1) || harga.filter(Boolean).length < 2) return [baris];
   const pendek = (b) => b.split(/\s+/).length <= 4;
-  if (bagian.some((b, i) => !harga[i] && !pendek(b))) return [baris];
-  return bagian;
+  const harga = bagian.map((b) => findMoney(b).length);
+  const rapi = bagian.length > 1 && harga.filter(Boolean).length >= 2 && bagian.every((b, i) => harga[i] || pendek(b));
+  if (!rapi) return pecahRangkai(baris);
+  return bagian.flatMap((b) => (findMoney(b).length > 1 ? pecahRangkai(b) : [b]));
 }
 
 // Kata waktu makan dll: bagian yang hanya berisi kata ini ("malam nya 40.95k") melanjutkan
 // keterangan sebelumnya ("makan karyawan" -> "makan karyawan malam").
-const KATA_LANJUTAN = new Set(['pagi', 'siang', 'sore', 'malam', 'nya', 'yang', 'yg', 'untuk', 'buat', 'juga', 'harinya', 'hari']);
+const KATA_LANJUTAN = new Set(['pagi', 'siang', 'sore', 'malam', 'paginya', 'siangnya', 'sorenya', 'malamnya', 'nya', 'yang', 'yg', 'untuk', 'buat', 'juga', 'harinya', 'hari', 'dan', 'terus', 'trus', 'lalu', 'sama']);
+const waktuTerakhir = (ket) => kataSisa(ket).map((w) => w.replace(/nya$/, '')).filter((w) => ['pagi', 'siang', 'sore', 'malam'].includes(w)).pop() || '';
 const kataSisa = (t) => bersihkan(String(t).toLowerCase()).split(/\s+/).filter(Boolean);
 const lanjutan = (ket) => kataSisa(ket).every((w) => KATA_LANJUTAN.has(w));
 const subjek = (ket) => bersihkan(String(ket).split(/\s+/).filter((w) => !KATA_LANJUTAN.has(w.toLowerCase())).join(' '));
@@ -171,7 +201,9 @@ export function ambilUangSemua(teks) {
 export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', rentang = null } = {}) {
   const dilewati = [];
   const { siapa: siapaSemua, sisa: teksBersih } = ambilUangSemua(teks);
-  const kelompok = teksBersih.split(/\n+/).map((b) => b.trim()).filter(Boolean).map(pecahBaris);
+  // Singkatan umum di chat: "mlm" = malam, "kryawan"/"krywn" = karyawan.
+  const teksNormal = teksBersih.replace(/\bmlm\b/gi, 'malam').replace(/\b(kryawan|krywn|karywan|kary)\b/gi, 'karyawan');
+  const kelompok = teksNormal.split(/\n+/).map((b) => b.trim()).filter(Boolean).map(pecahBaris);
   // Bagian tanpa harga yang berisi keterangan ("makan tanggal 1 oktober") menjadi konteks bagian
   // berikutnya di baris yang sama; yang hanya berisi tanggal/uang siapa/metode berlaku untuk semua.
   const tanpaHarga = kelompok.flat().filter((b) => !findMoney(b).length);
@@ -221,15 +253,18 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');
     let kategoriDari = baris;
+    // Tanggal terakhir yang disebut di baris ini berlaku sampai ada tanggal baru.
+    tanggal = tanggal || konteks.tanggal;
     if (lanjutan(keterangan) && konteks.subjek) {
-      // "malam nya 40.95k" setelah "makan karyawan ... siang" -> "makan karyawan malam", tanggal ikut.
-      keterangan = bersihkan(`${konteks.subjek} ${subjek(keterangan.replace(/\bnya\b/gi, '')) || kataSisa(keterangan).filter((w) => w !== 'nya').join(' ')}`);
-      tanggal = tanggal || konteks.tanggal;
+      // "malam nya 40.95k" setelah "makan karyawan ... siang" -> "makan karyawan malam".
+      keterangan = bersihkan(`${konteks.subjek} ${waktuTerakhir(keterangan)}`);
       kategoriDari = keterangan;
     } else {
-      keterangan = keterangan.replace(/\s+nya\b/gi, '');
-      konteks = { subjek: subjek(keterangan) || keterangan, tanggal: tanggal || konteks.tanggal };
+      keterangan = bersihkan(keterangan.replace(/^(dan|terus|trus|lalu|sama)\s+/i, '')
+        .replace(/\b(pagi|siang|sore|malam)\s*nya\b/gi, '$1').replace(/\s+nya\b/gi, ''));
+      if (konteks.subjek || subjek(keterangan)) konteks = { ...konteks, subjek: subjek(keterangan) || konteks.subjek };
     }
+    konteks.tanggal = tanggal;
     if (!keterangan) keterangan = 'Pengeluaran';
 
     items.push({
