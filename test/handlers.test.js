@@ -449,3 +449,18 @@ test('reply "Hotel nya harga nya jadinya 222.540k ya" mengubah nominal hotel; "u
   // reply berisi pengeluaran baru tanpa kata koreksi tetap dicatat baru
   assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'hotel 300rb' }), /Pengeluaran tercatat/);
 });
+
+test('Rp 1 juta ke atas dengan desimal "1081.171k"; rentang "dari tanggal22 sept sampai2 okt"; susulan "... itu <harga>" = koreksi', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Hotel valen dari tanggal2 nov sampai3 nov 1081.17k ya uang valen semua');
+  assert.match(r, /T0001 Hotel valen - \*Rp 1.081.170\*/);
+  assert.doesNotMatch(r, /T0002/);
+  // pesan susulan tanpa reply: koreksi, bukan catatan baru
+  assert.match(await kirim(G_KELUAR, PIC, 'Penginapan nya valen itu1081.171k'), /Sudah diubah.*Rp 1.081.171/s);
+  assert.equal((await store.all('Transaksi')).length, 1);
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  assert.equal(p('tiket pesawat nya1710k').items[0].nominal, 1710000);
+  assert.equal(p('bayar 1500.000').items[0].nominal, 1500000);
+  assert.equal(p('Itu untuk tiket pesawat 1710k').items[0].keterangan, 'tiket pesawat');
+});

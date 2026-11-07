@@ -11,7 +11,7 @@ const SUFFIX = {
 // Contoh yang dikenali: 150k, 150rb, 150 ribu, 1,5jt, 2 juta, Rp 150.000, 150.000, 150000.
 // Angka kecil tanpa satuan (mis. "2 unit") tidak dianggap uang.
 export function findMoney(text) {
-  const re = /((?<![a-z])rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(juta|jt|ribu|rbu|rb|k)?(?![a-z0-9])/gi;
+  const re = /((?<![a-z])rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,3})?)\s*(juta|jt|ribu|rbu|rb|k)?(?![a-z0-9])/gi;
   const hasil = [];
   let m;
   while ((m = re.exec(text)) !== null) {
@@ -28,7 +28,11 @@ export function findMoney(text) {
         nilai = Number(angka.replace(/,\d{1,2}$/, '').replace(/[.,]/g, ''));
         if (kelompok > 1) satuan = 1;
       }
+    } else if (/^\d{4,}[.,]\d{3}$/.test(angka) && !suf) {
+      // "1081.171" tanpa satuan = 1.081.171 (titik dianggap pemisah ribuan).
+      nilai = Number(angka.replace(/[.,]/g, ''));
     } else {
+      // "1081.171k" = 1.081,171 ribu = 1.081.171; "7,5k" = 7.500.
       nilai = Number(angka.replace(',', '.'));
     }
     nilai = Math.round(nilai * satuan);

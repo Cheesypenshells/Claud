@@ -350,8 +350,8 @@ async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
   const semua = await ctx.store.all('Transaksi');
   const semuaTarget = ids.map((id) => semua.find((t) => String(t.id).toUpperCase() === id)).filter(Boolean);
   if (!semuaTarget.length) return null;
-  const { catatan: target, teks: teksKoreksi } = pilihCatatan(pesan.text, semuaTarget);
-  const k = bacaKoreksi(teksKoreksi, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: target.length === 1, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
+  const { catatan: target, teks: teksKoreksi, cocok } = pilihCatatan(pesan.text, semuaTarget);
+  const k = bacaKoreksi(teksKoreksi, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: target.length === 1, cocokKeterangan: cocok, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
   if (!k) return null;
   const boleh = target.filter((t) => isOwner || String(t.pengirim).includes(`(${pesan.senderId})`));
   if (!boleh.length) return balas('⚠️ Hanya owner atau pengirim asli yang bisa mengubah catatan ini.');
@@ -484,6 +484,9 @@ export async function handlePesan(ctx, pesan) {
       if (!parseMoney(teks)) {
         if (/\b(jumlah|nominal|harga|uang|total)\b.*\bsalah\b|\bsalah\b.*\b(jumlah|nominal|harga|total)\b/i.test(teks)) {
           return balas('💬 Yang benar berapa, untuk catatan yang mana? Reply pesan catatannya, contoh: *hotel harusnya 222.540*');
+        }
+        if (/\bsalah\b/i.test(teks) && teks.split(/\s+/).length <= 4) {
+          return balas('💬 Apa yang salah? Reply pesan catatannya dengan yang benar, contoh:\n• *hotel harusnya 1.081.171* (nominal)\n• *hotel uang valen* (uang siapa)\n• *hotel tanggal 22 sept* (tanggal)\n• *batal* (hapus semua catatan di pesan itu)');
         }
         return balas('🤔 Maaf, koreksinya belum saya pahami. Reply pesan catatan dengan salah satu contoh ini:\n• *uang valen* (atau mama / kas)\n• *grab uang valen* (kalau hanya satu item)\n• *tanggal 3 okt*\n• *masuk konsumsi*\n• *harusnya 50rb* (kalau isinya satu catatan)\n• *batal*');
       }

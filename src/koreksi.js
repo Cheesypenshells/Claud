@@ -29,9 +29,10 @@ export function idDariTeks(teks) {
 }
 
 // Menerjemahkan teks koreksi jadi { batal } atau { siapa, tanggal, kategori, nominal }. null kalau bukan koreksi.
-export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
+export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null, cocokKeterangan = false }) {
   let sisa = bersihkan(String(teks ?? '').toLowerCase().replace(/(?<!\d)[.,!]+|[.,!]+(?!\d)/g, ' '));
   if (!sisa || sisa.startsWith('#')) return null;
+  sisa = sisa.replace(/([a-z])(\d)/g, '$1 $2'); // "itu1081.171k" -> "itu 1081.171k"
   if (/^(batal|batalkan|hapus|cancel|dibatalkan|gak jadi|nggak jadi|tidak jadi)\b/.test(sisa) && sisa.split(/\s+/).length <= 4) return { batal: true };
 
   const hasil = {};
@@ -43,7 +44,8 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
   const tgl = ambilTanggal(sisa, hariIni, rentang);
   if (tgl.tanggal) { hasil.tanggal = tgl.tanggal; sisa = tgl.sisa; }
   const uang = findMoney(sisa);
-  if (uang.length === 1 && satuCatatan && RE_MINTA_NOMINAL.test(sisa)) {
+  // "hotel valen itu 1.081.171k" (menyebut catatannya + "itu") juga koreksi nominal.
+  if (uang.length === 1 && satuCatatan && (RE_MINTA_NOMINAL.test(sisa) || (cocokKeterangan && /\bitu\b/.test(sisa)))) {
     hasil.nominal = uang[0].nilai;
     sisa = sisa.slice(0, uang[0].index) + ' ' + sisa.slice(uang[0].index + uang[0].panjang);
   } else if (uang.length) return null; // ada harga lain: pengeluaran baru, bukan koreksi
@@ -58,7 +60,7 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
   // Sisa kata selain kata pengisi berarti kalimat lain (misalnya pengeluaran baru): jangan dianggap koreksi.
   const lain = bersihkan(sisa).split(/\s+/).filter((w) => w && !PENGISI.has(w) && !/^(non|konsumtif|kering|barang|baku|bahan|ekspedisi)$/.test(w));
   // Tanpa harga, koreksi uang siapa/tanggal boleh diselipi beberapa kata lain ("yang transport ... itu").
-  const batasKataLain = hasil.nominal ? 0 : (hasil.siapa || hasil.tanggal ? 4 : 2);
+  const batasKataLain = hasil.nominal ? (cocokKeterangan ? 2 : 0) : (hasil.siapa || hasil.tanggal ? 4 : 2);
   if (lain.length > batasKataLain) return null;
   return hasil;
 }
@@ -70,9 +72,10 @@ export function pilihCatatan(teks, catatan) {
   const kataTeks = new Set(kata(teks));
   const skor = catatan.map((t) => kata(t.keterangan).filter((w) => kataTeks.has(w) && !PENGISI.has(w)).length);
   const maks = Math.max(0, ...skor);
-  if (!maks || catatan.length < 2) return { catatan, teks };
+  if (!maks) return { catatan, teks, cocok: false };
+  if (catatan.length < 2) return { catatan, teks, cocok: true };
   const pilih = catatan.filter((_, i) => skor[i] === maks);
   const buang = new Set(pilih.flatMap((t) => kata(t.keterangan)));
   const sisa = String(teks).split(/\s+/).filter((w) => !buang.has(w.toLowerCase().replace(/[^a-z0-9]/g, ''))).join(' ');
-  return { catatan: pilih, teks: sisa };
+  return { catatan: pilih, teks: sisa, cocok: true };
 }

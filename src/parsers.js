@@ -128,7 +128,14 @@ export function ambilTanggal(baris, hariIni, rentang = null) {
   const ymd = (y) => `${y}-${String(bulan).padStart(2, '0')}-${String(hari).padStart(2, '0')}`;
   // Tanggal jauh di depan (misal pesan Januari menyebut "28 des") berarti tahun lalu.
   if (ymd(tahun) > tambahHari(hariIni, 7)) tahun -= 1;
-  return { tanggal: ymd(tahun), sisa: bersihkan(teks.slice(0, m.index) + ' ' + teks.slice(m.index + m[0].length)) };
+  // Rentang "dari tanggal22 sept sampai2 okt" / "22 sept - 2 okt": dicatat di tanggal pertama, semua teks tanggal dibuang.
+  let awal = m.index;
+  let akhir = m.index + m[0].length;
+  const ujung = teks.slice(akhir).match(new RegExp(`^\\s*(?:sampai|sampe|smp|s\\/d|sd|hingga|-)\\s*(?:tgl\\.?|tanggal)?\\s*\\d{1,2}(?:\\s*(?:${Object.keys(BULAN).join('|')})(?![a-z]))?`, 'i'));
+  if (ujung) akhir += ujung[0].length;
+  const dari = teks.slice(0, awal).match(/\bdari\s*$/i);
+  if (dari) awal -= dari[0].length;
+  return { tanggal: ymd(tahun), sisa: bersihkan(teks.slice(0, awal) + ' ' + teks.slice(akhir)) };
 }
 
 // Satu baris berisi beberapa pengeluaran dipisah koma/titik koma:
@@ -283,6 +290,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
         .replace(/\b(cash|tunai|trf|tf|transfer)\b/gi, '')
         .replace(/\b(total|totalnya|semuanya|harga|harganya)\s*$/i, '')
         .replace(RE_KOMENTAR_HAPUS, ' ')
+        .replace(/^\s*((itu|ini|yang|yg)\s+)?(untuk|buat)\s+/i, '')
         .replace(/\b(bolak[\s-]?balik)(\s+bolak[\s-]?balik)+\b/gi, '$1')
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');
