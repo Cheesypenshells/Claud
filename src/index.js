@@ -6,6 +6,7 @@ import { MemoryStore } from './store/memory.js';
 import { handlePesan } from './handlers.js';
 import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
+import { isiHargaAwal, perbaruiMain } from './main.js';
 
 async function main() {
   let store;
@@ -18,9 +19,16 @@ async function main() {
     console.warn('[Sheets] SPREADSHEET_ID kosong: data hanya disimpan sementara di memori (hilang saat bot dimatikan).');
   }
 
+  await isiHargaAwal(store);
+  await store.siapkanMain();
+  await perbaruiMain(store);
+  console.log('[Sheets] Sheet Main siap.');
+
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
   const ctx = { store, ownerIds: config.ownerIds };
+  // Sheet Main dihitung ulang paling lambat 30 detik setelah ada laporan baru.
+  let perluPerbaruiMain = false;
 
   // Pesan diproses satu per satu supaya nomor catatan (T0001, T0002, ...) tidak bentrok.
   let antrean = Promise.resolve();
@@ -36,6 +44,7 @@ async function main() {
     onPesan: (pesan, balasKe) => jalankan(async () => {
       const balasan = await handlePesan(ctx, pesan);
       for (const b of balasan) await balasKe(b.text);
+      if (balasan.length) perluPerbaruiMain = true;
     }),
   });
 
@@ -43,6 +52,12 @@ async function main() {
   setInterval(() => jalankan(async () => {
     for (const p of await tugasJatuhTempo()) await wa.kirim(p.groupId, p.text);
   }), 60_000);
+
+  setInterval(() => jalankan(async () => {
+    if (!perluPerbaruiMain) return;
+    perluPerbaruiMain = false;
+    await perbaruiMain(store);
+  }), 30_000);
 }
 
 main().catch((err) => {

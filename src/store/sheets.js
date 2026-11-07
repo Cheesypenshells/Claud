@@ -4,13 +4,17 @@
 import { readFileSync } from 'node:fs';
 import { sheets as sheetsApi, auth as googleAuth } from '@googleapis/sheets';
 import { KOLOM, JENIS_LAMA } from '../schema.js';
+import { siapkanMain, tulisDataMain, pilihEventDefault } from './mainSheet.js';
 
 const CACHE_MS = 30_000;
 const FORMAT_ANGKA = {
   rupiah: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
   persen: { type: 'NUMBER', pattern: '0.##"%"' },
-  angka: { type: 'NUMBER', pattern: '#,##0' },
+  angka: { type: 'NUMBER', pattern: '#,##0.##' },
 };
+
+// Nama tab di rumus/rentang harus diberi kutip kalau ada spasi, misalnya 'Tim Event'!A1.
+const q = (tab) => `'${String(tab).replace(/'/g, "''")}'`;
 
 function kolom(n) {
   let s = '';
@@ -62,7 +66,7 @@ export class SheetsStore {
 
     // Judul kolom: ganti judul lama (key) menjadi label, tambahkan kolom yang belum ada.
     for (const [tab, def] of Object.entries(KOLOM)) {
-      const res = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${tab}!1:1` });
+      const res = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${q(tab)}!1:1` });
       const lama = res.data.values?.[0] || [];
       const peta = petaJudul(tab);
       const judul = lama.map((h) => def.kolom.find((c) => c.key === peta.get(h))?.label ?? h);
@@ -70,7 +74,7 @@ export class SheetsStore {
       if (judul.join('\u0000') !== lama.join('\u0000')) {
         await this.api.spreadsheets.values.update({
           spreadsheetId: id,
-          range: `${tab}!A1`,
+          range: `${q(tab)}!A1`,
           valueInputOption: 'RAW',
           requestBody: { values: [judul] },
         });
@@ -110,12 +114,12 @@ export class SheetsStore {
     for (const s of sheets) {
       const t = s.properties.title;
       if (urutan.includes(t) || !/^(Sheet|Lembar)\s?\d+$/i.test(t)) continue;
-      const isi = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${t}!A1:Z20` });
+      const isi = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${q(t)}!A1:Z20` });
       if (!isi.data.values?.length) requests.push({ deleteSheet: { sheetId: s.properties.sheetId } });
     }
 
     const header = (await Promise.all(urutan.map((tab) => this.api.spreadsheets.values.get({
-      spreadsheetId: id, range: `${tab}!1:1`,
+      spreadsheetId: id, range: `${q(tab)}!1:1`,
     })))).map((r) => r.data.values?.[0] || []);
 
     urutan.forEach((tab, iTab) => {
@@ -236,12 +240,24 @@ export class SheetsStore {
     }
   }
 
+  async siapkanMain() {
+    await siapkanMain(this.api, this.spreadsheetId);
+  }
+
+  async tulisDataMain(baris) {
+    await tulisDataMain(this.api, this.spreadsheetId, baris);
+  }
+
+  async pilihEventDefault(kode) {
+    await pilihEventDefault(this.api, this.spreadsheetId, kode);
+  }
+
   async baca(tab) {
     const c = this.cache.get(tab);
     if (c && Date.now() - c.waktu < CACHE_MS) return c;
     const res = await this.api.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
-      range: `${tab}!A1:ZZ`,
+      range: `${q(tab)}!A1:ZZ`,
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING',
     });
@@ -269,7 +285,7 @@ export class SheetsStore {
     const values = header.map((h) => row[h] ?? '');
     await this.api.spreadsheets.values.append({
       spreadsheetId: this.spreadsheetId,
-      range: `${tab}!A1`,
+      range: `${q(tab)}!A1`,
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [values] },
@@ -288,7 +304,25 @@ export class SheetsStore {
     const nomorBaris = idx + 2;
     await this.api.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
-      range: `${tab}!A${nomorBaris}:${kolom(header.length)}${nomorBaris}`,
+      range: `${q(tab)}!A${nomorBaris}:${kolom(header.length)}${nomorBaris}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [baris] },
+    });
+    this.cache.delete(tab);
+    return Object.fromEntries(header.map((h, i) => [h, baris[i]]));
+  }
+
+  // Ubah baris pertama yang memenuhi fungsi `cocok(baris)`.
+  async updateWhere(tab, cocok, patch) {
+    this.cache.delete(tab);
+    const { header, rows } = await this.baca(tab);
+    const idx = rows.findIndex((r) => cocok(Object.fromEntries(header.map((h, i) => [h, r[i] ?? '']))));
+    if (idx < 0) return null;
+    const baris = header.map((h, i) => (h in patch ? patch[h] : rows[idx][i] ?? ''));
+    const nomorBaris = idx + 2;
+    await this.api.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: `${q(tab)}!A${nomorBaris}:${kolom(header.length)}${nomorBaris}`,
       valueInputOption: 'RAW',
       requestBody: { values: [baris] },
     });

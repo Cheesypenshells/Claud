@@ -143,3 +143,44 @@ test('penjadwal: pengingat omzet, rekap malam, pengingat transfer telat', async 
   assert.ok(pengingat);
   assert.match(pengingat.text, /Rp 7.500.000/);
 });
+
+test('tim, bahan, porsi gratis, dan data sheet Main', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal, perbaruiMain } = await import('../src/main.js');
+  await isiHargaAwal(store);
+
+  const r1 = await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Andi\nDW: Joko 120rb, Tono\nKasir: Sari`);
+  assert.match(r1, /Budi - PIC/);
+  assert.match(r1, /Joko - DW Rp 120.000\/hari/);
+  assert.match(r1, /Sari - Kasir Rp 100.000\/hari/);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+
+  assert.match(await kirim(G_KELUAR, PIC, '#tambah DW Rina 100rb'), /Rina - DW/);
+  assert.match(await kirim(G_KELUAR, PIC, '#tambah DW Rina'), /sudah ada/);
+  assert.match(await kirim(G_KELUAR, PIC, '#berhenti Tono'), /Tono \(DW\) ditandai berhenti. Hari kerja terakhir: \*2026-11-02\*/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#berhenti Joko'), /hanya oleh owner/);
+
+  const r2 = await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 10 pack\nbumbu garlic 2 pack\noyster 50 kg');
+  assert.match(r2, /Bahan keluar dari gudang/);
+  assert.match(r2, /Mozzarella: keluar 10 \+ restock 0 − kembali 0 = terpakai \*10 pack\*/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#kembali mozzarella 3 pack'), /terpakai \*7 pack\*/);
+
+  const r3 = await kirim(G_KELUAR, PIC, '#gratis 3 porsi mozzarella isi 4 untuk @rina_food');
+  assert.match(r3, /3 porsi × 4 pcs Mozzarella untuk @rina_food = 12 pcs \(Rp 300.000\)/);
+
+  const r4 = await kirim(G_KELUAR, PIC, 'sapu 25rb\nhotel 350rb x 2 malam\nendorse @makanjambi 300rb');
+  assert.match(r4, /\[Barang Kering Non-Konsumtif\]/);
+  assert.match(r4, /Rp 700.000\* \[Penginapan\]/);
+  assert.match(r4, /\[Iklan & Endorse\]/);
+
+  await kirim(G_TIM, PIC, '#omzet 20jt');
+  await perbaruiMain(store);
+  const bagian = (b) => store.dataMain.filter((x) => x[0] === 'JMB26-11' && x[1] === b);
+  assert.equal(bagian('OMZET').length, 1);
+  assert.equal(bagian('GRATIS').length, 1);
+  assert.equal(bagian('BAHAN').find((x) => x[3] === 'Mozzarella')[8], '7');
+  assert.ok(bagian('TIM').some((x) => x[3] === 'Tono' && /berhenti/.test(x[4])));
+  const biaya = Object.fromEntries(bagian('BIAYA').map((x) => [x[4], x[5]]));
+  assert.equal(biaya['Barang kering non-konsumtif ⚠️ kelalaian'], 25000);
+  assert.equal(biaya['Penginapan'], 700000);
+});

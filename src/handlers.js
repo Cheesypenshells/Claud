@@ -6,9 +6,12 @@
 // hasil = array balasan { text } untuk dikirim ke grup yang sama.
 
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
-import { parsePerintah, parseEvent, parsePengeluaran, parseOmzet, DAFTAR_KATEGORI } from './parsers.js';
+import { parsePerintah, parseEvent, parsePengeluaran, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
+import {
+  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, PERINTAH_BAHAN,
+} from './handlersEvent.js';
 
 const BANTUAN = {
   umum: `*Perintah bot Cheesy Pen Shells*
@@ -26,7 +29,12 @@ const BANTUAN = {
 • #rekap - rekap event ini
 • #batal T0012 - batalkan catatan
 • #kategori T0012 Konsumsi - ganti kategori
-• #selesai - tutup event (owner)`,
+• #selesai - tutup event (owner)
+
+*Tim:* #tim (lihat/tambah), #tambah DW Joko 120rb, #berhenti Joko
+*Bahan:* #keluar / #restock / #kembali + satu bahan per baris (mozzarella 20 pack)
+*Gratis:* #gratis 3 porsi mozzarella isi 4 untuk @influencer
+*Kategori otomatis:* sapu/etalase = barang non-konsumtif (kelalaian), sumpit/plastik = konsumtif, endorse = iklan, obat/ganti rugi = tak terduga, hotel 350rb x 3 malam = penginapan`,
   ruko: `*Grup kas ruko*
 • Ketik pengeluaran ruko: listrik 850rb, gaji Andi 2jt, air 150rb
 • #rekap - rekap bulan ini, #rekap bulan 2026-11
@@ -36,7 +44,9 @@ const BANTUAN = {
   #omzet
   OMZET TERVERIFIKASI: Rp 12.500.000
   JUMLAH TRANSAKSI: 85
-  SELISIH / REFUND / KOREKSI: 0`,
+  SELISIH / REFUND / KOREKSI: 0
+• #keluar / #restock / #kembali + bahan per baris (mozzarella 20 pack)
+• #gratis 3 porsi mozzarella isi 4 untuk @influencer`,
   owner: `*Khusus owner*
 • #daftar pengeluaran KODE | #daftar event KODE | #daftar ruko | #daftar gudang
 • #event (blok setup event, lihat panduan)
@@ -209,6 +219,11 @@ async function perintahEvent(ctx, pesan, grup, cmd) {
     await ctx.store.update('Grup', 'group_id', grup.group_id, { kode_event: data.kode });
   }
 
+  const event = await cariEvent(ctx.store, data.kode);
+  const orang = parseTim(cmd.badan);
+  if (orang.length) await tambahTim(ctx, pesan, event, orang);
+  const tim = await daftarTim(ctx, event);
+
   return balas([
     `✅ *Event ${data.kode} ${lama ? 'diperbarui' : 'dibuat'}*`,
     `Kota: ${data.kota} | IO: ${data.io}`,
@@ -218,7 +233,8 @@ async function perintahEvent(ctx, pesan, grup, cmd) {
     `Jadwal transfer: ${data.jadwal_trf === 'AKHIR' ? 'sekali setelah event selesai' : 'H+1, Jumat-Minggu dibayar Senin'}`,
     data.target_omzet ? `Target omzet: ${rupiah(data.target_omzet)}` : null,
     data.jam_buka ? `Jam buka: ${data.jam_buka}` : null,
-    data.pic ? `PIC: ${data.pic}` : null,
+    '',
+    `*Tim:*\n${tim}`,
     '',
     grup && grup.jenis !== 'pengeluaran'
       ? `Grup ini terdaftar sebagai grup ${grup.jenis}.`
@@ -339,7 +355,23 @@ export async function handlePesan(ctx, pesan) {
       case 'omset':
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         return catatOmzet(ctx, pesan, { grup, event, teks });
-      default: break;
+      case 'tim':
+      case 'tambah':
+      case 'berhenti':
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        if (grup.jenis !== 'pengeluaran' && !isOwner) return balas('⚠️ Perubahan tim hanya oleh owner, atau lewat grup pengeluaran.');
+        if (cmd.perintah === 'tim') return perintahTim(ctx, pesan, event, cmd);
+        if (cmd.perintah === 'tambah') return perintahTambah(ctx, pesan, event, cmd);
+        return perintahBerhenti(ctx, pesan, event, cmd);
+      case 'gratis':
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        return perintahGratis(ctx, pesan, event, cmd);
+      default:
+        if (PERINTAH_BAHAN.includes(cmd.perintah)) {
+          if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+          return perintahBahan(ctx, pesan, event, cmd);
+        }
+        break;
     }
   }
 

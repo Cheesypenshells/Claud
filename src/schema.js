@@ -61,6 +61,68 @@ export const KOLOM = {
       k('dicatat', 'ID Laporan', 160, { sembunyi: true }),
     ],
   },
+  'Tim Event': {
+    warna: '#8E24AA',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 150),
+      k('peran', 'Peran', 100, { catatan: 'PIC / Tetap (karyawan tetap) / DW (daily worker) / Kasir' }),
+      k('upah_harian', 'Upah per Hari', 130, { format: 'rupiah', catatan: 'DW & kasir standar Rp 100.000; PIC & karyawan tetap 0 (karyawan tetap digaji bulanan)' }),
+      k('mulai', 'Mulai Kerja', 115),
+      k('selesai', 'Selesai Kerja', 115, { catatan: 'Kosong = sampai event selesai. Diisi otomatis kalau ada #berhenti' }),
+      k('status', 'Status', 95, { catatan: 'AKTIF / BERHENTI' }),
+      k('catatan', 'Catatan', 220),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  'Bahan Event': {
+    warna: '#C2185B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('bahan', 'Bahan', 140),
+      k('gerak', 'Keluar / Restock / Kembali', 150, { catatan: 'Keluar = dibawa dari gudang ke event, Restock = tambahan di tengah event, Kembali = sisa dikembalikan ke gudang' }),
+      k('jumlah', 'Jumlah', 90, { format: 'angka' }),
+      k('satuan', 'Satuan', 85),
+      k('pengirim', 'Dicatat Oleh', 200),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  'Porsi Gratis': {
+    warna: '#F9AB00',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('menu', 'Menu', 160),
+      k('porsi', 'Porsi', 75, { format: 'angka' }),
+      k('isi', 'Isi per Porsi (pcs)', 120, { format: 'angka' }),
+      k('pcs', 'Total pcs', 90, { format: 'angka' }),
+      k('untuk', 'Diberikan Untuk', 220),
+      k('pengirim', 'Dicatat Oleh', 200),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  'Harga Bahan': {
+    warna: '#795548',
+    kolom: [
+      k('bahan', 'Bahan', 150),
+      k('satuan', 'Satuan', 90),
+      k('harga', 'Harga per Satuan', 140, { format: 'rupiah' }),
+      k('alias', 'Kata yang Dikenali Bot', 320, { catatan: 'Kata-kata di chat yang dibaca sebagai bahan ini, dipisah koma' }),
+    ],
+  },
+  'Harga Menu': {
+    warna: '#795548',
+    kolom: [
+      k('menu', 'Menu', 170),
+      k('jawa', 'Harga Jual Jawa (per pcs)', 160, { format: 'rupiah' }),
+      k('sumatra', 'Harga Jual Sumatra (per pcs)', 170, { format: 'rupiah' }),
+      k('kalimantan', 'Harga Jual Kalimantan (per pcs)', 185, { format: 'rupiah' }),
+      k('alias', 'Kata yang Dikenali Bot', 320),
+    ],
+  },
   Grup: {
     warna: '#5F6368',
     kolom: [
@@ -73,6 +135,10 @@ export const KOLOM = {
     ],
   },
 };
+
+// Tab hasil hitungan bot untuk sheet Main (disembunyikan). Kolom c1..c9 isinya berbeda per bagian.
+export const TAB_DATA_MAIN = 'Data Main';
+export const KOLOM_DATA_MAIN = ['kode', 'bagian', 'urut', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'];
 
 // Daftar key per tab (dipakai MemoryStore dan untuk urutan kolom).
 export const TABS = Object.fromEntries(

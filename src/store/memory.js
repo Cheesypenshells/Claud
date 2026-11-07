@@ -10,6 +10,14 @@ export class MemoryStore {
 
   async init() {}
 
+  async siapkanMain() {}
+
+  async tulisDataMain(baris) {
+    this.dataMain = baris;
+  }
+
+  async pilihEventDefault() {}
+
   async all(tab) {
     return this.data[tab].map((r) => ({ ...r }));
   }
@@ -23,6 +31,14 @@ export class MemoryStore {
   // Ubah baris pertama yang kolom `kunci`-nya bernilai `nilai`.
   async update(tab, kunci, nilai, patch) {
     const row = this.data[tab].find((r) => String(r[kunci]) === String(nilai));
+    if (!row) return null;
+    Object.assign(row, patch);
+    return { ...row };
+  }
+
+  // Ubah baris pertama yang memenuhi fungsi `cocok(baris)`.
+  async updateWhere(tab, cocok, patch) {
+    const row = this.data[tab].find((r) => cocok({ ...r }));
     if (!row) return null;
     Object.assign(row, patch);
     return { ...row };

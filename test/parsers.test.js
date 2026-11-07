@@ -46,7 +46,7 @@ test('parsePengeluaran: banyak baris, qty @ harga, total diabaikan', () => {
   assert.equal(items[1].metode, 'CASH');
   assert.equal(items[1].kategori, 'Konsumsi');
   assert.equal(items[2].nominal, 60000);
-  assert.equal(items[2].kategori, 'Peralatan');
+  assert.equal(items[2].kategori, 'Barang Kering Non-Konsumtif');
 });
 
 test('parsePengeluaran: chat tanpa nominal tidak dicatat', () => {
@@ -56,6 +56,11 @@ test('parsePengeluaran: chat tanpa nominal tidak dicatat', () => {
 test('tebakKategori', () => {
   assert.equal(tebakKategori('beli oyster 100kg'), 'Oyster');
   assert.equal(tebakKategori('es batu 5 karung'), 'Bahan Operasional');
+  assert.equal(tebakKategori('sapu lidi'), 'Barang Kering Non-Konsumtif');
+  assert.equal(tebakKategori('sumpit 2 pack'), 'Barang Kering Konsumtif');
+  assert.equal(tebakKategori('kompor gas'), 'Barang Kering Non-Konsumtif');
+  assert.equal(tebakKategori('endorse @makanjambi'), 'Iklan & Endorse');
+  assert.equal(tebakKategori('obat sakit Andi'), 'Tak Terduga');
   assert.equal(tebakKategori('hotel 2 malam'), 'Penginapan');
   assert.equal(tebakKategori('token listrik ruko'), 'Utilitas Ruko');
   assert.equal(tebakKategori('gaji DW joko'), 'Gaji & Upah');

@@ -138,3 +138,58 @@ Aturan saat mengoreksi data di Sheets:
 - Untuk membatalkan catatan, ganti `status` menjadi `BATAL`. Jangan menghapus baris.
 
 Perubahan di Sheets terbaca bot paling lambat 30 detik kemudian.
+
+---
+
+## 8. Tim, bahan baku, dan porsi gratis (untuk sheet Main)
+
+### Tim event
+Saat membuat event, tambahkan baris tim di blok `#event`:
+```
+Senior: Andi, Rudi
+DW: Joko 120rb, Tono
+Kasir: Sari
+```
+Upah DW dan kasir standar **Rp 100.000/hari**. Tulis angka setelah nama kalau berbeda.
+
+| Keperluan | Ketik (di grup pengeluaran) |
+|---|---|
+| Lihat tim | `#tim` |
+| Tambah orang di tengah event | `#tambah DW Rina 100rb` (peran: PIC / Tetap / DW / Kasir) |
+| Karyawan berhenti / menghilang | `#berhenti Joko` (hari kerja terakhir = kemarin) atau `#berhenti Joko 9 Nov` |
+
+### Bahan baku dari gudang
+Satu bahan per baris. Bisa dikirim di grup tim atau grup pengeluaran.
+```
+#keluar
+mozzarella 20 pack
+bumbu garlic 5 pack
+oyster 100 kg
+```
+- `#restock ...` untuk tambahan di tengah event.
+- `#kembali ...` untuk sisa yang dikembalikan ke gudang. **Pack yang sudah dibuka dianggap habis**, jadi tulis pack utuh saja.
+
+Bahan yang dikenali dan harganya ada di tab **Harga Bahan** (bisa diubah).
+
+### Porsi gratis
+`#gratis 3 porsi mozzarella isi 4 untuk @influencer` → dicatat 12 pcs, dinilai dengan harga jual sesuai wilayah (tab **Harga Menu**).
+
+### Kategori pengeluaran otomatis
+| Contoh yang diketik | Masuk kategori |
+|---|---|
+| `sumpit 2 pack @15rb`, `plastik 20rb`, `sarung tangan 30rb` | Barang kering **konsumtif** |
+| `sapu 25rb`, `etalase 500rb`, `kompor 300rb` | Barang kering **non-konsumtif ⚠️ kelalaian** (barang yang seharusnya dibawa) |
+| `endorse @makanjambi 500rb` | Iklan & endorse |
+| `obat sakit Andi 50rb`, `ganti rugi gelas 30rb` | Tak terduga |
+| `hotel 350rb x 3 malam` | Penginapan (otomatis dikali 3) |
+| `makan siang tim 180rb` | Konsumsi (dibandingkan dengan budget makan) |
+
+---
+
+## 9. Sheet Main
+
+Tab **Main** (paling kiri) membedah satu event: untung atau rugi.
+1. Pilih kode event di **kotak kuning** (sel C2).
+2. Semua tabel terisi otomatis: ringkasan laba/rugi, omzet harian + grafik, rincian biaya, budget makan, tim & gaji, iklan, porsi gratis, dan sisa bahan baku.
+
+Angka diperbarui oleh bot paling lambat 30 detik setelah ada laporan baru, selama bot menyala.

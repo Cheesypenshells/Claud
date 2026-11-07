@@ -5,15 +5,36 @@ import { findMoney, parseMoney, parseRentangTanggal, bersihkan } from './util.js
 // ---------- Kategori pengeluaran ----------
 
 // Urutan penting: aturan di atas diperiksa lebih dulu.
+// Barang kering non-konsumtif dicek sebelum konsumtif: membelinya di lokasi berarti ada yang lupa dibawa (kelalaian).
+export const KATEGORI = {
+  OYSTER: 'Oyster',
+  GAJI: 'Gaji & Upah',
+  IKLAN: 'Iklan & Endorse',
+  TAK_TERDUGA: 'Tak Terduga',
+  KONSUMSI: 'Konsumsi',
+  PENGINAPAN: 'Penginapan',
+  TRANSPORT: 'Transport & Ekspedisi',
+  RUKO: 'Utilitas Ruko',
+  NON_KONSUMTIF: 'Barang Kering Non-Konsumtif',
+  KONSUMTIF: 'Barang Kering Konsumtif',
+  BAHAN_LAIN: 'Bahan Baku Lain',
+  OPERASIONAL: 'Bahan Operasional',
+  LAIN: 'Lain-lain',
+};
+
 const ATURAN_KATEGORI = [
-  ['Oyster', ['oyster', 'tiram']],
-  ['Gaji & Upah', ['gaji', 'upah', 'dw', 'bonus', 'honor', 'kasbon', 'fee']],
-  ['Konsumsi', ['makan', 'minum', 'air minum', 'nasi', 'kopi', 'snack', 'sarapan', 'aqua', 'gofood', 'grabfood', 'shopeefood', 'konsumsi', 'teh']],
-  ['Penginapan', ['hotel', 'kos', 'kost', 'penginapan', 'airbnb', 'homestay', 'oyo', 'reddoorz', 'sewa kamar', 'guest house']],
-  ['Transport & Ekspedisi', ['lalamove', 'gojek', 'gocar', 'goride', 'grab', 'maxim', 'ojek', 'ojol', 'bensin', 'bbm', 'solar', 'pertalite', 'pertamax', 'tol', 'parkir', 'travel', 'tiket', 'pesawat', 'kereta', 'bus', 'ekspedisi', 'cargo', 'kargo', 'ongkir', 'truk', 'pickup', 'pick up', 'deliveree', 'jne', 'jnt', 'j&t', 'sicepat', 'angkut', 'kirim', 'transport', 'taksi', 'taxi', 'kapal']],
-  ['Utilitas Ruko', ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
-  ['Bahan Operasional', ['es batu', 'gas', 'lpg', 'elpiji', 'arang', 'tisu', 'tissue', 'plastik', 'kantong', 'sabun', 'lemon', 'sarung tangan', 'mika', 'box', 'cup', 'garpu', 'sendok', 'kemasan', 'packaging', 'galon', 'es', 'bumbu', 'keju', 'mozzarella', 'saus', 'topping', 'cumi']],
-  ['Peralatan', ['ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'freezer', 'rak', 'obeng', 'tang', 'sapu', 'pel', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'lakban', 'tali']],
+  [KATEGORI.OYSTER, ['oyster', 'tiram']],
+  [KATEGORI.GAJI, ['gaji', 'upah', 'dw', 'bonus', 'honor', 'kasbon', 'fee']],
+  [KATEGORI.IKLAN, ['iklan', 'endorse', 'endorsement', 'influencer', 'selebgram', 'kol', 'ads', 'promosi', 'konten', 'content creator']],
+  [KATEGORI.TAK_TERDUGA, ['sakit', 'obat', 'klinik', 'dokter', 'rumah sakit', 'puskesmas', 'ganti rugi', 'tak terduga', 'tidak terduga', 'darurat', 'kecelakaan', 'denda']],
+  [KATEGORI.KONSUMSI, ['makan', 'minum', 'air minum', 'nasi', 'kopi', 'snack', 'sarapan', 'aqua', 'gofood', 'grabfood', 'shopeefood', 'konsumsi', 'teh']],
+  [KATEGORI.PENGINAPAN, ['hotel', 'kos', 'kost', 'penginapan', 'airbnb', 'homestay', 'oyo', 'reddoorz', 'sewa kamar', 'guest house', 'losmen', 'wisma']],
+  [KATEGORI.TRANSPORT, ['lalamove', 'gojek', 'gocar', 'goride', 'gosend', 'grab', 'maxim', 'ojek', 'ojol', 'bensin', 'bbm', 'solar', 'pertalite', 'pertamax', 'tol', 'parkir', 'travel', 'tiket', 'pesawat', 'kereta', 'bus', 'ekspedisi', 'cargo', 'kargo', 'ongkir', 'truk', 'pickup', 'pick up', 'deliveree', 'jne', 'jnt', 'j&t', 'sicepat', 'angkut', 'kirim', 'transport', 'taksi', 'taxi', 'kapal', 'bagasi']],
+  [KATEGORI.RUKO, ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
+  [KATEGORI.NON_KONSUMTIF, ['sapu', 'pel', 'etalase', 'ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'cool box', 'freezer', 'rak', 'obeng', 'tang', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'tali', 'kompor', 'regulator', 'selang', 'panci', 'wajan', 'capit', 'spatula', 'termos', 'banner', 'spanduk']],
+  [KATEGORI.KONSUMTIF, ['sumpit', 'wrap', 'kertas', 'kotak', 'box', 'packaging', 'kemasan', 'kantong', 'plastik', 'kresek', 'sarung tangan', 'tisu', 'tissue', 'mika', 'cup', 'garpu', 'sendok', 'tusuk', 'sedotan', 'lakban', 'label', 'stiker', 'sabun']],
+  [KATEGORI.BAHAN_LAIN, ['bumbu', 'keju', 'mozzarella', 'mozza', 'saus', 'saos', 'topping', 'cumi']],
+  [KATEGORI.OPERASIONAL, ['es batu', 'gas', 'lpg', 'elpiji', 'arang', 'lemon', 'galon', 'es']],
 ];
 
 export const DAFTAR_KATEGORI = [...ATURAN_KATEGORI.map(([k]) => k), 'Lain-lain'];
@@ -26,7 +47,7 @@ export function tebakKategori(teks) {
       if (re.test(t)) return kategori;
     }
   }
-  return 'Lain-lain';
+  return KATEGORI.LAIN;
 }
 
 export function tebakMetode(teks, adaFoto = false) {
@@ -55,11 +76,15 @@ export function parsePengeluaran(teks, { adaFoto = false } = {}) {
     const u = uang[uang.length - 1];
     let nominal = u.nilai;
 
-    // "ember 2 unit @30rb" -> 2 x 30.000
+    // "ember 2 unit @30rb" -> 2 x 30.000; "hotel 350rb x 3 malam" -> 3 x 350.000
     const sebelum = baris.slice(0, u.index);
+    const sesudah = baris.slice(u.index + u.panjang);
     if (/@\s*$/.test(sebelum)) {
-      const qty = sebelum.match(/(\d+)\s*(unit|pcs|buah|bh|pack|pak|kg|dus|box|botol|karung|ikat|lembar|x)?\s*@\s*$/i);
+      const qty = sebelum.match(/(\d+)\s*(unit|pcs|buah|bh|pack|pak|kg|dus|box|botol|karung|ikat|lembar|malam|hari|orang|porsi|kamar|x)?\s*@\s*$/i);
       if (qty) nominal *= Number(qty[1]);
+    } else {
+      const kali = sesudah.match(/^\s*[x×*]\s*(\d+)/i);
+      if (kali) nominal *= Number(kali[1]);
     }
 
     let keterangan = bersihkan(
@@ -198,4 +223,80 @@ export function parsePerintah(teks) {
     sisaBaris: bersihkan(barisPertama.slice(kata[0].length)),
     badan: sisa.join('\n'),
   };
+}
+
+// ---------- Tim event ----------
+//   PIC: Budi
+//   Tetap: Andi, Rudi        (boleh juga "Senior:")
+//   DW: Joko 120rb, Tono     (upah default 100.000)
+//   Kasir: Sari
+export const PERAN = { PIC: 'PIC', TETAP: 'Tetap', DW: 'DW', KASIR: 'Kasir' };
+export const UPAH_DEFAULT = { PIC: 0, Tetap: 0, DW: 100000, Kasir: 100000 };
+
+const KUNCI_PERAN = {
+  pic: PERAN.PIC,
+  tetap: PERAN.TETAP, senior: PERAN.TETAP, 'karyawan tetap': PERAN.TETAP, junior: PERAN.TETAP,
+  dw: PERAN.DW, 'daily worker': PERAN.DW, freelance: PERAN.DW,
+  kasir: PERAN.KASIR,
+};
+
+export function parseOrang(teks, peran) {
+  return String(teks)
+    .split(/[,;]|\bdan\b/i)
+    .map((x) => bersihkan(x))
+    .filter((x) => x && x !== '-')
+    .map((x) => {
+      const upah = parseMoney(x);
+      const nama = bersihkan(x.replace(/(rp\.?\s*)?[\d.,]+\s*(juta|jt|ribu|rb|k)?/gi, '').replace(/[()]/g, ''));
+      return { nama, peran, upah_harian: upah ?? UPAH_DEFAULT[peran] };
+    })
+    .filter((o) => o.nama);
+}
+
+export function parseTim(teks) {
+  const hasil = [];
+  for (const baris of String(teks).split('\n')) {
+    const m = baris.match(/^\s*([^:]+?)\s*:\s*(.*)$/);
+    if (!m) continue;
+    const peran = KUNCI_PERAN[m[1].toLowerCase().trim()];
+    if (peran) hasil.push(...parseOrang(m[2].replace(/\(.*?\)/g, ''), peran));
+  }
+  return hasil;
+}
+
+// ---------- Bahan baku ----------
+// Satu bahan per baris: "mozzarella 20 pack", "oyster 100 kg", "12,5 kg oyster".
+export function parseBahan(teks, daftarBahan, cocokkan) {
+  const items = [];
+  for (const baris of String(teks).split(/\n|,(?=\s*\D)/)) {
+    const angka = baris.match(/(\d+(?:[.,]\d+)?)/);
+    if (!angka) continue;
+    const item = cocokkan(baris, daftarBahan, 'bahan');
+    if (!item) continue;
+    items.push({ bahan: item.bahan, jumlah: Number(angka[1].replace(',', '.')), satuan: item.satuan });
+  }
+  return items;
+}
+
+// ---------- Porsi gratis ----------
+// "#gratis 3 porsi mozzarella isi 4 untuk @rina_food"
+// "#gratis 12 pcs garlic untuk tester"
+export function parseGratis(teks, daftarMenu, cocokkan) {
+  const items = [];
+  for (const baris of String(teks).split('\n')) {
+    const menu = cocokkan(baris, daftarMenu, 'menu');
+    if (!menu) continue;
+    const t = baris.toLowerCase();
+    const porsi = Number((t.match(/(\d+)\s*porsi/) || [])[1] || 0);
+    const isi = Number((t.match(/isi\s*(\d+)/) || [])[1] || 0);
+    const pcsLangsung = Number((t.match(/(\d+)\s*(pcs|biji|bji|buah)/) || [])[1] || 0);
+    const isiDefault = menu.menu === 'Fresh Oyster' ? 2 : 5;
+    const p = porsi || (pcsLangsung ? 0 : 1);
+    const i = isi || (porsi ? isiDefault : 0);
+    const pcs = pcsLangsung && !porsi ? pcsLangsung : p * i;
+    if (!pcs) continue;
+    const untuk = bersihkan((baris.match(/untuk\s+(.*)$/i) || [])[1] || '');
+    items.push({ menu: menu.menu, porsi: p || '', isi: i || '', pcs, untuk });
+  }
+  return items;
 }
