@@ -8,6 +8,8 @@ import { siapkanMain, tulisDataMain } from './mainSheet.js';
 import { TAB_INPUT, CARA_ISI } from '../inputManual.js';
 
 const CACHE_MS = 30_000;
+const HITAM = { style: 'SOLID', colorStyle: { rgbColor: { red: 0, green: 0, blue: 0 } } };
+const GARIS_HITAM = { top: HITAM, bottom: HITAM, left: HITAM, right: HITAM, innerHorizontal: HITAM, innerVertical: HITAM };
 const FORMAT_ANGKA = {
   rupiah: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
   persen: { type: 'NUMBER', pattern: '0.##"%"' },
@@ -322,7 +324,9 @@ export class SheetsStore {
       { addBanding: { bandedRange: { range: { sheetId, startRowIndex: 0, endRowIndex: baris.length + 1, startColumnIndex: 0, endColumnIndex: n }, rowProperties: { headerColorStyle: { rgbColor: warna(hex) }, firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } }, secondBandColorStyle: { rgbColor: warna(hex, 0.9) } } } } },
       { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)' } },
       { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 48 }, fields: 'pixelSize' } },
-      { repeatCell: { range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: false }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat(textFormat.bold,verticalAlignment)' } },
+      { repeatCell: { range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: false }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat.bold,verticalAlignment,wrapStrategy)' } },
+      { repeatCell: { range: { sheetId }, cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat.borders' } },
+      { updateBorders: { range: { sheetId, startRowIndex: 0, endRowIndex: baris.length + 1, startColumnIndex: 0, endColumnIndex: n }, ...GARIS_HITAM } },
     ];
     kolom.forEach((c, i) => {
       req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: c.lebar || 120 }, fields: 'pixelSize' } });
@@ -405,7 +409,7 @@ export class SheetsStore {
         valueInputOption: 'RAW',
         data: daftar.map((d) => ({
           range: `${q(d.tab)}!A1`,
-          values: [[d.judul, '', 'TOTAL', d.total, `${d.baris.length} catatan`], [], d.kolom.map((c) => c.label), ...d.baris],
+          values: [[d.judul, '', '', d.total, '', `${d.baris.length} catatan`], [], d.kolom.map((c) => c.label), ...d.baris],
         })),
       },
     });
@@ -418,10 +422,22 @@ export class SheetsStore {
       const w = d.warna || '#0B8043';
       req.push({ updateSheetProperties: { properties: { sheetId, index: indeksAwal + urut, tabColorStyle: { rgbColor: warna(w) }, gridProperties: { frozenRowCount: 3 } }, fields: 'index,tabColorStyle,gridProperties.frozenRowCount' } });
       for (const b of s.bandedRanges || []) req.push({ deleteBanding: { bandedRangeId: b.bandedRangeId } });
+      const akhir = 3 + d.baris.length;
       req.push(
-        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: Math.max(n, 5) }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 13, foregroundColorStyle: { rgbColor: warna(w) } }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat(textFormat,verticalAlignment)' } },
-        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 3, endColumnIndex: 4 }, cell: { userEnteredFormat: { numberFormat: FORMAT_ANGKA.rupiah, backgroundColorStyle: { rgbColor: warna(w, 0.8) }, horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat(numberFormat,backgroundColorStyle,horizontalAlignment)' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 34 }, fields: 'pixelSize' } },
+        // Hapus garis & gabungan sel lama dulu (jumlah baris bisa berkurang).
+        { repeatCell: { range: { sheetId }, cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat.borders' } },
+        { unmergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 26 } } },
+        // Judul digabung A1:C1 dan boleh turun baris supaya tidak keluar dari kotaknya.
+        { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 }, mergeType: 'MERGE_ALL' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: Math.max(n, 6) }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 13, foregroundColorStyle: { rgbColor: warna(w) } }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,verticalAlignment,wrapStrategy)' } },
+        // Total digabung D1:E1 supaya angkanya muat; jumlah catatan di F1.
+        { mergeCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 3, endColumnIndex: 5 }, mergeType: 'MERGE_ALL' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 3, endColumnIndex: 5 }, cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"TOTAL  Rp "#,##0' }, backgroundColorStyle: { rgbColor: warna(w, 0.8) }, horizontalAlignment: 'CENTER' } }, fields: 'userEnteredFormat(numberFormat,backgroundColorStyle,horizontalAlignment)' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 5, endColumnIndex: 6 }, cell: { userEnteredFormat: { horizontalAlignment: 'CENTER', backgroundColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } } } }, fields: 'userEnteredFormat(horizontalAlignment,backgroundColorStyle)' } },
+        { updateBorders: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 6 }, ...GARIS_HITAM } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 52 }, fields: 'pixelSize' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 3, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(verticalAlignment,wrapStrategy)' } },
+        { updateBorders: { range: { sheetId, startRowIndex: 2, endRowIndex: akhir, startColumnIndex: 0, endColumnIndex: n }, ...GARIS_HITAM } },
         { addBanding: { bandedRange: { range: { sheetId, startRowIndex: 2, endRowIndex: 3 + d.baris.length, startColumnIndex: 0, endColumnIndex: n }, rowProperties: { headerColorStyle: { rgbColor: warna(w) }, firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } }, secondBandColorStyle: { rgbColor: warna(w, 0.9) } } } } },
         { repeatCell: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,horizontalAlignment,wrapStrategy)' } },
       );

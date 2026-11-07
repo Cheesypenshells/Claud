@@ -117,10 +117,11 @@ async function simpanTransaksi(store, dasar, items) {
   return tersimpan;
 }
 
-function barisItem(t) {
+function barisItem(t, hariIni) {
   const info = [t.kategori, t.metode].filter(Boolean).join(', ');
   const uang = t.dibayar_oleh ? ` (uang ${t.dibayar_oleh})` : '';
-  return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}${uang}`;
+  const tgl = hariIni && t.tanggal && t.tanggal !== hariIni ? ` 📅 ${t.tanggal}` : '';
+  return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}${uang}${tgl}`;
 }
 
 // Pengeluaran / transfer masuk. Nominal selalu dari teks (pesan atau caption foto).
@@ -134,7 +135,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
       items = [{ keterangan: ket || 'Transfer omzet dari IO', nominal, kategori: 'Transfer IO', metode: 'TRANSFER' }];
     }
   } else {
-    ({ items, dilewati } = parsePengeluaranDetail(teks, { adaFoto: pesan.adaFoto }));
+    ({ items, dilewati } = parsePengeluaranDetail(teks, { adaFoto: pesan.adaFoto, hariIni: tanggalLokal(pesan.waktu) }));
   }
 
   // Ada angka tapi isinya obrolan/koreksi: jangan dicatat, tunjukkan catatan terakhir & cara membatalkannya.
@@ -143,7 +144,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
       .filter((t) => t.kode_event === kodeEvent && t.status !== STATUS.BATAL && String(t.pengirim).includes(`(${pesan.senderId})`))
       .slice(-3);
     const baris = ['💬 Pesan ini sepertinya obrolan/koreksi, jadi *tidak saya catat*.'];
-    if (terakhir.length) baris.push('', 'Catatan terakhir kamu:', ...terakhir.map(barisItem), '', `Kalau ada yang salah: balas *#batal ${terakhir.at(-1).id}*, lalu kirim ulang yang benar.`);
+    if (terakhir.length) baris.push('', 'Catatan terakhir kamu:', ...terakhir.map((t) => barisItem(t)), '', `Kalau ada yang salah: balas *#batal ${terakhir.at(-1).id}*, lalu kirim ulang yang benar.`);
     baris.push('Untuk mencatat: satu pengeluaran per baris, contoh *minum karyawan 67.865*');
     return balas(baris.join('\n'));
   }
@@ -196,7 +197,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     [JENIS.MASUK_IO]: 'Transfer masuk dari IO tercatat',
     [JENIS.POTONGAN_IO]: 'Potongan IO tercatat',
   }[jenis];
-  const baris = [`✅ *${judul}* (${kodeEvent})`, ...tersimpan.map(barisItem)];
+  const baris = [`✅ *${judul}* (${kodeEvent})`, ...tersimpan.map((t) => barisItem(t, tanggalLokal(pesan.waktu)))];
   if (dilewati.length) baris.push(`_Tidak dicatat (${dilewati.map((d) => d.alasan).join(', ')}): ${dilewati.map((d) => `"${d.baris}"`).join('; ')}_`);
 
   if (buku === BUKU.EVENT && jenis === JENIS.KELUAR) {

@@ -4,7 +4,7 @@
 import { JENIS, STATUS, BUKU } from './schema.js';
 import { KATEGORI, PERAN } from './parsers.js';
 import { omzetPerTanggal, jatuhTempo } from './finance.js';
-import { hariDalamMinggu, persen } from './util.js';
+import { hariDalamMinggu, persen, tambahHari } from './util.js';
 import { hitungPenggantian } from './uangSiapa.js';
 
 const num = (v) => Number(String(v ?? '').replace(/[^\d.-]/g, '')) || 0;
@@ -36,7 +36,7 @@ export function persenFeePic(ownerHadir) {
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 10 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -187,8 +187,30 @@ export function hitungEvent(event, data) {
 
   const nilaiGratis = barisGratis.reduce((s, g) => s + g.nilai, 0);
 
+  // Per tanggal: omzet bersih vs pengeluaran yang dicatat di grup (tanggal pengeluaran bisa di luar hari jualan).
+  const perTanggal = new Map(hari.map((h) => [h.tanggal, { tanggal: h.tanggal, omzet: h.bersih, pengeluaran: 0 }]));
+  for (const t of keluar) {
+    const tgl = String(t.tanggal || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tgl)) continue;
+    if (!perTanggal.has(tgl)) perTanggal.set(tgl, { tanggal: tgl, omzet: 0, pengeluaran: 0 });
+    perTanggal.get(tgl).pengeluaran += num(t.nominal);
+  }
+  // Pengeluaran yang tanggalnya jauh dari masa event (misalnya baru diketik setelah event selesai)
+  // dikumpulkan di satu baris terakhir supaya grafik harian tidak menyesatkan.
+  const awal = event.mulai ? tambahHari(event.mulai, -7) : '';
+  const akhir = event.selesai ? tambahHari(event.selesai, 1) : '';
+  const diLuar = { tanggal: 'Di luar tgl event', omzet: 0, pengeluaran: 0 };
+  for (const [tgl, h] of perTanggal) {
+    if (awal && akhir && h.omzet === 0 && (tgl < awal || tgl > akhir)) {
+      diLuar.pengeluaran += h.pengeluaran;
+      perTanggal.delete(tgl);
+    }
+  }
+  const harian = [...perTanggal.values()].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  if (diLuar.pengeluaran) harian.push(diLuar);
+
   return {
-    event, hari, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
+    event, hari, harian, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
     labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
     penggantian: hitungPenggantian(transaksi, kode),
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
@@ -231,7 +253,8 @@ export function barisDataMain(r) {
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
   tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
-  // Komposisi untuk grafik batang & pie (urutan tetap: omzet, 8 kelompok biaya, laba bersih).
+  // Komposisi untuk grafik batang & pie (urutan tetap: omzet, 10 kelompok biaya, laba bersih).
+  // Label memuat persentase dari total biaya supaya pie chart menampilkan angka, bukan hanya warna.
   const b = Object.fromEntries(r.biaya.map(([nama, nilai]) => [nama, nilai]));
   const kelompok = [
     ['Bahan baku', b['Bahan baku'] + b['Bahan operasional (es, gas, lemon)']],
@@ -241,10 +264,19 @@ export function barisDataMain(r) {
     ['Penginapan', b.Penginapan],
     ['Bagi hasil & admin IO', b['Potongan bagi hasil IO'] + b['Admin IO + listrik/air/gas/galon']],
     ['Iklan', b['Iklan & endorse']],
+    ['Sewa & admin', b['Admin & sewa (freezer, kuota, cctv, laundry)']],
+    ['Barang kering', b['Barang kering konsumtif'] + b['Barang kering non-konsumtif ⚠️ kelalaian']],
   ];
   const dipakai = kelompok.reduce((s, [, v]) => s + v, 0) - r.feePic;
-  kelompok.push(['Lain-lain (barang kering, sewa, tak terduga, dll.)', Math.max(0, r.totalBiaya - dipakai)]);
-  tambah('GRAFIK', [['Omzet', r.omzetBersih], ...kelompok, ['Laba bersih', r.laba]]);
+  kelompok.push(['Tak terduga & lain-lain', Math.max(0, r.totalBiaya - dipakai)]);
+  const semuaBiaya = r.totalBiaya + r.feePic;
+  const porsi = (v) => persen(Number((semuaBiaya ? (v / semuaBiaya) * 100 : 0).toFixed(1)));
+  tambah('GRAFIK', [
+    ['Omzet', r.omzetBersih],
+    ...kelompok.map(([nama, v]) => [`${nama} (${porsi(v)})`, v]),
+    [`Laba bersih (margin ${persen(Number(margin.toFixed(1)))})`, r.laba],
+  ]);
+  tambah('HARIAN', r.harian.map((h) => [h.tanggal, h.omzet, h.pengeluaran, h.omzet - h.pengeluaran]));
   tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]));
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]));
   return baris;

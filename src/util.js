@@ -85,7 +85,7 @@ export function hariDalamMinggu(ymd) {
   return new Date(`${ymd}T00:00:00Z`).getUTCDay();
 }
 
-const BULAN = {
+export const BULAN = {
   jan: 1, januari: 1, january: 1,
   feb: 2, februari: 2, february: 2, peb: 2,
   mar: 3, maret: 3, march: 3,

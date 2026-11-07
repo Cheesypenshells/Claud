@@ -137,3 +137,15 @@ test('uang siapa: nama pemilik vs jenis pengeluaran', async () => {
   assert.equal(ambilUangSiapa('lalamove 150k pakai uang valen').siapa, 'Valen');
   assert.equal(ambilUangSiapa('es batu 20rb (uang saya)').siapa, '@pengirim');
 });
+
+test('tanggal di baris pengeluaran: "makan siang 22 sept 53rb"', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const { items } = p('makan siang 22 sept 53rb uang mama\ntgl 3/10 bensin 50rb\nsapu 25rb', { hariIni: '2026-10-05' });
+  assert.equal(items[0].tanggal, '2026-09-22');
+  assert.equal(items[0].keterangan, 'makan siang');
+  assert.equal(items[0].nominal, 53000);
+  assert.equal(items[1].tanggal, '2026-10-03');
+  assert.equal(items[2].tanggal, undefined);
+  // Pesan bulan Januari yang menyebut Desember = tahun lalu
+  assert.equal(p('hotel 28 des 300rb', { hariIni: '2027-01-03' }).items[0].tanggal, '2026-12-28');
+});

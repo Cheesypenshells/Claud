@@ -84,6 +84,7 @@ Total pengeluaran event: Rp 330.000
   - Tulis di pesannya: `makan tim 200rb uang mama`, `hotel 300rb pakai uang valen`, `es batu 20rb uang kas`, `(uang saya)`.
   - Kalau tidak ditulis, dianggap **uang orang yang mengirim pesan**.
   - Ubah: `#uang T0012 mama`. Lihat siapa harus diganti berapa: `#penggantian`.
+- **Tanggal belanja** (kalau dilaporkan belakangan): tulis saja tanggalnya di baris itu, contoh `makan siang 22 sept 53rb` atau `tgl 22/9 bensin 50rb`. Bot mencatatnya di tanggal itu, bukan tanggal pesan dikirim.
   - Owner mencatat transfer penggantian: `#ganti Valen 500rb` (bukan biaya event).
   - Hasilnya ada di file event (bagian ⑥ Uang Siapa) dan PEMBUKUAN → tab **Penggantian Uang**.
 - **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.

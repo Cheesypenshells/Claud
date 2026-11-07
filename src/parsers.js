@@ -1,6 +1,6 @@
 // Mengubah pesan WhatsApp menjadi data terstruktur.
 
-import { findMoney, parseMoney, parseRentangTanggal, bersihkan } from './util.js';
+import { findMoney, parseMoney, parseRentangTanggal, bersihkan, BULAN, tambahHari } from './util.js';
 
 // ---------- Kategori pengeluaran ----------
 
@@ -86,7 +86,27 @@ export function parsePengeluaran(teks, opsi = {}) {
 }
 
 // Seperti parsePengeluaran, ditambah daftar baris bernominal yang tidak dicatat beserta alasannya.
-export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
+// Tanggal yang ditulis di baris pengeluaran: "makan siang 22 sept 53rb", "tgl 22/9 bensin 50rb".
+// hariIni = tanggal pesan (YYYY-MM-DD) untuk menentukan tahun. Mengembalikan { tanggal, sisa }.
+const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?\\b(\\d{1,2})\\s*(${Object.keys(BULAN).sort((a, b) => b.length - a.length).join('|')})\\b\\.?`, 'i');
+const RE_TANGGAL_ANGKA = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})[/-](\d{1,2})\b/i;
+export function ambilTanggal(baris, hariIni) {
+  const teks = String(baris ?? '');
+  let m = teks.match(RE_TANGGAL_KATA);
+  let hari; let bulan;
+  if (m) { hari = Number(m[1]); bulan = BULAN[m[2].toLowerCase()]; } else {
+    m = teks.match(RE_TANGGAL_ANGKA);
+    if (m) { hari = Number(m[1]); bulan = Number(m[2]); }
+  }
+  if (!m || !hariIni || hari < 1 || hari > 31 || !bulan || bulan > 12) return { tanggal: '', sisa: teks };
+  let tahun = Number(hariIni.slice(0, 4));
+  const ymd = (y) => `${y}-${String(bulan).padStart(2, '0')}-${String(hari).padStart(2, '0')}`;
+  // Tanggal jauh di depan (misal pesan Januari menyebut "28 des") berarti tahun lalu.
+  if (ymd(tahun) > tambahHari(hariIni, 7)) tahun -= 1;
+  return { tanggal: ymd(tahun), sisa: bersihkan(teks.slice(0, m.index) + ' ' + teks.slice(m.index + m[0].length)) };
+}
+
+export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } = {}) {
   const dilewati = [];
   // Metode untuk semua baris diambil dari baris tanpa nominal ("cash semua") atau dari foto bukti trf.
   const barisTanpaNominal = String(teks ?? '').split(/\n+/).filter((b) => !findMoney(b).length).join(' ');
@@ -94,8 +114,8 @@ export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
   const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
   const items = [];
   for (const barisMentah of String(teks ?? '').split(/\n+/)) {
-    const { siapa, sisa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
-    const baris = sisa;
+    const { siapa, sisa: tanpaSiapa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
+    const { tanggal, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni);
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
     if (!uang.length) continue;
@@ -129,6 +149,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
       kategori: tebakKategori(baris),
       metode: tebakMetode(baris, false) || metodePesan,
       dibayar_oleh: siapa || siapaPesan || '',
+      ...(tanggal ? { tanggal } : {}),
     });
   }
   return { items, dilewati };

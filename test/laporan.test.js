@@ -148,12 +148,33 @@ test('owner yang ikut bekerja tidak digaji dan tidak dapat fee PIC', () => {
   assert.equal(r.barisTim.find((o) => o.nama === 'Joko').upah, 300000);
 });
 
-test('data grafik: omzet, 8 kelompok biaya, laba; jumlah biaya = total biaya + fee PIC', () => {
+test('data grafik: omzet, 10 kelompok biaya berpersen, laba; jumlah biaya = total biaya + fee PIC', () => {
   const r = hitungEvent(event, data);
   const g = barisDataMain(r).filter((x) => x[1] === 'GRAFIK').map((x) => [x[3], x[4]]);
-  assert.equal(g.length, 10);
+  assert.equal(g.length, 12);
   assert.equal(g[0][0], 'Omzet');
-  assert.equal(g[9][0], 'Laba bersih');
-  const biaya = g.slice(1, 9).reduce((s, [, v]) => s + v, 0);
+  assert.match(g[11][0], /^Laba bersih \(margin /);
+  const biaya = g.slice(1, 11).reduce((s, [, v]) => s + v, 0);
   assert.equal(Math.round(biaya), Math.round(r.totalBiaya + r.feePic));
+  // Barang kering dipisah dari lain-lain: 50rb konsumtif + 25rb non-konsumtif
+  const bk = g.find(([n]) => n.startsWith('Barang kering'));
+  assert.equal(bk[1], 75000);
+  assert.match(bk[0], /\(\d+(,\d+)?%\)$/);
+  assert.equal(g.find(([n]) => n.startsWith('Tak terduga'))[1], 50000);
+});
+
+test('data harian: omzet dan pengeluaran per tanggal', () => {
+  const r = hitungEvent(event, data);
+  const h = barisDataMain(r).filter((x) => x[1] === 'HARIAN').map((x) => x.slice(3));
+  assert.equal(h.length, 3);
+  const keluarTotal = transaksi.filter((t) => t.jenis === JENIS.KELUAR).reduce((s, t) => s + t.nominal, 0);
+  assert.deepEqual(h[0], ['2026-11-02', 20000000, keluarTotal, 20000000 - keluarTotal]);
+  assert.deepEqual(h[1], ['2026-11-03', 35000000, 0, 35000000]);
+});
+
+test('data harian: pengeluaran yang diketik jauh setelah event masuk baris "Di luar tgl event"', () => {
+  const telat = [...transaksi, { ...keluar('Konsumsi', 30000), tanggal: '2026-12-20' }];
+  const r = hitungEvent(event, { ...data, transaksi: telat });
+  assert.deepEqual(r.harian.at(-1), { tanggal: 'Di luar tgl event', omzet: 0, pengeluaran: 30000 });
+  assert.equal(r.harian.length, 4);
 });
