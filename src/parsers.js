@@ -34,7 +34,7 @@ const ATURAN_KATEGORI = [
   [KATEGORI.RUKO, ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
   // Sewa alat & biaya admin lapangan (pembukuan lama: tab "admin"), bukan kelalaian.
   [KATEGORI.ADMIN, ['sewa', 'rental', 'kuota', 'pulsa', 'cctv', 'laundry', 'laundrey', 'londri', 'print', 'fotokopi', 'materai', 'biaya admin', 'admin bank']],
-  [KATEGORI.NON_KONSUMTIF, ['sapu', 'pel', 'etalase', 'ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'cool box', 'freezer', 'rak', 'obeng', 'tang', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'tali', 'kompor', 'regulator', 'selang', 'panci', 'wajan', 'capit', 'spatula', 'termos', 'banner', 'spanduk']],
+  [KATEGORI.NON_KONSUMTIF, ['mr diy', 'mrdiy', 'ace hardware', 'informa', 'botol spray', 'spray', 'sapu', 'pel', 'etalase', 'ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'cool box', 'freezer', 'rak', 'obeng', 'tang', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'tali', 'kompor', 'regulator', 'selang', 'panci', 'wajan', 'capit', 'spatula', 'termos', 'banner', 'spanduk']],
   [KATEGORI.KONSUMTIF, ['sumpit', 'wrap', 'kertas', 'kotak', 'box', 'packaging', 'kemasan', 'kantong', 'plastik', 'kresek', 'sarung tangan', 'tisu', 'tissue', 'mika', 'cup', 'garpu', 'sendok', 'tusuk', 'sedotan', 'lakban', 'label', 'stiker', 'sabun']],
   [KATEGORI.BAHAN_LAIN, ['bumbu', 'keju', 'mozzarella', 'mozza', 'saus', 'saos', 'topping', 'cumi']],
   [KATEGORI.OPERASIONAL, ['es batu', 'gas', 'lpg', 'elpiji', 'arang', 'lemon', 'galon', 'es']],

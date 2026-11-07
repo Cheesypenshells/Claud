@@ -125,6 +125,14 @@ export const KOLOM = {
       k('alias', 'Kata yang Dikenali Bot', 320),
     ],
   },
+  'Kamus Kategori': {
+    warna: '#795548',
+    kolom: [
+      k('kata', 'Kata / Keterangan', 220, { catatan: 'Kalau keterangan pengeluaran mengandung kata ini, bot memakai kategori di sebelahnya' }),
+      k('kategori', 'Kategori', 220),
+      k('dicatat', 'Dipelajari Dari', 260),
+    ],
+  },
   Pengaturan: {
     warna: '#5F6368',
     kolom: [

@@ -296,8 +296,15 @@ test('bot bertanya balik kalau laporan kurang lengkap', async () => {
 
   // kategori belum jelas -> ditawarkan pilihan
   const r = await kirim(G_KELUAR, PIC, 'sumbangan acara 50rb');
-  assert.match(r, /Kategorinya belum jelas/);
+  assert.match(r, /Kategori \*sumbangan acara\* belum jelas/);
   assert.match(await kirim(G_KELUAR, PIC, '4'), /sekarang kategori \*Tak Terduga\*/);
+  // dua pertanyaan berurutan, dijawab dengan kalimat
+  await kirim(G_KELUAR, PIC, 'kawat jemuran 15rb');
+  await kirim(G_KELUAR, PIC, 'lem korea 10rb');
+  assert.match(await kirim(G_KELUAR, PIC, 'Kawat jemuran masuk nya no9'), /sekarang kategori \*Barang Kering Non-Konsumtif\*/);
+  assert.match(await kirim(G_KELUAR, PIC, 'kalau yang lem masuk konsumtif juga'), /sekarang kategori \*Barang Kering Konsumtif\*/);
+  // bot belajar: keterangan sama langsung berkategori
+  assert.match(await kirim(G_KELUAR, PIC, 'kawat jemuran 20rb'), /\[Barang Kering Non-Konsumtif\]/);
 
   // batal & jawaban bukan angka
   assert.match(await kirim(G_KELUAR, PIC, 'beli gas'), /Berapa harga/);

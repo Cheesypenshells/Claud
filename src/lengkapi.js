@@ -47,10 +47,39 @@ export function tanyaKeterangan(ctx, pesan, nominal) {
   return `💬 Pengeluaran *Rp ${nominal.toLocaleString('id-ID')}* ini untuk apa?\nBalas keterangannya, contoh: *lalamove ke venue*\n_(balas *batal* kalau bukan pengeluaran)_`;
 }
 
-export function tanyaKategori(ctx, pesan, idTransaksi) {
-  ctx.sesi.set(kunciSesi(pesan), { tipe: 'kategori', id: idTransaksi, waktu: Date.now() });
-  const pilihan = DAFTAR_KATEGORI.filter((k) => k !== KATEGORI.LAIN && k !== KATEGORI.RUKO);
-  return `💬 Kategorinya belum jelas. Balas nomornya supaya rapi (atau abaikan):\n${pilihan.map((k, i) => `${i + 1} = ${k}`).join('\n')}`;
+const PILIHAN_KATEGORI = DAFTAR_KATEGORI.filter((k) => k !== KATEGORI.LAIN && k !== KATEGORI.RUKO);
+
+// Nama kategori yang bisa ditulis dengan kata-kata, contoh "masuk non konsumtif".
+const SEBUTAN_KATEGORI = [
+  [/non[\s-]?konsumtif|kelalaian/, KATEGORI.NON_KONSUMTIF], [/konsumtif/, KATEGORI.KONSUMTIF],
+  [/transport|ekspedisi/, KATEGORI.TRANSPORT], [/konsumsi|makan/, KATEGORI.KONSUMSI], [/iklan|endorse/, KATEGORI.IKLAN],
+  [/tak terduga|tidak terduga/, KATEGORI.TAK_TERDUGA], [/penginapan|hotel/, KATEGORI.PENGINAPAN], [/admin|sewa/, KATEGORI.ADMIN],
+  [/gaji|upah/, KATEGORI.GAJI], [/oyster|tiram/, KATEGORI.OYSTER], [/bahan baku/, KATEGORI.BAHAN_LAIN], [/operasional/, KATEGORI.OPERASIONAL],
+];
+
+// Pertanyaan kategori disimpan berantrean, jadi beberapa catatan bisa dijawab satu per satu.
+export function tanyaKategori(ctx, pesan, idTransaksi, keterangan = '') {
+  const k = kunciSesi(pesan);
+  const lama = ctx.sesi.get(k);
+  const antrean = (lama?.tipe === 'kategori' ? lama.antrean || [] : []).filter((x) => x.id !== idTransaksi).slice(-4);
+  antrean.push({ id: idTransaksi, keterangan });
+  ctx.sesi.set(k, { tipe: 'kategori', antrean, waktu: Date.now() });
+  return `💬 Kategori *${keterangan || idTransaksi}* belum jelas. Balas nomornya (boleh dalam kalimat, contoh *"${keterangan || 'ini'} masuk no 9"*), atau abaikan:\n${PILIHAN_KATEGORI.map((x, i) => `${i + 1} = ${x}`).join('\n')}`;
+}
+
+// "Botol spray masuk nya no9" -> kategori no. 9 untuk catatan "botol spray".
+function jawabKategori(sesi, teks) {
+  const t = teks.toLowerCase();
+  let kategori = null;
+  const no = t.match(/(?:^|no\.?|nomor|nomer|#|\s)\s*(\d{1,2})(?!\d)/);
+  if (no && PILIHAN_KATEGORI[Number(no[1]) - 1]) kategori = PILIHAN_KATEGORI[Number(no[1]) - 1];
+  if (!kategori) kategori = SEBUTAN_KATEGORI.find(([re]) => re.test(t))?.[1] || null;
+  if (!kategori) return null;
+  const antrean = sesi.antrean || [];
+  const kata = (s) => String(s).toLowerCase().split(/\s+/).filter((w) => w.length >= 3);
+  const cocok = antrean.filter((x) => kata(x.keterangan).some((w) => t.includes(w)));
+  const target = cocok.length ? cocok[cocok.length - 1] : antrean[antrean.length - 1];
+  return target ? { target, kategori } : null;
 }
 
 // Memproses jawaban. Mengembalikan aksi untuk handler, atau null kalau tidak ada pertanyaan yang menunggu
@@ -88,11 +117,14 @@ export function jawabLengkapi(ctx, pesan, daftarBahan) {
     return { bahan: { gerak: sesi.gerak, teks: `${b.bahan} ${sesi.jumlah} ${b.satuan}` } };
   }
   if (sesi.tipe === 'kategori') {
-    const pilihan = DAFTAR_KATEGORI.filter((x) => x !== KATEGORI.LAIN && x !== KATEGORI.RUKO);
-    const no = Number(teks);
-    ctx.sesi.hapus(k);
-    if (!Number.isInteger(no) || !pilihan[no - 1]) return null;
-    return { kategori: { id: sesi.id, kategori: pilihan[no - 1] } };
+    // Pesan bernominal adalah pengeluaran baru, bukan jawaban: pertanyaan tetap menunggu.
+    if (findMoney(teks).length) return null;
+    const hasil = jawabKategori(sesi, teks);
+    if (!hasil) return null;
+    const sisa = (sesi.antrean || []).filter((x) => x.id !== hasil.target.id);
+    if (sisa.length) ctx.sesi.set(k, { ...sesi, antrean: sisa, waktu: Date.now() });
+    else ctx.sesi.hapus(k);
+    return { kategori: { id: hasil.target.id, kategori: hasil.kategori, keterangan: hasil.target.keterangan } };
   }
   ctx.sesi.hapus(k);
   return null;

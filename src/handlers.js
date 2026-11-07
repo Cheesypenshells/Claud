@@ -159,6 +159,18 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
 
   if (jenis === JENIS.POTONGAN_IO) items = items.map((i) => ({ ...i, kategori: 'Potongan IO' }));
 
+  // Kategori yang pernah dipilih owner/PIC untuk keterangan serupa (tab Kamus Kategori).
+  if (items.some((i) => i.kategori === KATEGORI.LAIN)) {
+    const kamus = (await ctx.store.all('Kamus Kategori')).filter((x) => x.kata && x.kategori)
+      .sort((a, b) => String(b.kata).length - String(a.kata).length);
+    items = items.map((i) => {
+      if (i.kategori !== KATEGORI.LAIN) return i;
+      const ket = i.keterangan.toLowerCase();
+      const hit = kamus.find((x) => ket.includes(String(x.kata).toLowerCase()));
+      return hit ? { ...i, kategori: hit.kategori } : i;
+    });
+  }
+
   const tersimpan = await simpanTransaksi(ctx.store, {
     tanggal: tanggalLokal(pesan.waktu),
     kode_event: kodeEvent,
@@ -186,7 +198,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
   }
   baris.push(`Salah? balas *#batal ${tersimpan[0].id}*`);
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
-    baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id));
+    baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
   return balas(baris.join('\n'));
 }
@@ -416,7 +428,16 @@ export async function handlePesan(ctx, pesan) {
   if (!cmd && ctx.sesi) {
     const jawab = jawabLengkapi(ctx, pesan, await ctx.store.all('Harga Bahan'));
     if (jawab?.balasan) return balas(jawab.balasan);
-    if (jawab?.kategori) return perintahKategori(ctx, { argumen: [jawab.kategori.id, jawab.kategori.kategori] });
+    if (jawab?.kategori) {
+      // Ingat pilihan ini supaya catatan berikutnya dengan keterangan yang sama langsung berkategori.
+      const kata = String(jawab.kategori.keterangan || '').trim().toLowerCase();
+      const kamus = await ctx.store.all('Kamus Kategori');
+      if (kata && !kamus.some((x) => String(x.kata).toLowerCase() === kata)) {
+        await ctx.store.append('Kamus Kategori', { kata, kategori: jawab.kategori.kategori, dicatat: `${jawab.kategori.id} oleh ${pesan.senderName || pesan.senderId}` });
+      }
+      const hasil = await perintahKategori(ctx, { argumen: [jawab.kategori.id, jawab.kategori.kategori] });
+      return balas(`${hasil[0].text}\n_Lain kali "${kata}" otomatis masuk ${jawab.kategori.kategori}._`);
+    }
     if (jawab?.bahan && event) return perintahBahan(ctx, pesan, event, { perintah: jawab.bahan.gerak, sisaBaris: jawab.bahan.teks, badan: '', argumen: [] });
     if (jawab?.pengeluaran) {
       if (grup.jenis === 'ruko') return catatUang(ctx, pesan, { buku: BUKU.RUKO, jenis: JENIS.KELUAR, kodeEvent: 'RUKO', teks: jawab.pengeluaran });
