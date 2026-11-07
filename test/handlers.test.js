@@ -435,3 +435,17 @@ test('reply koreksi dengan kata tambahan tetap dipahami; yang tidak dipahami dij
   assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Bagian grab bandara pulang itu uang mama' }), /uang Mama/);
   assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'ini gimana ya maksudnya' }), /belum saya pahami/);
 });
+
+test('reply "Hotel nya harga nya jadinya 222.540k ya" mengubah nominal hotel; "uang nya salah" ditanya balik', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Laundrey valen 24k, makan valen 24.371, hotel valen 22.540');
+  const n = (await store.all('Transaksi')).length;
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Hotel nya harga nya jadinya 222.540k ya' }), /Sudah diubah\* \(nominal Rp 222.540\).*T0003 hotel valen/s);
+  assert.equal((await store.all('Transaksi')).length, n); // tidak ada catatan baru
+  assert.equal((await store.all('Transaksi')).find((t) => t.id === 'T0003').nominal, 222540);
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Jumlah uang nya salah' }), /Yang benar berapa/);
+  assert.ok((await store.all('Transaksi')).every((t) => t.dibayar_oleh !== 'Nya'));
+  // reply berisi pengeluaran baru tanpa kata koreksi tetap dicatat baru
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'hotel 300rb' }), /Pengeluaran tercatat/);
+});

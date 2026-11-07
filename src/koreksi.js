@@ -19,7 +19,10 @@ const PENGISI = new Set([
   'masuk', 'masukin', 'kategori', 'ke', 'nominal', 'harga', 'harganya', 'nya', 'pakai', 'pake', 'dari', 'untuk', 'jd', 'aja', 'saja',
   'dan', 'sama', 'juga', 'tanggalnya', 'tgl', 'tanggal', 'no', 'nomor', 'catatan', 'bagian', 'bagiannya', 'punya', 'pakai',
   'mohon', 'diganti', 'ganti', 'tolongin', 'yah', 'kok', 'tuh', 'nih', 'loh', 'lho', 'udah', 'sudah',
+  'jadinya', 'yaa', 'salah', 'bener', 'benernya', 'benarnya', 'sebenarnya', 'sebenernya', 'totalnya', 'total', 'koreksi', 'cuma', 'hanya',
 ]);
+// Koreksi nominal harus jelas diminta, supaya reply "hotel 300rb" tetap dicatat sebagai pengeluaran baru.
+const RE_MINTA_NOMINAL = /\b(harusnya|seharusnya|jadinya|jadi|harga|harganya|salah|bener|benar|benernya|benarnya|sebenarnya|sebenernya|bukan|ganti|ubah|koreksi|totalnya|cuma|hanya)\b/;
 
 export function idDariTeks(teks) {
   return [...new Set(String(teks ?? '').toUpperCase().match(/\bT\d{4,}\b/g) || [])];
@@ -27,7 +30,7 @@ export function idDariTeks(teks) {
 
 // Menerjemahkan teks koreksi jadi { batal } atau { siapa, tanggal, kategori, nominal }. null kalau bukan koreksi.
 export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
-  let sisa = bersihkan(String(teks ?? '').toLowerCase().replace(/[.,!]+/g, ' '));
+  let sisa = bersihkan(String(teks ?? '').toLowerCase().replace(/(?<!\d)[.,!]+|[.,!]+(?!\d)/g, ' '));
   if (!sisa || sisa.startsWith('#')) return null;
   if (/^(batal|batalkan|hapus|cancel|dibatalkan|gak jadi|nggak jadi|tidak jadi)\b/.test(sisa) && sisa.split(/\s+/).length <= 4) return { batal: true };
 
@@ -40,7 +43,7 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
   const tgl = ambilTanggal(sisa, hariIni, rentang);
   if (tgl.tanggal) { hasil.tanggal = tgl.tanggal; sisa = tgl.sisa; }
   const uang = findMoney(sisa);
-  if (uang.length === 1 && satuCatatan) {
+  if (uang.length === 1 && satuCatatan && RE_MINTA_NOMINAL.test(sisa)) {
     hasil.nominal = uang[0].nilai;
     sisa = sisa.slice(0, uang[0].index) + ' ' + sisa.slice(uang[0].index + uang[0].panjang);
   } else if (uang.length) return null; // ada harga lain: pengeluaran baru, bukan koreksi

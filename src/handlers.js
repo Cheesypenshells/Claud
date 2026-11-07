@@ -482,6 +482,9 @@ export async function handlePesan(ctx, pesan) {
       if (hasil) return hasil;
       // Reply ke catatan tanpa harga baru tapi tidak dipahami: beri contoh, jangan diam.
       if (!parseMoney(teks)) {
+        if (/\b(jumlah|nominal|harga|uang|total)\b.*\bsalah\b|\bsalah\b.*\b(jumlah|nominal|harga|total)\b/i.test(teks)) {
+          return balas('💬 Yang benar berapa, untuk catatan yang mana? Reply pesan catatannya, contoh: *hotel harusnya 222.540*');
+        }
         return balas('🤔 Maaf, koreksinya belum saya pahami. Reply pesan catatan dengan salah satu contoh ini:\n• *uang valen* (atau mama / kas)\n• *grab uang valen* (kalau hanya satu item)\n• *tanggal 3 okt*\n• *masuk konsumsi*\n• *harusnya 50rb* (kalau isinya satu catatan)\n• *batal*');
       }
     }
