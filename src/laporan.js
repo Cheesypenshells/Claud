@@ -193,7 +193,11 @@ export function hitungEvent(event, data) {
     ['Penginapan', jumlahKategori(KATEGORI.PENGINAPAN), ''],
     ['Konsumsi', makanTerpakai, `Budget ${budgetMakan.toLocaleString('id-ID')}`],
     ['Gaji karyawan tetap (porsi event)', gajiTetap, 'Estimasi: gaji pokok ÷ 30 × hari kerja'],
-    ['Upah DW + kasir', upahHarian, gajiTercatat ? `Tercatat dibayar di grup: ${gajiTercatat.toLocaleString('id-ID')}` : 'Estimasi dari daftar tim'],
+    // Gaji/upah yang sudah dibayar lewat grup (kategori Gaji & Upah) adalah angka sebenarnya, jadi dipakai
+    // menggantikan estimasi dari daftar tim; sama dengan #rekap. Estimasi hanya kalau belum ada catatan.
+    ['Upah DW + kasir', gajiTercatat || upahHarian, gajiTercatat
+      ? `Dibayar lewat grup (${keluar.filter((t) => t.kategori === KATEGORI.GAJI).length} catatan); estimasi daftar tim ${upahHarian.toLocaleString('id-ID')}`
+      : 'Estimasi dari daftar tim'],
     ['Estimasi bonus (poin KPI 100%)', totalBonus, 'Bonus omzet; bonus absensi & followers menyusul'],
     ['Iklan & endorse', jumlahKategori(KATEGORI.IKLAN), ''],
     ['Tak terduga', jumlahKategori(KATEGORI.TAK_TERDUGA), 'Sakit, ganti rugi, lain-lain'],

@@ -179,3 +179,13 @@ test('data harian: pengeluaran yang diketik jauh setelah event masuk baris "Di l
   assert.deepEqual(r.harian.at(-1), { tanggal: 'Di luar tgl event', omzet: 0, pengeluaran: 30000 });
   assert.equal(r.harian.length, 4);
 });
+
+test('gaji yang dibayar lewat grup dipakai sebagai upah (sama dengan #rekap), walau omzet belum ada', () => {
+  const gaji = [...transaksi, keluar('Gaji & Upah', 1700000, 'gaji dw1'), keluar('Gaji & Upah', 1400000, 'gaji dw2')];
+  const r = hitungEvent(event, { ...data, omzet: [], transaksi: gaji });
+  const upah = r.biaya.find(([n]) => n === 'Upah DW + kasir');
+  assert.equal(upah[1], 3100000);
+  const totalCatatan = gaji.filter((t) => t.jenis === JENIS.KELUAR).reduce((s, t) => s + t.nominal, 0);
+  // tanpa omzet & tanpa bahan gudang/gaji tetap: total biaya = jumlah semua pengeluaran grup + bahan gudang
+  assert.equal(r.totalBiaya - r.biaya.find(([n]) => n === 'Bahan baku')[1] + 1500000 - r.biaya.find(([n]) => n === 'Admin IO + listrik/air/gas/galon')[1] + 0, totalCatatan - 0);
+});
