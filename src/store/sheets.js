@@ -3,14 +3,35 @@
 
 import { readFileSync } from 'node:fs';
 import { sheets as sheetsApi, auth as googleAuth } from '@googleapis/sheets';
-import { TABS } from '../schema.js';
+import { KOLOM, JENIS_LAMA } from '../schema.js';
 
 const CACHE_MS = 30_000;
+const FORMAT_ANGKA = {
+  rupiah: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
+  persen: { type: 'NUMBER', pattern: '0.##"%"' },
+  angka: { type: 'NUMBER', pattern: '#,##0' },
+};
 
 function kolom(n) {
   let s = '';
   for (let i = n; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
   return s;
+}
+
+function warna(hex, terang = 0) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => (v + (255 - v) * terang) / 255;
+  return { red: c((n >> 16) & 255), green: c((n >> 8) & 255), blue: c(n & 255) };
+}
+
+// Judul kolom di Sheets -> key. Judul lama (berupa key) tetap dikenali.
+function petaJudul(tab) {
+  const peta = new Map();
+  for (const c of KOLOM[tab].kolom) {
+    peta.set(c.label, c.key);
+    peta.set(c.key, c.key);
+  }
+  return peta;
 }
 
 export class SheetsStore {
@@ -26,32 +47,192 @@ export class SheetsStore {
     this.cache = new Map();
   }
 
-  // Membuat tab yang belum ada dan menulis judul kolom.
+  // Membuat tab yang belum ada, menulis judul kolom, lalu merapikan tampilan.
   async init() {
-    const meta = await this.api.spreadsheets.get({ spreadsheetId: this.spreadsheetId });
+    const id = this.spreadsheetId;
+    let meta = await this.api.spreadsheets.get({ spreadsheetId: id });
     const ada = new Set(meta.data.sheets.map((s) => s.properties.title));
-    const baru = Object.keys(TABS).filter((t) => !ada.has(t));
+    const baru = Object.keys(KOLOM).filter((t) => !ada.has(t));
     if (baru.length) {
       await this.api.spreadsheets.batchUpdate({
-        spreadsheetId: this.spreadsheetId,
+        spreadsheetId: id,
         requestBody: { requests: baru.map((title) => ({ addSheet: { properties: { title } } })) },
       });
     }
-    for (const [tab, header] of Object.entries(TABS)) {
-      const res = await this.api.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: `${tab}!1:1`,
-      });
+
+    // Judul kolom: ganti judul lama (key) menjadi label, tambahkan kolom yang belum ada.
+    for (const [tab, def] of Object.entries(KOLOM)) {
+      const res = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${tab}!1:1` });
       const lama = res.data.values?.[0] || [];
-      const kurang = header.filter((h) => !lama.includes(h));
-      if (kurang.length) {
+      const peta = petaJudul(tab);
+      const judul = lama.map((h) => def.kolom.find((c) => c.key === peta.get(h))?.label ?? h);
+      for (const c of def.kolom) if (!judul.includes(c.label)) judul.push(c.label);
+      if (judul.join('\u0000') !== lama.join('\u0000')) {
         await this.api.spreadsheets.values.update({
-          spreadsheetId: this.spreadsheetId,
+          spreadsheetId: id,
           range: `${tab}!A1`,
           valueInputOption: 'RAW',
-          requestBody: { values: [[...lama, ...kurang]] },
+          requestBody: { values: [judul] },
         });
       }
+    }
+
+    // Nilai jenis transaksi versi lama (KELUAR, MASUK_IO, ...) diganti nilai yang mudah dibaca.
+    this.cache.clear();
+    const { header: hT, rows: rT } = await this.baca('Transaksi');
+    const iJenis = hT.indexOf('jenis');
+    const ganti = rT.map((r, i) => [i, r[iJenis]]).filter(([, v]) => JENIS_LAMA[v]);
+    if (iJenis >= 0 && ganti.length) {
+      await this.api.spreadsheets.values.batchUpdate({
+        spreadsheetId: id,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: ganti.map(([i, v]) => ({ range: `Transaksi!${kolom(iJenis + 1)}${i + 2}`, values: [[JENIS_LAMA[v]]] })),
+        },
+      });
+    }
+
+    meta = await this.api.spreadsheets.get({
+      spreadsheetId: id,
+      fields: 'sheets(properties,bandedRanges.bandedRangeId,conditionalFormats)',
+    });
+    await this.rapikan(meta.data.sheets);
+    this.cache.clear();
+  }
+
+  // Warna judul, baris berselang, lebar kolom, format Rupiah, keterangan kolom, dan warna status.
+  async rapikan(sheets) {
+    const id = this.spreadsheetId;
+    const requests = [];
+    const urutan = Object.keys(KOLOM);
+
+    // Hapus tab kosong bawaan ("Sheet1"/"Lembar1") kalau masih ada.
+    for (const s of sheets) {
+      const t = s.properties.title;
+      if (urutan.includes(t) || !/^(Sheet|Lembar)\s?\d+$/i.test(t)) continue;
+      const isi = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${t}!A1:Z20` });
+      if (!isi.data.values?.length) requests.push({ deleteSheet: { sheetId: s.properties.sheetId } });
+    }
+
+    const header = (await Promise.all(urutan.map((tab) => this.api.spreadsheets.values.get({
+      spreadsheetId: id, range: `${tab}!1:1`,
+    })))).map((r) => r.data.values?.[0] || []);
+
+    urutan.forEach((tab, iTab) => {
+      const s = sheets.find((x) => x.properties.title === tab);
+      if (!s) return;
+      const sheetId = s.properties.sheetId;
+      const def = KOLOM[tab];
+      const judul = header[iTab];
+      const jumlahKolom = Math.max(judul.length, def.kolom.length);
+      const posisi = (key) => judul.indexOf(def.kolom.find((c) => c.key === key).label);
+
+      requests.push({
+        updateSheetProperties: {
+          properties: { sheetId, index: iTab, tabColorStyle: { rgbColor: warna(def.warna) }, gridProperties: { frozenRowCount: 1 } },
+          fields: 'index,tabColorStyle,gridProperties.frozenRowCount',
+        },
+      });
+
+      // Baris judul: tebal, putih, rata tengah, boleh turun baris supaya tidak terpotong.
+      requests.push({
+        repeatCell: {
+          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: jumlahKolom },
+          cell: {
+            userEnteredFormat: {
+              textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 }, fontSize: 10 },
+              horizontalAlignment: 'CENTER',
+              verticalAlignment: 'MIDDLE',
+              wrapStrategy: 'WRAP',
+            },
+          },
+          fields: 'userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)',
+        },
+      });
+      requests.push({
+        updateDimensionProperties: {
+          range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
+          properties: { pixelSize: 42 },
+          fields: 'pixelSize',
+        },
+      });
+
+      // Baris berselang warna (hapus yang lama dulu supaya tidak dobel).
+      for (const b of s.bandedRanges || []) requests.push({ deleteBanding: { bandedRangeId: b.bandedRangeId } });
+      requests.push({
+        addBanding: {
+          bandedRange: {
+            range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: jumlahKolom },
+            rowProperties: {
+              headerColorStyle: { rgbColor: warna(def.warna) },
+              firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } },
+              secondBandColorStyle: { rgbColor: warna(def.warna, 0.9) },
+            },
+          },
+        },
+      });
+
+      for (const c of def.kolom) {
+        const i = posisi(c.key);
+        if (i < 0) continue;
+        requests.push({
+          updateDimensionProperties: {
+            range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+            properties: { pixelSize: c.lebar, hiddenByUser: Boolean(c.sembunyi) },
+            fields: 'pixelSize,hiddenByUser',
+          },
+        });
+        const isiSel = {
+          verticalAlignment: 'MIDDLE',
+          ...(c.format ? { numberFormat: FORMAT_ANGKA[c.format], horizontalAlignment: 'RIGHT' } : {}),
+        };
+        requests.push({
+          repeatCell: {
+            range: { sheetId, startRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 },
+            cell: { userEnteredFormat: isiSel },
+            fields: `userEnteredFormat(verticalAlignment${c.format ? ',numberFormat,horizontalAlignment' : ''})`,
+          },
+        });
+        requests.push({
+          updateCells: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 },
+            rows: [{ values: [{ note: c.catatan || '' }] }],
+            fields: 'note',
+          },
+        });
+      }
+
+      // Warna otomatis: baris BATAL/SELESAI abu-abu dicoret, jenis transaksi berwarna.
+      for (let n = (s.conditionalFormats || []).length - 1; n >= 0; n -= 1) {
+        requests.push({ deleteConditionalFormatRule: { sheetId, index: n } });
+      }
+      const semuaBaris = [{ sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: jumlahKolom }];
+      const aturan = (rumus, format, ranges = semuaBaris) => requests.push({
+        addConditionalFormatRule: {
+          rule: { ranges, booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: rumus }] }, format } },
+          index: 0,
+        },
+      });
+      const abu = { textFormat: { strikethrough: true, foregroundColor: { red: 0.6, green: 0.6, blue: 0.6 } } };
+      const iStatus = def.kolom.some((c) => c.key === 'status') ? posisi('status') : -1;
+      if (iStatus >= 0) {
+        const kol = `$${kolom(iStatus + 1)}2`;
+        // Satu syarat per aturan: spreadsheet berlokal Indonesia memakai ';' sebagai pemisah rumus.
+        aturan(`=${kol}="BATAL"`, abu);
+        aturan(`=${kol}="SELESAI"`, abu);
+      }
+      if (tab === 'Transaksi') {
+        const iJenis = posisi('jenis');
+        const sel = [{ sheetId, startRowIndex: 1, startColumnIndex: iJenis, endColumnIndex: iJenis + 1 }];
+        const kol = `$${kolom(iJenis + 1)}2`;
+        aturan(`=${kol}="Transfer IO"`, { backgroundColorStyle: { rgbColor: warna('#B7E1CD') }, textFormat: { bold: true } }, sel);
+        aturan(`=${kol}="Pengeluaran"`, { backgroundColorStyle: { rgbColor: warna('#F4C7C3') } }, sel);
+        aturan(`=${kol}="Potongan IO"`, { backgroundColorStyle: { rgbColor: warna('#FCE8B2') } }, sel);
+      }
+    });
+
+    if (requests.length) {
+      await this.api.spreadsheets.batchUpdate({ spreadsheetId: id, requestBody: { requests } });
     }
   }
 
@@ -64,7 +245,9 @@ export class SheetsStore {
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING',
     });
-    const [header = [], ...rows] = res.data.values || [];
+    const [judul = [], ...rows] = res.data.values || [];
+    const peta = petaJudul(tab);
+    const header = judul.map((h) => peta.get(h) ?? h);
     const data = { waktu: Date.now(), header, rows };
     this.cache.set(tab, data);
     return data;
@@ -74,7 +257,11 @@ export class SheetsStore {
     const { header, rows } = await this.baca(tab);
     return rows
       .filter((r) => r.some((v) => v !== '' && v != null))
-      .map((r) => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ''])));
+      .map((r) => {
+        const obj = Object.fromEntries(header.map((h, i) => [h, r[i] ?? '']));
+        if (tab === 'Transaksi' && JENIS_LAMA[obj.jenis]) obj.jenis = JENIS_LAMA[obj.jenis];
+        return obj;
+      });
   }
 
   async append(tab, row) {

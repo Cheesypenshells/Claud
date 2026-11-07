@@ -127,12 +127,12 @@ Semua data bisa dilihat dan dikoreksi langsung di spreadsheet **CPS Kantor AI**:
 | Tab | Isi |
 |---|---|
 | `Event` | Data setiap event: bagi hasil, admin, jadwal transfer, dan lainnya |
-| `Transaksi` | Semua pengeluaran, transfer masuk, dan potongan IO (kolom `status`: OK / BATAL) |
+| `Transaksi` | Semua pengeluaran (merah muda), transfer masuk dari IO (hijau), dan potongan IO (kuning). Kolom **Status**: OK / BATAL (abu-abu dicoret) |
 | `Omzet` | Laporan omzet harian |
 | `Grup` | Grup WhatsApp yang terdaftar |
 
 Aturan saat mengoreksi data di Sheets:
-- Boleh mengubah isi sel.
+- Boleh mengubah isi sel. Arahkan jari/kursor ke judul kolom untuk melihat keterangan kolom tersebut.
 - **Jangan mengubah judul kolom** (baris pertama).
 - Tulis tanggal dengan format `2026-11-03`.
 - Untuk membatalkan catatan, ganti `status` menjadi `BATAL`. Jangan menghapus baris.

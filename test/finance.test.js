@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { jatuhTempo, rekapEvent, rekapBulan } from '../src/finance.js';
+import { JENIS } from '../src/schema.js';
 
 const event = {
   kode: 'JMB26-11', kota: 'Jambi', io: 'Kepo Market',
@@ -24,12 +25,12 @@ test('rekapEvent menghitung perkiraan transfer, piutang, dan telat', () => {
     { kode_event: 'JMB26-11', tanggal: '2026-11-03', omzet: 12000000, refund: 0, status: 'OK' },
   ];
   const transaksi = [
-    { kode_event: 'JMB26-11', jenis: 'MASUK_IO', nominal: 7500000, status: 'OK' },
-    { kode_event: 'JMB26-11', jenis: 'KELUAR', kategori: 'Transport & Ekspedisi', nominal: 150000, status: 'OK' },
-    { kode_event: 'JMB26-11', jenis: 'KELUAR', kategori: 'Konsumsi', nominal: 120000, status: 'OK' },
-    { kode_event: 'JMB26-11', jenis: 'KELUAR', kategori: 'Konsumsi', nominal: 999999, status: 'BATAL' },
-    { kode_event: 'JMB26-11', jenis: 'POTONGAN_IO', nominal: 250000, status: 'OK' },
-    { kode_event: 'LAIN', jenis: 'KELUAR', nominal: 5000000, status: 'OK' },
+    { kode_event: 'JMB26-11', jenis: JENIS.MASUK_IO, nominal: 7500000, status: 'OK' },
+    { kode_event: 'JMB26-11', jenis: JENIS.KELUAR, kategori: 'Transport & Ekspedisi', nominal: 150000, status: 'OK' },
+    { kode_event: 'JMB26-11', jenis: JENIS.KELUAR, kategori: 'Konsumsi', nominal: 120000, status: 'OK' },
+    { kode_event: 'JMB26-11', jenis: JENIS.KELUAR, kategori: 'Konsumsi', nominal: 999999, status: 'BATAL' },
+    { kode_event: 'JMB26-11', jenis: JENIS.POTONGAN_IO, nominal: 250000, status: 'OK' },
+    { kode_event: 'LAIN', jenis: JENIS.KELUAR, nominal: 5000000, status: 'OK' },
   ];
   // 5 Nov: omzet 2 Nov (jatuh tempo 3 Nov) dan 3 Nov (jatuh tempo 4 Nov) sudah wajib masuk.
   const r = rekapEvent(event, { omzet, transaksi }, '2026-11-05');
@@ -46,7 +47,7 @@ test('rekapEvent menghitung perkiraan transfer, piutang, dan telat', () => {
 
 test('rekapEvent: setelah pelunasan, admin dan potongan ikut diperhitungkan', () => {
   const omzet = [{ kode_event: 'JMB26-11', tanggal: '2026-11-02', omzet: 10000000, refund: 0, status: 'OK' }];
-  const transaksi = [{ kode_event: 'JMB26-11', jenis: 'MASUK_IO', nominal: 7000000, status: 'OK' }];
+  const transaksi = [{ kode_event: 'JMB26-11', jenis: JENIS.MASUK_IO, nominal: 7000000, status: 'OK' }];
   const r = rekapEvent(event, { omzet, transaksi }, '2026-11-10');
   assert.equal(r.perkiraanTransfer, 7000000);
   assert.equal(r.telat, 0);
@@ -60,9 +61,9 @@ test('rekapBulan menggabungkan event dan buku ruko', () => {
     { kode_event: 'PLB26-10', tanggal: '2026-10-25', omzet: 20000000, refund: 0, status: 'OK' },
   ];
   const transaksi = [
-    { kode_event: 'JMB26-11', buku: 'EVENT', jenis: 'KELUAR', nominal: 1000000, tanggal: '2026-11-02', status: 'OK' },
-    { kode_event: 'RUKO', buku: 'RUKO', jenis: 'KELUAR', kategori: 'Utilitas Ruko', nominal: 850000, tanggal: '2026-11-05', status: 'OK' },
-    { kode_event: 'RUKO', buku: 'RUKO', jenis: 'KELUAR', kategori: 'Gaji & Upah', nominal: 2000000, tanggal: '2026-10-30', status: 'OK' },
+    { kode_event: 'JMB26-11', buku: 'EVENT', jenis: JENIS.KELUAR, nominal: 1000000, tanggal: '2026-11-02', status: 'OK' },
+    { kode_event: 'RUKO', buku: 'RUKO', jenis: JENIS.KELUAR, kategori: 'Utilitas Ruko', nominal: 850000, tanggal: '2026-11-05', status: 'OK' },
+    { kode_event: 'RUKO', buku: 'RUKO', jenis: JENIS.KELUAR, kategori: 'Gaji & Upah', nominal: 2000000, tanggal: '2026-10-30', status: 'OK' },
   ];
   const r = rekapBulan('2026-11', { events, omzet, transaksi });
   assert.equal(r.perEvent.length, 1);
