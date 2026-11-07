@@ -501,5 +501,22 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
-  return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: event.kode, teks });
+  const hasil = await catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: event.kode, teks });
+  if (hasil.length || !ctx.sesi) return hasil;
+
+  // Pertanyaan/obrolan ke bot (tanpa angka): beri petunjuk singkat, paling sering sekali per 10 menit per grup.
+  if (/\?|(^|\s)(kamu|bot|gimana|bagaimana|sudah|udah|sampai mana)(\s|$)/i.test(teks)) {
+    const kunci = `petunjuk:${pesan.groupId}`;
+    const terakhir = ctx.sesi.get(kunci);
+    if (terakhir && Date.now() - terakhir.waktu < 10 * 60 * 1000) return [];
+    ctx.sesi.set(kunci, { waktu: Date.now() });
+    return balas([
+      '🤖 Maaf, saya belum bisa diajak ngobrol. Yang bisa saya lakukan:',
+      '• *#rekap* - lihat total omzet, pengeluaran, dan laba event ini (sudah termasuk koreksi)',
+      '• Catat pengeluaran: satu per baris, contoh *minum karyawan 67.865*',
+      '• *#batal T0012* - batalkan catatan yang salah',
+      '• *#bantuan* - semua perintah',
+    ].join('\n'));
+  }
+  return [];
 }

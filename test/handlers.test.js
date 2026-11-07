@@ -321,3 +321,11 @@ test('obrolan/koreksi bernominal tidak dicatat; angka dengan satuan; sewa = admi
   assert.match(r3, /lalamove - \*Rp 150.000\*/);
   assert.match(r3, /Tidak dicatat \(obrolan\)/);
 });
+
+test('pertanyaan ke bot dibalas petunjuk, tidak berulang-ulang', async () => {
+  const { kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, OWNER, 'Jadi kita sampai mana tadi?'), /belum bisa diajak ngobrol[\s\S]*#rekap/);
+  assert.equal(await kirim(G_KELUAR, OWNER, 'Sudah kamu kurangi kah?'), '');
+  assert.equal(await kirim(G_KELUAR, OWNER, 'oke siap'), '');
+});
