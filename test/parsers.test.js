@@ -193,3 +193,21 @@ test('"x 2 malam" adalah jumlah malam, bukan tanggal', async () => {
   assert.equal(i.nominal, 700000);
   assert.equal(i.tanggal, undefined);
 });
+
+test('"siang ... dan malam nya ..." dipecah, keterangan & tanggal ikut bagian sebelumnya', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const o = { hariIni: '2026-11-08', rentang: { mulai: '2026-09-24', selesai: '2026-10-11' } };
+  const { items } = p('makan karyawan tanggal 30 sept 40.11k siang dan malam nya 40.95k, makan tanggal 1 oktober, siang nya 38.5k dan malam nya 45.95k, makan 2 oktober 62.55k, semua uang valen', o);
+  assert.deepEqual(items.map((i) => [i.keterangan, i.nominal, i.tanggal, i.dibayar_oleh]), [
+    ['makan karyawan siang', 40110, '2026-09-30', 'Valen'],
+    ['makan karyawan malam', 40950, '2026-09-30', 'Valen'],
+    ['makan siang', 38500, '2026-10-01', 'Valen'],
+    ['makan malam', 45950, '2026-10-01', 'Valen'],
+    ['makan', 62550, '2026-10-02', 'Valen'],
+  ]);
+  assert.ok(items.every((i) => i.kategori === 'Konsumsi'));
+  // "rp" di dalam kata (warp) bukan tanda Rupiah
+  assert.equal(p('plastik warp 87.5k').items[0].keterangan, 'plastik warp');
+  assert.deepEqual(p('es 20rb dan gas 25rb').items.map((i) => i.keterangan), ['es', 'gas']);
+  assert.equal(p('lemon dan softex 24k').items.length, 1);
+});

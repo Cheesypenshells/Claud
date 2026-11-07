@@ -11,7 +11,7 @@ const SUFFIX = {
 // Contoh yang dikenali: 150k, 150rb, 150 ribu, 1,5jt, 2 juta, Rp 150.000, 150.000, 150000.
 // Angka kecil tanpa satuan (mis. "2 unit") tidak dianggap uang.
 export function findMoney(text) {
-  const re = /(rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(juta|jt|ribu|rbu|rb|k)?(?![a-z0-9])/gi;
+  const re = /((?<![a-z])rp\.?\s*)?(\d{1,3}(?:[.,]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(juta|jt|ribu|rbu|rb|k)?(?![a-z0-9])/gi;
   const hasil = [];
   let m;
   while ((m = re.exec(text)) !== null) {

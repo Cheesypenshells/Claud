@@ -133,15 +133,30 @@ export function ambilTanggal(baris, hariIni, rentang = null) {
 // Dipecah hanya kalau bagian pertama berharga, setiap bagian paling banyak satu harga, ada >= 2 harga,
 // dan bagian tanpa harga hanya keterangan pendek (tanggal, "uang mama", "cash"). Koma desimal
 // ("67,865 ribu") tidak terpecah karena tidak diikuti spasi.
+// Dalam satu bagian, dua harga disambung "dan/terus/lalu": "40.11k siang dan malam nya 40.95k".
+const RE_SAMBUNG = /\s+(?:dan|terus|trus|lalu|sama|\+)\s+/i;
+function pecahSambung(b) {
+  if (findMoney(b).length < 2) return [b];
+  const p = b.split(RE_SAMBUNG).map((x) => x.trim()).filter(Boolean);
+  return p.length > 1 && p.every((x) => findMoney(x).length === 1) ? p : [b];
+}
+
 export function pecahBaris(baris) {
-  const bagian = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean);
+  const bagian = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean).flatMap(pecahSambung);
   if (bagian.length < 2) return [baris];
   const harga = bagian.map((b) => findMoney(b).length);
-  if (!harga[0] || harga.some((n) => n > 1) || harga.filter(Boolean).length < 2) return [baris];
+  if (harga.some((n) => n > 1) || harga.filter(Boolean).length < 2) return [baris];
   const pendek = (b) => b.split(/\s+/).length <= 4;
   if (bagian.some((b, i) => !harga[i] && !pendek(b))) return [baris];
   return bagian;
 }
+
+// Kata waktu makan dll: bagian yang hanya berisi kata ini ("malam nya 40.95k") melanjutkan
+// keterangan sebelumnya ("makan karyawan" -> "makan karyawan malam").
+const KATA_LANJUTAN = new Set(['pagi', 'siang', 'sore', 'malam', 'nya', 'yang', 'yg', 'untuk', 'buat', 'juga', 'harinya', 'hari']);
+const kataSisa = (t) => bersihkan(String(t).toLowerCase()).split(/\s+/).filter(Boolean);
+const lanjutan = (ket) => kataSisa(ket).every((w) => KATA_LANJUTAN.has(w));
+const subjek = (ket) => bersihkan(String(ket).split(/\s+/).filter((w) => !KATA_LANJUTAN.has(w.toLowerCase())).join(' '));
 
 // "semua uang valen", "semuanya pakai uang mama", "uang valen semua": berlaku untuk seluruh pesan,
 // di baris mana pun ditulis.
@@ -156,20 +171,32 @@ export function ambilUangSemua(teks) {
 export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', rentang = null } = {}) {
   const dilewati = [];
   const { siapa: siapaSemua, sisa: teksBersih } = ambilUangSemua(teks);
-  const semuaBaris = teksBersih.split(/\n+/).map((b) => b.trim()).filter(Boolean).flatMap(pecahBaris);
+  const kelompok = teksBersih.split(/\n+/).map((b) => b.trim()).filter(Boolean).map(pecahBaris);
+  // Bagian tanpa harga yang berisi keterangan ("makan tanggal 1 oktober") menjadi konteks bagian
+  // berikutnya di baris yang sama; yang hanya berisi tanggal/uang siapa/metode berlaku untuk semua.
+  const tanpaHarga = kelompok.flat().filter((b) => !findMoney(b).length);
+  const intiTeks = (b) => subjek(ambilTanggal(ambilUangSiapa(b).sisa, hariIni, rentang).sisa
+    .replace(/\b(cash|tunai|trf|tf|transfer|semua|semuanya|tanggal|tgl)\b/gi, ''));
   // Metode, uang siapa & tanggal untuk semua baris diambil dari baris tanpa nominal
   // ("cash semua", "uang mama", "tanggal 25 sept") atau dari foto bukti trf.
-  const barisTanpaNominal = semuaBaris.filter((b) => !findMoney(b).length).join(' ');
+  const barisTanpaNominal = tanpaHarga.filter((b) => !intiTeks(b)).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
   const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
   const tanggalPesan = ambilTanggal(barisTanpaNominal, hariIni, rentang).tanggal;
   const items = [];
-  for (const barisMentah of semuaBaris) {
+  for (const grup of kelompok) {
+  let konteks = { subjek: '', tanggal: '' };
+  for (const barisMentah of grup) {
     const { siapa, sisa: tanpaSiapa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
-    const { tanggal, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni, rentang);
+    const { tanggal: tanggalBaris, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni, rentang);
+    let tanggal = tanggalBaris;
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
-    if (!uang.length) continue;
+    if (!uang.length) {
+      const inti = intiTeks(barisMentah);
+      if (inti) konteks = { subjek: inti, tanggal: tanggalBaris || konteks.tanggal };
+      continue;
+    }
     const alasan = alasanBukanLaporan(baris);
     if (alasan) { dilewati.push({ baris, alasan }); continue; }
     const u = uang[uang.length - 1];
@@ -193,16 +220,27 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
         .replace(/\b(total|totalnya|semuanya|harga|harganya)\s*$/i, '')
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');
+    let kategoriDari = baris;
+    if (lanjutan(keterangan) && konteks.subjek) {
+      // "malam nya 40.95k" setelah "makan karyawan ... siang" -> "makan karyawan malam", tanggal ikut.
+      keterangan = bersihkan(`${konteks.subjek} ${subjek(keterangan.replace(/\bnya\b/gi, '')) || kataSisa(keterangan).filter((w) => w !== 'nya').join(' ')}`);
+      tanggal = tanggal || konteks.tanggal;
+      kategoriDari = keterangan;
+    } else {
+      keterangan = keterangan.replace(/\s+nya\b/gi, '');
+      konteks = { subjek: subjek(keterangan) || keterangan, tanggal: tanggal || konteks.tanggal };
+    }
     if (!keterangan) keterangan = 'Pengeluaran';
 
     items.push({
       keterangan,
       nominal,
-      kategori: tebakKategori(baris),
+      kategori: tebakKategori(kategoriDari),
       metode: tebakMetode(baris, false) || metodePesan,
       dibayar_oleh: siapaSemua || siapa || siapaPesan || '',
       ...(tanggal || tanggalPesan ? { tanggal: tanggal || tanggalPesan } : {}),
     });
+  }
   }
   return { items, dilewati };
 }
