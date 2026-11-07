@@ -3,7 +3,7 @@
 
 import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './laporan.js';
 import { bacaData } from './main.js';
-import { JENIS } from './schema.js';
+import { JENIS, STATUS } from './schema.js';
 import { PERAN, KATEGORI } from './parsers.js';
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -160,7 +160,7 @@ const KOLOM_IO = [
 export const KOLOM_TRANSAKSI_EVENT = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Jenis', lebar: 115 }, { label: 'Kategori', lebar: 190 },
   { label: 'Keterangan', lebar: 260 }, { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Metode', lebar: 95 },
-  { label: 'Uang Siapa', lebar: 120 }, { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 80 },
+  { label: 'Uang Siapa', lebar: 120 }, { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 100 },
 ];
 
 const urutTanggal = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.id).localeCompare(String(b.id));
@@ -189,9 +189,13 @@ export function tabelKategoriEvent(r, transaksi) {
     tab: 'Transfer & Penggantian', judul: 'TRANSFER DARI IO, POTONGAN IO & PENGGANTIAN UANG (total = transfer masuk dari IO)', warna: '#0B8043', kolom: KOLOM_IO, baris: io,
     total: aktif.filter((t) => t.jenis === JENIS.MASUK_IO).reduce((s, t) => s + (Number(t.nominal) || 0), 0),
   });
+  // Catatan yang dibatalkan dipindah ke bawah, dicoret abu-abu, dan tidak ikut dihitung.
+  const batal = (t) => t.status === STATUS.BATAL;
+  const urut = [...milik.filter((t) => !batal(t)), ...milik.filter(batal)];
   tabel.push({
-    tab: 'Semua Transaksi', judul: 'SEMUA CATATAN (termasuk yang dibatalkan; total = pengeluaran aktif)', warna: '#5F6368', kolom: KOLOM_TRANSAKSI_EVENT,
-    baris: milik.map((t) => [t.tanggal, t.id, t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, t.status]),
+    tab: 'Semua Transaksi', judul: 'SEMUA CATATAN (yang dibatalkan dicoret di bawah & tidak dihitung)', warna: '#5F6368', kolom: KOLOM_TRANSAKSI_EVENT,
+    baris: urut.map((t) => [t.tanggal, t.id, t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, batal(t) ? '❌ BATAL' : '✅ OK']),
+    barisCoret: urut.map((t, i) => (batal(t) ? i : -1)).filter((i) => i >= 0),
     total: keluar.reduce((s, t) => s + (Number(t.nominal) || 0), 0),
   });
   return tabel;

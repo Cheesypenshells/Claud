@@ -441,6 +441,11 @@ export class SheetsStore {
         { addBanding: { bandedRange: { range: { sheetId, startRowIndex: 2, endRowIndex: 3 + d.baris.length, startColumnIndex: 0, endColumnIndex: n }, rowProperties: { headerColorStyle: { rgbColor: warna(w) }, firstBandColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } }, secondBandColorStyle: { rgbColor: warna(w, 0.9) } } } } },
         { repeatCell: { range: { sheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(textFormat,horizontalAlignment,wrapStrategy)' } },
       );
+      // Hapus coretan lama, lalu coret baris yang dibatalkan (abu-abu).
+      req.push({ repeatCell: { range: { sheetId, startRowIndex: 3, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { strikethrough: false, foregroundColorStyle: { rgbColor: { red: 0, green: 0, blue: 0 } } } } }, fields: 'userEnteredFormat.textFormat(strikethrough,foregroundColorStyle)' } });
+      for (const i of d.barisCoret || []) {
+        req.push({ repeatCell: { range: { sheetId, startRowIndex: 3 + i, endRowIndex: 4 + i, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { strikethrough: true, foregroundColorStyle: { rgbColor: { red: 0.6, green: 0.6, blue: 0.6 } } } } }, fields: 'userEnteredFormat.textFormat(strikethrough,foregroundColorStyle)' } });
+      }
       d.kolom.forEach((c, i) => {
         req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: c.lebar || 120 }, fields: 'pixelSize' } });
         if (c.format) req.push({ repeatCell: { range: { sheetId, startRowIndex: 3, startColumnIndex: i, endColumnIndex: i + 1 }, cell: { userEnteredFormat: { numberFormat: FORMAT_ANGKA[c.format], horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat(numberFormat,horizontalAlignment)' } });
