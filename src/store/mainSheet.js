@@ -19,6 +19,7 @@ const BAGIAN = [
   { kode: 'IKLAN', judul: '④ BIAYA IKLAN & ENDORSE', warna: '#F9AB00', mulai: 95, kolom: ['Tanggal', 'Keterangan', 'Nominal'], rupiah: [2] },
   { kode: 'GRATIS', judul: 'PORSI GRATIS (harga jual, budget per event)', warna: '#F9AB00', mulai: 108, kolom: ['Tanggal', 'Menu', 'Porsi', 'Total pcs', 'Harga per pcs', 'Nilai Jual', 'Diberikan Untuk'], rupiah: [4, 5] },
   { kode: 'BAHAN', judul: '⑤ SISA BAHAN BAKU (dikembalikan ke gudang)', warna: '#C2185B', mulai: 121, kolom: ['Bahan', 'Satuan', 'Keluar', 'Restock', 'Dikembalikan', 'Terpakai', 'Harga', 'Nilai Terpakai', 'Nilai Dikembalikan'], rupiah: [6, 7, 8] },
+  { kode: 'UANG', judul: '⑥ UANG SIAPA (penggantian dari owner)', warna: '#5F6368', mulai: 134, kolom: ['Nama', 'Uang yang Terpakai', 'Sudah Diganti', 'Sisa Harus Ditransfer', 'Jumlah Catatan'], rupiah: [1, 2, 3] },
 ];
 
 function warna(hex, terang = 0) {
@@ -48,7 +49,7 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts.chartId,conditionalFormats)' });
   const cari = (t) => meta.data.sheets.find((s) => s.properties.title === t);
   const tambah = [];
-  if (!cari(tab)) tambah.push({ addSheet: { properties: { title: tab, index: 0, gridProperties: { columnCount: 26, rowCount: 140 } } } });
+  if (!cari(tab)) tambah.push({ addSheet: { properties: { title: tab, index: 0, gridProperties: { columnCount: 26, rowCount: 160 } } } });
   if (!cari(TAB_DATA_MAIN)) tambah.push({ addSheet: { properties: { title: TAB_DATA_MAIN, hidden: true } } });
   if (tambah.length) {
     await api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: tambah } });
@@ -80,7 +81,7 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   const sel = (r1, r2, c1, c2) => ({ sheetId, startRowIndex: r1 - 1, endRowIndex: r2, startColumnIndex: c1, endColumnIndex: c2 });
   const format = (range, userEnteredFormat, fields) => req.push({ repeatCell: { range, cell: { userEnteredFormat }, fields: `userEnteredFormat(${fields})` } });
 
-  req.push({ updateSheetProperties: { properties: { sheetId, index: 0, tabColorStyle: { rgbColor: warna('#E8710A') }, gridProperties: { frozenRowCount: 2, hideGridlines: true } }, fields: 'index,tabColorStyle,gridProperties(frozenRowCount,hideGridlines)' } });
+  req.push({ updateSheetProperties: { properties: { sheetId, index: 0, tabColorStyle: { rgbColor: warna('#E8710A') }, gridProperties: { frozenRowCount: 2, hideGridlines: true, rowCount: Math.max(160, main.properties.gridProperties?.rowCount || 0) } }, fields: 'index,tabColorStyle,gridProperties(frozenRowCount,hideGridlines,rowCount)' } });
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 16 }, fields: 'pixelSize' } });
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 210 }, fields: 'pixelSize' } });
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 270 }, fields: 'pixelSize' } });

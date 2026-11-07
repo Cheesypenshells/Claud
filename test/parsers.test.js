@@ -41,7 +41,7 @@ test('parseRentangTanggal', () => {
 test('parsePengeluaran: banyak baris, qty @ harga, total diabaikan', () => {
   const items = parsePengeluaran('lalamove 150k\nmakan malam 120rb cash\nember 2 unit @30rb\ntotal 330rb\nsudah ya');
   assert.equal(items.length, 3);
-  assert.deepEqual(items[0], { keterangan: 'lalamove', nominal: 150000, kategori: 'Transport & Ekspedisi', metode: '' });
+  assert.deepEqual(items[0], { keterangan: 'lalamove', nominal: 150000, kategori: 'Transport & Ekspedisi', metode: '', dibayar_oleh: '' });
   assert.equal(items[1].nominal, 120000);
   assert.equal(items[1].metode, 'CASH');
   assert.equal(items[1].kategori, 'Konsumsi');
@@ -127,4 +127,13 @@ test('parseOrang: kata pengisi dibuang, orang tanpa nama diberi nomor', async ()
   assert.deepEqual(nama('Dw, dw, dw', 'DW'), ['DW 1:100000', 'DW 2:100000', 'DW 3:100000']);
   assert.deepEqual(nama('4 orang', 'DW'), ['DW 1:100000', 'DW 2:100000', 'DW 3:100000', 'DW 4:100000']);
   assert.deepEqual(nama('Joko, Tono 120rb', 'DW'), ['Joko:100000', 'Tono:120000']);
+});
+
+test('uang siapa: nama pemilik vs jenis pengeluaran', async () => {
+  const { ambilUangSiapa } = await import('../src/parsers.js');
+  assert.equal(ambilUangSiapa('Uang transport imam 250k').siapa, null);
+  assert.equal(ambilUangSiapa('uang makan tim 100rb uang mama').siapa, 'Mama');
+  assert.equal(ambilUangSiapa('uang muka hotel 500rb').siapa, null);
+  assert.equal(ambilUangSiapa('lalamove 150k pakai uang valen').siapa, 'Valen');
+  assert.equal(ambilUangSiapa('es batu 20rb (uang saya)').siapa, '@pengirim');
 });

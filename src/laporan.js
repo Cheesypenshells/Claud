@@ -5,6 +5,7 @@ import { JENIS, STATUS, BUKU } from './schema.js';
 import { KATEGORI, PERAN } from './parsers.js';
 import { omzetPerTanggal, jatuhTempo } from './finance.js';
 import { hariDalamMinggu, persen } from './util.js';
+import { hitungPenggantian } from './uangSiapa.js';
 
 const num = (v) => Number(String(v ?? '').replace(/[^\d.-]/g, '')) || 0;
 const aktif = (r) => (r.status || STATUS.OK) !== STATUS.BATAL;
@@ -35,7 +36,7 @@ export function persenFeePic(ownerHadir) {
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -189,6 +190,7 @@ export function hitungEvent(event, data) {
   return {
     event, hari, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
     labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
+    penggantian: hitungPenggantian(transaksi, kode),
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
     iklan: keluar.filter((t) => t.kategori === KATEGORI.IKLAN),
   };
@@ -229,6 +231,7 @@ export function barisDataMain(r) {
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
   tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
+  tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]));
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]));
   return baris;
 }

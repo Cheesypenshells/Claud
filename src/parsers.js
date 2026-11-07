@@ -91,9 +91,11 @@ export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
   // Metode untuk semua baris diambil dari baris tanpa nominal ("cash semua") atau dari foto bukti trf.
   const barisTanpaNominal = String(teks ?? '').split(/\n+/).filter((b) => !findMoney(b).length).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
+  const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
   const items = [];
   for (const barisMentah of String(teks ?? '').split(/\n+/)) {
-    const baris = bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, ''));
+    const { siapa, sisa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
+    const baris = sisa;
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
     if (!uang.length) continue;
@@ -126,6 +128,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
       nominal,
       kategori: tebakKategori(baris),
       metode: tebakMetode(baris, false) || metodePesan,
+      dibayar_oleh: siapa || siapaPesan || '',
     });
   }
   return { items, dilewati };
@@ -339,4 +342,32 @@ export function parseGratis(teks, daftarMenu, cocokkan) {
     items.push({ menu: menu.menu, porsi: p || '', isi: i || '', pcs, untuk });
   }
   return items;
+}
+
+// ---------- Uang siapa ----------
+// "lalamove 150k uang mama" / "pakai uang valen" / "(uang saya)" / "uang kas".
+// Hasil: '@pengirim', '@pic', '@owner', 'Kas usaha', atau nama orang. Pemetaan '@...' dilakukan handler.
+const RE_UANG = /\(?\s*(?:pakai|pake|pk|dari|dibayar(?:in)?(?:\s+(?:pakai|pake))?|talangan)?\s*uang(?:nya)?\s+([a-z][a-z.]*)\s*\)?/i;
+
+// "uang transport", "uang makan", "uang muka" adalah jenis pengeluaran, bukan pemilik uang.
+const BUKAN_PEMILIK = ['muka', 'saku', 'harian', 'jajan', 'rokok', 'tip', 'ongkos', 'cash', 'tunai', 'kembalian', 'lebih', 'kurang', 'tambahan', 'bulanan', 'mingguan', 'lembur'];
+
+export function petaUangSiapa(kata) {
+  const k = String(kata || '').toLowerCase().replace(/\.$/, '');
+  if (!k || BUKAN_PEMILIK.includes(k) || tebakKategori(k) !== KATEGORI.LAIN) return null;
+  if (['saya', 'sendiri', 'aku', 'gue', 'gw', 'ku', 'pribadi'].includes(k)) return '@pengirim';
+  if (['pic', 'picnya'].includes(k)) return '@pic';
+  if (['owner', 'bos', 'boss', 'bapak', 'pak'].includes(k)) return '@owner';
+  if (['kas', 'usaha', 'perusahaan', 'kantor', 'toko', 'cps', 'event'].includes(k)) return 'Kas usaha';
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+export function ambilUangSiapa(baris) {
+  const re = new RegExp(RE_UANG.source, 'gi');
+  let m;
+  while ((m = re.exec(String(baris))) !== null) {
+    const siapa = petaUangSiapa(m[1]);
+    if (siapa) return { siapa, sisa: bersihkan(String(baris).replace(m[0], ' ')) };
+  }
+  return { siapa: null, sisa: baris };
 }

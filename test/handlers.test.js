@@ -336,3 +336,30 @@ test('pertanyaan ke bot dibalas petunjuk, tidak berulang-ulang', async () => {
   assert.equal(await kirim(G_KELUAR, OWNER, 'Sudah kamu kurangi kah?'), '');
   assert.equal(await kirim(G_KELUAR, OWNER, 'oke siap'), '');
 });
+
+test('uang siapa: dari pesan, default pengirim, ubah, penggantian', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Imam`);
+  // Budi (PIC) mengirim: default uang Budi; "uang mama" ditulis -> Mama
+  assert.match(await kirim(G_KELUAR, PIC, 'lalamove 150k'), /\(uang Budi\)/);
+  assert.match(await kirim(G_KELUAR, PIC, 'makan tim 200rb uang mama'), /makan tim - \*Rp 200.000\* \[Konsumsi\] \(uang Mama\)/);
+  assert.match(await kirim(G_KELUAR, OWNER, 'hotel 300rb'), /\(uang George\)/);
+  assert.match(await kirim(G_KELUAR, PIC, 'es batu 50rb uang kas'), /\(uang Kas usaha\)/);
+  assert.match(await kirim(G_KELUAR, PIC, 'sapu 25rb pakai uang imam'), /\(uang Imam\)/);
+  assert.match(await kirim(G_KELUAR, PIC, '#uang T0001 mama'), /T0001 lalamove Rp 150.000 sekarang tercatat \*uang Mama\*/);
+
+  const r = await kirim(G_KELUAR, PIC, '#penggantian');
+  assert.match(r, /Mama: keluar Rp 350.000 \(2 catatan\)/);
+  assert.match(r, /Imam: keluar Rp 25.000/);
+  assert.doesNotMatch(r, /Kas usaha/);
+
+  assert.match(await kirim(G_KELUAR, PIC, '#ganti Mama 100rb'), /khusus owner/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#ganti Mama 100rb'), /Sisa yang masih harus ditransfer ke Mama: \*Rp 250.000\*/);
+  // penggantian bukan biaya event
+  const trx = await store.all('Transaksi');
+  assert.equal(trx.find((t) => t.jenis === 'Penggantian').nominal, 100000);
+  const { hitungEvent } = await import('../src/laporan.js');
+  const r2 = hitungEvent((await store.all('Event'))[0], { transaksi: trx, tim: await store.all('Tim Event') });
+  assert.equal(r2.totalBiaya, 150000 + 200000 + 300000 + 50000 + 25000 + 500000); // + admin IO 500rb
+  assert.equal(r2.penggantian.find((u) => u.nama === 'Mama').sisa, 250000);
+});

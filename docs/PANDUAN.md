@@ -80,6 +80,12 @@ Total pengeluaran event: Rp 330.000
   - `kiriman 5 pack` → bot bertanya bahan apa → balas nomor/nama bahan
   - kategori tidak dikenali → bot menawarkan pilihan kategori → balas nomornya
   Balas **batal** kalau ternyata bukan laporan. Pertanyaan kedaluwarsa setelah 1 jam.
+- **Uang siapa:** setiap pengeluaran dicatat dibayar pakai uang siapa.
+  - Tulis di pesannya: `makan tim 200rb uang mama`, `hotel 300rb pakai uang valen`, `es batu 20rb uang kas`, `(uang saya)`.
+  - Kalau tidak ditulis, dianggap **uang orang yang mengirim pesan**.
+  - Ubah: `#uang T0012 mama`. Lihat siapa harus diganti berapa: `#penggantian`.
+  - Owner mencatat transfer penggantian: `#ganti Valen 500rb` (bukan biaya event).
+  - Hasilnya ada di file event (bagian ⑥ Uang Siapa) dan PEMBUKUAN → tab **Penggantian Uang**.
 - **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.
 - **Salah catat:** `#batal T0002`. Bisa dilakukan owner atau orang yang mengirim.
 - **Ganti kategori:** `#kategori T0001 Transport`.

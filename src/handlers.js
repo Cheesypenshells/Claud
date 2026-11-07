@@ -10,6 +10,7 @@ import { parsePerintah, parseEvent, parsePengeluaranDetail, parseOmzet, parseTim
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
+import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
 import { KATEGORI } from './parsers.js';
 import {
@@ -32,6 +33,9 @@ const BANTUAN = {
 • #rekap - rekap event ini
 • #batal T0012 - batalkan catatan
 • #kategori T0012 Konsumsi - ganti kategori
+• Uang siapa: tulis *uang mama* / *uang valen* / *uang saya* / *uang kas* di pesan (default: pengirim)
+• #uang T0012 mama - ubah uang siapa | #penggantian - siapa harus ditransfer berapa
+• #ganti Valen 500rb - catat transfer penggantian (owner)
 • #selesai - tutup event (owner)
 
 *Tim:* #tim (lihat/tambah), #tambah DW Joko 120rb, #berhenti Joko
@@ -115,7 +119,8 @@ async function simpanTransaksi(store, dasar, items) {
 
 function barisItem(t) {
   const info = [t.kategori, t.metode].filter(Boolean).join(', ');
-  return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}`;
+  const uang = t.dibayar_oleh ? ` (uang ${t.dibayar_oleh})` : '';
+  return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}${uang}`;
 }
 
 // Pengeluaran / transfer masuk. Nominal selalu dari teks (pesan atau caption foto).
@@ -171,6 +176,11 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     });
   }
 
+  // Uang siapa: dari pesan ("uang mama"), atau default pengirimnya sendiri.
+  if (jenis === JENIS.KELUAR) {
+    for (const i of items) i.dibayar_oleh = await tentukanUangSiapa(ctx, pesan, kodeEvent, i.dibayar_oleh);
+  }
+
   const tersimpan = await simpanTransaksi(ctx.store, {
     tanggal: tanggalLokal(pesan.waktu),
     kode_event: kodeEvent,
@@ -197,6 +207,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     baris.push(`Total pengeluaran event: ${rupiah(total)}`);
   }
   baris.push(`Salah? balas *#batal ${tersimpan[0].id}*`);
+  if (jenis === JENIS.KELUAR) baris.push(`Bukan uang ${tersimpan[0].dibayar_oleh}? balas *#uang ${tersimpan[0].id} mama* (atau nama lain / kas)`);
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
@@ -450,6 +461,18 @@ export async function handlePesan(ctx, pesan) {
       case 'rekap': return perintahRekap(ctx, pesan, grup, cmd, isOwner);
       case 'batal': return perintahBatal(ctx, pesan, cmd, isOwner);
       case 'kategori': return perintahKategori(ctx, cmd);
+      case 'uang':
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        return perintahUang(ctx, pesan, event, cmd);
+      case 'penggantian':
+      case 'uangsiapa':
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rincian uang hanya bisa dilihat di grup pengeluaran.');
+        return perintahPenggantian(ctx, event);
+      case 'ganti':
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
+        return perintahGanti(ctx, pesan, event, cmd);
       case 'omzet':
       case 'omset':
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');

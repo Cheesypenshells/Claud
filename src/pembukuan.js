@@ -8,6 +8,8 @@ import { PERAN } from './parsers.js';
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
+// Naikkan kalau tata letak file event berubah: file event lama ikut dirapikan ulang sekali.
+export const VERSI_TATA_LETAK = '2';
 
 // "2026-09-24", "2026-10-11" -> "24 Sep - 11 Okt 2026"; bulan sama -> "1 - 14 Nov 2026"
 export function rentangTanggal(mulai, selesai) {
@@ -46,7 +48,8 @@ export const KOLOM_REKAP = [
   { label: 'Total Pengeluaran', lebar: 140, format: 'rupiah' }, { label: 'Sisa Bahan Kembali', lebar: 130, format: 'rupiah' },
   { label: 'Laba Sebelum Fee PIC', lebar: 140, format: 'rupiah' }, { label: 'Fee PIC %', lebar: 80, format: 'persen' },
   { label: 'Fee PIC', lebar: 125, format: 'rupiah' }, { label: 'LABA BERSIH', lebar: 145, format: 'rupiah' },
-  { label: 'Margin', lebar: 80, format: 'persen' }, { label: 'File Event', lebar: 100 },
+  { label: 'Margin', lebar: 80, format: 'persen' },
+  { label: 'Sisa Penggantian Uang', lebar: 145, format: 'rupiah' }, { label: 'File Event', lebar: 100 },
 ];
 
 // Urutan biaya di laporan.js -> nilai per label.
@@ -72,6 +75,7 @@ export function barisRekap(r, tim) {
     b['Gaji karyawan tetap (porsi event)'], b['Upah DW + kasir'], b['Estimasi bonus (poin KPI 100%)'],
     r.totalBiaya, r.nilaiSisaKembali, r.labaSebelumFee, r.feePicPersen, r.feePic, r.laba,
     r.omzetBersih ? Number(((r.laba / r.omzetBersih) * 100).toFixed(1)) : 0,
+    r.penggantian.reduce((s, u) => s + Math.max(0, u.sisa), 0),
     tautan(e.file_event),
   ];
 }
@@ -112,11 +116,22 @@ export function barisGaji(r) {
   });
 }
 
+// ---------- Penggantian uang ----------
+
+export const KOLOM_PENGGANTIAN = [
+  { label: 'Kode Event', lebar: 100 }, { label: 'Lokasi', lebar: 110 }, { label: 'Nama', lebar: 140 },
+  { label: 'Uang yang Terpakai', lebar: 145, format: 'rupiah' }, { label: 'Sudah Diganti', lebar: 135, format: 'rupiah' },
+  { label: 'Sisa Harus Ditransfer', lebar: 155, format: 'rupiah' }, { label: 'Jumlah Catatan', lebar: 110, format: 'angka' },
+];
+
+export const barisPenggantian = (r) => r.penggantian.map((u) => [r.event.kode, r.event.kota, u.nama, u.dibayar, u.diganti, u.sisa, u.catatan]);
+
 // ---------- Transaksi per event ----------
 
 export const KOLOM_TRANSAKSI_EVENT = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Jenis', lebar: 115 }, { label: 'Kategori', lebar: 190 },
   { label: 'Keterangan', lebar: 260 }, { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Metode', lebar: 95 },
+  { label: 'Uang Siapa', lebar: 120 },
   { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 80 },
 ];
 
@@ -124,7 +139,7 @@ function barisTransaksiEvent(transaksi, kode) {
   return transaksi
     .filter((t) => t.kode_event === kode)
     .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.id).localeCompare(String(b.id)))
-    .map((t) => [t.tanggal, t.id, t.jenis === JENIS.KELUAR ? 'Pengeluaran' : t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.pengirim, t.status]);
+    .map((t) => [t.tanggal, t.id, t.jenis === JENIS.KELUAR ? 'Pengeluaran' : t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, t.status]);
 }
 
 // ---------- Proses utama ----------
@@ -159,11 +174,18 @@ export async function perbaruiPembukuan(store) {
   const catatan = [];
   const hasil = [];
 
+  const tataLetakBaru = atur.versi_tata_letak_event !== VERSI_TATA_LETAK;
+
   for (const e of data.events) {
     const r = hitungEvent(e, data);
     hasil.push(r);
+    const adaSebelumnya = Boolean(e.file_event);
     const fileId = await pastikanFileEvent(store, e, atur.folder_event, catatan);
     if (!fileId) continue;
+    if (tataLetakBaru && adaSebelumnya) {
+      await store.siapkanFileEvent(fileId, e.kode, `${judulFileEvent(e)} – BEDAH UNTUNG / RUGI`);
+      terakhirDitulis.delete(fileId);
+    }
 
     // Judul file ikut berubah kalau kota/IO/tanggal event diubah.
     const isi = JSON.stringify({ judul: judulFileEvent(e), main: barisDataMain(r), trx: barisTransaksiEvent(data.transaksi, e.kode) });
@@ -175,13 +197,20 @@ export async function perbaruiPembukuan(store) {
     terakhirDitulis.set(fileId, isi);
   }
 
+  if (tataLetakBaru) {
+    const ada = (await store.all('Pengaturan')).some((r) => r.kunci === 'versi_tata_letak_event');
+    if (ada) await store.update('Pengaturan', 'kunci', 'versi_tata_letak_event', { nilai: VERSI_TATA_LETAK });
+    else await store.append('Pengaturan', { kunci: 'versi_tata_letak_event', nilai: VERSI_TATA_LETAK, keterangan: 'Versi tata letak file event (diisi bot)' });
+  }
+
   const rekap = hasil.map((r) => barisRekap(r, data.tim));
-  const isiPembukuan = JSON.stringify({ rekap, gaji: hasil.flatMap(barisGaji) });
+  const isiPembukuan = JSON.stringify({ rekap, gaji: hasil.flatMap(barisGaji), uang: hasil.flatMap(barisPenggantian) });
   if (terakhirDitulis.get('PEMBUKUAN') !== isiPembukuan) {
     await store.tulisTabel(store.spreadsheetId, 'Rekap Event', {
       kolom: KOLOM_REKAP, baris: rekap.length ? [...rekap, barisTotal(rekap)] : [], warna: '#E8710A', index: 0, barisTotal: rekap.length > 0,
     });
     await store.tulisTabel(store.spreadsheetId, 'Gaji per Event', { kolom: KOLOM_GAJI, baris: hasil.flatMap(barisGaji), warna: '#8E24AA', index: 1 });
+    await store.tulisTabel(store.spreadsheetId, 'Penggantian Uang', { kolom: KOLOM_PENGGANTIAN, baris: hasil.flatMap(barisPenggantian), warna: '#5F6368', index: 2 });
     terakhirDitulis.set('PEMBUKUAN', isiPembukuan);
   }
   return { jumlahEvent: hasil.length, catatan };

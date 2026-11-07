@@ -43,6 +43,7 @@ export const KOLOM = {
       k('keterangan', 'Keterangan', 260),
       k('nominal', 'Nominal', 135, { format: 'rupiah' }),
       k('metode', 'Metode Bayar', 115),
+      k('dibayar_oleh', 'Uang Siapa', 130, { catatan: 'Siapa yang mengeluarkan uang: PIC, Mama, karyawan, George, atau Kas usaha. Dipakai untuk menghitung penggantian. Ubah lewat #uang T0012 mama' }),
       k('sumber', 'Sumber', 95, { catatan: 'teks = diketik di grup, foto+teks = dikirim dengan foto' }),
       k('pengirim', 'Dicatat Oleh', 200),
       k('status', 'Status', 85, { catatan: 'OK = dihitung, BATAL = tidak dihitung. Jangan hapus baris; ganti saja menjadi BATAL' }),
@@ -174,7 +175,10 @@ export const JENIS = {
   KELUAR: 'Pengeluaran',
   MASUK_IO: 'Transfer IO',
   POTONGAN_IO: 'Potongan IO',
+  PENGGANTIAN: 'Penggantian', // owner mengganti uang yang dipakai PIC/keluarga/karyawan (bukan biaya)
 };
+
+export const KAS_USAHA = 'Kas usaha';
 
 // Nilai lama (versi awal bot) yang otomatis dibaca sebagai nilai baru.
 export const JENIS_LAMA = { KELUAR: JENIS.KELUAR, MASUK_IO: JENIS.MASUK_IO, POTONGAN_IO: JENIS.POTONGAN_IO };

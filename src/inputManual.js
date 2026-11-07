@@ -43,7 +43,7 @@ export const TAB_INPUT = [
       { label: 'Keterangan', lebar: 260, catatan: 'Contoh: lalamove ke venue, hotel 3 malam, sapu' },
       { label: 'Kategori', lebar: 220, pilihan: DAFTAR_KATEGORI, catatan: 'Boleh dikosongkan: bot menebak dari keterangan' },
       { label: 'Nominal', lebar: 130 },
-      { label: 'Dibayar Pakai', lebar: 120, pilihan: ['Kas usaha', 'Uang George'] },
+      { label: 'Uang Siapa', lebar: 130, catatan: 'Siapa yang mengeluarkan uang: nama PIC, Mama, karyawan, George, atau Kas usaha' },
     ],
   },
   {
@@ -92,7 +92,7 @@ export const CARA_ISI = [
   ['4. Kategori pengeluaran boleh kosong: bot menebak dari keterangan (sapu = non-konsumtif/kelalaian, sumpit = konsumtif, hotel = penginapan, dst.).'],
   ['5. Hasil diperbarui otomatis setiap 5 menit selama bot menyala.'],
   [''],
-  ['Pembayaran pakai "Uang George" dicatat supaya mudah dihitung penggantiannya.'],
+  ['Kolom "Uang Siapa" di tab Pengeluaran dipakai untuk menghitung siapa yang harus diganti uangnya (tab Penggantian Uang di PEMBUKUAN).'],
 ];
 
 // ---------- Membaca nilai sel ----------
@@ -150,7 +150,7 @@ export function ubahInputManual(tab, kodeAda = []) {
     transaksi.push({
       id: `M${String(++no).padStart(4, '0')}`, tanggal: keTanggal(tgl), kode_event: kodeUpper(kode), buku: BUKU.EVENT, jenis: JENIS.KELUAR,
       kategori: kategori || tebakKategori(ket || ''), keterangan: String(ket || ''), nominal: keAngka(nominal),
-      metode: '', sumber: 'manual', pengirim: bayar ? `Input manual (${bayar})` : 'Input manual', status: STATUS.OK,
+      metode: '', dibayar_oleh: String(bayar || '').replace(/^uang\s+/i, '').trim(), sumber: 'manual', pengirim: 'Input manual', status: STATUS.OK,
     });
   }
   for (const [kode, tgl, jenis, nominal, ket] of ambil('4. Transfer & Potongan IO')) {

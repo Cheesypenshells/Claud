@@ -50,7 +50,17 @@ export class SheetsStore {
       scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
     });
     this.auth = auth;
-    this.api = sheetsApi({ version: 'v4', auth });
+    // Batas Google: ±60 penulisan per menit. Kalau terkena (429) atau server sibuk, ulangi dengan jeda bertambah.
+    this.api = sheetsApi({
+      version: 'v4',
+      auth,
+      retryConfig: {
+        retry: 6,
+        retryDelay: 5000,
+        statusCodesToRetry: [[429, 429], [500, 599]],
+        httpMethodsToRetry: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE'],
+      },
+    });
     this.cache = new Map();
   }
 
