@@ -16,11 +16,18 @@ export function findMoney(text) {
   let m;
   while ((m = re.exec(text)) !== null) {
     const [full, rp, angka, suf] = m;
-    const satuan = suf ? SUFFIX[suf.toLowerCase()] : 1;
+    let satuan = suf ? SUFFIX[suf.toLowerCase()] : 1;
     let nilai;
     if (/^\d{1,3}([.,]\d{3})+(,\d{1,2})?$/.test(angka)) {
-      // Pemisah ribuan: 150.000 / 1.500.000 / 150,000
-      nilai = Number(angka.replace(/,\d{1,2}$/, '').replace(/[.,]/g, ''));
+      const kelompok = angka.split(/[.,]/).length - 1;
+      if (suf && kelompok === 1) {
+        // Ada satuan: titik/koma adalah desimal. "67,865 ribu" / "100.876rb" = 67.865 / 100.876 rupiah.
+        nilai = Number(angka.replace(',', '.'));
+      } else {
+        // Pemisah ribuan: 150.000 / 1.500.000 / 150,000. "2.500.000 rb" dibaca 2.500.000 (satuan diabaikan).
+        nilai = Number(angka.replace(/,\d{1,2}$/, '').replace(/[.,]/g, ''));
+        if (kelompok > 1) satuan = 1;
+      }
     } else {
       nilai = Number(angka.replace(',', '.'));
     }

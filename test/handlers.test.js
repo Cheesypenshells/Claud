@@ -304,3 +304,20 @@ test('bot bertanya balik kalau laporan kurang lengkap', async () => {
   assert.match(await kirim(G_KELUAR, PIC, 'batal'), /tidak dicatat/);
   assert.equal(await kirim(G_KELUAR, PIC, 'oke siap'), '');
 });
+
+test('obrolan/koreksi bernominal tidak dicatat; angka dengan satuan; sewa = admin', async () => {
+  const { kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, PIC, 'minum karyawan 67,865 ribu'), /minum karyawan - \*Rp 67.865\* \[Konsumsi\]/);
+  const r = await kirim(G_KELUAR, OWNER, 'Yang kamu cantumin itu bentuknya 67 juta dong salah ya');
+  assert.match(r, /tidak saya catat/);
+  const r2 = await kirim(G_KELUAR, PIC, 'Lalamove kerang ke P2 dan minum karyawan, lalamovenya harganya 150k, dan untuk minum 67,865 ribu');
+  assert.match(r2, /tidak saya catat/);
+  assert.match(r2, /T0001 minum karyawan/);
+  assert.match(r2, /#batal T0001/);
+  assert.match(await kirim(G_KELUAR, PIC, 'sewa freezer lombok 2.050.000'), /\[Admin & Sewa\]/);
+  // campuran: baris laporan dicatat, baris obrolan disebutkan
+  const r3 = await kirim(G_KELUAR, PIC, 'lalamove 150k\nkok mahal ya 150k');
+  assert.match(r3, /lalamove - \*Rp 150.000\*/);
+  assert.match(r3, /Tidak dicatat \(obrolan\)/);
+});

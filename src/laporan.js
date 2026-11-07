@@ -153,6 +153,7 @@ export function hitungEvent(event, data) {
   const kategoriTerpakai = new Set([
     KATEGORI.OYSTER, KATEGORI.BAHAN_LAIN, KATEGORI.OPERASIONAL, KATEGORI.KONSUMTIF, KATEGORI.NON_KONSUMTIF,
     KATEGORI.TRANSPORT, KATEGORI.PENGINAPAN, KATEGORI.KONSUMSI, KATEGORI.GAJI, KATEGORI.IKLAN, KATEGORI.TAK_TERDUGA,
+    KATEGORI.ADMIN,
   ]);
   const lainnya = keluar.filter((t) => !kategoriTerpakai.has(t.kategori)).reduce((s, t) => s + num(t.nominal), 0);
   const bagiHasil = omzetBersih * potong;
@@ -161,6 +162,7 @@ export function hitungEvent(event, data) {
     ['Admin IO + listrik/air/gas/galon', num(event.admin) + potonganIO, `Admin ${num(event.admin).toLocaleString('id-ID')}, potongan lain ${potonganIO.toLocaleString('id-ID')}`],
     ['Bahan baku', nilaiBahanDibawa + jumlahKategori(KATEGORI.OYSTER) + jumlahKategori(KATEGORI.BAHAN_LAIN), 'Bahan dari gudang (keluar + restock) + beli oyster/bahan di lokasi'],
     ['Bahan operasional (es, gas, lemon)', jumlahKategori(KATEGORI.OPERASIONAL), ''],
+    ['Admin & sewa (freezer, kuota, cctv, laundry)', jumlahKategori(KATEGORI.ADMIN), ''],
     ['Barang kering konsumtif', jumlahKategori(KATEGORI.KONSUMTIF), 'Sumpit, wrap, kotak, plastik, sarung tangan'],
     ['Barang kering non-konsumtif ⚠️ kelalaian', jumlahKategori(KATEGORI.NON_KONSUMTIF), nonKonsumtif.length ? `${nonKonsumtif.length} pembelian: ${nonKonsumtif.map((t) => t.keterangan).join(', ')}` : 'Tidak ada'],
     ['Transport & ekspedisi', jumlahKategori(KATEGORI.TRANSPORT), ''],

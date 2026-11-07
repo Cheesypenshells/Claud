@@ -6,7 +6,7 @@
 // hasil = array balasan { text } untuk dikirim ke grup yang sama.
 
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
-import { parsePerintah, parseEvent, parsePengeluaran, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
+import { parsePerintah, parseEvent, parsePengeluaranDetail, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
@@ -121,6 +121,7 @@ function barisItem(t) {
 // Pengeluaran / transfer masuk. Nominal selalu dari teks (pesan atau caption foto).
 async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
   let items = [];
+  let dilewati = [];
   if (jenis === JENIS.MASUK_IO) {
     const nominal = parseMoney(teks);
     if (nominal) {
@@ -128,7 +129,18 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
       items = [{ keterangan: ket || 'Transfer omzet dari IO', nominal, kategori: 'Transfer IO', metode: 'TRANSFER' }];
     }
   } else {
-    items = parsePengeluaran(teks, { adaFoto: pesan.adaFoto });
+    ({ items, dilewati } = parsePengeluaranDetail(teks, { adaFoto: pesan.adaFoto }));
+  }
+
+  // Ada angka tapi isinya obrolan/koreksi: jangan dicatat, tunjukkan catatan terakhir & cara membatalkannya.
+  if (!items.length && dilewati.length) {
+    const terakhir = (await ctx.store.all('Transaksi'))
+      .filter((t) => t.kode_event === kodeEvent && t.status !== STATUS.BATAL && String(t.pengirim).includes(`(${pesan.senderId})`))
+      .slice(-3);
+    const baris = ['💬 Pesan ini sepertinya obrolan/koreksi, jadi *tidak saya catat*.'];
+    if (terakhir.length) baris.push('', 'Catatan terakhir kamu:', ...terakhir.map(barisItem), '', `Kalau ada yang salah: balas *#batal ${terakhir.at(-1).id}*, lalu kirim ulang yang benar.`);
+    baris.push('Untuk mencatat: satu pengeluaran per baris, contoh *minum karyawan 67.865*');
+    return balas(baris.join('\n'));
   }
 
   if (!items.length) {
@@ -163,6 +175,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks }) {
     [JENIS.POTONGAN_IO]: 'Potongan IO tercatat',
   }[jenis];
   const baris = [`✅ *${judul}* (${kodeEvent})`, ...tersimpan.map(barisItem)];
+  if (dilewati.length) baris.push(`_Tidak dicatat (${dilewati.map((d) => d.alasan).join(', ')}): ${dilewati.map((d) => `"${d.baris}"`).join('; ')}_`);
 
   if (buku === BUKU.EVENT && jenis === JENIS.KELUAR) {
     const semua = await ctx.store.all('Transaksi');

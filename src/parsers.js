@@ -15,6 +15,7 @@ export const KATEGORI = {
   PENGINAPAN: 'Penginapan',
   TRANSPORT: 'Transport & Ekspedisi',
   RUKO: 'Utilitas Ruko',
+  ADMIN: 'Admin & Sewa',
   NON_KONSUMTIF: 'Barang Kering Non-Konsumtif',
   KONSUMTIF: 'Barang Kering Konsumtif',
   BAHAN_LAIN: 'Bahan Baku Lain',
@@ -31,6 +32,8 @@ const ATURAN_KATEGORI = [
   [KATEGORI.PENGINAPAN, ['hotel', 'kos', 'kost', 'penginapan', 'airbnb', 'homestay', 'oyo', 'reddoorz', 'sewa kamar', 'guest house', 'losmen', 'wisma']],
   [KATEGORI.TRANSPORT, ['lalamove', 'gojek', 'gocar', 'goride', 'gosend', 'grab', 'maxim', 'ojek', 'ojol', 'bensin', 'bbm', 'solar', 'pertalite', 'pertamax', 'tol', 'parkir', 'travel', 'tiket', 'pesawat', 'kereta', 'bus', 'ekspedisi', 'cargo', 'kargo', 'ongkir', 'truk', 'pickup', 'pick up', 'deliveree', 'jne', 'jnt', 'j&t', 'sicepat', 'angkut', 'kirim', 'transport', 'taksi', 'taxi', 'kapal', 'bagasi']],
   [KATEGORI.RUKO, ['listrik', 'pln', 'token', 'pdam', 'air ruko', 'sewa ruko', 'internet', 'wifi', 'indihome', 'iuran']],
+  // Sewa alat & biaya admin lapangan (pembukuan lama: tab "admin"), bukan kelalaian.
+  [KATEGORI.ADMIN, ['sewa', 'rental', 'kuota', 'pulsa', 'cctv', 'laundry', 'laundrey', 'londri', 'print', 'fotokopi', 'materai', 'biaya admin', 'admin bank']],
   [KATEGORI.NON_KONSUMTIF, ['sapu', 'pel', 'etalase', 'ember', 'alat', 'gunting', 'pisau', 'terpal', 'kabel', 'lampu', 'stop kontak', 'colokan', 'meja', 'kursi', 'cooler', 'cool box', 'freezer', 'rak', 'obeng', 'tang', 'torch', 'grill', 'baskom', 'nampan', 'talenan', 'tali', 'kompor', 'regulator', 'selang', 'panci', 'wajan', 'capit', 'spatula', 'termos', 'banner', 'spanduk']],
   [KATEGORI.KONSUMTIF, ['sumpit', 'wrap', 'kertas', 'kotak', 'box', 'packaging', 'kemasan', 'kantong', 'plastik', 'kresek', 'sarung tangan', 'tisu', 'tissue', 'mika', 'cup', 'garpu', 'sendok', 'tusuk', 'sedotan', 'lakban', 'label', 'stiker', 'sabun']],
   [KATEGORI.BAHAN_LAIN, ['bumbu', 'keju', 'mozzarella', 'mozza', 'saus', 'saos', 'topping', 'cumi']],
@@ -59,11 +62,32 @@ export function tebakMetode(teks, adaFoto = false) {
 
 // ---------- Pengeluaran ----------
 
+// Kata-kata yang menandakan obrolan/koreksi, bukan laporan pengeluaran.
+const KATA_DISKUSI = ['kamu', 'kok', 'kenapa', 'salah', 'harusnya', 'seharusnya', 'maksud', 'maksudnya', 'dong', 'gimana', 'bagaimana',
+  'tolong', 'bot', 'cantumin', 'cantumkan', 'dicantumkan', 'bukan', 'betul', 'benar', 'apakah', 'berarti', 'tadi', 'sih', 'deh',
+  'kan', 'emang', 'memang', 'gak', 'nggak', 'ga', 'gimna', 'kayaknya', 'sepertinya', 'bentuknya', 'bentuk'];
+
+// Alasan sebuah baris tidak dicatat, atau null kalau baris itu laporan pengeluaran.
+export function alasanBukanLaporan(baris) {
+  const t = String(baris).toLowerCase();
+  if (t.includes('?')) return 'pertanyaan';
+  if (KATA_DISKUSI.some((k) => new RegExp(`(^|[^a-z])${k}($|[^a-z])`).test(t))) return 'obrolan';
+  if (t.split(/\s+/).filter(Boolean).length > 12) return 'terlalu panjang';
+  if (findMoney(t).length > 1) return 'lebih dari satu harga';
+  return null;
+}
+
 // Satu pesan bisa berisi beberapa baris pengeluaran:
 //   "lalamove 150k"
 //   "makan malam 120rb cash\nember 2 unit @30rb"
 // Baris tanpa nominal dan baris "total ..." diabaikan.
-export function parsePengeluaran(teks, { adaFoto = false } = {}) {
+export function parsePengeluaran(teks, opsi = {}) {
+  return parsePengeluaranDetail(teks, opsi).items;
+}
+
+// Seperti parsePengeluaran, ditambah daftar baris bernominal yang tidak dicatat beserta alasannya.
+export function parsePengeluaranDetail(teks, { adaFoto = false } = {}) {
+  const dilewati = [];
   // Metode untuk semua baris diambil dari baris tanpa nominal ("cash semua") atau dari foto bukti trf.
   const barisTanpaNominal = String(teks ?? '').split(/\n+/).filter((b) => !findMoney(b).length).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
@@ -73,6 +97,8 @@ export function parsePengeluaran(teks, { adaFoto = false } = {}) {
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
     if (!uang.length) continue;
+    const alasan = alasanBukanLaporan(baris);
+    if (alasan) { dilewati.push({ baris, alasan }); continue; }
     const u = uang[uang.length - 1];
     let nominal = u.nilai;
 
@@ -102,7 +128,7 @@ export function parsePengeluaran(teks, { adaFoto = false } = {}) {
       metode: tebakMetode(baris, false) || metodePesan,
     });
   }
-  return items;
+  return { items, dilewati };
 }
 
 // ---------- Setup event ----------
