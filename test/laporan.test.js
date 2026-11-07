@@ -161,7 +161,7 @@ test('data grafik: omzet, 10 kelompok biaya + porsi, laba; jumlah biaya = total 
   // Barang kering dipisah dari lain-lain: 50rb konsumtif + 25rb non-konsumtif
   assert.equal(g.find(([n]) => n === 'Barang kering')[1], 75000);
   assert.equal(g.find(([n]) => n === 'Tak terduga dll')[1], 50000);
-  assert.equal(warnaKelompok(KELOMPOK_GRAFIK[6]), '#d45d8c');
+  assert.equal(warnaKelompok(KELOMPOK_GRAFIK[6]), '#7baaf7'); // biru muda bawaan Google
 });
 
 test('data harian: omzet dan pengeluaran per tanggal', () => {

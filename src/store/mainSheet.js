@@ -112,16 +112,20 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 260 }, fields: 'pixelSize' } });
   req.push({ unmergeCells: { range: sel(4, 160, 1, 20) } });
   req.push({ repeatCell: { range: sel(KOMPOSISI.judul, 160, 11, 20), cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat' } });
-  // Warna tema = warna kategori, supaya potongan pie chart sama dengan warna di tabel komposisi.
+  // Tema dikembalikan ke warna bawaan Google (versi sebelumnya sempat mengubahnya; tema khusus
+  // membuat file tidak bisa dibuka di aplikasi Google Sheets versi lama).
   const tema = meta.data.properties?.spreadsheetTheme;
   if (tema?.themeColors) {
     const aksen = Object.fromEntries(KELOMPOK_GRAFIK.slice(0, 6).map((k, i) => [`ACCENT${i + 1}`, warna(k.warna)]));
-    req.push({
-      updateSpreadsheetProperties: {
-        properties: { spreadsheetTheme: { ...tema, themeColors: tema.themeColors.map((t) => (aksen[t.colorType] ? { colorType: t.colorType, color: { rgbColor: aksen[t.colorType] } } : t)) } },
-        fields: 'spreadsheetTheme',
-      },
-    });
+    const beda = tema.themeColors.some((t) => aksen[t.colorType] && Math.abs((t.color?.rgbColor?.red || 0) - aksen[t.colorType].red) > 0.01);
+    if (beda) {
+      req.push({
+        updateSpreadsheetProperties: {
+          properties: { spreadsheetTheme: { ...tema, themeColors: tema.themeColors.map((t) => (aksen[t.colorType] ? { colorType: t.colorType, color: { rgbColor: aksen[t.colorType] } } : t)) } },
+          fields: 'spreadsheetTheme',
+        },
+      });
+    }
   }
 
   format(sel(1, 1, 1, 10), { textFormat: { bold: true, fontSize: 16, foregroundColorStyle: { rgbColor: warna('#E8710A') } } }, 'textFormat');
@@ -231,7 +235,7 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   }
   const sumberSel = (r1, r2, kol) => ({ sourceRange: { sources: [sel(r1, r2, kol, kol + 1)] } });
   const posisi = (baris, kolom, w, h) => ({ overlayPosition: { anchorCell: { sheetId, rowIndex: baris - 1, columnIndex: kolom }, widthPixels: w, heightPixels: h } });
-  const judulGrafik = { titleTextFormat: { bold: true, fontSize: 14 }, fontName: 'Roboto' };
+  const judulGrafik = {};
   // Atas: omzet & pengeluaran per tanggal, selebar area kanan.
   req.push({
     addChart: {
@@ -260,8 +264,7 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
     addChart: {
       chart: {
         spec: {
-          title: 'Porsi Biaya',
-          subtitle: 'persentase dari total biaya event',
+          title: 'Porsi Biaya (% dari total biaya)',
           ...judulGrafik,
           pieChart: { legendPosition: 'LABELED_LEGEND', domain: sumberSel(K.data + 1, K.akhir - 1, 11), series: sumberSel(K.data + 1, K.akhir - 1, 12), pieHole: 0.5 },
         },
@@ -285,8 +288,6 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
               series: sumberSel(K.data, K.akhir - 1, 12),
               targetAxis: 'BOTTOM_AXIS',
               colorStyle: { rgbColor: warna(WARNA_NETRAL) },
-              dataLabel: { type: 'DATA', placement: 'OUTSIDE_END' },
-              styleOverrides: KELOMPOK_GRAFIK.map((k, i) => ({ index: i + 1, colorStyle: { rgbColor: warna(warnaKelompok(k)) } })),
             }],
           },
         },

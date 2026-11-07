@@ -36,19 +36,20 @@ export function persenFeePic(ownerHadir) {
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-// Kelompok biaya di grafik, urut sesuai warna tema file event: 6 warna utama (aksen tema),
-// lalu 4 warna muda (Google memakai versi lebih terang dari aksen 1-4 untuk potongan ke-7 dst.).
+// Kelompok biaya di grafik. Warnanya = urutan warna bawaan Google Sheets untuk pie chart
+// (6 warna utama, lalu versi lebih muda dari warna 1-4), jadi potongan pie otomatis sama dengan
+// warna di tabel tanpa mengubah tema file (tema khusus tidak bisa dibuka aplikasi Sheets versi lama).
 export const KELOMPOK_GRAFIK = [
-  { nama: 'Bahan baku', warna: '#C2185B' },
-  { nama: 'Transport', warna: '#1A73E8' },
-  { nama: 'Makan & minum', warna: '#0B8043' },
-  { nama: 'Gaji & bonus', warna: '#6D4C41' },
-  { nama: 'Bagi hasil IO', warna: '#E8710A' },
-  { nama: 'Iklan', warna: '#F9AB00' },
-  { nama: 'Barang kering', muda: 0 },
-  { nama: 'Penginapan', muda: 1 },
-  { nama: 'Sewa & admin', muda: 2 },
-  { nama: 'Tak terduga dll', muda: 3 },
+  { nama: 'Transport', warna: '#4285F4' },
+  { nama: 'Bahan baku', warna: '#EA4335' },
+  { nama: 'Iklan', warna: '#FBBC04' },
+  { nama: 'Makan & minum', warna: '#34A853' },
+  { nama: 'Bagi hasil IO', warna: '#FF6D01' },
+  { nama: 'Gaji & bonus', warna: '#46BDC6' },
+  { nama: 'Penginapan', muda: 0 },
+  { nama: 'Barang kering', muda: 1 },
+  { nama: 'Tak terduga dll', muda: 2 },
+  { nama: 'Sewa & admin', muda: 3 },
 ];
 export const TERANG_GRAFIK = 0.3; // seberapa terang warna muda dibanding aksennya
 export function warnaKelompok(k) {
