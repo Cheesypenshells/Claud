@@ -413,16 +413,28 @@ export class SheetsStore {
       });
   }
 
+  // Menambah baris di bawah baris terakhir. Tidak memakai values.append karena Google bisa salah menebak
+  // letak tabel (misalnya ada kolom tersembunyi) dan menulis baris baru di atas judul kolom.
   async append(tab, row) {
-    const { header } = await this.baca(tab);
+    this.cache.delete(tab);
+    const { header, rows } = await this.baca(tab);
     const values = header.map((h) => row[h] ?? '');
-    await this.api.spreadsheets.values.append({
+    const nomorBaris = rows.length + 2;
+    const tulis = () => this.api.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
-      range: `${q(tab)}!A1`,
+      range: `${q(tab)}!A${nomorBaris}:${kolom(header.length)}${nomorBaris}`,
       valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [values] },
     });
+    try {
+      await tulis();
+    } catch (err) {
+      if (!/exceeds grid limits/i.test(err.message)) throw err;
+      const meta = await this.api.spreadsheets.get({ spreadsheetId: this.spreadsheetId, fields: 'sheets(properties(sheetId,title))' });
+      const sheetId = meta.data.sheets.find((x) => x.properties.title === tab).properties.sheetId;
+      await this.api.spreadsheets.batchUpdate({ spreadsheetId: this.spreadsheetId, requestBody: { requests: [{ appendDimension: { sheetId, dimension: 'ROWS', length: 500 } }] } });
+      await tulis();
+    }
     this.cache.delete(tab);
     return row;
   }

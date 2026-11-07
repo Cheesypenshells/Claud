@@ -23,7 +23,7 @@ export async function tambahTim(ctx, pesan, event, orang) {
       nama: o.nama,
       peran: o.peran,
       upah_harian: o.upah_harian,
-      mulai: o.mulai || (tanggalLokal(pesan.waktu) > event.mulai ? tanggalLokal(pesan.waktu) : event.mulai),
+      mulai: o.mulai || event.mulai,
       selesai: '',
       status: 'AKTIF',
       catatan: '',
@@ -63,7 +63,10 @@ export async function perintahTambah(ctx, pesan, event, cmd) {
   const peran = parseTim(`${cmd.argumen[0] || ''}: x`)[0]?.peran;
   const sisa = cmd.argumen.slice(1).join(' ');
   if (!peran || !sisa) return balas('Format: *#tambah <peran> <nama> [upah]*\nPeran: PIC, Tetap, DW, Kasir\nContoh: #tambah DW Joko 120rb');
-  const ditambah = await tambahTim(ctx, pesan, event, parseOrang(sisa, peran));
+  // Ditambah di tengah event: mulai kerja hari ini (untuk event yang sudah lewat: tanggal mulai event).
+  const hariIni = tanggalLokal(pesan.waktu);
+  const mulai = hariIni > event.mulai && hariIni <= event.selesai ? hariIni : event.mulai;
+  const ditambah = await tambahTim(ctx, pesan, event, parseOrang(sisa, peran).map((o) => ({ ...o, mulai })));
   if (!ditambah.length) return balas(`⚠️ ${bersihkan(sisa)} sudah ada di tim ${event.kode}.`);
   return balas(`✅ Ditambahkan ke tim ${event.kode} mulai ${ditambah[0].mulai}:\n${ditambah.map(barisOrang).join('\n')}`);
 }

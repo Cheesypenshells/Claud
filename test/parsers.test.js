@@ -119,3 +119,12 @@ test('parsePerintah', () => {
   assert.equal(parsePerintah('halo'), null);
   assert.equal(parsePerintah('#trf 3jt omzet\nbaris 2').badan, 'baris 2');
 });
+
+test('parseOrang: kata pengisi dibuang, orang tanpa nama diberi nomor', async () => {
+  const { parseOrang } = await import('../src/parsers.js');
+  const nama = (t, p) => parseOrang(t, p).map((o) => `${o.nama}:${o.upah_harian}`);
+  assert.deepEqual(nama('Karyawan senior nya imam', 'Tetap'), ['Imam:0']);
+  assert.deepEqual(nama('Dw, dw, dw', 'DW'), ['DW 1:100000', 'DW 2:100000', 'DW 3:100000']);
+  assert.deepEqual(nama('4 orang', 'DW'), ['DW 1:100000', 'DW 2:100000', 'DW 3:100000', 'DW 4:100000']);
+  assert.deepEqual(nama('Joko, Tono 120rb', 'DW'), ['Joko:100000', 'Tono:120000']);
+});

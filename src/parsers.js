@@ -240,17 +240,31 @@ const KUNCI_PERAN = {
   kasir: PERAN.KASIR,
 };
 
+// Kata pengisi yang bukan nama: "karyawan senior nya imam" -> "imam".
+const KATA_PENGISI = /^((karyawan|senior|junior|tetap|nya|namanya|yaitu|adalah|yang|jaga|si|pak|bu|mas|mbak|dw|daily|worker|freelance|kasir|kasirnya|pic|picnya|orang|org)\s+)+/i;
+const HANYA_PERAN = /^(karyawan|senior|junior|tetap|dw|daily worker|freelance|kasir|pic|orang|org)$/i;
+
 export function parseOrang(teks, peran) {
-  return String(teks)
+  const t = bersihkan(teks);
+  // "4 orang" / "3 dw" -> orang tanpa nama: DW 1, DW 2, ...
+  const jumlah = t.match(/^(\d+)\s*(orang|org|dw|daily worker|freelance|kasir|senior|karyawan)?(\s+(@|upah)?\s*(.*))?$/i);
+  if (jumlah && Number(jumlah[1]) > 0 && Number(jumlah[1]) <= 20) {
+    const upah = parseMoney(jumlah[5] || '');
+    return Array.from({ length: Number(jumlah[1]) }, (_, i) => ({ nama: `${peran} ${i + 1}`, peran, upah_harian: upah ?? UPAH_DEFAULT[peran] }));
+  }
+  let tanpaNama = 0;
+  return t
     .split(/[,;]|\bdan\b/i)
     .map((x) => bersihkan(x))
     .filter((x) => x && x !== '-')
     .map((x) => {
       const upah = parseMoney(x);
-      const nama = bersihkan(x.replace(/(rp\.?\s*)?[\d.,]+\s*(juta|jt|ribu|rb|k)?/gi, '').replace(/[()]/g, ''));
+      let nama = bersihkan(x.replace(/(rp\.?\s*)?[\d.,]+\s*(juta|jt|ribu|rb|k)?/gi, '').replace(/[()]/g, ''));
+      if (!HANYA_PERAN.test(nama)) nama = bersihkan(nama.replace(KATA_PENGISI, ''));
+      if (!nama || HANYA_PERAN.test(nama)) nama = `${peran} ${++tanpaNama}`;
+      else nama = nama.charAt(0).toUpperCase() + nama.slice(1);
       return { nama, peran, upah_harian: upah ?? UPAH_DEFAULT[peran] };
-    })
-    .filter((o) => o.nama);
+    });
 }
 
 export function parseTim(teks) {
