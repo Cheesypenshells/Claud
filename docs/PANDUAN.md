@@ -4,9 +4,32 @@ Ketik `#bantuan` di grup mana pun untuk melihat ringkasan perintah.
 
 ---
 
-## 1. Membuka event baru (owner, di grup pengeluaran)
+## 1. Membuka event baru
 
-Buat grup WhatsApp baru, misalnya **Pengeluaran Jambi**, berisi owner, PIC, dan nomor bot. Lalu kirim:
+### Cara paling mudah: bot bertanya
+1. Buat grup WhatsApp baru, misalnya **Pengeluaran Jambi**, lalu masukkan PIC dan nomor bot.
+2. Bot langsung menyapa: *"Grup ini untuk apa?"* Balas **1** (grup pengeluaran event baru).
+   Kalau bot tidak menyapa, ketik `#mulai` atau `#eventbaru`.
+3. Bot menanyakan 13 hal satu per satu: kota, IO, tanggal, wilayah harga, bagi hasil (balas *ok* untuk 30%), admin, jadwal transfer, jam buka, target, PIC, senior, DW, dan kasir. Balas *-* untuk yang tidak ada.
+4. Bot menampilkan ringkasan. Balas **ya** untuk menyimpan, atau nomor pertanyaan untuk mengubahnya (misalnya *5*).
+5. Kode event dibuat otomatis, misalnya **JMB26-11** (Jambi, November 2026).
+
+Hanya jawaban owner yang dibaca bot. Ketik **batal** untuk berhenti.
+
+**Grup tim:** masukkan bot ke grup tim, balas **2**, lalu pilih event dari daftar.
+**Grup kas ruko:** balas **3**.
+
+### Mengubah data event lewat chat (owner, di grup pengeluaran)
+| Contoh | Hasil |
+|---|---|
+| `#ubah bagi hasil 27` | Bagi hasil jadi 27% |
+| `#ubah tanggal 1-16 Nov 2026` | Tanggal event diperpanjang |
+| `#ubah admin 750rb` | Biaya admin IO diganti |
+| `#ubah jam buka 12.00` | Jam buka booth (patokan absensi) |
+| `#tambah DW Rina 100rb` / `#berhenti Joko` | Tim berubah di tengah event |
+
+### Cara lama: satu blok sekaligus
+Owner juga tetap bisa mengirim semuanya dalam satu pesan:
 
 ```
 #event
@@ -16,19 +39,15 @@ IO: Kepo Market
 Tanggal: 1-14 Nov 2026
 Wilayah harga: Sumatra
 Target omzet: 150jt
-Bagi hasil: 27%
+Bagi hasil: 30%
 Admin: 500rb
 Jadwal trf: H+1, Jumat-Minggu ditransfer Senin
 Jam buka: 11.00
 PIC: Budi
 Senior: Andi, Rudi
-DW: Joko, Tono
-Kasir: Budi
+DW: Joko 120rb, Tono
+Kasir: Sari
 ```
-
-- **Wajib:** Kode, Kota, IO, Tanggal. Baris lain boleh dikosongkan atau dikirim belakangan.
-- **Jadwal trf:** tulis `setelah event selesai` kalau IO mentransfer sekali di akhir.
-- **Mengubah data:** kirim lagi blok `#event` dengan kode yang sama.
 
 Lalu di **grup tim** event tersebut, owner mengetik: `#daftar event JMB26-11`
 
@@ -173,6 +192,7 @@ Bahan yang dikenali dan harganya ada di tab **Harga Bahan** (bisa diubah).
 
 ### Porsi gratis
 `#gratis 3 porsi mozzarella isi 4 untuk @influencer` → dicatat 12 pcs, dinilai dengan harga jual sesuai wilayah (tab **Harga Menu**).
+**Budget porsi gratis Rp 500.000 per event.** Setiap kali `#gratis`, bot membalas sisa budget, dan memberi peringatan ⚠️ kalau sudah terlewati.
 
 ### Kategori pengeluaran otomatis
 | Contoh yang diketik | Masuk kategori |

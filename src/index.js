@@ -3,7 +3,10 @@
 import { config } from './config.js';
 import { SheetsStore } from './store/sheets.js';
 import { MemoryStore } from './store/memory.js';
-import { handlePesan } from './handlers.js';
+import { handlePesan, handleGrupBaru } from './handlers.js';
+import { buatSesi } from './sesi.js';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
 import { isiHargaAwal, perbaruiMain } from './main.js';
@@ -26,7 +29,8 @@ async function main() {
 
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
-  const ctx = { store, ownerIds: config.ownerIds };
+  mkdirSync(config.folderLogin, { recursive: true });
+  const ctx = { store, ownerIds: config.ownerIds, sesi: buatSesi(path.join(config.folderLogin, 'sesi.json')) };
   // Sheet Main dihitung ulang paling lambat 30 detik setelah ada laporan baru.
   let perluPerbaruiMain = false;
 
@@ -45,6 +49,9 @@ async function main() {
       const balasan = await handlePesan(ctx, pesan);
       for (const b of balasan) await balasKe(b.text);
       if (balasan.length) perluPerbaruiMain = true;
+    }),
+    onGrupBaru: (groupId) => jalankan(async () => {
+      for (const b of await handleGrupBaru(ctx, groupId)) await wa.kirim(groupId, b.text);
     }),
   });
 

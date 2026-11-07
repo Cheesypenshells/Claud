@@ -9,6 +9,7 @@ import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
 import { parsePerintah, parseEvent, parsePengeluaran, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
 import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
+import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -48,8 +49,11 @@ const BANTUAN = {
 • #keluar / #restock / #kembali + bahan per baris (mozzarella 20 pack)
 • #gratis 3 porsi mozzarella isi 4 untuk @influencer`,
   owner: `*Khusus owner*
+• #eventbaru - bot bertanya data event satu per satu
+• #mulai - bot menanyakan grup ini untuk apa
+• #ubah bagi hasil 27 / #ubah tanggal 1-16 Nov 2026 - ubah data event
 • #daftar pengeluaran KODE | #daftar event KODE | #daftar ruko | #daftar gudang
-• #event (blok setup event, lihat panduan)
+• #event (blok setup event sekaligus, lihat panduan)
 • #rekap bulan [YYYY-MM]`,
 };
 
@@ -316,6 +320,13 @@ async function perintahRekap(ctx, pesan, grup, cmd, isOwner) {
   return balas(formatRekapEvent(r, hariIni));
 }
 
+// Bot baru dimasukkan ke grup: kalau grup belum terdaftar, bot menyapa dan bertanya grup ini untuk apa.
+export async function handleGrupBaru(ctx, groupId) {
+  if (await cariGrup(ctx.store, groupId)) return [];
+  if (ctx.sesi.get(groupId)?.jenis === 'sapaan') return []; // sapaan sudah dikirim (event WhatsApp bisa datang dua kali)
+  return balas(mulaiSapaan(ctx, groupId));
+}
+
 export async function handlePesan(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
@@ -326,9 +337,25 @@ export async function handlePesan(ctx, pesan) {
   if (cmd?.perintah === 'idsaya') {
     return balas(`ID WhatsApp ${pesan.senderName || ''}: *${pesan.senderId}*${isOwner ? ' (owner)' : ''}`);
   }
-  if (cmd && ['daftar', 'event'].includes(cmd.perintah)) {
+
+  // Tanya-jawab bot (setup grup / event). Hanya jawaban owner yang dibaca; perintah # tetap jalan seperti biasa.
+  if (isOwner && ctx.sesi && (!cmd || cmd.perintah === 'batal' && !cmd.argumen.length)) {
+    const hasil = prosesJawaban(ctx, pesan, { events: await ctx.store.all('Event') });
+    if (hasil?.blok) {
+      return perintahEvent(ctx, pesan, grup, { badan: hasil.blok.split('\n').slice(1).join('\n') });
+    }
+    if (hasil?.daftar) {
+      return perintahDaftar(ctx, pesan, grup, { argumen: [hasil.daftar, hasil.kode || ''] });
+    }
+    if (hasil) return balas(hasil.balasan);
+  }
+
+  if (cmd && ['daftar', 'event', 'eventbaru', 'mulai'].includes(cmd.perintah)) {
     if (!ctx.ownerIds.size) return balas('⚠️ OWNER_IDS belum diisi di file .env. Ketik #idsaya, lalu masukkan ID tersebut ke OWNER_IDS.');
     if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
+    if (cmd.perintah === 'eventbaru') return balas(mulaiEventBaru(ctx, pesan.groupId));
+    if (cmd.perintah === 'mulai') return balas(mulaiSapaan(ctx, pesan.groupId));
+    if (cmd.perintah === 'event' && !cmd.badan.trim()) return balas(mulaiEventBaru(ctx, pesan.groupId));
     return cmd.perintah === 'daftar' ? perintahDaftar(ctx, pesan, grup, cmd) : perintahEvent(ctx, pesan, grup, cmd);
   }
 
@@ -393,6 +420,12 @@ export async function handlePesan(ctx, pesan) {
         return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.MASUK_IO, kodeEvent: event.kode, teks: teksTanpaPerintah });
       case 'potongan':
         return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.POTONGAN_IO, kodeEvent: event.kode, teks: teksTanpaPerintah });
+      case 'ubah': {
+        if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
+        const blok = blokUbah(event, teksTanpaPerintah);
+        if (!blok) return balas('Format: *#ubah <data> <nilai baru>*\nContoh: #ubah bagi hasil 27 | #ubah tanggal 1-16 Nov 2026 | #ubah admin 750rb | #ubah jam buka 12.00\nData: kota, io, tanggal, wilayah, bagi hasil, admin, jadwal, jam buka, target, pic');
+        return perintahEvent(ctx, pesan, grup, { badan: blok.split('\n').slice(1).join('\n') });
+      }
       case 'selesai':
         if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
         await ctx.store.update('Event', 'kode', event.kode, { status: 'SELESAI' });

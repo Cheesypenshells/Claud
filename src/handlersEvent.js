@@ -3,6 +3,7 @@
 import { STATUS } from './schema.js';
 import { parseTim, parseOrang, parseBahan, parseGratis, PERAN } from './parsers.js';
 import { cocokkan, hargaJual } from './katalog.js';
+import { ATURAN } from './laporan.js';
 import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan } from './util.js';
 
 const balas = (text) => [{ text }];
@@ -147,5 +148,11 @@ export async function perintahGratis(ctx, pesan, event, cmd) {
     total += nilai;
     baris.push(`${it.porsi ? `${it.porsi} porsi × ${it.isi} pcs` : `${it.pcs} pcs`} ${it.menu}${it.untuk ? ` untuk ${it.untuk}` : ''} = ${it.pcs} pcs (${rupiah(nilai)})`);
   }
-  return balas(`🎁 *Porsi gratis tercatat* (${event.kode})\n${baris.join('\n')}\nNilai harga jual: *${rupiah(total)}*`);
+  const semua = (await ctx.store.all('Porsi Gratis')).filter((g) => g.kode_event === event.kode && g.status !== STATUS.BATAL);
+  const terpakai = semua.reduce((s, g) => s + Number(g.pcs || 0) * hargaJual(hargaMenu.find((m) => m.menu === g.menu) || {}, event.wilayah), 0);
+  const sisa = ATURAN.budgetPorsiGratis - terpakai;
+  const infoBudget = sisa >= 0
+    ? `Budget porsi gratis event: terpakai ${rupiah(terpakai)} dari ${rupiah(ATURAN.budgetPorsiGratis)}, sisa *${rupiah(sisa)}*`
+    : `⚠️ *Budget porsi gratis terlewati!* Terpakai ${rupiah(terpakai)} dari ${rupiah(ATURAN.budgetPorsiGratis)} (lebih ${rupiah(-sisa)})`;
+  return balas(`🎁 *Porsi gratis tercatat* (${event.kode})\n${baris.join('\n')}\nNilai harga jual: *${rupiah(total)}*\n\n${infoBudget}`);
 }

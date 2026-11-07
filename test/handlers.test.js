@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { handlePesan } from '../src/handlers.js';
 import { MemoryStore } from '../src/store/memory.js';
 import { buatPenjadwal } from '../src/scheduler.js';
+import { buatSesi } from '../src/sesi.js';
 
 const OWNER = '6281111111111';
 const PIC = '6282222222222';
@@ -15,7 +16,7 @@ const WAKTU = new Date('2026-11-03T07:00:00Z');
 
 function setup() {
   const store = new MemoryStore();
-  const ctx = { store, ownerIds: new Set([OWNER]) };
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null) };
   let n = 0;
   const kirim = async (groupId, senderId, text, extra = {}) => {
     const res = await handlePesan(ctx, {
@@ -24,7 +25,7 @@ function setup() {
     });
     return res.map((r) => r.text).join('\n');
   };
-  return { store, kirim };
+  return { store, kirim, ctx };
 }
 
 const BLOK_EVENT = `#event
@@ -183,4 +184,65 @@ test('tim, bahan, porsi gratis, dan data sheet Main', async () => {
   const biaya = Object.fromEntries(bagian('BIAYA').map((x) => [x[4], x[5]]));
   assert.equal(biaya['Barang kering non-konsumtif ⚠️ kelalaian'], 25000);
   assert.equal(biaya['Penginapan'], 700000);
+});
+
+test('tanya-jawab: grup baru, setup event, ubah data lewat chat', async () => {
+  const { store, kirim, ctx } = setup();
+  const { handleGrupBaru } = await import('../src/handlers.js');
+
+  const sapa = (await handleGrupBaru(ctx, G_KELUAR)).map((b) => b.text).join('');
+  assert.match(sapa, /Grup ini untuk apa/);
+  assert.equal((await handleGrupBaru(ctx, G_KELUAR)).length, 0); // tidak menyapa dua kali
+
+  assert.equal(await kirim(G_KELUAR, PIC, '1'), ''); // bukan owner: diabaikan
+  assert.match(await kirim(G_KELUAR, OWNER, '1'), /\(1\/13\) Lokasi/);
+  const jawaban = ['Jambi', 'Kepo Market', '2-8 Nov 2026', '2', 'ok', '500rb', '1', '11.00', '150jt', 'Budi', 'Andi', 'Joko, Tono 120rb', 'Sari'];
+  let r = '';
+  for (const j of jawaban.slice(0, 2)) r = await kirim(G_KELUAR, OWNER, j);
+  assert.match(await kirim(G_KELUAR, OWNER, 'besok'), /Format tanggal belum terbaca/);
+  for (const j of jawaban.slice(2)) r = await kirim(G_KELUAR, OWNER, j);
+  assert.match(r, /Cek data event/);
+  assert.match(r, /5\. Bagi hasil: 30%/);
+
+  // ubah jawaban no. 5 sebelum simpan
+  assert.match(await kirim(G_KELUAR, OWNER, '5'), /Bagi hasil IO/);
+  assert.match(await kirim(G_KELUAR, OWNER, '27'), /5\. Bagi hasil: 27%/);
+
+  r = await kirim(G_KELUAR, OWNER, 'ya');
+  assert.match(r, /Event JMB26-11 dibuat/);
+  assert.match(r, /Bagi hasil IO: 27%/);
+  assert.match(r, /Tono - DW Rp 120.000\/hari/);
+  const ev = (await store.all('Event'))[0];
+  assert.equal(ev.wilayah, 'Sumatra');
+  assert.equal(ev.target_omzet, 150000000);
+  assert.equal((await store.all('Tim Event')).length, 5);
+
+  // setelah tersimpan, chat biasa kembali jadi pencatatan pengeluaran
+  assert.match(await kirim(G_KELUAR, OWNER, 'lalamove 150k'), /Pengeluaran tercatat/);
+
+  // ubah lewat chat
+  assert.match(await kirim(G_KELUAR, OWNER, '#ubah bagi hasil 25'), /Bagi hasil IO: 25%/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#ubah tanggal 2-10 Nov 2026'), /2026-11-02 s\/d 2026-11-10/);
+  assert.equal((await store.all('Event')).length, 1);
+
+  // grup tim: pilih event dari daftar
+  await handleGrupBaru(ctx, G_TIM);
+  assert.match(await kirim(G_TIM, OWNER, '2'), /1 = JMB26-11/);
+  assert.match(await kirim(G_TIM, OWNER, '1'), /grup event\* untuk event JMB26-11/);
+
+  // grup ruko
+  await handleGrupBaru(ctx, G_RUKO);
+  assert.match(await kirim(G_RUKO, OWNER, '3'), /grup ruko/);
+
+  // batal
+  assert.match(await kirim(G_KELUAR, OWNER, '#eventbaru'), /Setup event baru/);
+  assert.match(await kirim(G_KELUAR, OWNER, 'batal'), /dibatalkan/);
+});
+
+test('kode event otomatis', async () => {
+  const { buatKodeEvent } = await import('../src/wizard.js');
+  assert.equal(buatKodeEvent('Jambi', '2026-11-02'), 'JMB26-11');
+  assert.equal(buatKodeEvent('Palembang', '2026-12-01'), 'PLM26-12');
+  assert.equal(buatKodeEvent('Jambi', '2026-11-20', ['JMB26-11']), 'JMB26-11-2');
+  assert.equal(buatKodeEvent('Bali', '2027-01-05'), 'BAL27-01');
 });

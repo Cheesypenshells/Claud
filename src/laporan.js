@@ -19,13 +19,14 @@ export const ATURAN = {
   bonusKasir: [[30000000, 200000], [20000000, 150000], [10000000, 100000]], // omzet hari itu >= batas
   budgetMakanKaryawan: 30000,
   budgetMakanPic: 100000,
+  budgetPorsiGratis: 500000, // per event, dinilai dengan harga jual
 };
 
 // Kategori lama (versi awal bot) dibaca sebagai kategori baru.
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-export const BATAS_BARIS = { INFO: 1, RINGKASAN: 9, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 9, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -162,8 +163,10 @@ export function hitungEvent(event, data) {
   const totalBiaya = biaya.reduce((s, b) => s + b[1], 0);
   const laba = omzetBersih - totalBiaya + nilaiSisaKembali;
 
+  const nilaiGratis = barisGratis.reduce((s, g) => s + g.nilai, 0);
+
   return {
-    event, hari, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba,
+    event, hari, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
     iklan: keluar.filter((t) => t.kategori === KATEGORI.IKLAN),
   };
@@ -199,6 +202,8 @@ export function barisDataMain(r) {
     r.budgetMakan - r.makanTerpakai >= 0 ? 'Sisa untuk makan bersama di akhir event' : '⚠️ Melebihi budget']]);
   tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), `${o.hari} hari`, o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
   tambah('IKLAN', r.iklan.map((t) => [t.tanggal, t.keterangan, Number(t.nominal) || 0]));
+  const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
+  tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
   tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]));
   return baris;

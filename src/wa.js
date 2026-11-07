@@ -50,7 +50,7 @@ function isiPesan(m) {
   return { teks, adaFoto };
 }
 
-export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan }) {
+export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan, onGrupBaru }) {
   const { state, saveCreds } = await useMultiFileAuthState(folderLogin);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
   const namaGrup = new Map();
@@ -105,6 +105,20 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
         console.log('[WA] Koneksi terputus, menyambung ulang dalam 5 detik...');
         setTimeout(sambung, 5000);
       }
+    });
+
+    // Bot dimasukkan ke grup baru.
+    sock.ev.on('groups.upsert', (grupBaru) => {
+      for (const g of grupBaru) onGrupBaru?.(g.id);
+    });
+    sock.ev.on('group-participants.update', ({ id, participants, action }) => {
+      const saya = angkaId(sock.user?.id);
+      const sayaLid = angkaId(sock.user?.lid);
+      const ditambah = action === 'add' && participants.some((p) => {
+        const n = angkaId(typeof p === 'string' ? p : p?.id);
+        return n && (n === saya || n === sayaLid);
+      });
+      if (ditambah) onGrupBaru?.(id);
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {

@@ -17,7 +17,7 @@ const BAGIAN = [
   { kode: 'MAKAN', judul: 'BUDGET MAKAN (akumulasi selama event)', warna: '#0B8043', mulai: 68, kolom: ['Total Budget', 'Sudah Terpakai', 'Sisa Budget', 'Keterangan'], rupiah: [0, 1, 2] },
   { kode: 'TIM', judul: 'TIM & GAJI (estimasi)', warna: '#8E24AA', mulai: 72, kolom: ['Nama', 'Peran', 'Hari Kerja', 'Upah per Hari', 'Total Upah', 'Estimasi Bonus', 'Total'], rupiah: [3, 4, 5, 6] },
   { kode: 'IKLAN', judul: '④ BIAYA IKLAN & ENDORSE', warna: '#F9AB00', mulai: 95, kolom: ['Tanggal', 'Keterangan', 'Nominal'], rupiah: [2] },
-  { kode: 'GRATIS', judul: 'PORSI GRATIS (dinilai harga jual)', warna: '#F9AB00', mulai: 108, kolom: ['Tanggal', 'Menu', 'Porsi', 'Total pcs', 'Harga per pcs', 'Nilai Jual', 'Diberikan Untuk'], rupiah: [4, 5] },
+  { kode: 'GRATIS', judul: 'PORSI GRATIS (harga jual, budget per event)', warna: '#F9AB00', mulai: 108, kolom: ['Tanggal', 'Menu', 'Porsi', 'Total pcs', 'Harga per pcs', 'Nilai Jual', 'Diberikan Untuk'], rupiah: [4, 5] },
   { kode: 'BAHAN', judul: '⑤ SISA BAHAN BAKU (dikembalikan ke gudang)', warna: '#C2185B', mulai: 121, kolom: ['Bahan', 'Satuan', 'Keluar', 'Restock', 'Dikembalikan', 'Terpakai', 'Harga', 'Nilai Terpakai', 'Nilai Dikembalikan'], rupiah: [6, 7, 8] },
 ];
 
@@ -65,6 +65,8 @@ export async function siapkanMain(api, spreadsheetId) {
     if (!b.tanpaJudulKolom) nilai.push({ range: `${TAB_MAIN}!B${b.mulai + 1}`, values: [b.kolom] });
     nilai.push({ range: `${TAB_MAIN}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
   }
+  const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
+  nilai.push({ range: `${TAB_MAIN}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   await api.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: 'USER_ENTERED', data: nilai } });
 
   // Tampilan.
