@@ -121,9 +121,20 @@ export function pecahBaris(baris) {
   return bagian;
 }
 
+// "semua uang valen", "semuanya pakai uang mama", "uang valen semua": berlaku untuk seluruh pesan,
+// di baris mana pun ditulis.
+const RE_UANG_SEMUA = /\b(?:semua(?:nya)?|sekalian)\s+(?:pakai\s+|pake\s+|dari\s+)?uang(?:nya)?\s+([a-z][a-z.]*)|\buang(?:nya)?\s+([a-z][a-z.]*)\s+(?:semua(?:nya)?|sekalian)\b/i;
+export function ambilUangSemua(teks) {
+  const m = String(teks ?? '').match(RE_UANG_SEMUA);
+  const siapa = m ? petaUangSiapa(m[1] || m[2]) : null;
+  if (!siapa) return { siapa: null, sisa: String(teks ?? '') };
+  return { siapa, sisa: String(teks).replace(m[0], ' ').replace(/[ \t]+/g, ' ').replace(/\s*,\s*(?=\n|$)/g, '') };
+}
+
 export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } = {}) {
   const dilewati = [];
-  const semuaBaris = String(teks ?? '').split(/\n+/).flatMap(pecahBaris);
+  const { siapa: siapaSemua, sisa: teksBersih } = ambilUangSemua(teks);
+  const semuaBaris = teksBersih.split(/\n+/).map((b) => b.trim()).filter(Boolean).flatMap(pecahBaris);
   // Metode, uang siapa & tanggal untuk semua baris diambil dari baris tanpa nominal
   // ("cash semua", "uang mama", "tanggal 25 sept") atau dari foto bukti trf.
   const barisTanpaNominal = semuaBaris.filter((b) => !findMoney(b).length).join(' ');
@@ -166,7 +177,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '' } =
       nominal,
       kategori: tebakKategori(baris),
       metode: tebakMetode(baris, false) || metodePesan,
-      dibayar_oleh: siapa || siapaPesan || '',
+      dibayar_oleh: siapaSemua || siapa || siapaPesan || '',
       ...(tanggal || tanggalPesan ? { tanggal: tanggal || tanggalPesan } : {}),
     });
   }

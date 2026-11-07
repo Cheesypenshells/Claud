@@ -86,7 +86,7 @@ Total pengeluaran event: Rp 330.000
   - Ubah: `#uang T0012 mama`. Lihat siapa harus diganti berapa: `#penggantian`.
   - Owner mencatat transfer penggantian: `#ganti Valen 500rb` (bukan biaya event).
   - Hasilnya ada di file event (bagian ⑥ Uang Siapa) dan PEMBUKUAN → tab **Penggantian Uang**.
-- **Beberapa pengeluaran sekaligus**: satu per baris, atau dalam satu baris dipisah koma: `Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept`. Tambahan pendek di akhir (`, uang mama` / `, cash`) berlaku untuk semuanya.
+- **Beberapa pengeluaran sekaligus**: satu per baris, atau dalam satu baris dipisah koma: `Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept`. Tambahan pendek di akhir (`, uang mama` / `, cash`) berlaku untuk semuanya. Kata `semua uang valen` (atau `uang valen semua`) di mana pun dalam pesan juga berlaku untuk semua item.
 - **Tanggal belanja** (kalau dilaporkan belakangan): tulis saja tanggalnya di baris itu, contoh `makan siang 22 sept 53rb` atau `tgl 22/9 bensin 50rb`. Bot mencatatnya di tanggal itu, bukan tanggal pesan dikirim.
 - **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.
 - **Salah catat:** `#batal T0002`. Bisa dilakukan owner atau orang yang mengirim.

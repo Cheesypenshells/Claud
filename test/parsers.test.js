@@ -164,3 +164,12 @@ test('satu baris beberapa pengeluaran dipisah koma', async () => {
   assert.equal(p('minum karyawan 67,865 ribu').items[0].nominal, 67865);
   assert.equal(p('Lalamove kerang ke P2 dan minum karyawan , lalamovenya harganya150k, dan untuk minum 67,865 ribu').items.length, 0);
 });
+
+test('"semua uang valen" berlaku untuk semua item di pesan, di mana pun ditulis', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  const { items } = p('Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept Semua uang valen', { hariIni: '2026-11-08' });
+  assert.deepEqual(items.map((i) => [i.keterangan, i.dibayar_oleh]), [['Listrik', 'Valen'], ['minuman', 'Valen'], ['lemon dan softex', 'Valen']]);
+  assert.deepEqual(p('makan 20rb\nbensin 30rb\nuang mama semua').items.map((i) => i.dibayar_oleh), ['Mama', 'Mama']);
+  // Tanpa "semua": hanya item yang menyebutnya
+  assert.deepEqual(p('hotel 300rb uang valen, makan 20rb').items.map((i) => i.dibayar_oleh), ['Valen', '']);
+});
