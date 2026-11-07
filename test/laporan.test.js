@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hitungEvent, barisDataMain, BATAS_BARIS } from '../src/laporan.js';
+import { hitungEvent, barisDataMain, BATAS_BARIS, KELOMPOK_GRAFIK, warnaKelompok } from '../src/laporan.js';
 import { BAHAN_AWAL, MENU_AWAL } from '../src/katalog.js';
 import { JENIS } from '../src/schema.js';
 
@@ -148,19 +148,20 @@ test('owner yang ikut bekerja tidak digaji dan tidak dapat fee PIC', () => {
   assert.equal(r.barisTim.find((o) => o.nama === 'Joko').upah, 300000);
 });
 
-test('data grafik: omzet, 10 kelompok biaya berpersen, laba; jumlah biaya = total biaya + fee PIC', () => {
+test('data grafik: omzet, 10 kelompok biaya + porsi, laba; jumlah biaya = total biaya + fee PIC', () => {
   const r = hitungEvent(event, data);
-  const g = barisDataMain(r).filter((x) => x[1] === 'GRAFIK').map((x) => [x[3], x[4]]);
+  const g = barisDataMain(r).filter((x) => x[1] === 'GRAFIK').map((x) => x.slice(3));
   assert.equal(g.length, 12);
   assert.equal(g[0][0], 'Omzet');
-  assert.match(g[11][0], /^Laba bersih \(margin /);
+  assert.equal(g[11][0], 'Laba bersih (margin)');
+  assert.deepEqual(g.slice(1, 11).map((x) => x[0]), KELOMPOK_GRAFIK.map((k) => k.nama));
   const biaya = g.slice(1, 11).reduce((s, [, v]) => s + v, 0);
   assert.equal(Math.round(biaya), Math.round(r.totalBiaya + r.feePic));
+  assert.ok(Math.abs(g.slice(1, 11).reduce((s, x) => s + x[2], 0) - 1) < 1e-9);
   // Barang kering dipisah dari lain-lain: 50rb konsumtif + 25rb non-konsumtif
-  const bk = g.find(([n]) => n.startsWith('Barang kering'));
-  assert.equal(bk[1], 75000);
-  assert.match(bk[0], /\(\d+(,\d+)?%\)$/);
-  assert.equal(g.find(([n]) => n.startsWith('Tak terduga'))[1], 50000);
+  assert.equal(g.find(([n]) => n === 'Barang kering')[1], 75000);
+  assert.equal(g.find(([n]) => n === 'Tak terduga dll')[1], 50000);
+  assert.equal(warnaKelompok(KELOMPOK_GRAFIK[6]), '#d45d8c');
 });
 
 test('data harian: omzet dan pengeluaran per tanggal', () => {

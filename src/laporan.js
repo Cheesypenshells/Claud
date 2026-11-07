@@ -36,6 +36,28 @@ export function persenFeePic(ownerHadir) {
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
+// Kelompok biaya di grafik, urut sesuai warna tema file event: 6 warna utama (aksen tema),
+// lalu 4 warna muda (Google memakai versi lebih terang dari aksen 1-4 untuk potongan ke-7 dst.).
+export const KELOMPOK_GRAFIK = [
+  { nama: 'Bahan baku', warna: '#C2185B' },
+  { nama: 'Transport', warna: '#1A73E8' },
+  { nama: 'Makan & minum', warna: '#0B8043' },
+  { nama: 'Gaji & bonus', warna: '#6D4C41' },
+  { nama: 'Bagi hasil IO', warna: '#E8710A' },
+  { nama: 'Iklan', warna: '#F9AB00' },
+  { nama: 'Barang kering', muda: 0 },
+  { nama: 'Penginapan', muda: 1 },
+  { nama: 'Sewa & admin', muda: 2 },
+  { nama: 'Tak terduga dll', muda: 3 },
+];
+export const TERANG_GRAFIK = 0.3; // seberapa terang warna muda dibanding aksennya
+export function warnaKelompok(k) {
+  if (k.warna) return k.warna;
+  const n = parseInt(KELOMPOK_GRAFIK[k.muda].warna.slice(1), 16);
+  const c = (v) => Math.round(v + (255 - v) * TERANG_GRAFIK).toString(16).padStart(2, '0');
+  return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
+}
+
 export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31 };
 
 function hariAktif(orang, tanggalJualan, event) {
@@ -253,28 +275,27 @@ export function barisDataMain(r) {
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
   tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
-  // Komposisi untuk grafik batang & pie (urutan tetap: omzet, 10 kelompok biaya, laba bersih).
-  // Label memuat persentase dari total biaya supaya pie chart menampilkan angka, bukan hanya warna.
+  // Komposisi untuk grafik batang & pie (urutan tetap, lihat KELOMPOK_GRAFIK): [nama, nilai, porsi].
+  // Porsi = pecahan dari total biaya (ditampilkan sebagai %); untuk laba bersih = margin.
   const b = Object.fromEntries(r.biaya.map(([nama, nilai]) => [nama, nilai]));
-  const kelompok = [
-    ['Bahan baku', b['Bahan baku'] + b['Bahan operasional (es, gas, lemon)']],
-    ['Transport', b['Transport & ekspedisi']],
-    ['Makan & minum', b.Konsumsi],
-    ['Gaji, upah & bonus', b['Gaji karyawan tetap (porsi event)'] + b['Upah DW + kasir'] + b['Estimasi bonus (poin KPI 100%)'] + r.feePic],
-    ['Penginapan', b.Penginapan],
-    ['Bagi hasil & admin IO', b['Potongan bagi hasil IO'] + b['Admin IO + listrik/air/gas/galon']],
-    ['Iklan', b['Iklan & endorse']],
-    ['Sewa & admin', b['Admin & sewa (freezer, kuota, cctv, laundry)']],
-    ['Barang kering', b['Barang kering konsumtif'] + b['Barang kering non-konsumtif ⚠️ kelalaian']],
-  ];
-  const dipakai = kelompok.reduce((s, [, v]) => s + v, 0) - r.feePic;
-  kelompok.push(['Tak terduga & lain-lain', Math.max(0, r.totalBiaya - dipakai)]);
+  const nilaiKelompok = {
+    'Bahan baku': b['Bahan baku'] + b['Bahan operasional (es, gas, lemon)'],
+    Transport: b['Transport & ekspedisi'],
+    'Makan & minum': b.Konsumsi,
+    'Gaji & bonus': b['Gaji karyawan tetap (porsi event)'] + b['Upah DW + kasir'] + b['Estimasi bonus (poin KPI 100%)'] + r.feePic,
+    'Bagi hasil IO': b['Potongan bagi hasil IO'] + b['Admin IO + listrik/air/gas/galon'],
+    Iklan: b['Iklan & endorse'],
+    'Barang kering': b['Barang kering konsumtif'] + b['Barang kering non-konsumtif ⚠️ kelalaian'],
+    Penginapan: b.Penginapan,
+    'Sewa & admin': b['Admin & sewa (freezer, kuota, cctv, laundry)'],
+  };
+  const dipakai = Object.values(nilaiKelompok).reduce((s, v) => s + v, 0) - r.feePic;
+  nilaiKelompok['Tak terduga dll'] = Math.max(0, r.totalBiaya - dipakai);
   const semuaBiaya = r.totalBiaya + r.feePic;
-  const porsi = (v) => persen(Number((semuaBiaya ? (v / semuaBiaya) * 100 : 0).toFixed(1)));
   tambah('GRAFIK', [
-    ['Omzet', r.omzetBersih],
-    ...kelompok.map(([nama, v]) => [`${nama} (${porsi(v)})`, v]),
-    [`Laba bersih (margin ${persen(Number(margin.toFixed(1)))})`, r.laba],
+    ['Omzet', r.omzetBersih, ''],
+    ...KELOMPOK_GRAFIK.map(({ nama }) => [nama, nilaiKelompok[nama], semuaBiaya ? nilaiKelompok[nama] / semuaBiaya : 0]),
+    ['Laba bersih (margin)', r.laba, r.omzetBersih ? r.laba / r.omzetBersih : 0],
   ]);
   tambah('HARIAN', r.harian.map((h) => [h.tanggal, h.omzet, h.pengeluaran, h.omzet - h.pengeluaran]));
   tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]));

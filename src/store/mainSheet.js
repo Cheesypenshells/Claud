@@ -2,7 +2,7 @@
 // dari tab tersembunyi "Data Main" (diisi bot). Rumus memakai ';' karena spreadsheet berlokal Indonesia.
 
 import { TAB_DATA_MAIN, KOLOM_DATA_MAIN } from '../schema.js';
-import { BATAS_BARIS } from '../laporan.js';
+import { BATAS_BARIS, KELOMPOK_GRAFIK, warnaKelompok } from '../laporan.js';
 
 export const TAB_MAIN = 'Main';
 
@@ -11,7 +11,8 @@ const HITAM = { style: 'SOLID', colorStyle: { rgbColor: { red: 0, green: 0, blue
 const GARIS = { top: HITAM, bottom: HITAM, left: HITAM, right: HITAM, innerHorizontal: HITAM, innerVertical: HITAM };
 
 // Tabel di sisi kanan (kolom L dst.): komposisi untuk grafik & omzet/pengeluaran per tanggal.
-const KOMPOSISI = { judul: 23, data: 24, akhir: 23 + BATAS_BARIS.GRAFIK };
+const KOMPOSISI = { judul: 23, kolom: 24, data: 25, akhir: 24 + BATAS_BARIS.GRAFIK };
+const WARNA_NETRAL = '#37474F'; // baris omzet & laba di tabel komposisi
 const HARIAN = { judul: 64, kolom: 65, data: 66, akhir: 65 + BATAS_BARIS.HARIAN };
 const JUDUL_GRAFIK = ['Omzet Harian', 'Omzet & Pengeluaran Harian', 'Omzet vs Biaya', 'Porsi Biaya', 'Porsi Biaya (% dari total biaya)'];
 const ANGKA = { type: 'NUMBER', pattern: '#,##0' };
@@ -53,14 +54,14 @@ function barisData(b) {
 export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   const tab = opsi.tab || TAB_MAIN;
   const qt = `'${tab}'`;
-  let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
+  let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'properties.spreadsheetTheme,sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
   const cari = (t) => meta.data.sheets.find((s) => s.properties.title === t);
   const tambah = [];
   if (!cari(tab)) tambah.push({ addSheet: { properties: { title: tab, index: 0, gridProperties: { columnCount: 26, rowCount: 160 } } } });
   if (!cari(TAB_DATA_MAIN)) tambah.push({ addSheet: { properties: { title: TAB_DATA_MAIN, hidden: true } } });
   if (tambah.length) {
     await api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: tambah } });
-    meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
+    meta = await api.spreadsheets.get({ spreadsheetId, fields: 'properties.spreadsheetTheme,sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
   }
   const main = cari(tab);
   const sheetId = main.properties.sheetId;
@@ -80,15 +81,21 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
     nilai.push({ range: `${qt}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
   }
   // Data untuk grafik komposisi (kolom L:M) dan omzet/pengeluaran per tanggal (kolom L:O).
-  nilai.push({ range: `${qt}!L${KOMPOSISI.judul}`, values: [['KOMPOSISI OMZET & BIAYA (% dari total biaya)', '']] });
-  nilai.push({ range: `${qt}!L${KOMPOSISI.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:E;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRAFIK");"")`]] });
+  nilai.push({ range: `${qt}!L${KOMPOSISI.judul}`, values: [['📊 KOMPOSISI OMZET & BIAYA', '', '', '']] });
+  nilai.push({ range: `${qt}!L${KOMPOSISI.kolom}`, values: [['Kelompok', 'Nilai', '% Biaya', 'Perbandingan']] });
+  nilai.push({ range: `${qt}!L${KOMPOSISI.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:F;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRAFIK");"")`]] });
+  // Batang teks sederhana (warna mengikuti kategori), panjang sesuai porsi biaya.
+  KELOMPOK_GRAFIK.forEach((k, i) => {
+    const r = KOMPOSISI.data + 1 + i;
+    nilai.push({ range: `${qt}!O${r}`, values: [[`=IF(N${r}="";"";REPT("█";ROUND(N${r}*25)))`]] });
+  });
   nilai.push({ range: `${qt}!L${HARIAN.judul}`, values: [['OMZET & PENGELUARAN PER TANGGAL', '', '', '']] });
   nilai.push({ range: `${qt}!L${HARIAN.kolom}`, values: [['Tanggal', 'Omzet', 'Pengeluaran (catatan grup)', 'Selisih']] });
   nilai.push({ range: `${qt}!L${HARIAN.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:G;${DATA}!A2:A=$C$2;${DATA}!B2:B="HARIAN");"")`]] });
   const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
   nilai.push({ range: `${qt}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   // Area kanan di bawah tabel komposisi dikosongkan dulu (letak tabel harian bisa berpindah antar versi).
-  await api.spreadsheets.values.clear({ spreadsheetId, range: `${qt}!L${KOMPOSISI.akhir + 1}:P160` });
+  await api.spreadsheets.values.clear({ spreadsheetId, range: `${qt}!L${KOMPOSISI.akhir + 1}:T160` });
   await api.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: 'USER_ENTERED', data: nilai } });
 
   // Tampilan.
@@ -103,8 +110,19 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 10 }, properties: { pixelSize: 135 }, fields: 'pixelSize' } });
   // Kolom E dipakai untuk keterangan rincian biaya: dibuat lebih lebar, teks turun baris di dalam sel.
   req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 260 }, fields: 'pixelSize' } });
-  req.push({ unmergeCells: { range: sel(4, 160, 1, 16) } });
-  req.push({ repeatCell: { range: sel(KOMPOSISI.akhir + 1, 160, 11, 16), cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat' } });
+  req.push({ unmergeCells: { range: sel(4, 160, 1, 20) } });
+  req.push({ repeatCell: { range: sel(KOMPOSISI.judul, 160, 11, 20), cell: { userEnteredFormat: {} }, fields: 'userEnteredFormat' } });
+  // Warna tema = warna kategori, supaya potongan pie chart sama dengan warna di tabel komposisi.
+  const tema = meta.data.properties?.spreadsheetTheme;
+  if (tema?.themeColors) {
+    const aksen = Object.fromEntries(KELOMPOK_GRAFIK.slice(0, 6).map((k, i) => [`ACCENT${i + 1}`, warna(k.warna)]));
+    req.push({
+      updateSpreadsheetProperties: {
+        properties: { spreadsheetTheme: { ...tema, themeColors: tema.themeColors.map((t) => (aksen[t.colorType] ? { colorType: t.colorType, color: { rgbColor: aksen[t.colorType] } } : t)) } },
+        fields: 'spreadsheetTheme',
+      },
+    });
+  }
 
   format(sel(1, 1, 1, 10), { textFormat: { bold: true, fontSize: 16, foregroundColorStyle: { rgbColor: warna('#E8710A') } } }, 'textFormat');
   format(sel(2, 2, 1, 2), { textFormat: { bold: true }, horizontalAlignment: 'RIGHT', verticalAlignment: 'MIDDLE' }, 'textFormat,horizontalAlignment,verticalAlignment');
@@ -173,16 +191,32 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}>=0)`, '#0B8043');
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}<0)`, '#D93025');
 
-  // Tabel komposisi & tabel harian di kanan: lebar kolom, format Rupiah, garis hitam.
+  // Tabel komposisi & tabel harian di kanan: lebar kolom, warna per kategori, garis hitam.
   const putih = { red: 1, green: 1, blue: 1 };
-  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 10, endIndex: 11 }, properties: { pixelSize: 24 }, fields: 'pixelSize' } });
-  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 11, endIndex: 12 }, properties: { pixelSize: 230 }, fields: 'pixelSize' } });
-  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 12, endIndex: 15 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } });
-  req.push({ mergeCells: { range: sel(KOMPOSISI.judul, KOMPOSISI.judul, 11, 13), mergeType: 'MERGE_ALL' } });
-  format(sel(KOMPOSISI.judul, KOMPOSISI.judul, 11, 13), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#5F6368') }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'textFormat,backgroundColorStyle,verticalAlignment,wrapStrategy');
-  format(sel(KOMPOSISI.data, KOMPOSISI.akhir, 11, 13), { backgroundColorStyle: { rgbColor: warna('#5F6368', 0.92) }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'backgroundColorStyle,verticalAlignment,wrapStrategy');
-  format(sel(KOMPOSISI.data, KOMPOSISI.akhir, 12, 13), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
-  req.push({ updateBorders: { range: sel(KOMPOSISI.judul, KOMPOSISI.akhir, 11, 13), ...GARIS } });
+  const lebarKolom = (i, px) => req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } });
+  [[10, 24], [11, 200], [12, 140], [13, 110], [14, 180], [15, 24]].forEach(([i, px]) => lebarKolom(i, px));
+  const K = KOMPOSISI;
+  req.push({ mergeCells: { range: sel(K.judul, K.judul, 11, 15), mergeType: 'MERGE_ALL' } });
+  format(sel(K.judul, K.judul, 11, 15), { textFormat: { bold: true, fontSize: 12, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#202124') }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,horizontalAlignment,verticalAlignment');
+  format(sel(K.kolom, K.kolom, 11, 15), { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna('#ECEFF1') }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,horizontalAlignment,verticalAlignment');
+  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: K.judul - 1, endIndex: K.kolom }, properties: { pixelSize: 32 }, fields: 'pixelSize' } });
+  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: K.data - 1, endIndex: K.akhir }, properties: { pixelSize: 28 }, fields: 'pixelSize' } });
+  // Sel nama: latar warna kategori (tulisan putih, atau hitam kalau warnanya terang seperti kuning).
+  // Nilai & persen: tulisan hitam di latar muda; batang perbandingan memakai warna kategori.
+  const gelap = warna('#202124');
+  const terang = (hex) => { const c = warna(hex); return 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue > 0.62; };
+  const barisWarna = (r, hex) => {
+    format(sel(r, r, 11, 12), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: terang(hex) ? gelap : putih } }, backgroundColorStyle: { rgbColor: warna(hex) }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
+    format(sel(r, r, 12, 14), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: gelap } }, backgroundColorStyle: { rgbColor: warna(hex, 0.88) }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
+    format(sel(r, r, 14, 15), { textFormat: { foregroundColorStyle: { rgbColor: warna(hex) } }, backgroundColorStyle: { rgbColor: warna(hex, 0.88) }, verticalAlignment: 'MIDDLE' }, 'textFormat.foregroundColorStyle,backgroundColorStyle,verticalAlignment');
+  };
+  barisWarna(K.data, WARNA_NETRAL);
+  KELOMPOK_GRAFIK.forEach((k, i) => barisWarna(K.data + 1 + i, warnaKelompok(k)));
+  barisWarna(K.akhir, WARNA_NETRAL);
+  format(sel(K.data, K.akhir, 12, 13), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
+  format(sel(K.data, K.akhir, 13, 14), { numberFormat: { type: 'PERCENT', pattern: '0.0%' }, horizontalAlignment: 'CENTER' }, 'numberFormat,horizontalAlignment');
+  format(sel(K.data, K.akhir, 14, 15), { textFormat: { fontSize: 9 }, horizontalAlignment: 'LEFT', wrapStrategy: 'CLIP' }, 'textFormat.fontSize,horizontalAlignment,wrapStrategy');
+  req.push({ updateBorders: { range: sel(K.judul, K.akhir, 11, 15), ...GARIS } });
 
   req.push({ mergeCells: { range: sel(HARIAN.judul, HARIAN.judul, 11, 15), mergeType: 'MERGE_ALL' } });
   format(sel(HARIAN.judul, HARIAN.judul, 11, 15), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#1A73E8') }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
@@ -197,12 +231,14 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   }
   const sumberSel = (r1, r2, kol) => ({ sourceRange: { sources: [sel(r1, r2, kol, kol + 1)] } });
   const posisi = (baris, kolom, w, h) => ({ overlayPosition: { anchorCell: { sheetId, rowIndex: baris - 1, columnIndex: kolom }, widthPixels: w, heightPixels: h } });
-  // Kolom: omzet & pengeluaran per tanggal (tabel harian).
+  const judulGrafik = { titleTextFormat: { bold: true, fontSize: 14 }, fontName: 'Roboto' };
+  // Atas: omzet & pengeluaran per tanggal, selebar area kanan.
   req.push({
     addChart: {
       chart: {
         spec: {
           title: 'Omzet & Pengeluaran Harian',
+          ...judulGrafik,
           basicChart: {
             chartType: 'COLUMN',
             legendPosition: 'TOP_LEGEND',
@@ -215,36 +251,46 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
             ],
           },
         },
-        position: posisi(4, 11, 660, 360),
+        position: posisi(4, 11, 1290, 380),
       },
     },
   });
-  // Batang: omzet vs biaya per kelompok. Pie: porsi biaya saja (tanpa baris omzet & laba).
+  // Kanan tabel komposisi: pie porsi biaya (warna potongan = warna tema = warna kategori).
+  req.push({
+    addChart: {
+      chart: {
+        spec: {
+          title: 'Porsi Biaya',
+          subtitle: 'persentase dari total biaya event',
+          ...judulGrafik,
+          pieChart: { legendPosition: 'LABELED_LEGEND', domain: sumberSel(K.data + 1, K.akhir - 1, 11), series: sumberSel(K.data + 1, K.akhir - 1, 12), pieHole: 0.5 },
+        },
+        position: posisi(K.judul, 16, 640, 470),
+      },
+    },
+  });
+  // Bawah tabel komposisi: batang omzet vs tiap kelompok biaya, warna sama dengan tabel.
   req.push({
     addChart: {
       chart: {
         spec: {
           title: 'Omzet vs Biaya',
+          ...judulGrafik,
           basicChart: {
             chartType: 'BAR',
             legendPosition: 'NO_LEGEND',
             axis: [{ position: 'BOTTOM_AXIS', title: 'Rupiah' }],
-            domains: [{ domain: sumberSel(KOMPOSISI.data, KOMPOSISI.akhir - 1, 11) }],
-            series: [{ series: sumberSel(KOMPOSISI.data, KOMPOSISI.akhir - 1, 12), targetAxis: 'BOTTOM_AXIS', colorStyle: { rgbColor: warna('#E8710A') }, dataLabel: { type: 'DATA', placement: 'OUTSIDE_END' } }],
+            domains: [{ domain: sumberSel(K.data, K.akhir - 1, 11) }],
+            series: [{
+              series: sumberSel(K.data, K.akhir - 1, 12),
+              targetAxis: 'BOTTOM_AXIS',
+              colorStyle: { rgbColor: warna(WARNA_NETRAL) },
+              dataLabel: { type: 'DATA', placement: 'OUTSIDE_END' },
+              styleOverrides: KELOMPOK_GRAFIK.map((k, i) => ({ index: i + 1, colorStyle: { rgbColor: warna(warnaKelompok(k)) } })),
+            }],
           },
         },
-        position: posisi(KOMPOSISI.judul, 14, 640, 360),
-      },
-    },
-  });
-  req.push({
-    addChart: {
-      chart: {
-        spec: {
-          title: 'Porsi Biaya (% dari total biaya)',
-          pieChart: { legendPosition: 'LABELED_LEGEND', domain: sumberSel(KOMPOSISI.data + 1, KOMPOSISI.akhir - 1, 11), series: sumberSel(KOMPOSISI.data + 1, KOMPOSISI.akhir - 1, 12), pieHole: 0.35 },
-        },
-        position: posisi(KOMPOSISI.akhir + 6, 11, 700, 420),
+        position: posisi(K.akhir + 3, 11, 654, 420),
       },
     },
   });

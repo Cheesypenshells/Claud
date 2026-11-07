@@ -1,7 +1,7 @@
 // File 1 (PEMBUKUAN): tab "Rekap Event" & "Gaji per Event".
 // File 2 (folder EVENT): satu spreadsheet per event, memakai file cadangan "(kosong)" yang dibuat owner.
 
-import { hitungEvent, barisDataMain } from './laporan.js';
+import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './laporan.js';
 import { bacaData } from './main.js';
 import { JENIS } from './schema.js';
 import { PERAN, KATEGORI } from './parsers.js';
@@ -9,7 +9,7 @@ import { PERAN, KATEGORI } from './parsers.js';
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
 // Naikkan kalau tata letak file event berubah: file event lama ikut dirapikan ulang sekali.
-export const VERSI_TATA_LETAK = '5';
+export const VERSI_TATA_LETAK = '7';
 
 // "2026-09-24", "2026-10-11" -> "24 Sep - 11 Okt 2026"; bulan sama -> "1 - 14 Nov 2026"
 export function rentangTanggal(mulai, selesai) {
@@ -129,19 +129,21 @@ export const barisPenggantian = (r) => r.penggantian.map((u) => [r.event.kode, r
 // ---------- Pengeluaran per kategori (file event) ----------
 
 // Satu tab per kategori, seperti pembukuan lama (admin, hotel, transportation, food and bev, ...).
+// Warna tab mengikuti warna kelompok di tabel komposisi & grafik file event.
+const W = (nama) => warnaKelompok(KELOMPOK_GRAFIK.find((k) => k.nama === nama));
 export const TAB_KATEGORI = [
   { tab: 'Transport', judul: 'TRANSPORT & EKSPEDISI', kategori: [KATEGORI.TRANSPORT], warna: '#1A73E8' },
-  { tab: 'Penginapan', judul: 'PENGINAPAN / HOTEL', kategori: [KATEGORI.PENGINAPAN], warna: '#8E24AA' },
+  { tab: 'Penginapan', judul: 'PENGINAPAN / HOTEL', kategori: [KATEGORI.PENGINAPAN], warna: W('Penginapan') },
   { tab: 'Konsumsi', judul: 'KONSUMSI (MAKAN & MINUM)', kategori: [KATEGORI.KONSUMSI], warna: '#0B8043' },
   { tab: 'Bahan Baku', judul: 'BAHAN BAKU (gudang + beli di lokasi)', kategori: [KATEGORI.OYSTER, KATEGORI.BAHAN_LAIN], gudang: true, warna: '#C2185B' },
-  { tab: 'Bahan Operasional', judul: 'BAHAN OPERASIONAL (es, gas, lemon)', kategori: [KATEGORI.OPERASIONAL], warna: '#E37400' },
-  { tab: 'BK Konsumtif', judul: 'BARANG KERING KONSUMTIF', kategori: [KATEGORI.KONSUMTIF], warna: '#00897B' },
-  { tab: 'BK Non-Konsumtif', judul: 'BARANG KERING NON-KONSUMTIF ⚠️ KELALAIAN', kategori: [KATEGORI.NON_KONSUMTIF, 'Peralatan'], warna: '#D93025' },
-  { tab: 'Admin & Sewa', judul: 'ADMIN & SEWA', kategori: [KATEGORI.ADMIN], warna: '#5F6368' },
+  { tab: 'Bahan Operasional', judul: 'BAHAN OPERASIONAL (es, gas, lemon)', kategori: [KATEGORI.OPERASIONAL], warna: W('Bahan baku') },
+  { tab: 'BK Konsumtif', judul: 'BARANG KERING KONSUMTIF', kategori: [KATEGORI.KONSUMTIF], warna: W('Barang kering') },
+  { tab: 'BK Non-Konsumtif', judul: 'BARANG KERING NON-KONSUMTIF ⚠️ KELALAIAN', kategori: [KATEGORI.NON_KONSUMTIF, 'Peralatan'], warna: W('Barang kering') },
+  { tab: 'Admin & Sewa', judul: 'ADMIN & SEWA', kategori: [KATEGORI.ADMIN], warna: W('Sewa & admin') },
   { tab: 'Iklan', judul: 'IKLAN & ENDORSE', kategori: [KATEGORI.IKLAN], warna: '#F9AB00' },
-  { tab: 'Tak Terduga', judul: 'TAK TERDUGA', kategori: [KATEGORI.TAK_TERDUGA], warna: '#B31412' },
-  { tab: 'Gaji & Upah', judul: 'GAJI & UPAH (yang dibayar lewat grup)', kategori: [KATEGORI.GAJI], warna: '#6D4C41' },
-  { tab: 'Lain-lain', judul: 'LAIN-LAIN', kategori: null, warna: '#9AA0A6' },
+  { tab: 'Tak Terduga', judul: 'TAK TERDUGA', kategori: [KATEGORI.TAK_TERDUGA], warna: W('Tak terduga dll') },
+  { tab: 'Gaji & Upah', judul: 'GAJI & UPAH (yang dibayar lewat grup)', kategori: [KATEGORI.GAJI], warna: W('Gaji & bonus') },
+  { tab: 'Lain-lain', judul: 'LAIN-LAIN', kategori: null, warna: W('Tak terduga dll') },
 ];
 
 const KOLOM_KATEGORI = [
