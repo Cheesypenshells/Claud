@@ -409,3 +409,17 @@ test('koreksi: kategori hanya kalau diminta jelas', async () => {
   assert.equal(bacaKoreksi('oke siap', o), null);
   assert.equal(bacaKoreksi('parkir 5rb', o), null);
 });
+
+test('reply menyebut salah satu item: hanya item itu yang diubah; uang X sesudah item', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Makan3 nov 64k, pakai uang mama, grab bandara pulang150k, hotel 100k uang budi');
+  const cari = async (id) => (await store.all('Transaksi')).find((t) => t.id === id);
+  assert.equal((await cari('T0001')).dibayar_oleh, 'Mama');
+  assert.equal((await cari('T0002')).dibayar_oleh, 'Budi'); // pengirim (tidak disebut)
+  const b = await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Grab bandara pulang uang mama itu' });
+  assert.match(b, /Sudah diubah.*T0002 grab bandara pulang/s);
+  assert.doesNotMatch(b, /T0001|T0003/);
+  assert.equal((await cari('T0002')).dibayar_oleh, 'Mama');
+  assert.equal((await cari('T0003')).dibayar_oleh, 'Budi');
+});

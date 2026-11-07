@@ -13,7 +13,7 @@ import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.j
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
 import { KATEGORI } from './parsers.js';
-import { idDariTeks, bacaKoreksi, BATAS_LANJUTAN_MS } from './koreksi.js';
+import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -348,9 +348,10 @@ async function perintahDaftar(ctx, pesan, grup, cmd) {
 // Koreksi lewat reply pesan bot (atau pesan singkat tepat setelah mencatat). null kalau bukan koreksi.
 async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
   const semua = await ctx.store.all('Transaksi');
-  const target = ids.map((id) => semua.find((t) => String(t.id).toUpperCase() === id)).filter(Boolean);
-  if (!target.length) return null;
-  const k = bacaKoreksi(pesan.text, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: target.length === 1, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
+  const semuaTarget = ids.map((id) => semua.find((t) => String(t.id).toUpperCase() === id)).filter(Boolean);
+  if (!semuaTarget.length) return null;
+  const { catatan: target, teks: teksKoreksi } = pilihCatatan(pesan.text, semuaTarget);
+  const k = bacaKoreksi(teksKoreksi, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: target.length === 1, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
   if (!k) return null;
   const boleh = target.filter((t) => isOwner || String(t.pengirim).includes(`(${pesan.senderId})`));
   if (!boleh.length) return balas('⚠️ Hanya owner atau pengirim asli yang bisa mengubah catatan ini.');

@@ -93,7 +93,7 @@ const RE_TANGGAL_KATA = new RegExp(`(?:\\b(?:tgl|tanggal)\\.?\\s*)?(?<!\\d)(\\d{
 const RE_TANGGAL_ANGKA = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})[/-](\d{1,2})\b/i;
 // Tanpa bulan: "tanggal 25", "tanggal26 sore", "27 pagi" -> bulan dipilih supaya masuk masa event
 // (rentang { mulai, selesai }), atau bulan pesan kalau tidak ada event.
-const RE_TANGGAL_HARI = /\b(?:tgl|tanggal)\.?\s*(\d{1,2})(?!\d)(?![.,]\d)(?!\s*(?:rb|ribu|k|jt|juta)\b)|(?<![\d.,]|[x×*@]\s{0,2})(\d{1,2})(?=\s+(?:pagi|siang|sore)\b)/i;
+const RE_TANGGAL_HARI = /(?<![\d.,])(\d{1,2})\s*-\s*(?:\d{1,2})(?![\d.,]|\s*(?:rb|ribu|k|jt|juta|pcs|pack|unit|orang|porsi)\b)|\b(?:tgl|tanggal)\.?\s*(\d{1,2})(?!\d)(?![.,]\d)(?!\s*(?:rb|ribu|k|jt|juta)\b)|(?<![\d.,]|[x×*@]\s{0,2})(\d{1,2})(?=\s+(?:pagi|siang|sore)\b)/i;
 function tanggalTanpaBulan(hari, hariIni, rentang) {
   const ymd = (y, b) => `${y}-${String(b).padStart(2, '0')}-${String(hari).padStart(2, '0')}`;
   if (rentang?.mulai && rentang?.selesai) {
@@ -115,7 +115,7 @@ export function ambilTanggal(baris, hariIni, rentang = null) {
   }
   if (!m && hariIni) {
     const h = teks.match(RE_TANGGAL_HARI);
-    const n = h ? Number(h[1] || h[2]) : 0;
+    const n = h ? Number(h[1] || h[2] || h[3]) : 0;
     if (n >= 1 && n <= 31) {
       return { tanggal: tanggalTanpaBulan(n, hariIni, rentang), sisa: bersihkan(teks.slice(0, h.index) + ' ' + teks.slice(h.index + h[0].length)) };
     }
@@ -213,15 +213,22 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
   // ("cash semua", "uang mama", "tanggal 25 sept") atau dari foto bukti trf.
   const barisTanpaNominal = tanpaHarga.filter((b) => !intiTeks(b)).join(' ');
   const metodePesan = tebakMetode(barisTanpaNominal, adaFoto);
-  const siapaPesan = ambilUangSiapa(barisTanpaNominal).siapa;
+  // "uang mama" sebagai baris sendiri berlaku untuk semua; di dalam baris berkoma berlaku untuk item
+  // sebelumnya (sejak "uang ..." terakhir): "makan 64k, pakai uang mama, grab 150k, uang valen".
+  const siapaPesan = ambilUangSiapa(kelompok.filter((g) => g.length === 1).flat().filter((b) => !findMoney(b).length && !intiTeks(b)).join(' ')).siapa;
   const tanggalPesan = ambilTanggal(barisTanpaNominal, hariIni, rentang).tanggal;
   const items = [];
   for (const grup of kelompok) {
-  let konteks = { subjek: '', tanggal: '' };
+  let konteks = { subjek: '', tanggal: '', siapa: '' };
+  let belumBersiapa = []; // item di baris ini sejak "uang ..." terakhir yang belum punya pemilik uang
   for (const barisMentah of grup) {
     const { siapa, sisa: tanpaSiapa } = ambilUangSiapa(bersihkan(barisMentah.replace(/^[-*•\d]+[.)]\s+/, '')));
     const { tanggal: tanggalBaris, sisa: baris } = ambilTanggal(tanpaSiapa, hariIni, rentang);
     let tanggal = tanggalBaris;
+    if (siapa && grup.length > 1 && !findMoney(barisMentah).length && !intiTeks(barisMentah)) {
+      if (belumBersiapa.length) { for (const it of belumBersiapa) it.dibayar_oleh = siapa; belumBersiapa = []; } else konteks.siapa = siapa;
+      continue;
+    }
     if (!baris || /^total\b/i.test(baris)) continue;
     const uang = findMoney(baris);
     if (!uang.length) {
@@ -272,11 +279,13 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
       nominal,
       kategori: tebakKategori(kategoriDari),
       metode: tebakMetode(baris, false) || metodePesan,
-      dibayar_oleh: siapaSemua || siapa || siapaPesan || '',
+      dibayar_oleh: siapaSemua || siapa || konteks.siapa || '',
       ...(tanggal || tanggalPesan ? { tanggal: tanggal || tanggalPesan } : {}),
     });
+    if (!siapaSemua && !siapa && !konteks.siapa) belumBersiapa.push(items[items.length - 1]);
   }
   }
+  for (const it of items) if (!it.dibayar_oleh) it.dibayar_oleh = siapaPesan || '';
   return { items, dilewati };
 }
 

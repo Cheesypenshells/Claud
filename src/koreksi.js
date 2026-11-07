@@ -56,3 +56,17 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null }) {
   if (lain.length > (hasil.kategori ? 2 : 0)) return null;
   return hasil;
 }
+
+// Reply ke pesan berisi beberapa catatan tapi menyebut salah satunya ("grab bandara pulang uang valen"):
+// pilih catatan yang keterangannya paling cocok, lalu buang kata keterangan itu dari teks koreksi.
+export function pilihCatatan(teks, catatan) {
+  const kata = (s) => String(s).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+  const kataTeks = new Set(kata(teks));
+  const skor = catatan.map((t) => kata(t.keterangan).filter((w) => kataTeks.has(w) && !PENGISI.has(w)).length);
+  const maks = Math.max(0, ...skor);
+  if (!maks || catatan.length < 2) return { catatan, teks };
+  const pilih = catatan.filter((_, i) => skor[i] === maks);
+  const buang = new Set(pilih.flatMap((t) => kata(t.keterangan)));
+  const sisa = String(teks).split(/\s+/).filter((w) => !buang.has(w.toLowerCase().replace(/[^a-z0-9]/g, ''))).join(' ');
+  return { catatan: pilih, teks: sisa };
+}
