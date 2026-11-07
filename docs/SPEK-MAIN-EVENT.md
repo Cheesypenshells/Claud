@@ -55,8 +55,9 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 
 ### Karyawan tetap
 - Gaji pokok **Rp 2.500.000/bulan**.
-- **Bonus event:** kalau total omzet semua event dalam sebulan **≥ Rp 500 juta**, setiap karyawan tetap dapat **Rp 1.000.000 per event** yang diikuti.
-  Contoh: 3 event → 2,5 jt + 3 jt = 5,5 jt.
+- Maksimal **2 karyawan tetap per lokasi event**.
+- **Bonus event = 2% dari omzet event**, dibagi rata ke karyawan tetap di event itu (2 orang → masing-masing **1%**).
+- Bonus yang diterima = bonus × **poin KPI** (100 poin = 100% bonus; sistem poin di RANCANGAN-SISTEM.md bagian 8 tetap dipakai).
 - Event dengan omzet **< Rp 50 juta**: tidak ada bonus event.
 - **Bonus kerajinan Rp 500.000/bulan** kalau laporan baik dan absensi tepat waktu.
 
@@ -67,20 +68,24 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 ### Kasir
 - Upah **Rp 100.000/hari**.
 - Bonus harian dari **omzet hari itu**: ≥ 10 jt → **100 ribu**; ≥ 20 jt → **150 ribu**; ≥ 30 jt → **200 ribu**.
+- Bonus followers IG @cheesypenshells: **Rp 50.000 per kelipatan 100 followers baru per hari**.
 
 ### Absensi (berlaku untuk semua DW dan karyawan tetap)
+- Patokan tepat waktu: **1 jam sebelum booth buka** (SOP BAB 4).
 - Datang tepat waktu: **+Rp 5.000/hari**.
 - Terlambat: **−Rp 15.000 per 30 menit** keterlambatan.
 
-## 6. Budget Makan
-- Karyawan: **2× makan/hari × Rp 15.000** per orang.
+## 6. Budget Makan (akumulasi selama event)
+- Budget per karyawan per hari: **Rp 30.000** (2× makan × Rp 15.000).
+- Hari dengan omzet **> Rp 30 juta**: budget naik, bisa sampai **Rp 100.000** per orang per hari.
 - PIC: maksimal **Rp 100.000/hari**.
-- Tabel konsumsi menampilkan **budget vs pengeluaran sebenarnya**.
+- Budget **dijumlahkan selama event**. Tabel menampilkan: total budget, sudah terpakai (dari chat konsumsi), **sisa budget**.
+- Sisa budget biasanya dipakai untuk **makan bersama di akhir event** (malam terakhir).
 
 ## 7. ④ Iklan & Porsi Gratis
 - Iklan = bayar influencer yang datang, atau numpang upload video di akun mereka.
 - Diskon/promo: **tidak dihitung** dulu.
-- **Porsi gratis dihitung**: jumlah porsi × isi per porsi (contoh: 3 porsi × 4 pcs = 12 pcs oyster).
+- **Porsi gratis dihitung**: jumlah porsi × isi per porsi (contoh: 3 porsi × 4 pcs = 12 pcs oyster), dinilai dengan **harga jual** sesuai wilayah.
 
 ## 8. ⑤ Sisa Bahan Baku
 - **Semua bahan bisa dikembalikan ke gudang**, termasuk oyster (dihitung per kg).
@@ -91,7 +96,7 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 | Oyster | kg | Rp 15.000/kg |
 | Mozzarella | pack 2,3 kg | Rp 234.000/pack |
 | Bumbu garlic | pack | Rp 500.000/pack |
-| Bumbu merah | pack | Rp 500.000/pack |
+| Bumbu merah | pack | Rp 500.000/pack (menu **Sweet n Spicy**; ditawarkan sebagai pengganti kalau bumbu garlic habis) |
 | Topping cumi | kantong | Rp 150.000/kantong |
 | Saus keju | kg (pack 1 kg) | Rp 38.000/kg |
 
@@ -100,10 +105,7 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 - Owner bisa mengubah data lewat chat, misalnya karyawan berhenti/menghilang di tengah event → bot menghapus/menonaktifkan orang itu mulai tanggal tersebut.
 
 ## 10. Pertanyaan Terbuka
-1. Bonus karyawan tetap kalau total omzet sebulan **di bawah 500 juta**, tapi event-nya ≥ 50 juta: dapat bonus berapa?
-2. Sistem **poin KPI** (maks. 100 poin = 100% bonus) masih dipakai, atau diganti aturan di bagian 5?
-3. Kalimat "biasanya makan 3–4 kali dari budget" maksudnya apa?
-4. Porsi gratis dinilai dengan **harga modal** (bahan) atau **harga jual**?
-5. Bonus kasir **50 ribu per 100 followers IG baru** masih berlaku?
-6. Patokan "tepat waktu" untuk absensi = jam masuk sesuai SOP (1 jam sebelum buka)?
-7. Bumbu merah dipakai untuk menu apa?
+1. Kalau di satu event hanya ada **1 karyawan tetap**, ia dapat 1% atau seluruh 2%?
+2. Aturan lama "omzet sebulan ≥ 500 jt → Rp 1 jt per event" **diganti** aturan 2% ini?
+3. Budget makan Rp 100.000/orang berlaku **otomatis** untuk setiap hari dengan omzet > 30 jt, atau owner yang menentukan?
+4. Harga jual menu **Sweet n Spicy** sama dengan garlic?
