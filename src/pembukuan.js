@@ -9,7 +9,7 @@ import { PERAN, KATEGORI } from './parsers.js';
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
 // Naikkan kalau tata letak file event berubah: file event lama ikut dirapikan ulang sekali.
-export const VERSI_TATA_LETAK = '2';
+export const VERSI_TATA_LETAK = '3';
 
 // "2026-09-24", "2026-10-11" -> "24 Sep - 11 Okt 2026"; bulan sama -> "1 - 14 Nov 2026"
 export function rentangTanggal(mulai, selesai) {

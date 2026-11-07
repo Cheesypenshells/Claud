@@ -46,14 +46,14 @@ function barisData(b) {
 export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   const tab = opsi.tab || TAB_MAIN;
   const qt = `'${tab}'`;
-  let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts.chartId,conditionalFormats)' });
+  let meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
   const cari = (t) => meta.data.sheets.find((s) => s.properties.title === t);
   const tambah = [];
   if (!cari(tab)) tambah.push({ addSheet: { properties: { title: tab, index: 0, gridProperties: { columnCount: 26, rowCount: 160 } } } });
   if (!cari(TAB_DATA_MAIN)) tambah.push({ addSheet: { properties: { title: TAB_DATA_MAIN, hidden: true } } });
   if (tambah.length) {
     await api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: tambah } });
-    meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts.chartId,conditionalFormats)' });
+    meta = await api.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId,spec.title),conditionalFormats)' });
   }
   const main = cari(tab);
   const sheetId = main.properties.sheetId;
@@ -72,6 +72,9 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
     if (!b.tanpaJudulKolom) nilai.push({ range: `${qt}!B${b.mulai + 1}`, values: [b.kolom] });
     nilai.push({ range: `${qt}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
   }
+  // Data untuk grafik komposisi (kolom L:M, baris 24-33).
+  nilai.push({ range: `${qt}!L23`, values: [['KOMPOSISI OMZET & BIAYA (untuk grafik)', '']] });
+  nilai.push({ range: `${qt}!L24`, values: [[`=IFERROR(FILTER(${DATA}!D2:E;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRAFIK");"")`]] });
   const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
   nilai.push({ range: `${qt}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   await api.spreadsheets.values.batchUpdate({ spreadsheetId, requestBody: { valueInputOption: 'USER_ENTERED', data: nilai } });
@@ -145,8 +148,51 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}>=0)`, '#0B8043');
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}<0)`, '#D93025');
 
+  // Tabel komposisi: lebar kolom & format Rupiah.
+  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 11, endIndex: 12 }, properties: { pixelSize: 200 }, fields: 'pixelSize' } });
+  req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: 12, endIndex: 13 }, properties: { pixelSize: 140 }, fields: 'pixelSize' } });
+  format(sel(23, 23, 11, 13), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: { red: 1, green: 1, blue: 1 } } }, backgroundColorStyle: { rgbColor: warna('#5F6368') } }, 'textFormat,backgroundColorStyle');
+  format(sel(24, 33, 12, 13), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
+  format(sel(24, 33, 11, 13), { backgroundColorStyle: { rgbColor: warna('#5F6368', 0.92) } }, 'backgroundColorStyle');
+
+  const adaGrafik = new Set((main.charts || []).map((c) => c.spec?.title));
+  const sumberSel = (r1, r2, kol) => ({ sourceRange: { sources: [sel(r1, r2, kol, kol + 1)] } });
+  // Batang: omzet vs biaya per kelompok (baris 24-33). Pie: porsi biaya saja (baris 25-32).
+  if (!adaGrafik.has('Omzet vs Biaya')) {
+    req.push({
+      addChart: {
+        chart: {
+          spec: {
+            title: 'Omzet vs Biaya',
+            basicChart: {
+              chartType: 'BAR',
+              legendPosition: 'NO_LEGEND',
+              axis: [{ position: 'BOTTOM_AXIS', title: 'Rupiah' }],
+              domains: [{ domain: sumberSel(24, 33, 11) }],
+              series: [{ series: sumberSel(24, 33, 12), targetAxis: 'BOTTOM_AXIS', colorStyle: { rgbColor: warna('#E8710A') } }],
+            },
+          },
+          position: { overlayPosition: { anchorCell: { sheetId, rowIndex: 22, columnIndex: 14 }, widthPixels: 560, heightPixels: 340 } },
+        },
+      },
+    });
+  }
+  if (!adaGrafik.has('Porsi Biaya')) {
+    req.push({
+      addChart: {
+        chart: {
+          spec: {
+            title: 'Porsi Biaya',
+            pieChart: { legendPosition: 'RIGHT_LEGEND', domain: sumberSel(25, 32, 11), series: sumberSel(25, 32, 12), pieHole: 0.35 },
+          },
+          position: { overlayPosition: { anchorCell: { sheetId, rowIndex: 35, columnIndex: 11 }, widthPixels: 620, heightPixels: 360 } },
+        },
+      },
+    });
+  }
+
   // Grafik batang omzet harian (sekali saja).
-  if (!(main.charts || []).length) {
+  if (!adaGrafik.has('Omzet Harian')) {
     const om = BAGIAN[1];
     const r1 = barisData(om);
     const r2 = r1 + BATAS_BARIS.OMZET - 1;

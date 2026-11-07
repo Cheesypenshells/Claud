@@ -36,7 +36,7 @@ export function persenFeePic(ownerHadir) {
 const KATEGORI_LAMA = { Peralatan: KATEGORI.NON_KONSUMTIF };
 
 // Batas baris tiap bagian di sheet Main (harus sama dengan tata letak di mainSheet.js).
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 10 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -231,6 +231,20 @@ export function barisDataMain(r) {
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
   tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
+  // Komposisi untuk grafik batang & pie (urutan tetap: omzet, 8 kelompok biaya, laba bersih).
+  const b = Object.fromEntries(r.biaya.map(([nama, nilai]) => [nama, nilai]));
+  const kelompok = [
+    ['Bahan baku', b['Bahan baku'] + b['Bahan operasional (es, gas, lemon)']],
+    ['Transport', b['Transport & ekspedisi']],
+    ['Makan & minum', b.Konsumsi],
+    ['Gaji, upah & bonus', b['Gaji karyawan tetap (porsi event)'] + b['Upah DW + kasir'] + b['Estimasi bonus (poin KPI 100%)'] + r.feePic],
+    ['Penginapan', b.Penginapan],
+    ['Bagi hasil & admin IO', b['Potongan bagi hasil IO'] + b['Admin IO + listrik/air/gas/galon']],
+    ['Iklan', b['Iklan & endorse']],
+  ];
+  const dipakai = kelompok.reduce((s, [, v]) => s + v, 0) - r.feePic;
+  kelompok.push(['Lain-lain (barang kering, sewa, tak terduga, dll.)', Math.max(0, r.totalBiaya - dipakai)]);
+  tambah('GRAFIK', [['Omzet', r.omzetBersih], ...kelompok, ['Laba bersih', r.laba]]);
   tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]));
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]));
   return baris;

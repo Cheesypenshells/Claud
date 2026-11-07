@@ -147,3 +147,13 @@ test('owner yang ikut bekerja tidak digaji dan tidak dapat fee PIC', () => {
   assert.equal(r.laba, r.labaSebelumFee);
   assert.equal(r.barisTim.find((o) => o.nama === 'Joko').upah, 300000);
 });
+
+test('data grafik: omzet, 8 kelompok biaya, laba; jumlah biaya = total biaya + fee PIC', () => {
+  const r = hitungEvent(event, data);
+  const g = barisDataMain(r).filter((x) => x[1] === 'GRAFIK').map((x) => [x[3], x[4]]);
+  assert.equal(g.length, 10);
+  assert.equal(g[0][0], 'Omzet');
+  assert.equal(g[9][0], 'Laba bersih');
+  const biaya = g.slice(1, 9).reduce((s, [, v]) => s + v, 0);
+  assert.equal(Math.round(biaya), Math.round(r.totalBiaya + r.feePic));
+});
