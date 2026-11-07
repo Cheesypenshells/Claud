@@ -44,6 +44,9 @@ export const DAFTAR_KATEGORI = [...ATURAN_KATEGORI.map(([k]) => k), 'Lain-lain']
 
 export function tebakKategori(teks) {
   const t = ` ${String(teks).toLowerCase()} `;
+  // Perjalanan "ke hotel / balik ke mall / dari bandara" adalah transport, bukan biaya hotel.
+  if (/[^a-z](ke|dari)\s+(hotel|penginapan|kos|mall|bandara|venue|lokasi|pasar|gudang|ruko|stasiun|pelabuhan)\b/.test(t)
+    && !/\b(bayar|sewa|menginap|nginap|malam|kamar)\b/.test(t)) return KATEGORI.TRANSPORT;
   for (const [kategori, kata] of ATURAN_KATEGORI) {
     for (const k of kata) {
       const re = new RegExp(`(^|[^a-z])${k.replace(/[.*+?^${}()|[\]\\&]/g, '\\$&')}($|[^a-z])`);
@@ -171,8 +174,22 @@ function pecahRangkai(baris) {
   return hasil.map((x) => x.replace(/^[\s,;]+|[\s,;]+$/g, '')).filter(Boolean);
 }
 
+// Komentar sesudah harga ("jadi itungan nya 2 kali transaksi", "karena bolak balik grab nya") milik
+// item sebelumnya, bukan obrolan.
+const RE_KOMENTAR = /\b(karena|krn|soalnya|jadi|itungan|hitungan|transaksi|kali|berarti|berati|bolak[\s-]?balik|pp|pulang\s+pergi)\b/i;
+const RE_KOMENTAR_HAPUS = /\b(\d+\s*(kali|x)|(kali|x)\s*\d+|jadi|itungan|hitungannya|hitungan|transaksi|berati|berarti|karena|krn|soalnya|yaa+|ya|juga|lagi|itu|nya)\b/gi;
+const RE_BOLAK_BALIK = /\bbolak[\s-]?balik\b|\bpp\b|\bpulang\s+pergi\b/i;
+const adaTanggal = (b) => Boolean(ambilTanggal(b, '2026-01-01').tanggal);
+const komentar = (b) => RE_KOMENTAR.test(b) && !adaTanggal(b) && !findMoney(b).length;
+const KENDARAAN = /\b(grab|gojek|gocar|goride|gosend|maxim|ojek|ojol|taksi|taxi|bluebird|lalamove|bentor|bajaj)\b/i;
+
 export function pecahBaris(baris) {
-  const bagian = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean).flatMap(pecahSambung);
+  const awal = String(baris).split(/\s*,\s+|\s*;\s*/).map((b) => b.trim()).filter(Boolean).flatMap(pecahSambung);
+  const bagian = [];
+  for (const b of awal) {
+    if (bagian.length && komentar(b) && findMoney(bagian[bagian.length - 1]).length) bagian[bagian.length - 1] += ` ${b}`;
+    else bagian.push(b);
+  }
   const pendek = (b) => b.split(/\s+/).length <= 4;
   const harga = bagian.map((b) => findMoney(b).length);
   const rapi = bagian.length > 1 && harga.filter(Boolean).length >= 2 && bagian.every((b, i) => harga[i] || pendek(b));
@@ -182,7 +199,7 @@ export function pecahBaris(baris) {
 
 // Kata waktu makan dll: bagian yang hanya berisi kata ini ("malam nya 40.95k") melanjutkan
 // keterangan sebelumnya ("makan karyawan" -> "makan karyawan malam").
-const KATA_LANJUTAN = new Set(['pagi', 'siang', 'sore', 'malam', 'paginya', 'siangnya', 'sorenya', 'malamnya', 'nya', 'yang', 'yg', 'untuk', 'buat', 'juga', 'harinya', 'hari', 'dan', 'terus', 'trus', 'lalu', 'sama']);
+const KATA_LANJUTAN = new Set(['bolak', 'balik', 'pp', 'pagi', 'siang', 'sore', 'malam', 'paginya', 'siangnya', 'sorenya', 'malamnya', 'nya', 'yang', 'yg', 'untuk', 'buat', 'juga', 'harinya', 'hari', 'dan', 'terus', 'trus', 'lalu', 'sama']);
 const waktuTerakhir = (ket) => kataSisa(ket).map((w) => w.replace(/nya$/, '')).filter((w) => ['pagi', 'siang', 'sore', 'malam'].includes(w)).pop() || '';
 const kataSisa = (t) => bersihkan(String(t).toLowerCase()).split(/\s+/).filter(Boolean);
 const lanjutan = (ket) => kataSisa(ket).every((w) => KATA_LANJUTAN.has(w));
@@ -236,10 +253,11 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
       if (inti) konteks = { subjek: inti, tanggal: tanggalBaris || konteks.tanggal };
       continue;
     }
-    const alasan = alasanBukanLaporan(baris);
+    const alasan = alasanBukanLaporan(baris.replace(RE_KOMENTAR_HAPUS, ' ').replace(RE_BOLAK_BALIK, ' '));
     if (alasan) { dilewati.push({ baris, alasan }); continue; }
     const u = uang[uang.length - 1];
     let nominal = u.nilai;
+    let satuanKali = null;
 
     // "ember 2 unit @30rb" -> 2 x 30.000; "hotel 350rb x 3 malam" -> 3 x 350.000
     const sebelum = baris.slice(0, u.index);
@@ -250,6 +268,13 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
     } else {
       const kali = sesudah.match(/^\s*[x×*]\s*(\d+)/i);
       if (kali) nominal *= Number(kali[1]);
+      else {
+        // "bolak balik 7,5k" / "7,5k kali 2" / "2 kali transaksi" = dua kali bayar nominal yang sama.
+        const tanpaUang = baris.slice(0, u.index) + ' ' + sesudah;
+        const n = tanpaUang.match(/\b(\d)\s*(?:kali|x)\b|\b(?:kali|x)\s*(\d)\b/i);
+        const jumlah = n ? Number(n[1] || n[2]) : (RE_BOLAK_BALIK.test(tanpaUang) ? 2 : 1);
+        if (jumlah > 1 && jumlah <= 9) { satuanKali = { jumlah, satuan: nominal }; nominal *= jumlah; }
+      }
     }
 
     let keterangan = bersihkan(
@@ -257,6 +282,8 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
         .replace(/@\s*$/, '')
         .replace(/\b(cash|tunai|trf|tf|transfer)\b/gi, '')
         .replace(/\b(total|totalnya|semuanya|harga|harganya)\s*$/i, '')
+        .replace(RE_KOMENTAR_HAPUS, ' ')
+        .replace(/\b(bolak[\s-]?balik)(\s+bolak[\s-]?balik)+\b/gi, '$1')
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');
     let kategoriDari = baris;
@@ -264,7 +291,8 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
     tanggal = tanggal || konteks.tanggal;
     if (lanjutan(keterangan) && konteks.subjek) {
       // "malam nya 40.95k" setelah "makan karyawan ... siang" -> "makan karyawan malam".
-      keterangan = bersihkan(`${konteks.subjek} ${waktuTerakhir(keterangan)}`);
+      const dasar = konteks.subjek.match(KENDARAAN)?.[0] || konteks.subjek;
+      keterangan = bersihkan(`${dasar} ${waktuTerakhir(keterangan)} ${RE_BOLAK_BALIK.test(keterangan) ? 'bolak balik' : ''}`);
       kategoriDari = keterangan;
     } else {
       keterangan = bersihkan(keterangan.replace(/^(dan|terus|trus|lalu|sama)\s+/i, '')
@@ -273,6 +301,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
     }
     konteks.tanggal = tanggal;
     if (!keterangan) keterangan = 'Pengeluaran';
+    if (satuanKali) keterangan += ` (${satuanKali.jumlah}x ${satuanKali.satuan.toLocaleString('id-ID')})`;
 
     items.push({
       keterangan,

@@ -229,3 +229,20 @@ test('baris panjang tanpa pemisah rapi: tiap harga jadi satu catatan, tanggal te
   assert.deepEqual(p('Makan pagi tanggal5 okt 45.35k, dan malam 39.4k', o).items.map((i) => [i.keterangan, i.tanggal]),
     [['Makan pagi', '2026-10-05'], ['Makan malam', '2026-10-05']]);
 });
+
+test('grab bolak balik = 2x nominal; komentar sesudah harga tidak membuat pesan ditolak', async () => {
+  const { parsePengeluaranDetail: p, tebakKategori } = await import('../src/parsers.js');
+  const o = { hariIni: '2026-11-08', rentang: { mulai: '2026-09-24', selesai: '2026-10-11' } };
+  const x = 'Grab ke hotel hastina8k, grab ke mall7,5k 10 okt, balik ke hotel lagi7,5k dan tanggal9 ke mall ots grab7,5k, tanggal8 okt juga bolak balik 7,5k jadi itungan nya 2 kali transaksi, dan tanggal 7 juga bolak balik7,5k kali 2 berati yaa, karena bolak balik grab nya, dan tanggal6 okt 7,5k, dan tanggal5 okt10,5k uang valen semua itu';
+  const { items, dilewati } = p(x, o);
+  assert.equal(dilewati.length, 0);
+  assert.deepEqual(items.map((i) => [i.nominal, i.tanggal]), [
+    [8000, undefined], [7500, '2026-10-10'], [7500, '2026-10-10'], [7500, '2026-10-09'],
+    [15000, '2026-10-08'], [15000, '2026-10-07'], [7500, '2026-10-06'], [10500, '2026-10-05'],
+  ]);
+  assert.ok(items.every((i) => i.kategori === 'Transport & Ekspedisi' && i.dibayar_oleh === 'Valen'));
+  assert.match(items[4].keterangan, /grab bolak balik \(2x 7\.500\)/);
+  assert.equal(p('grab pp 20rb', o).items[0].nominal, 40000);
+  assert.equal(tebakKategori('hotel 2 malam'), 'Penginapan');
+  assert.equal(tebakKategori('bayar hotel'), 'Penginapan');
+});
