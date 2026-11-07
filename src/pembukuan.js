@@ -97,15 +97,16 @@ export const KOLOM_GAJI = [
 
 export function barisGaji(r) {
   const e = r.event;
-  const jumlahPic = r.barisTim.filter((o) => o.peran === PERAN.PIC).length || 1;
+  const jumlahPic = r.barisTim.filter((o) => o.peran === PERAN.PIC && !o.owner).length || 1;
   return r.barisTim.map((o) => {
-    const fee = o.peran === PERAN.PIC ? r.feePic / jumlahPic : 0;
+    const fee = o.peran === PERAN.PIC && !o.owner ? r.feePic / jumlahPic : 0;
     const ket = {
       [PERAN.TETAP]: 'Porsi gaji pokok Rp 2,5 jt/bulan; bonus 1% (1,5% kalau sendiri) dari omzet ≥ 50 jt',
       [PERAN.DW]: 'Bonus harian: omzet > 15 jt +50rb, > 30 jt +100rb',
       [PERAN.KASIR]: 'Bonus harian: omzet ≥ 10/20/30 jt = 100/150/200rb',
       [PERAN.PIC]: `Fee ${r.feePicPersen}% dari laba bersih`,
     }[o.peran] || '';
+    if (o.owner) return [e.kode, e.kota, o.nama, o.peran, o.hari, 0, 0, 0, 0, 0, 'Owner ikut bekerja: tidak digaji'];
     return [e.kode, e.kota, o.nama + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), o.peran, o.hari, Math.round(o.upahHarian), Math.round(o.upah), Math.round(o.bonus), Math.round(fee), Math.round(o.upah + o.bonus + fee), ket];
   });
 }

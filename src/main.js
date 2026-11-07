@@ -13,11 +13,16 @@ export async function isiHargaAwal(store) {
 }
 
 export async function bacaData(store) {
-  const [events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu] = await Promise.all([
+  const [semuaEvent, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, pengaturan] = await Promise.all([
     store.all('Event'), store.all('Omzet'), store.all('Transaksi'), store.all('Tim Event'),
     store.all('Bahan Event'), store.all('Porsi Gratis'), store.all('Harga Bahan'), store.all('Harga Menu'),
+    store.all('Pengaturan'),
   ]);
-  return { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu };
+  // Event berstatus BATAL (misalnya event tes) tidak ikut direkap.
+  const events = semuaEvent.filter((e) => e.status !== 'BATAL');
+  const atur = Object.fromEntries(pengaturan.map((r) => [r.kunci, r.nilai]));
+  const namaOwner = atur.nama_owner || 'George';
+  return { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, namaOwner };
 }
 
 export async function perbaruiMain(store) {

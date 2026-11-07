@@ -132,3 +132,18 @@ test('fee PIC berkurang sesuai kehadiran owner, nol kalau rugi', () => {
   assert.ok(rugi.labaSebelumFee < 0);
   assert.equal(rugi.feePic, 0);
 });
+
+test('owner yang ikut bekerja tidak digaji dan tidak dapat fee PIC', () => {
+  const timOwner = [
+    { kode_event: 'JMB26-11', nama: 'George', peran: 'PIC', upah_harian: 0 },
+    { kode_event: 'JMB26-11', nama: 'George', peran: 'Kasir', upah_harian: 100000 },
+    { kode_event: 'JMB26-11', nama: 'Joko', peran: 'DW', upah_harian: 100000 },
+  ];
+  const r = hitungEvent(event, { ...data, tim: timOwner, namaOwner: 'George' });
+  const kasir = r.barisTim.find((o) => o.nama === 'George' && o.peran === 'Kasir');
+  assert.equal(kasir.upah, 0);
+  assert.equal(kasir.bonus, 0);
+  assert.equal(r.feePic, 0);
+  assert.equal(r.laba, r.labaSebelumFee);
+  assert.equal(r.barisTim.find((o) => o.nama === 'Joko').upah, 300000);
+});

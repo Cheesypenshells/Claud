@@ -49,7 +49,9 @@ function bonusBertingkat(tabel, omzet, inklusif) {
 }
 
 export function hitungEvent(event, data) {
-  const { omzet = [], transaksi = [], tim = [], bahan = [], gratis = [], hargaBahan = [], hargaMenu = [] } = data;
+  const { omzet = [], transaksi = [], tim = [], bahan = [], gratis = [], hargaBahan = [], hargaMenu = [], namaOwner = '' } = data;
+  // Owner yang ikut bekerja di event tidak digaji (tanpa upah, bonus, maupun fee PIC).
+  const adalahOwner = (o) => Boolean(namaOwner) && String(o.nama).trim().toLowerCase() === String(namaOwner).trim().toLowerCase();
   const kode = event.kode;
   const potong = num(event.bagi_hasil_persen) / 100;
 
@@ -112,7 +114,9 @@ export function hitungEvent(event, data) {
     let upahHarian = num(o.upah_harian);
     let upah = 0;
     let bonus = 0;
-    if (o.peran === PERAN.TETAP) {
+    if (adalahOwner(o)) {
+      upahHarian = 0;
+    } else if (o.peran === PERAN.TETAP) {
       upahHarian = ATURAN.gajiPokokTetap / ATURAN.hariPerBulan;
       upah = upahHarian * hariKerja.length;
       if (omzetBersih >= ATURAN.omzetMinBonusTetap) bonus = (omzetBersih * persenTetap) / 100;
@@ -121,7 +125,7 @@ export function hitungEvent(event, data) {
       const tabel = o.peran === PERAN.DW ? ATURAN.bonusDw : ATURAN.bonusKasir;
       bonus = hariKerja.reduce((s, t) => s + bonusBertingkat(tabel, omzetPerHari.get(t) || 0, o.peran === PERAN.KASIR), 0);
     }
-    return { nama: o.nama, peran: o.peran, hari: hariKerja.length, upahHarian, upah, bonus, status: o.status };
+    return { nama: o.nama, peran: o.peran, hari: hariKerja.length, upahHarian, upah, bonus, status: o.status, owner: adalahOwner(o) };
   });
   const gajiTetap = barisTim.filter((o) => o.peran === PERAN.TETAP).reduce((s, o) => s + o.upah, 0);
   const upahHarian = barisTim.filter((o) => o.peran === PERAN.DW || o.peran === PERAN.KASIR).reduce((s, o) => s + o.upah, 0);
@@ -171,10 +175,12 @@ export function hitungEvent(event, data) {
   ];
   const totalBiaya = biaya.reduce((s, b) => s + b[1], 0);
   const labaSebelumFee = omzetBersih - totalBiaya + nilaiSisaKembali;
-  const feePicPersen = persenFeePic(event.owner_hadir);
+  // Fee PIC hanya untuk PIC yang bukan owner.
+  const picBerhakFee = orang.filter((o) => o.peran === PERAN.PIC && !adalahOwner(o));
+  const feePicPersen = picBerhakFee.length ? persenFeePic(event.owner_hadir) : 0;
   const feePic = labaSebelumFee > 0 ? (labaSebelumFee * feePicPersen) / 100 : 0;
   const laba = labaSebelumFee - feePic;
-  const namaPic = orang.filter((o) => o.peran === PERAN.PIC).map((o) => o.nama);
+  const namaPic = picBerhakFee.map((o) => o.nama);
 
   const nilaiGratis = barisGratis.reduce((s, g) => s + g.nilai, 0);
 
@@ -216,7 +222,7 @@ export function barisDataMain(r) {
   tambah('BIAYA', r.biaya.map(([nama, nilai, ket], i) => [String(i + 1), nama, nilai, ket]));
   tambah('MAKAN', [[r.budgetMakan, r.makanTerpakai, r.budgetMakan - r.makanTerpakai,
     r.budgetMakan - r.makanTerpakai >= 0 ? 'Sisa untuk makan bersama di akhir event' : '⚠️ Melebihi budget']]);
-  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), `${o.hari} hari`, o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
+  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.owner ? ' (owner, tidak digaji)' : '') + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), `${o.hari} hari`, o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
   tambah('IKLAN', r.iklan.map((t) => [t.tanggal, t.keterangan, Number(t.nominal) || 0]));
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);

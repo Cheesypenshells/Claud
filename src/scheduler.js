@@ -7,7 +7,7 @@ import { rupiah, tanggalLokal, jamLokal, tambahHari } from './util.js';
 
 // Event dianggap aktif dari hari pertama sampai 7 hari setelah selesai (menunggu transfer terakhir).
 function eventAktif(event, hariIni) {
-  return event.status !== 'SELESAI'
+  return event.status !== 'SELESAI' && event.status !== 'BATAL'
     && event.mulai <= hariIni
     && hariIni <= tambahHari(event.selesai, 7);
 }
