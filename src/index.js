@@ -65,6 +65,9 @@ async function main() {
     for (const p of await tugasJatuhTempo()) await wa.kirim(p.groupId, p.text);
   }), 60_000);
 
+  // Isian manual di Sheets (INPUT EVENT LAMA, koreksi owner) ikut terbaca setiap 5 menit.
+  setInterval(() => { perluPerbaruiMain = true; }, 5 * 60_000);
+
   setInterval(() => jalankan(async () => {
     if (!perluPerbaruiMain) return;
     perluPerbaruiMain = false;

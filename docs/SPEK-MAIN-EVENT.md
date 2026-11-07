@@ -115,5 +115,11 @@ Kolom: **Tanggal | Hari | Omzet | Jumlah transaksi | Refund | Potongan IO | Perk
 3. **GUDANG** – stok bahan baku & barang gudang.
 4. **KPI KARYAWAN** – KPI, akumulasi bonus, perhitungan detail.
 
+## 9d. Keputusan owner (lanjutan)
+- Owner (George) yang ikut bekerja, termasuk sebagai PIC atau kasir: **tidak digaji dan tidak ada fee PIC**. Bonus karyawan tetap tetap dihitung seperti biasa.
+- **Input event lama (manual):** tabel khusus untuk mengisi data event sebelumnya; dihitung dengan mesin yang sama untuk menguji sistem sebelum dipakai di grup sungguhan.
+- **GUDANG:** bahan tambahan (topping udang, gurita, cumi lempeng, kentang goreng) ditambahkan setelah owner memberi info. Grup gudang berisi karyawan dan keluarga: owner mencatat barang masuk/keluar; **bot tidak boleh menyebut harga/biaya di grup gudang**. Inventaris booth dicatat untuk **4 set** (4 lokasi).
+- **KPI (dibangun nanti):** nilai individu = absensi 20% + kinerja 40% + attitude 20% + karir 20%, ditanyakan bot ke PIC lewat **chat pribadi setelah event selesai**. Bonus = **60% individu + 40% kelompok**, boleh dalam persen atau poin.
+
 ## 10. Pertanyaan Terbuka
 Semua sudah terjawab.

@@ -35,6 +35,10 @@ export class MemoryStore {
 
   async hapusTab() {}
 
+  async bacaInputManual() {
+    return this.inputManual || {};
+  }
+
   async init() {}
 
   async siapkanMain() {}

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { sheets as sheetsApi, auth as googleAuth } from '@googleapis/sheets';
 import { KOLOM, JENIS_LAMA } from '../schema.js';
 import { siapkanMain, tulisDataMain } from './mainSheet.js';
+import { TAB_INPUT, CARA_ISI } from '../inputManual.js';
 
 const CACHE_MS = 30_000;
 const FORMAT_ANGKA = {
@@ -323,6 +324,56 @@ export class SheetsStore {
       req.push({ repeatCell: { range: { sheetId, startRowIndex: baris.length, endRowIndex: baris.length + 1, startColumnIndex: 0, endColumnIndex: n }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna(hex, 0.7) } } }, fields: 'userEnteredFormat(textFormat.bold,backgroundColorStyle)' } });
     }
     await this.api.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests: req } });
+  }
+
+  // ---------- File INPUT EVENT LAMA ----------
+
+  // Membuat tab input (judul kolom, dropdown, keterangan). Data yang sudah diisi owner tidak pernah dihapus.
+  async siapkanInputManual(fileId) {
+    let meta = await this.api.spreadsheets.get({ spreadsheetId: fileId, fields: 'sheets(properties(sheetId,title))' });
+    const ada = new Set(meta.data.sheets.map((x) => x.properties.title));
+    const tabBaru = ['0. Cara Isi', ...TAB_INPUT.map((t) => t.nama)].filter((t) => !ada.has(t));
+    if (tabBaru.length) {
+      await this.api.spreadsheets.batchUpdate({ spreadsheetId: fileId, requestBody: { requests: tabBaru.map((title) => ({ addSheet: { properties: { title } } })) } });
+      meta = await this.api.spreadsheets.get({ spreadsheetId: fileId, fields: 'sheets(properties(sheetId,title))' });
+    }
+    const id = (t) => meta.data.sheets.find((x) => x.properties.title === t).properties.sheetId;
+    await this.api.spreadsheets.values.update({ spreadsheetId: fileId, range: `${q('0. Cara Isi')}!A1`, valueInputOption: 'RAW', requestBody: { values: CARA_ISI } });
+    const req = [
+      { updateSheetProperties: { properties: { sheetId: id('0. Cara Isi'), index: 0 }, fields: 'index' } },
+      { repeatCell: { range: { sheetId: id('0. Cara Isi'), startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 14 } } }, fields: 'userEnteredFormat.textFormat' } },
+      { updateDimensionProperties: { range: { sheetId: id('0. Cara Isi'), dimension: 'COLUMNS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 900 }, fields: 'pixelSize' } },
+    ];
+    for (const [i, t] of TAB_INPUT.entries()) {
+      const sheetId = id(t.nama);
+      await this.api.spreadsheets.values.update({ spreadsheetId: fileId, range: `${q(t.nama)}!A1`, valueInputOption: 'RAW', requestBody: { values: [t.kolom.map((c) => c.label)] } });
+      req.push(
+        { updateSheetProperties: { properties: { sheetId, index: i + 1, tabColorStyle: { rgbColor: warna(t.warna) }, gridProperties: { frozenRowCount: 1 } }, fields: 'index,tabColorStyle,gridProperties.frozenRowCount' } },
+        { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: t.kolom.length }, cell: { userEnteredFormat: { backgroundColorStyle: { rgbColor: warna(t.warna) }, textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat(backgroundColorStyle,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)' } },
+        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 42 }, fields: 'pixelSize' } },
+      );
+      t.kolom.forEach((c, j) => {
+        req.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: j, endIndex: j + 1 }, properties: { pixelSize: c.lebar }, fields: 'pixelSize' } });
+        req.push({ updateCells: { range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: j, endColumnIndex: j + 1 }, rows: [{ values: [{ note: c.catatan || '' }] }], fields: 'note' } });
+        if (c.pilihan) {
+          req.push({ setDataValidation: { range: { sheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: j, endColumnIndex: j + 1 }, rule: { condition: { type: 'ONE_OF_LIST', values: c.pilihan.map((v) => ({ userEnteredValue: v })) }, showCustomUi: true, strict: false } } });
+        }
+      });
+    }
+    // Hapus tab bawaan file kosong.
+    for (const x of meta.data.sheets) if (/^(Sheet|Lembar)\s?\d+$/i.test(x.properties.title)) req.push({ deleteSheet: { sheetId: x.properties.sheetId } });
+    await this.api.spreadsheets.batchUpdate({ spreadsheetId: fileId, requestBody: { requests: req } });
+  }
+
+  // Isi tab input (tanpa baris judul). Tanggal dibaca sebagai nomor seri supaya tidak bergantung format lokal.
+  async bacaInputManual(fileId) {
+    const res = await this.api.spreadsheets.values.batchGet({
+      spreadsheetId: fileId,
+      ranges: TAB_INPUT.map((t) => `${q(t.nama)}!A2:Z`),
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      dateTimeRenderOption: 'SERIAL_NUMBER',
+    });
+    return Object.fromEntries(TAB_INPUT.map((t, i) => [t.nama, res.data.valueRanges[i]?.values || []]));
   }
 
   // Tab "Main" & "Data Main" versi lama di PEMBUKUAN tidak dipakai lagi (pindah ke file per event).

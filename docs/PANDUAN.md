@@ -214,6 +214,7 @@ Semua file bot ada di **PROJECT CHEESY PEN SHELLS > 0. KANTOR AI (BOT)**:
 |---|---|
 | **PEMBUKUAN** | Tab **Rekap Event**: satu baris per event, berisi tim, omzet, dibayar ke IO, semua biaya, gaji, fee PIC, **laba bersih**, dan link ke file event. Tab **Gaji per Event**: rincian per orang. Tab lain adalah data mentah bot. |
 | **EVENT** (folder) | Satu spreadsheet per event, misalnya *LOMBOK - JANGKRIK (24 Sep - 11 Okt 2026)*. Tab **Ringkasan** membedah untung/rugi (omzet harian + grafik, biaya, budget makan, tim & gaji, iklan, porsi gratis, sisa bahan). Tab **Transaksi** berisi semua catatan event itu. |
+| **0. INPUT EVENT LAMA (manual)** | Untuk mengisi data event sebelumnya secara manual (tab Event, Omzet Harian, Pengeluaran, Transfer & Potongan IO, Tim, Bahan Baku, Porsi Gratis). Bot menghitungnya dengan cara yang sama, lalu hasilnya muncul di PEMBUKUAN dan file event. Petunjuk ada di tab **0. Cara Isi**. |
 | **GUDANG** | Stok bahan baku di gudang (segera dibuat). |
 | **KPI KARYAWAN** | KPI, bonus, dan perhitungan detail (segera dibuat). |
 

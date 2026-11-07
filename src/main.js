@@ -2,6 +2,7 @@
 
 import { BAHAN_AWAL, MENU_AWAL } from './katalog.js';
 import { hitungEvent, barisDataMain } from './laporan.js';
+import { ubahInputManual } from './inputManual.js';
 
 export async function isiHargaAwal(store) {
   if (!(await store.all('Harga Bahan')).length) {
@@ -22,7 +23,24 @@ export async function bacaData(store) {
   const events = semuaEvent.filter((e) => e.status !== 'BATAL');
   const atur = Object.fromEntries(pengaturan.map((r) => [r.kunci, r.nilai]));
   const namaOwner = atur.nama_owner || 'George';
-  return { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, namaOwner };
+  const data = { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, namaOwner, atur };
+
+  // Data event lama dari file "INPUT EVENT LAMA" (diisi manual oleh owner).
+  if (atur.file_input_manual && store.bacaInputManual) {
+    const manual = ubahInputManual(await store.bacaInputManual(atur.file_input_manual), semuaEvent.map((e) => e.kode));
+    const kodeGrup = new Set(semuaEvent.map((e) => e.kode));
+    const eventManual = manual.events.filter((e) => !kodeGrup.has(e.kode));
+    for (const e of eventManual) e.file_event = atur[`file_event_${e.kode}`] || '';
+    const kodeManual = new Set(eventManual.map((e) => e.kode));
+    const milik = (r) => kodeManual.has(r.kode_event);
+    data.events = [...events, ...eventManual];
+    data.omzet = [...omzet, ...manual.omzet.filter(milik)];
+    data.transaksi = [...transaksi, ...manual.transaksi.filter(milik)];
+    data.tim = [...tim, ...manual.tim.filter(milik)];
+    data.bahan = [...bahan, ...manual.bahan.filter(milik)];
+    data.gratis = [...gratis, ...manual.gratis.filter(milik)];
+  }
+  return data;
 }
 
 export async function perbaruiMain(store) {

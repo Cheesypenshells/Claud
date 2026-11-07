@@ -131,11 +131,6 @@ function barisTransaksiEvent(transaksi, kode) {
 // Menyimpan isi terakhir tiap file supaya hanya file yang berubah yang ditulis ulang.
 const terakhirDitulis = new Map();
 
-async function pengaturan(store) {
-  const rows = await store.all('Pengaturan');
-  return Object.fromEntries(rows.map((r) => [r.kunci, r.nilai]));
-}
-
 // Memberi file event yang belum punya: memakai file cadangan "(kosong)" di folder EVENT.
 async function pastikanFileEvent(store, e, folderEvent, catatan) {
   if (e.file_event || !folderEvent) return e.file_event;
@@ -147,7 +142,11 @@ async function pastikanFileEvent(store, e, folderEvent, catatan) {
   const file = cadangan[0];
   await store.gantiNamaFile(file.id, judulFileEvent(e));
   await store.siapkanFileEvent(file.id, e.kode, `${judulFileEvent(e)} – BEDAH UNTUNG / RUGI`);
-  await store.update('Event', 'kode', e.kode, { file_event: file.id });
+  if (e.sumber === 'manual') {
+    await store.append('Pengaturan', { kunci: `file_event_${e.kode}`, nilai: file.id, keterangan: `File event ${e.kode} (dari INPUT EVENT LAMA)` });
+  } else {
+    await store.update('Event', 'kode', e.kode, { file_event: file.id });
+  }
   e.file_event = file.id;
   terakhirDitulis.delete(file.id);
   return file.id;
@@ -155,7 +154,7 @@ async function pastikanFileEvent(store, e, folderEvent, catatan) {
 
 export async function perbaruiPembukuan(store) {
   const data = await bacaData(store);
-  const atur = await pengaturan(store);
+  const { atur } = data;
   const catatan = [];
   const hasil = [];
 

@@ -94,3 +94,39 @@ test('#owner dengan jumlah hari', async () => {
   assert.match(await kirim('#owner 1 hari'), /\*1 hari\*/);
   assert.match(await kirim('#owner tidak'), /25%/);
 });
+
+test('input event lama (manual) dihitung dengan mesin yang sama', async () => {
+  const { store } = await siapkan();
+  const { ubahInputManual, keTanggal } = await import('../src/inputManual.js');
+  assert.equal(keTanggal(46289), '2026-09-24'); // nomor seri Sheets
+  assert.equal(keTanggal('24/09/2026'), '2026-09-24');
+
+  await store.append('Pengaturan', { kunci: 'file_input_manual', nilai: 'INPUT' });
+  store.inputManual = {
+    '1. Event': [['', 'Kediri', 'Jangkrik', '03/09/2026', '05/09/2026', 'Jawa', 30, 0, 'penuh']],
+    '2. Omzet Harian': [['KDR26-09', '03/09/2026', 15000000, 90, 0], ['KDR26-09', '04/09/2026', 20000000, 110, 0]],
+    '3. Pengeluaran': [['KDR26-09', '03/09/2026', 'lalamove', '', 160000, 'Uang George'], ['KDR26-09', '03/09/2026', 'sapu', '', 25000, 'Kas usaha']],
+    '4. Transfer & Potongan IO': [['KDR26-09', '06/09/2026', 'Transfer IO', 24500000, 'pelunasan']],
+    '5. Tim': [['KDR26-09', 'Rina', 'PIC', '', '', ''], ['KDR26-09', 'Imam', 'Tetap', '', '', ''], ['KDR26-09', 'Joko', 'DW', 100000, '', '']],
+    '6. Bahan Baku': [['KDR26-09', 'Mozzarella', 10, 0, 2]],
+    '7. Porsi Gratis': [],
+  };
+  const m = ubahInputManual(store.inputManual);
+  assert.equal(m.events[0].kode, 'KDR26-09');
+  assert.equal(m.transaksi[1].kategori, 'Barang Kering Non-Konsumtif');
+
+  await perbaruiPembukuan(store);
+  const rekap = store.tabel['PEMBUKUAN/Rekap Event'];
+  const kol = (label) => KOLOM_REKAP.findIndex((c) => c.label === label);
+  const kediri = rekap.find((b) => b[0] === 'KDR26-09');
+  assert.ok(kediri);
+  assert.equal(kediri[kol('Omzet Kotor')], 35000000);
+  assert.equal(kediri[kol('Transport')], 160000);
+  assert.equal(kediri[kol('Fee PIC %')], 10);
+  assert.equal(kediri[kol('Bahan Baku')], 10 * 234000);
+  assert.equal(kediri[kol('Sisa Bahan Kembali')], 2 * 234000);
+  // file event diambil dari cadangan dan dicatat di Pengaturan (tidak dobel saat dihitung ulang)
+  assert.equal(store.files[0].nama, 'KEDIRI - JANGKRIK (3 - 5 Sep 2026)');
+  await perbaruiPembukuan(store);
+  assert.equal((await store.all('Pengaturan')).filter((r) => r.kunci === 'file_event_KDR26-09').length, 1);
+});
