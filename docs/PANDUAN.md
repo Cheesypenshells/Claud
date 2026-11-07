@@ -185,6 +185,7 @@ mozzarella 20 pack
 bumbu garlic 5 pack
 oyster 100 kg
 ```
+- Bisa juga ditulis dengan kalimat biasa tanpa harga, contoh: `kiriman 10 pack keju`, `restock bumbu garlic 2 pack`, `sisa 3 pack keju dikembalikan`.
 - `#restock ...` untuk tambahan di tengah event.
 - `#kembali ...` untuk sisa yang dikembalikan ke gudang. **Pack yang sudah dibuka dianggap habis**, jadi tulis pack utuh saja.
 

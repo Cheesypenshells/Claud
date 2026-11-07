@@ -255,3 +255,17 @@ test('PIC yang merangkap kasir tidak dihitung sebagai kasir berbayar', async () 
   assert.equal(tim.length, 1);
   assert.equal(tim[0].peran, 'PIC');
 });
+
+test('kalimat biasa tentang bahan dicatat tanpa #perintah', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, PIC, 'kiriman 10 pack keju'), /Bahan keluar dari gudang[\s\S]*Mozzarella 10 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'restock bumbu garlic 2 pack'), /Restock bahan[\s\S]*Bumbu Garlic 2 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'sisa 3 pack keju dikembalikan'), /terpakai \*7 pack\*/);
+  // ada harga -> tetap pengeluaran biasa
+  assert.match(await kirim(G_KELUAR, PIC, 'kirim barang lalamove 150rb'), /Pengeluaran tercatat/);
+  // chat biasa tanpa bahan tetap diabaikan
+  assert.equal(await kirim(G_KELUAR, PIC, 'besok kirim jam 8 ya'), '');
+});

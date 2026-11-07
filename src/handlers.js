@@ -58,6 +58,15 @@ const BANTUAN = {
 • #rekap bulan [YYYY-MM]`,
 };
 
+// Kata kunci kalimat bahan -> perintah bahan (#keluar / #restock / #kembali).
+function gerakBahanDariKalimat(teks) {
+  const t = ` ${String(teks).toLowerCase()} `;
+  if (/\s(sisa|kembali|dikembalikan|retur|balik)\s/.test(t)) return 'kembali';
+  if (/\s(restock|restok|tambahan bahan|tambah bahan)\s/.test(t)) return 'restock';
+  if (/\s(kirim|kiriman|dikirim|bawa|dibawa|keluar|bahan keluar)\s/.test(t)) return 'keluar';
+  return null;
+}
+
 // Disimpan sebagai "Nama (628xxx)" supaya mudah dibaca dan tetap unik.
 function namaPengirim(pesan) {
   return pesan.senderName ? `${pesan.senderName} (${pesan.senderId})` : pesan.senderId;
@@ -403,6 +412,15 @@ export async function handlePesan(ctx, pesan) {
           return perintahBahan(ctx, pesan, event, cmd);
         }
         break;
+    }
+  }
+
+  // Kalimat biasa tentang bahan tanpa harga, contoh "kiriman 10 pack keju" / "sisa 3 pack mozzarella".
+  if (!cmd && event && !parseMoney(teks)) {
+    const gerak = gerakBahanDariKalimat(teks);
+    if (gerak) {
+      const hasil = await perintahBahan(ctx, pesan, event, { perintah: gerak, sisaBaris: teks, badan: '', argumen: [] });
+      if (!/^Format:/.test(hasil[0]?.text || '')) return hasil;
     }
   }
 
