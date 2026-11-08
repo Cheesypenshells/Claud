@@ -22,7 +22,21 @@
 - Tema yang sudah muncul: iman ("plan dari Tuhan"), mindset, bertahan di bisnis,
   rugi besar (-404.907.008), hidup di jalan (kereta, bandara), anjing peliharaan.
 
-## Belum diketahui (❓ wajib dijawab)
+## Positioning (dari George, 8 Nov 2026) ✅
+**@geov10 = personal branding.** Dikenal sebagai:
+> **Pemuda yang membangun bisnis dari nol, tanpa bantuan orang tua maupun kerabat,
+> berpegang teguh pada Tuhan, dan Tuhan yang membawa dia sampai di titik ini.**
+
+3 pilar konten @geov10:
+1. **Dari Nol:** perjalanan bisnis, jatuh bangun, angka nyata (rugi 404 jt, modal, omzet).
+2. **Sendiri, Tanpa Backing:** mandiri tanpa orang tua/kerabat, keputusan sulit, kesepian founder.
+3. **Bersama Tuhan:** doa, momen "plan dari Tuhan", iman saat rugi (konten 64 rb terbukti jalan).
+
+**@cheesypenshells = jualan.** Video standar kolab influencer lokal tiap buka di kota baru,
+materi promosi, pengumuman lokasi.
+
+## Target
+- **100.000 follower @geov10** (detail & hitungan realistis: `konten/03-target-dan-todo.md`)
+
+## Belum diketahui (❓)
 - Hal yang TIDAK mau dibahas:
-- Target 3 bulan:
-- Mau dikenal sebagai apa (founder kuliner? motivator bisnis? traveler?):
