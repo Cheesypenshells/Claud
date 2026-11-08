@@ -520,6 +520,9 @@ test('baca bukti: nominal & tanggal dari teks OCR', async () => {
 });
 
 
+// Event yang mulai setelah aturan struk berlaku (8 Nov 2026).
+const BLOK_BARU = BLOK_EVENT.replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 9-15 Nov 2026');
+
 function setupStruk() {
   const s = setup();
   s.ctx.wajibStruk = true;
@@ -533,7 +536,7 @@ const GRAB = 'Grab\nTrip completed 04 Nov 2026\nTotal Rp 150.000\nBooking ID 123
 
 test('struk: >= 100rb tanpa struk ditahan; foto struk yang sesuai -> masuk pembukuan', async () => {
   const { store, kirim } = setupStruk();
-  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, OWNER, BLOK_BARU);
   const r = await kirim(G_KELUAR, PIC, 'makan KFC 150rb');
   assert.match(r, /wajib struk.*P0001 makan KFC/s);
   assert.equal((await store.all('Transaksi')).length, 0);
@@ -549,7 +552,7 @@ test('struk: >= 100rb tanpa struk ditahan; foto struk yang sesuai -> masuk pembu
 
 test('struk: KFC tapi struk pecel ayam / grab tapi struk KFC ditolak & ditanya; owner acc', async () => {
   const { store, kirim } = setupStruk();
-  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, OWNER, BLOK_BARU);
   const r1 = await kirim(G_KELUAR, PIC, 'makan KFC 150rb', fotoStruk(PECEL));
   assert.match(r1, /Struk tidak sesuai.*menyebut \*KFC\*.*PECEL AYAM.*penjelasannya di grup/s);
   const r2 = await kirim(G_KELUAR, PIC, 'grab ke venue 150rb', fotoStruk(KFC));
@@ -568,7 +571,7 @@ test('struk: KFC tapi struk pecel ayam / grab tapi struk KFC ditolak & ditanya; 
 
 test('struk: struk kembar ditolak; nominal beda ditolak; tanggal di luar masa event ditolak', async () => {
   const { store, kirim } = setupStruk();
-  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, OWNER, BLOK_BARU);
   assert.match(await kirim(G_KELUAR, PIC, 'grab ke venue 150rb', fotoStruk(GRAB)), /T0001 grab ke venue.*struk ✓/s);
   assert.match(await kirim(G_KELUAR, PIC, 'grab pulang 150rb', fotoStruk(GRAB)), /sudah pernah dipakai\* untuk T0001/);
   assert.match(await kirim(G_KELUAR, PIC, 'grab pulang 120rb', fotoStruk('Grab\n04 Nov 2026\nTotal Rp 150.000\nID 99999999999')), /Nominal Rp 120.000 tidak ada di struk/);
@@ -581,7 +584,7 @@ test('struk: struk kembar ditolak; nominal beda ditolak; tanggal di luar masa ev
 
 test('struk: owner tidak wajib struk; cash < 100rb dengan keterangan umum ditanya detail', async () => {
   const { store, kirim } = setupStruk();
-  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, OWNER, BLOK_BARU);
   assert.match(await kirim(G_KELUAR, OWNER, 'hotel 300rb'), /T0001 hotel/);
   assert.equal((await store.all('Transaksi'))[0].bukti, 'Tanpa struk (input owner)');
   assert.match(await kirim(G_KELUAR, PIC, 'lakban 20rb'), /T0002 lakban/);
@@ -595,4 +598,11 @@ test('struk: owner tidak wajib struk; cash < 100rb dengan keterangan umum ditany
   // owner acc tanpa reply kalau hanya satu yang menunggu
   assert.match(await kirim(G_KELUAR, OWNER, 'acc'), /Disetujui owner:\* P0002.*hotel valen/s);
   assert.equal((await store.all('Transaksi')).find((t) => t.keterangan === 'hotel valen').bukti, 'ACC owner (tanpa struk)');
+});
+
+test('struk: event yang sudah berjalan sebelum aturan struk tidak ditahan', async () => {
+  const { store, kirim } = setupStruk();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT.replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 24 Sep - 11 Okt 2026'));
+  assert.match(await kirim(G_KELUAR, PIC, 'hotel valen 350rb'), /T0001 hotel valen/);
+  assert.equal((await store.all('Transaksi'))[0].bukti, '');
 });

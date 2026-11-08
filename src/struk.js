@@ -10,6 +10,11 @@ import { bacaBukti } from './bukti.js';
 
 export const BATAS_STRUK = 100000;
 
+// Aturan struk berlaku untuk event yang mulai sejak tanggal ini. Event yang sudah berjalan sebelumnya
+// (contoh Lombok LMB26-09) tidak diubah: tidak ditahan, tanpa kolom Bukti.
+export const MULAI_ATURAN_STRUK = '2026-11-08';
+export const eventWajibStruk = (event) => !event?.mulai || String(event.mulai) >= MULAI_ATURAN_STRUK;
+
 // Merek yang sering muncul di struk. `merek` = nama yang bisa disebut di keterangan.
 // Kategori hanya untuk Konsumsi / Transport / Penginapan (yang jelas bertentangan satu sama lain).
 const MEREK = [

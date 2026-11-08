@@ -15,7 +15,7 @@ import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan
 import { KATEGORI } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti } from './bukti.js';
-import { BATAS_STRUK, periksaStruk, perluDetail } from './struk.js';
+import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
@@ -222,6 +222,7 @@ async function strukBerlaku(store) {
 async function terapkanAturanStruk(ctx, pesan, { buku, kodeEvent, items }) {
   const isOwner = ctx.ownerIds.has(pesan.senderId);
   const event = buku === BUKU.EVENT ? await cariEvent(ctx.store, kodeEvent) : null;
+  if (event && !eventWajibStruk(event)) return { lanjut: items, ditahan: [] };
   const foto = pesan.adaFoto && pesan.ambilFoto ? await bacaFotoPesan(ctx, pesan) : null;
   const daftarStruk = foto?.teks ? await strukBerlaku(ctx.store) : [];
   const nominalFoto = foto?.teks ? bacaBukti(foto.teks).nominal : [];
