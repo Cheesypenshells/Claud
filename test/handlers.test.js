@@ -500,15 +500,17 @@ test('foto bukti trf untuk catatan dobel: nominal & tanggal dicek', async () => 
   assert.equal(t2.sumber, 'foto bukti');
 
   // Nominal tidak ada di bukti -> tetap ditanya; "batal" -> tidak dicatat
-  await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
-  assert.match(await kirim(G_KELUAR, PIC, '', foto('Rp 50.000 03 Nov 2026')), /tidak ada\* di bukti/);
+  const peringatan = await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
+  assert.match(await kirim(G_KELUAR, PIC, '', { ...foto('Rp 50.000 03 Nov 2026'), kutipan: { teks: peringatan } }), /tidak ada\* di bukti/);
   assert.match(await kirim(G_KELUAR, PIC, 'batal'), /tidak dicatat \(dobel/);
   assert.equal(await jumlah(), 2);
 
   // Foto tidak terbaca
   ctx.bacaGambar = async () => null;
   await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
-  assert.match(await kirim(G_KELUAR, PIC, '', foto('x')), /belum bisa saya baca/);
+  const p2 = await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
+  assert.match(await kirim(G_KELUAR, PIC, '', { ...foto('x'), kutipan: { teks: p2 } }), /belum bisa saya baca/);
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('x')), /tidak terbaca dari foto/);
 });
 
 test('baca bukti: nominal & tanggal dari teks OCR', async () => {
@@ -724,4 +726,28 @@ test('batas tanggal: transaksi hanya 2 hari sebelum s/d 2 hari sesudah event; ow
   // owner tetap bisa acc
   assert.match(await kirim(G_KELUAR, OWNER, 'acc P0001'), /Disetujui owner.*lakban/s);
   assert.equal((await store.all('Transaksi')).length, 3);
+});
+
+test('reply koreksi deposit: biaya = transfer - deposit; tidak jadi catatan baru', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Penginapan veri 500rb');
+  const k = await kirim(G_KELUAR, OWNER, '', { kutipan: { teks: r }, text: 'Penginapan veri bukan500k, total dari trf 2620k itu termasuk deposit 500k yang nantinya setelah check out dikembalikan' });
+  assert.match(k, /Sudah diubah\* \(nominal Rp 2.120.000\).*trf Rp 2.620.000 termasuk deposit Rp 500.000/s);
+  assert.equal((await store.all('Transaksi')).length, 1);
+  // tidak jelas -> ditanya, tidak dicatat
+  assert.match(await kirim(G_KELUAR, OWNER, '', { kutipan: { teks: r }, text: 'bukan 500k tapi 450k dan 50k' }), /tidak saya catat/);
+  assert.equal((await store.all('Transaksi')).length, 1);
+});
+
+test('peringatan dobel tidak menelan foto bukti transfer lain', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async (buf) => buf.toString();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'lampu 117.658');
+  assert.match(await kirim(G_KELUAR, PIC, 'lampu led 117.658'), /nominalnya sama dengan catatan lama/);
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  // foto bukti lain (nominal beda) -> diproses sebagai pengeluaran baru (ditanya untuk apa)
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('IDR 600,000.00\nTransfer ke rekening BCA\n21 Sep 2026')), /Rp 600.000\*, tapi belum jelas/);
+  assert.equal((await store.all('Transaksi')).length, 1);
 });

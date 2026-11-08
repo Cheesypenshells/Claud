@@ -8,7 +8,7 @@
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
 import { parsePerintah, parseEvent, parsePengeluaranDetail, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
-import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney, bersihkan as bersihkanTeks } from './util.js';
+import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney, findMoney, bersihkan as bersihkanTeks } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
@@ -728,14 +728,36 @@ async function selesaikanTunda(ctx, pesan, { cmd, isOwner, teks }) {
   return balas(`📝 Penjelasan dicatat untuk ${dijelaskan.map((p) => p.id).join(', ')}. Masih menunggu *struk yang sesuai* atau *owner* reply *acc*.`);
 }
 
+// "Penginapan veri bukan 500k, total dari trf 2620k itu termasuk deposit 500k yang nanti dikembalikan":
+// biaya = total transfer - deposit. Kalau maksudnya tidak jelas, tanya; tidak pernah dicatat sebagai catatan baru.
+async function koreksiNominalRumit(ctx, pesan, ids, isOwner) {
+  const teks = String(pesan.text || '');
+  const semua = await ctx.store.all('Transaksi');
+  const kandidat = ids.map((id) => semua.find((t) => String(t.id).toUpperCase() === id)).filter((t) => t && t.status !== STATUS.BATAL);
+  const { catatan } = pilihCatatan(teks, kandidat);
+  const normal = teks.replace(/([a-z])(\d)/gi, '$1 $2');
+  const uang = findMoney(normal);
+  const iDeposit = normal.toLowerCase().search(/deposit|jaminan/);
+  const tanya = `💬 Maksudnya nominal ${catatan.length === 1 ? catatan[0].id : 'catatan yang mana'} jadi berapa? Reply pesan catatannya, contoh: *harusnya 2.120.000*`;
+  if (catatan.length !== 1 || iDeposit < 0 || uang.length < 2) return balas(`Pesan ini *tidak saya catat* sebagai pengeluaran baru.\n${tanya}`);
+  const t = catatan[0];
+  if (!isOwner && !String(t.pengirim).includes(`(${pesan.senderId})`)) return balas('⚠️ Hanya owner atau pengirim asli yang bisa mengubah catatan ini.');
+  const deposit = (uang.find((u) => u.index > iDeposit) || uang[uang.length - 1]).nilai;
+  const total = Math.max(...uang.map((u) => u.nilai));
+  if (!(total > deposit)) return balas(`Pesan ini *tidak saya catat* sebagai pengeluaran baru.\n${tanya}`);
+  const biaya = total - deposit;
+  const keterangan = `${t.keterangan} (trf ${rupiah(total)} termasuk deposit ${rupiah(deposit)} yang dikembalikan)`;
+  const baru = await ctx.store.update('Transaksi', 'id', t.id, { nominal: biaya, keterangan });
+  return balas([
+    `✅ *Sudah diubah* (nominal ${rupiah(biaya)}):`,
+    barisItem(baru || { ...t, nominal: biaya, keterangan }, tanggalLokal(pesan.waktu)),
+    `_Biaya = transfer ${rupiah(total)} − deposit ${rupiah(deposit)}. Deposit tidak dihitung sebagai biaya. Kalau depositnya ternyata tidak kembali, reply: *harusnya ${rupiah(total).replace('Rp ', '')}*_`,
+  ].join('\n'));
+}
+
 // Foto bukti untuk catatan yang nominalnya sama dengan catatan lama: cocokkan nominal & tanggal.
 async function periksaBukti(ctx, pesan, d) {
-  let teksFoto = null;
-  try {
-    teksFoto = await (ctx.bacaGambar || bacaGambar)(await pesan.ambilFoto());
-  } catch {
-    teksFoto = null;
-  }
+  const teksFoto = (await bacaFotoPesan(ctx, pesan)).teks || null;
   if (!teksFoto) {
     return balas('⚠️ Fotonya belum bisa saya baca (pembaca foto belum terpasang di HP bot, atau foto gagal diunduh).\nBalas *catat* kalau memang pengeluaran lain, atau *batal* kalau dobel.');
   }
@@ -900,7 +922,14 @@ export async function handlePesan(ctx, pesan) {
         ctx.sesi.hapus(kunciDobel(pesan));
         return balas(`👌 Oke, tidak dicatat (dobel dengan ${(d.lama || []).map((x) => x.id).join(', ') || 'catatan lama'}).`);
       }
-      if (pesan.adaFoto && pesan.ambilFoto && !parseMoney(teks)) return periksaBukti(ctx, pesan, d);
+      // Foto dipakai sebagai bukti dobel hanya kalau me-reply peringatan dobel, atau nominalnya cocok.
+      // Foto lain (bukti transfer lain) diproses sebagai pengeluaran baru.
+      if (pesan.adaFoto && pesan.ambilFoto && !parseMoney(teks)) {
+        const balasPeringatan = /nominalnya sama dengan catatan lama/i.test(pesan.kutipan?.teks || '');
+        const foto = await bacaFotoPesan(ctx, pesan);
+        const nominal = foto.teks ? bacaBukti(foto.teks).nominal : [];
+        if (balasPeringatan || d.items.some((i) => nominal.includes(Number(i.nominal)))) return periksaBukti(ctx, pesan, d);
+      }
     }
   }
 
@@ -919,6 +948,10 @@ export async function handlePesan(ctx, pesan) {
     if (ids.length) {
       const hasil = await koreksiCatatan(ctx, pesan, event, ids, isOwner);
       if (hasil) return hasil;
+      // Reply koreksi dengan beberapa angka ("bukan 500k, total trf 2620k termasuk deposit 500k"): jangan dicatat baru.
+      if (parseMoney(teks) && /\b(bukan|salah|harusnya|seharusnya|termasuk|deposit|jaminan|dikembalikan|refund|koreksi)\b/i.test(teks)) {
+        return koreksiNominalRumit(ctx, pesan, ids, isOwner);
+      }
       // Reply ke catatan tanpa harga baru tapi tidak dipahami: beri contoh, jangan diam.
       if (!parseMoney(teks)) {
         if (/\b(jumlah|nominal|harga|uang|total)\b.*\bsalah\b|\bsalah\b.*\b(jumlah|nominal|harga|total)\b/i.test(teks)) {
