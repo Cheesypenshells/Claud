@@ -290,7 +290,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
         .replace(/\b(cash|tunai|trf|tf|transfer)\b/gi, '')
         .replace(/\b(total|totalnya|semuanya|harga|harganya)\s*$/i, '')
         .replace(RE_KOMENTAR_HAPUS, ' ')
-        .replace(/^\s*((itu|ini|yang|yg)\s+)?(untuk|buat)\s+/i, '')
+        .replace(/^\s*((iya|ya|ok|oke|itu|ini|yang|yg)\s+)*((harga|biaya|bayar|uang)(nya)?\s+)?(untuk|buat)\s+/i, '')
         .replace(/\b(bolak[\s-]?balik)(\s+bolak[\s-]?balik)+\b/gi, '$1')
         .replace(/[:=]+\s*$/, ''),
     ).replace(/[\s,:;=-]+$/, '');

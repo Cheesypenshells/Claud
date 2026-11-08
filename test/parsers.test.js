@@ -246,3 +246,9 @@ test('grab bolak balik = 2x nominal; komentar sesudah harga tidak membuat pesan 
   assert.equal(tebakKategori('hotel 2 malam'), 'Penginapan');
   assert.equal(tebakKategori('bayar hotel'), 'Penginapan');
 });
+
+test('awalan "iya untuk" / "ini harga untuk" dibuang dari keterangan', async () => {
+  const { parsePengeluaranDetail: p } = await import('../src/parsers.js');
+  assert.equal(p('Iya untuk hotel karyawan veri 600k').items[0].keterangan, 'hotel karyawan veri');
+  assert.equal(p('Ini harga untuk sewa freezer 500 liter 900rb').items[0].keterangan, 'sewa freezer 500 liter');
+});
