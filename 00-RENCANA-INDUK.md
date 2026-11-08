@@ -13,6 +13,7 @@ membuat, merakit, dan mengevaluasi**. George cukup syuting, cek, dan posting.
 - **Jam upload (uji 3 minggu):** **19.00 WIB** (utama) & **12.00 WIB** (pembanding).
   Lalu cek Insight → Pengikut → *Waktu paling aktif* dan kunci jam terbaik.
 - **Kota berikutnya: Semarang, mulai 14 Nov** → `konten/07-semarang-14-nov.md`.
+- **Gaya visual @geov10: editorial B&W** (referensi gaya @theoderick_) → `konten/09-gaya-editorial.md`.
 - **Pengingat otomatis:** setiap **Senin 09.47 WIB** Claude minta insight & bikin paket minggu itu.
 
 ## 1. Target per akun
@@ -113,4 +114,7 @@ membuat, merakit, dan mengevaluasi**. George cukup syuting, cek, dan posting.
 | `konten/04-sop-kolab-influencer.md` | SOP kolab per kota |
 | `konten/05-bank-pertanyaan.md` | Pertanyaan cerita |
 | `konten/06-produksi-video-ai.md` | Proses produksi video AI |
+| `konten/07-semarang-14-nov.md` | Paket promo Semarang |
+| `konten/08-stack-ai-gratis.md` | Alat AI gratis |
+| `konten/09-gaya-editorial.md` | Gaya editorial B&W + prompt AI |
 | `bisnis/rencana-perusahaan-video.md` | Rencana studio video |
