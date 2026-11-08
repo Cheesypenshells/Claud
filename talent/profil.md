@@ -1,29 +1,28 @@
-# Profil Talent
+# Profil Talent: George Vallentino ("Koko Oyster / Koko Kerang")
 
-> Isi sekali saja. Ini jadi dasar semua konten yang saya buat.
+> ✅ = dari screenshot IG (8 Nov 2026) · ❓ = belum diisi, tunggu jawaban George
 
 ## Identitas
-- Nama panggung / nama yang dipakai di konten:
-- Umur (opsional):
-- Kota:
-- Pekerjaan / kesibukan sekarang:
+- Nama di konten: **George Vallentino**, persona **Koko Oyster / Koko Kerang** ✅
+- Bisnis: **Cheesy Pen Shells**, booth oyster/kerang bakar keju, keliling event & bazar kuliner
+  antar kota (Lampung, Jambi, Pontianak, Pekalongan, dll) ✅
+- Harga andalan: oyster fresh bakar keju lumer **mulai 15 ribuan** ✅
+- Kota asal / tinggal: ❓
+- Umur, sejak kapan usaha jalan: ❓
 
-## Platform
-- Platform utama (IG / TikTok / YouTube Shorts):
-- Username:
-- Jumlah follower sekarang:
-- Target audiens (siapa yang mau kamu sentuh):
+## Akun
+| Akun | Peran | Follower | Postingan | Tayangan 30 hr | Follower baru 30 hr | Konten 30 hr |
+|---|---|---|---|---|---|---|
+| @geov10 | Personal / founder | 4.742 | 168 | 123,1 rb | 78 | 41 |
+| @cheesypenshells | Brand / toko | 2.387 | 402 | 100,1 rb | 74 | 29 |
 
-## Kepribadian di kamera
-- Gaya bicara (santai / lucu / kalem / berapi-api):
-- Bahasa (Indonesia baku / gaul / campur daerah / campur Inggris):
-- Nyaman tampil wajah? Voice over saja?
+## Gaya di kamera ✅
+- Nyaman tampil wajah, ngomong langsung ke kamera, vlog selfie, POV lucu.
+- Bahasa: Indonesia santai, "gua", campur Inggris dikit (POV, mindset).
+- Tema yang sudah muncul: iman ("plan dari Tuhan"), mindset, bertahan di bisnis,
+  rugi besar (-404.907.008), hidup di jalan (kereta, bandara), anjing peliharaan.
+
+## Belum diketahui (❓ wajib dijawab)
 - Hal yang TIDAK mau dibahas:
-
-## Tujuan
-- Kenapa mau bikin konten:
-- Target 3 bulan ke depan:
-- Mau dikenal sebagai apa:
-
-## Referensi
-- Akun / konten yang kamu suka (dan kenapa):
+- Target 3 bulan:
+- Mau dikenal sebagai apa (founder kuliner? motivator bisnis? traveler?):
