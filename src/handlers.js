@@ -642,9 +642,10 @@ async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
   if (k.tanggal) patch.tanggal = k.tanggal;
   if (k.kategori) patch.kategori = k.kategori;
   if (k.nominal) patch.nominal = k.nominal;
+  if (k.keterangan) patch.keterangan = k.keterangan.charAt(0).toUpperCase() + k.keterangan.slice(1);
   const hasil = [];
   for (const t of aktif) hasil.push(await ctx.store.update('Transaksi', 'id', t.id, patch) || { ...t, ...patch });
-  const apa = [patch.dibayar_oleh && `uang ${patch.dibayar_oleh}`, patch.tanggal && `tanggal ${patch.tanggal}`, patch.kategori && `kategori ${patch.kategori}`, patch.nominal && `nominal ${rupiah(patch.nominal)}`].filter(Boolean).join(', ');
+  const apa = [patch.keterangan && `keterangan "${patch.keterangan}"`, patch.dibayar_oleh && `uang ${patch.dibayar_oleh}`, patch.tanggal && `tanggal ${patch.tanggal}`, patch.kategori && `kategori ${patch.kategori}`, patch.nominal && `nominal ${rupiah(patch.nominal)}`].filter(Boolean).join(', ');
   const lewat = boleh.length < target.length ? `\n_${target.length - boleh.length} catatan milik orang lain tidak diubah._` : '';
   return balas(`✅ *Sudah diubah* (${apa}):\n${hasil.map((t) => barisItem(t, tanggalLokal(pesan.waktu))).join('\n')}${lewat}`);
 }

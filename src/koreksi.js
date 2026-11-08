@@ -6,7 +6,7 @@
 //   reply "250rb" (1 catatan) -> nominal diubah
 // Pesan yang bukan koreksi (misalnya pengeluaran baru "parkir 5rb") dikembalikan null.
 
-import { ambilUangSiapa, ambilUangSemua, ambilTanggal } from './parsers.js';
+import { ambilUangSiapa, ambilUangSemua, ambilTanggal, tebakKategori, KATEGORI } from './parsers.js';
 import { SEBUTAN_KATEGORI } from './lengkapi.js';
 import { findMoney, bersihkan } from './util.js';
 
@@ -36,6 +36,15 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null, cocokK
   if (/^(batal|batalkan|hapus|cancel|dibatalkan|gak jadi|nggak jadi|tidak jadi)\b/.test(sisa) && sisa.split(/\s+/).length <= 4) return { batal: true };
 
   const hasil = {};
+  // Ganti keterangan: "ini pengeluaran makan", "ini untuk makan bukan influencer".
+  sisa = sisa.replace(/\bmakam\b/g, 'makan').replace(/\bmkn\b/g, 'makan');
+  const adaPenanda = /\b(ini|itu|bukan|ganti|diganti|salah|harusnya|seharusnya|sebenarnya)\b/.test(sisa);
+  sisa = sisa.replace(/\bbukan\s+(untuk\s+|buat\s+)?\w+/g, ' ');
+  const ket = adaPenanda && sisa.match(/\b(?:pengeluaran|untuk|buat|biaya|beli|bayar)\s+((?:(?!pakai\b|pake\b|uang\b|kategori|jadi\b|diganti\b|ya\b|yaa\b|masuk\b|tanggal\b|tgl\b|harusnya\b)[a-z]+\s*){1,3})/);
+  if (ket) {
+    hasil.keterangan = bersihkan(ket[1]);
+    sisa = sisa.replace(ket[0], ' ');
+  }
   const semua = ambilUangSemua(sisa);
   if (semua.siapa) { hasil.siapa = semua.siapa; sisa = semua.sisa; } else {
     const u = ambilUangSiapa(sisa);
@@ -56,6 +65,10 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null, cocokK
   if (kat) { hasil.kategori = kat[1]; sisa = sisa.replace(kat[0], ' '); }
   // "makan 50rb" (kategori + harga) adalah pengeluaran baru, bukan koreksi nominal.
   if (hasil.kategori && hasil.nominal) return null;
+  if (hasil.keterangan && !hasil.kategori) {
+    const k = tebakKategori(hasil.keterangan);
+    if (k !== KATEGORI.LAIN) hasil.kategori = k;
+  }
   if (!Object.keys(hasil).length) return null;
   // Sisa kata selain kata pengisi berarti kalimat lain (misalnya pengeluaran baru): jangan dianggap koreksi.
   const lain = bersihkan(sisa).split(/\s+/).filter((w) => w && !PENGISI.has(w) && !/^(non|konsumtif|kering|barang|baku|bahan|ekspedisi)$/.test(w));

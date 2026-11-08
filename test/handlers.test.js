@@ -797,3 +797,15 @@ test('pertanyaan kategori tidak menangkap reply ke pesan lain', async () => {
   await kirim(G_KELUAR, PIC, '', { kutipan: { teks: 'Foto lain', id: 'zz' }, text: 'masuk transport' });
   assert.equal((await store.all('Transaksi'))[0].kategori, sebelum);
 });
+
+test('reply "ini pengeluaran makan" / "ini untuk makan bukan influencer" mengganti keterangan & kategori', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, PIC, 'Influencer 1 54rb');
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r }, text: 'Ini pengeluaran makan pakai uang melia' }),
+    /Sudah diubah\* \(keterangan "Makan", uang Melia, kategori Konsumsi\)/);
+  const r2 = await kirim(G_KELUAR, PIC, 'Influencer 2 60rb');
+  assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r2 }, text: 'Ini untuk makam bukan influencer, kategorinya diganti jadi konsumsi' }), /keterangan "Makan".*kategori Konsumsi/s);
+  const t = await store.all('Transaksi');
+  assert.deepEqual(t.map((x) => [x.keterangan, x.kategori]), [['Makan', 'Konsumsi'], ['Makan', 'Konsumsi']]);
+});
