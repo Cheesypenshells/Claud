@@ -4,7 +4,7 @@
 // - < Rp 100.000 tanpa struk (cash) wajib keterangan yang jelas (beli apa / di mana).
 
 import { createHash } from 'node:crypto';
-import { KATEGORI } from './parsers.js';
+import { KATEGORI, tebakKategori } from './parsers.js';
 import { tambahHari } from './util.js';
 import { bacaBukti } from './bukti.js';
 
@@ -74,6 +74,22 @@ export function kategoriStruk(teks) {
 export function tokoDi(teks) {
   const baris = String(teks ?? '').split(/\n+/).map((b) => b.trim()).filter((b) => /[a-z]{3,}/i.test(b));
   return (merekDi(teks)[0]?.nama || baris[0] || '').slice(0, 40);
+}
+
+// Foto tanpa caption: kenali pengeluarannya dari struk (merek / jenis toko). null kalau tidak jelas,
+// misalnya bukti transfer bank yang hanya berisi nama penerima: bot perlu bertanya.
+export function kenaliStruk(teks) {
+  const merek = merekDi(teks)[0];
+  const kategori = kategoriStruk(teks);
+  if (merek && (merek.kategori || kategori)) return { keterangan: merek.nama, kategori: merek.kategori || kategori };
+  // Minimarket dll: kategori ditebak dari barang di struk (aqua -> konsumsi, lakban -> barang kering).
+  if (merek) return { keterangan: merek.nama, kategori: tebakKategori(teks) };
+  if (kategori) {
+    const toko = tokoDi(teks);
+    const tokoJelas = toko && !/^(transfer|bukti|struk|receipt|nota|invoice|pembayaran|payment|berhasil|sukses)/i.test(toko);
+    return { keterangan: tokoJelas ? toko : kategori, kategori };
+  }
+  return null;
 }
 
 // Sidik struk untuk mendeteksi struk yang dipakai dua kali.

@@ -15,7 +15,7 @@ import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan
 import { KATEGORI, ambilTanggal } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti } from './bukti.js';
-import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk } from './struk.js';
+import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
@@ -161,8 +161,17 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
   if (!items.length && jenis === JENIS.KELUAR && pesan.adaFoto && pesan.ambilFoto && !dilewati.length) {
     const foto = await bacaFotoPesan(ctx, pesan);
     const n = foto.teks ? nominalUtama(foto.teks) : null;
-    if (n && !teks.trim() && ctx.sesi) return balas(`📷 Dari foto terbaca *${rupiah(n)}*.\n${tanyaKeterangan(ctx, pesan, n)}`);
-    if (n) {
+    // Tanpa caption: kalau struknya jelas (ShopeeFood, KFC, Grab, rumah makan...) langsung dicatat; kalau tidak, tanya.
+    const dikenali = n && !teks.trim() ? kenaliStruk(foto.teks) : null;
+    if (dikenali) {
+      const tgl = tanggalBukti(foto.teks);
+      items = [{
+        keterangan: dikenali.keterangan, nominal: n, kategori: dikenali.kategori, metode: metodeStruk(foto.teks, 'TRANSFER'),
+        dibayar_oleh: '', ...(tgl ? { tanggal: tgl } : {}), _dariFoto: true,
+      }];
+    } else if (n && !teks.trim() && ctx.sesi) {
+      return balas(`📷 Dari foto terbaca *${rupiah(n)}*, tapi belum jelas pengeluaran apa.\n${tanyaKeterangan(ctx, pesan, n)}`);
+    } else if (n) {
       const ev = await cariEvent(ctx.store, kodeEvent);
       ({ items, dilewati } = parsePengeluaranDetail(`${teks} ${n}`, { adaFoto: true, hariIni: tanggalLokal(pesan.waktu), rentang: ev ? { mulai: ev.mulai, selesai: ev.selesai } : null }));
       const tgl = tanggalBukti(foto.teks);
@@ -384,7 +393,7 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
-  if (tersimpan.some((t) => t._dariFoto)) baris.push('_📷 Nominal dibaca dari foto. Kalau salah, reply: *harusnya 530rb*_');
+  if (tersimpan.some((t) => t._dariFoto)) baris.push('_📷 Dibaca dari foto. Kalau salah, reply: *harusnya 530rb* / *masuk transport* / keterangan yang benar_');
   if (infoTunda.length) baris.push('', ...infoTunda);
   if (pesanDobel.length) baris.push('', ...pesanDobel);
   return balas(baris.join('\n'));

@@ -647,7 +647,7 @@ test('foto bukti trf dengan caption tanpa harga: nominal & tanggal dibaca dari f
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
   const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
   const r = await kirim(G_KELUAR, PIC, 'Dp penginapan bali', foto('IDR 530,000.00\nNama Penerima YULIANTI\nRekening Tujuan 236 - 026 - 8929\n03 Nov 2026'));
-  assert.match(r, /T0001 Dp penginapan bali - \*Rp 530.000\* \[Penginapan.*Nominal dibaca dari foto/s);
+  assert.match(r, /T0001 Dp penginapan bali - \*Rp 530.000\* \[Penginapan.*Dibaca dari foto/s);
   assert.equal((await store.all('Transaksi'))[0].tanggal, '2026-11-03');
   // pesan susulan "Uang mami" berlaku untuk catatan itu
   assert.match(await kirim(G_KELUAR, PIC, 'Uang mama'), /Sudah diubah.*uang Mama/s);
@@ -656,4 +656,19 @@ test('foto bukti trf dengan caption tanpa harga: nominal & tanggal dibaca dari f
   // struk dengan beberapa angka: ambil baris total
   const { nominalUtama } = await import('../src/bukti.js');
   assert.equal(nominalUtama('Nasi 25.000\nEs teh 5.000\nTOTAL Rp 30.000\nTunai 50.000\nKembali 20.000'), 30000);
+});
+
+test('foto tanpa caption: struk jelas langsung dicatat, bukti transfer polos ditanya', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async (buf) => buf.toString();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('ShopeeFood\nPesanan selesai\nAyam Geprek\nTotal Rp 65.500\n04 Nov 2026')),
+    /T0001 ShopeeFood - \*Rp 65.500\* \[Konsumsi.*Dibaca dari foto/s);
+  assert.equal((await store.all('Transaksi'))[0].tanggal, '2026-11-04');
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('Grab\nTrip completed\nTotal Rp 35.000')), /T0002 Grab - \*Rp 35.000\* \[Transport/);
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('IDR 530,000.00\nNama Penerima YULIANTI\nTransfer ke rekening BCA')), /terbaca \*Rp 530.000\*, tapi belum jelas.*untuk apa/s);
+  assert.equal((await store.all('Transaksi')).length, 2);
+  // dijawab -> dicatat
+  assert.match(await kirim(G_KELUAR, PIC, 'dp penginapan bali'), /dp penginapan bali - \*Rp 530.000\* \[Penginapan/);
 });
