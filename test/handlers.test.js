@@ -523,16 +523,20 @@ test('baca bukti: nominal & tanggal dari teks OCR', async () => {
 // Event yang mulai setelah aturan struk berlaku (8 Nov 2026).
 const BLOK_BARU = BLOK_EVENT.replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 9-15 Nov 2026');
 
+// Hari laporan di tes struk: 10 Nov 2026 (di dalam masa event 9-15 Nov).
+const WAKTU_STRUK = new Date('2026-11-10T07:00:00Z');
 function setupStruk() {
   const s = setup();
   s.ctx.wajibStruk = true;
   s.ctx.bacaGambar = async (buf) => buf.toString();
+  const kirimAsli = s.kirim;
+  s.kirim = (g, p, t, extra = {}) => kirimAsli(g, p, t, { waktu: WAKTU_STRUK, ...extra });
   return s;
 }
 const fotoStruk = (teks) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(teks) });
-const KFC = 'KFC LOMBOK EPICENTRUM\n05/11/2026 12:30\nBucket Rp 150.000\nTotal Rp 150.000';
-const PECEL = 'RM PECEL AYAM BU SRI\n05/11/2026\nTotal 150.000';
-const GRAB = 'Grab\nTrip completed 04 Nov 2026\nTotal Rp 150.000\nBooking ID 123456789012';
+const KFC = 'KFC LOMBOK EPICENTRUM\n10/11/2026 12:30\nBucket Rp 150.000\nTotal Rp 150.000';
+const PECEL = 'RM PECEL AYAM BU SRI\n10/11/2026\nTotal 150.000';
+const GRAB = 'Grab\nTrip completed 10 Nov 2026\nTotal Rp 150.000\nBooking ID 123456789012';
 
 test('struk: >= 100rb tanpa struk ditahan; foto struk yang sesuai -> masuk pembukuan', async () => {
   const { store, kirim } = setupStruk();
@@ -545,7 +549,7 @@ test('struk: >= 100rb tanpa struk ditahan; foto struk yang sesuai -> masuk pembu
   assert.match(ok, /Struk sesuai.*T0001 makan KFC.*struk ✓/s);
   const t = (await store.all('Transaksi'))[0];
   assert.equal(t.bukti, 'Struk ✓');
-  assert.equal(t.tanggal, '2026-11-05');
+  assert.equal(t.tanggal, '2026-11-10');
   assert.equal(t.pengirim.includes(PIC), true);
   assert.equal((await store.all('Struk')).length, 1);
 });
@@ -574,8 +578,8 @@ test('struk: struk kembar ditolak; nominal beda ditolak; tanggal di luar masa ev
   await kirim(G_KELUAR, OWNER, BLOK_BARU);
   assert.match(await kirim(G_KELUAR, PIC, 'grab ke venue 150rb', fotoStruk(GRAB)), /T0001 grab ke venue.*struk ✓/s);
   assert.match(await kirim(G_KELUAR, PIC, 'grab pulang 150rb', fotoStruk(GRAB)), /sudah pernah dipakai\* untuk T0001/);
-  assert.match(await kirim(G_KELUAR, PIC, 'grab pulang 120rb', fotoStruk('Grab\n04 Nov 2026\nTotal Rp 150.000\nID 99999999999')), /Nominal Rp 120.000 tidak ada di struk/);
-  assert.match(await kirim(G_KELUAR, PIC, 'grab 150rb', fotoStruk('Grab\n01 Jan 2026\nTotal Rp 150.000\nID 77777777777')), /di luar masa event/);
+  assert.match(await kirim(G_KELUAR, PIC, 'grab pulang 120rb', fotoStruk('Grab\n10 Nov 2026\nTotal Rp 150.000\nID 99999999999')), /Nominal Rp 120.000 tidak ada di struk/);
+  assert.match(await kirim(G_KELUAR, PIC, 'grab 150rb', fotoStruk('Grab\n01 Jan 2026\nTotal Rp 150.000\nID 77777777777')), /di luar batas/);
   assert.equal((await store.all('Transaksi')).length, 1);
   // struk dari catatan yang dibatalkan boleh dipakai lagi
   await kirim(G_KELUAR, OWNER, '#batal T0001');
@@ -702,4 +706,22 @@ Total 5 produk: Rp76.482`;
   assert.match((await store.all('Transaksi'))[2].pengirim, new RegExp(PIC));
   // pertanyaan lama untuk PIC sudah ditutup: pesan PIC berikutnya tidak dianggap jawaban
   assert.equal(await kirim(G_KELUAR, PIC, 'oke siap'), '');
+});
+
+test('batas tanggal: transaksi hanya 2 hari sebelum s/d 2 hari sesudah event; owner bisa acc', async () => {
+  const { store, kirim } = setupStruk();
+  await kirim(G_KELUAR, OWNER, BLOK_BARU); // 9-15 Nov -> batas 7-17 Nov
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  assert.match(await kirim(G_KELUAR, PIC, 'lakban 6 nov 20rb'), /2026-11-06 di luar batas \(2026-11-07 s\/d 2026-11-17\).*tidak bisa dimasukkan/s);
+  assert.match(await kirim(G_KELUAR, PIC, 'lakban 7 nov 20rb'), /T0001 lakban/);
+  assert.match(await kirim(G_KELUAR, PIC, 'lakban 17 nov 20rb'), /T0002 lakban/);
+  assert.match(await kirim(G_KELUAR, PIC, 'grab 150rb', foto('Grab\n01 Nov 2026\nTotal Rp 150.000\nID 88888888888')), /Tanggal struk 2026-11-01 di luar batas/);
+  // laporan terlambat tanpa tanggal (hari laporan 20 Nov) juga ditolak
+  assert.match(await kirim(G_KELUAR, PIC, 'lakban 20rb', { waktu: new Date('2026-11-20T07:00:00Z') }), /2026-11-20 di luar batas/);
+  // daftar pesanan online tanpa tanggal pesan -> minta detail pesanan
+  const shopee = 'Toko Plastik Dikemas\nKantong plastik besar sekali\nx2\nTotal 2 produk: Rp40.000';
+  assert.match(await kirim(G_KELUAR, PIC, '', foto(shopee)), /Waktu Pemesanan/);
+  // owner tetap bisa acc
+  assert.match(await kirim(G_KELUAR, OWNER, 'acc P0001'), /Disetujui owner.*lakban/s);
+  assert.equal((await store.all('Transaksi')).length, 3);
 });

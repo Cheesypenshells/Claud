@@ -15,7 +15,7 @@ import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan
 import { KATEGORI, ambilTanggal, ambilUangSiapa, tebakKategori } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti, daftarPesanan } from './bukti.js';
-import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk } from './struk.js';
+import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk, batasTanggal } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
@@ -31,6 +31,7 @@ const BANTUAN = {
   makan malam 120rb cash
   ember 2 unit @30rb
 • *≥ Rp 100.000 wajib foto struk* (harga & keterangan di caption). Struk dicek: nominal, tanggal, toko, kategori, tidak kembar. Tanpa struk / tidak sesuai → ditahan sampai owner reply *acc*
+• Transaksi hanya sah *2 hari sebelum s/d 2 hari sesudah event*; belanja online kirim detail pesanan yang ada tanggal pesannya
 • Cash < Rp 100.000 tanpa struk: tulis detailnya (beli apa & di mana)
 • Owner: *acc* (reply pesan bot) · *acc semua* · *acc P0001*
 • #trf 3.500.000 omzet 1-2 Nov  (transfer masuk dari IO)
@@ -166,7 +167,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
       const { siapa } = ambilUangSiapa(teks);
       items = pesanan.map((o) => {
         const ket = bersihkanTeks(`${o.produk || 'Belanja online'}${o.jumlah ? ` x${o.jumlah}` : ''}${o.toko ? ` (${o.toko})` : ''}`);
-        return { keterangan: ket, nominal: o.total, kategori: tebakKategori(`${o.produk} ${teks}`), metode: 'TRANSFER', dibayar_oleh: siapa || '', _dariFoto: true };
+        return { keterangan: ket, nominal: o.total, kategori: tebakKategori(`${o.produk} ${teks}`), metode: 'TRANSFER', dibayar_oleh: siapa || '', _dariFoto: true, _pesananOnline: true };
       });
     }
     const n = !items.length && foto.teks ? nominalUtama(foto.teks) : null;
@@ -285,6 +286,24 @@ async function terapkanAturanStruk(ctx, pesan, { buku, kodeEvent, items }) {
       ditahan.push(tambahTunda(ctx, pesan, { item, buku, kodeEvent, perlu: 'detail', alasan: [] }));
     } else {
       lanjut.push({ ...item, bukti: pesan.adaFoto ? 'Foto (tidak terbaca)' : 'Tanpa struk (< 100rb)' });
+    }
+  }
+  // Batas tanggal transaksi (bukan untuk input owner): 2 hari sebelum s/d 2 hari sesudah event.
+  if (event && !isOwner) {
+    const { awal, akhir } = batasTanggal(event);
+    const hariIni = tanggalLokal(pesan.waktu);
+    for (const item of [...lanjut]) {
+      const tgl = item.tanggal || hariIni;
+      let alasan = '';
+      if (tgl < awal || tgl > akhir) {
+        alasan = `Tanggal transaksi ${tgl} di luar batas (${awal} s/d ${akhir}). Transaksi di luar tanggal ini *tidak bisa dimasukkan*; hanya owner yang bisa ACC.`;
+      } else if (item._pesananOnline && !item.tanggal) {
+        alasan = 'Tanggal pesanan online tidak terlihat. Kirim screenshot *detail pesanan* yang ada *Waktu Pemesanan*-nya (reply pesan ini).';
+      }
+      if (alasan) {
+        lanjut.splice(lanjut.indexOf(item), 1);
+        ditahan.push(tambahTunda(ctx, pesan, { item, buku, kodeEvent, perlu: item._pesananOnline && !item.tanggal ? 'struk' : 'cek', alasan: [alasan] }));
+      }
     }
   }
   return { lanjut, ditahan };
@@ -680,7 +699,10 @@ async function selesaikanTunda(ctx, pesan, { cmd, isOwner, teks }) {
     const foto = await bacaFotoPesan(ctx, pesan);
     if (!foto.teks) return balas('⚠️ Foto struknya belum bisa saya baca. Kirim ulang foto yang lebih jelas (tidak miring/buram), atau owner reply *acc*.');
     const nominal = bacaBukti(foto.teks).nominal;
-    const cocok = butuhStruk.length === 1 ? butuhStruk : butuhStruk.filter((p) => nominal.includes(Number(p.item.nominal))).slice(0, 1);
+    const lewatReply = ids.length > 0;
+    const cocok = butuhStruk.length === 1 && lewatReply ? butuhStruk : butuhStruk.filter((p) => nominal.includes(Number(p.item.nominal))).slice(0, 1);
+    // Foto tanpa reply yang tidak cocok dengan catatan yang menunggu = pengeluaran baru.
+    if (!cocok.length && !lewatReply) return null;
     if (!cocok.length) return balas(`❌ Struk ini tidak cocok dengan ${butuhStruk.map((p) => p.id).join(', ')} (nominal di struk: ${nominal.slice(0, 4).map(rupiah).join(', ') || 'tidak terbaca'}). Reply pesan yang berisi nomornya dengan struk yang benar.`);
     const p = cocok[0];
     const event = p.buku === BUKU.EVENT ? await cariEvent(ctx.store, p.kodeEvent) : null;

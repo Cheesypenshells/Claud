@@ -13,6 +13,13 @@ export const BATAS_STRUK = 100000;
 // Aturan struk berlaku untuk event yang mulai sejak tanggal ini. Event yang sudah berjalan sebelumnya
 // (contoh Lombok LMB26-09) tidak diubah: tidak ditahan, tanpa kolom Bukti.
 export const MULAI_ATURAN_STRUK = '2026-11-08';
+// Transaksi sah hanya dari 2 hari sebelum event mulai s/d 2 hari setelah event selesai
+// (mencegah struk lama dimasukkan ke pembukuan).
+export const HARI_SEBELUM = 2;
+export const HARI_SESUDAH = 2;
+export function batasTanggal(event) {
+  return { awal: tambahHari(event.mulai, -HARI_SEBELUM), akhir: tambahHari(event.selesai, HARI_SESUDAH) };
+}
 export const eventWajibStruk = (event) => !event?.mulai || String(event.mulai) >= MULAI_ATURAN_STRUK;
 
 // Merek yang sering muncul di struk. `merek` = nama yang bisa disebut di keterangan.
@@ -117,11 +124,10 @@ export function periksaStruk({ item, teksOcr, buffer, event = null, daftarStruk 
   if (!sidik.nominal.includes(Number(item.nominal))) {
     alasan.push(`Nominal ${rp(item.nominal)} tidak ada di struk (terbaca: ${sidik.nominal.length ? sidik.nominal.slice(0, 4).map(rp).join(', ') : 'tidak ada angka'}).`);
   }
-  // 2. Tanggal struk harus dalam masa event (seminggu sebelum s/d seminggu sesudah).
+  // 2. Tanggal struk harus dalam batas: 2 hari sebelum event s/d 2 hari sesudah event.
   if (sidik.tanggal && event?.mulai && event?.selesai) {
-    const awal = tambahHari(event.mulai, -7);
-    const akhir = tambahHari(event.selesai, 7);
-    if (sidik.tanggal < awal || sidik.tanggal > akhir) alasan.push(`Tanggal struk ${sidik.tanggal} di luar masa event (${event.mulai} s/d ${event.selesai}).`);
+    const { awal, akhir } = batasTanggal(event);
+    if (sidik.tanggal < awal || sidik.tanggal > akhir) alasan.push(`Tanggal struk ${sidik.tanggal} di luar batas (${awal} s/d ${akhir}). Struk di luar tanggal ini *tidak bisa dimasukkan*.`);
   }
   // 3. Merek di keterangan harus ada di struk; jenis makanan di keterangan harus cocok dengan struk bermerek.
   const merekKet = merekDi(item.keterangan);
