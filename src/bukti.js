@@ -94,6 +94,34 @@ export function nominalUtama(teks) {
   return Math.max(...semua);
 }
 
+// Daftar pesanan belanja online (Shopee/Tokopedia/Lazada): satu blok per toko dengan baris
+// "Total 2 produk: Rp117.658" / "Total Pesanan". Mengembalikan [{ toko, produk, jumlah, total }].
+const RE_TOTAL_PESANAN = /\btotal\s*(\d+\s*produk|pesanan|belanja|pembayaran)\b[^\n]*?(rp\s*[\d.,]+)/i;
+const RE_STATUS_TOKO = /\s+(dikemas|dikirim|selesai|belum\s*bayar|diproses|dibatalkan|menunggu.*)$/i;
+export function daftarPesanan(teks) {
+  const baris = String(teks ?? '').split(/\n+/).map((b) => b.trim()).filter(Boolean);
+  const hasil = [];
+  let awal = 0;
+  baris.forEach((b, i) => {
+    const m = b.match(RE_TOTAL_PESANAN);
+    if (!m) return;
+    const blok = baris.slice(awal, i);
+    awal = i + 1;
+    const total = nominalBukti(m[2])[0];
+    if (!total) return;
+    const iToko = blok.findIndex((x) => RE_STATUS_TOKO.test(x));
+    const toko = iToko >= 0 ? blok[iToko].replace(RE_STATUS_TOKO, '').replace(/^(star\+?|mall|official)\s*/i, '').trim() : '';
+    // Nama produk: baris dengan >= 2 kata huruf, tanpa harga, sesudah nama toko.
+    const kandidat = blok.slice(iToko + 1).map((x) => (x.match(/[A-Za-z][A-Za-z0-9&.\- ]{6,}/g) || []).sort((a, c) => c.length - a.length)[0] || '')
+      .filter((x) => x.trim().split(/\s+/).filter((w) => /[a-z]{3,}/i.test(w)).length >= 2 && !/^(hubungi|estimasi|lihat|beli lagi|nilai)/i.test(x.trim()));
+    const produk = (kandidat[0] || '').replace(/\.{2,}$/, '').trim();
+    // Jumlah barang dari "Total 5 produk", atau baris yang hanya berisi "x5" (bukan "45 mm x 300" di nama produk).
+    const jumlah = Number((m[1].match(/(\d+)\s*produk/i) || blok.map((x) => x.match(/^x\s?(\d{1,3})$/i)).find(Boolean) || [])[1] || 0);
+    hasil.push({ toko, produk, jumlah, total });
+  });
+  return hasil;
+}
+
 export function bacaBukti(teks) {
   return { nominal: nominalBukti(teks), tanggal: tanggalBukti(teks) };
 }

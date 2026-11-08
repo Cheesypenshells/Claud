@@ -672,3 +672,34 @@ test('foto tanpa caption: struk jelas langsung dicatat, bukti transfer polos dit
   // dijawab -> dicatat
   assert.match(await kirim(G_KELUAR, PIC, 'dp penginapan bali'), /dp penginapan bali - \*Rp 530.000\* \[Penginapan/);
 });
+
+test('screenshot daftar pesanan Shopee: satu catatan per pesanan; jawaban "untuk apa" boleh dari anggota lain', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async (buf) => buf.toString();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  const shopee = `Semua  BelumBayar Dikemas Dikirim Sel
+ISTANA_ELECTRONIC Dikemas
+vere ‘ @ VOSCO Lampu Led Jumbo ultra 60...
+a2
+s2o0 % GOW Rp58.750
+Total 2 produk: Rp117.658
+Estimasi Tiba: 24 Sep - 27 Sep
+Hubungi Penjual
+Gudang Lakban Semarang Dikemas
+Harmony Lakban 45 mm x 300 Yar...
+x5
+Rpt5-533 Rp15.123
+Total 5 produk: Rp76.482`;
+  const r = await kirim(G_KELUAR, PIC, '', foto(shopee));
+  assert.match(r, /T0001 VOSCO Lampu Led Jumbo ultra 60 x2 \(ISTANA_ELECTRONIC\) - \*Rp 117.658\* \[Barang Kering Non-Konsumtif/);
+  assert.match(r, /T0002 Harmony Lakban 45 mm x 300 Yar x5 \(Gudang Lakban Semarang\) - \*Rp 76.482\* \[Barang Kering Konsumtif/);
+  // Bukti transfer polos dari PIC; yang menjawab owner dengan reply -> tercatat atas nama PIC
+  const t = await kirim(G_KELUAR, PIC, '', foto('IDR 45,000.00\nTransfer ke rekening BCA'));
+  assert.match(t, /Pengeluaran \*Rp 45.000\* ini untuk apa/);
+  const j = await kirim(G_KELUAR, OWNER, '', { kutipan: { teks: t }, text: 'Itu untuk lakban' });
+  assert.match(j, /T0003 lakban - \*Rp 45.000\*/);
+  assert.match((await store.all('Transaksi'))[2].pengirim, new RegExp(PIC));
+  // pertanyaan lama untuk PIC sudah ditutup: pesan PIC berikutnya tidak dianggap jawaban
+  assert.equal(await kirim(G_KELUAR, PIC, 'oke siap'), '');
+});

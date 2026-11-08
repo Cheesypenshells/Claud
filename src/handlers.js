@@ -8,13 +8,13 @@
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
 import { parsePerintah, parseEvent, parsePengeluaranDetail, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
-import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney } from './util.js';
+import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney, bersihkan as bersihkanTeks } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
-import { KATEGORI, ambilTanggal } from './parsers.js';
+import { KATEGORI, ambilTanggal, ambilUangSiapa, tebakKategori } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
-import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti } from './bukti.js';
+import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti, daftarPesanan } from './bukti.js';
 import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
@@ -160,7 +160,16 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
   // Foto bukti/struk tanpa harga di caption: nominal (dan tanggal) dibaca dari foto.
   if (!items.length && jenis === JENIS.KELUAR && pesan.adaFoto && pesan.ambilFoto && !dilewati.length) {
     const foto = await bacaFotoPesan(ctx, pesan);
-    const n = foto.teks ? nominalUtama(foto.teks) : null;
+    // Daftar pesanan belanja online: satu catatan per pesanan (toko), keterangan = nama barang.
+    const pesanan = foto.teks ? daftarPesanan(foto.teks) : [];
+    if (pesanan.length) {
+      const { siapa } = ambilUangSiapa(teks);
+      items = pesanan.map((o) => {
+        const ket = bersihkanTeks(`${o.produk || 'Belanja online'}${o.jumlah ? ` x${o.jumlah}` : ''}${o.toko ? ` (${o.toko})` : ''}`);
+        return { keterangan: ket, nominal: o.total, kategori: tebakKategori(`${o.produk} ${teks}`), metode: 'TRANSFER', dibayar_oleh: siapa || '', _dariFoto: true };
+      });
+    }
+    const n = !items.length && foto.teks ? nominalUtama(foto.teks) : null;
     // Tanpa caption: kalau struknya jelas (ShopeeFood, KFC, Grab, rumah makan...) langsung dicatat; kalau tidak, tanya.
     const dikenali = n && !teks.trim() ? kenaliStruk(foto.teks) : null;
     if (dikenali) {
@@ -170,13 +179,15 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
         dibayar_oleh: '', ...(tgl ? { tanggal: tgl } : {}), _dariFoto: true,
       }];
     } else if (n && !teks.trim() && ctx.sesi) {
+      // Siapa pun di grup boleh menjawab dengan reply; pengirim foto tetap tercatat sebagai pengirimnya.
+      ctx.sesi.set(`fototanya:${pesan.groupId}:${n}`, { senderId: pesan.senderId, senderName: pesan.senderName || '', waktu: Date.now() });
       return balas(`📷 Dari foto terbaca *${rupiah(n)}*, tapi belum jelas pengeluaran apa.\n${tanyaKeterangan(ctx, pesan, n)}`);
     } else if (n) {
       const ev = await cariEvent(ctx.store, kodeEvent);
       ({ items, dilewati } = parsePengeluaranDetail(`${teks} ${n}`, { adaFoto: true, hariIni: tanggalLokal(pesan.waktu), rentang: ev ? { mulai: ev.mulai, selesai: ev.selesai } : null }));
       const tgl = tanggalBukti(foto.teks);
       for (const i of items) { if (!i.tanggal && tgl) i.tanggal = tgl; i._dariFoto = true; }
-    } else if (foto.gagal || foto.teks) {
+    } else if (!items.length && (foto.gagal || foto.teks)) {
       return balas('⚠️ Nominal belum ada di caption, dan tidak terbaca dari foto. Mohon tulis harganya, contoh: *dp penginapan 530rb*');
     }
   }
@@ -255,7 +266,8 @@ async function terapkanAturanStruk(ctx, pesan, { buku, kodeEvent, items }) {
   const ditahan = [];
   for (const item of items) {
     const besar = Number(item.nominal) >= BATAS_STRUK;
-    const pakaiFoto = foto?.teks && !fotoDipakai && (items.length === 1 || nominalFoto.includes(Number(item.nominal)));
+    // Satu foto bisa jadi bukti beberapa item kalau nominal masing-masing ada di foto (contoh daftar pesanan Shopee).
+    const pakaiFoto = foto?.teks && (items.length === 1 ? !fotoDipakai : nominalFoto.includes(Number(item.nominal)));
     if (pakaiFoto) {
       fotoDipakai = true;
       const cek = periksaStruk({ item, teksOcr: foto.teks, buffer: foto.buffer, event, daftarStruk });
@@ -842,6 +854,20 @@ export async function handlePesan(ctx, pesan) {
   if (ctx.sesi) {
     const hasil = await selesaikanTunda(ctx, pesan, { cmd, isOwner, teks });
     if (hasil) return hasil;
+  }
+
+  // Jawaban (reply) untuk "Pengeluaran Rp X ini untuk apa?" dari foto, oleh siapa pun di grup.
+  if (!cmd && pesan.kutipan && ctx.sesi && teks && !parseMoney(teks) && (grup.jenis === 'ruko' || event)) {
+    const m = String(pesan.kutipan.teks).match(/Pengeluaran \*?Rp ([\d.]+)\*? ini untuk apa/i);
+    if (m) {
+      const nominal = Number(m[1].replace(/\./g, ''));
+      const kunci = `fototanya:${pesan.groupId}:${nominal}`;
+      const asal = ctx.sesi.get(kunci);
+      if (asal) { ctx.sesi.hapus(kunci); ctx.sesi.hapus(`lengkapi:${pesan.groupId}:${asal.senderId}`); }
+      const atasNama = asal ? { ...pesan, senderId: asal.senderId, senderName: asal.senderName } : pesan;
+      const ruko = grup.jenis === 'ruko';
+      return catatUang(ctx, atasNama, { buku: ruko ? BUKU.RUKO : BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: ruko ? 'RUKO' : event.kode, teks: `${teks} ${nominal}` });
+    }
   }
 
   // Peringatan dobel: "batal" = tidak dicatat; foto bukti trf dicek nominal & tanggalnya.
