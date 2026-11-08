@@ -42,7 +42,7 @@ function barisOrang(o) {
 }
 
 export async function daftarTim(ctx, event) {
-  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode);
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== 'BATAL');
   if (!tim.length) return '(belum ada)';
   return Object.values(PERAN)
     .flatMap((p) => tim.filter((o) => o.peran === p))
@@ -75,7 +75,7 @@ export async function perintahTambah(ctx, pesan, event, cmd) {
 // #berhenti Joko 9 Nov      -> hari kerja terakhir 9 Nov
 export async function perintahBerhenti(ctx, pesan, event, cmd) {
   const teks = cmd.argumen.join(' ');
-  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode);
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== 'BATAL');
   const o = tim
     .filter((x) => new RegExp(`(^|\\s)${x.nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|\\s)`, 'i').test(teks))
     .sort((a, b) => b.nama.length - a.nama.length)[0];

@@ -130,7 +130,7 @@ export function hitungEvent(event, data) {
   const nilaiSisaKembali = barisBahan.reduce((s, b) => s + b.nilaiKembali, 0);
 
   // ---------- Tim, gaji, bonus ----------
-  const orang = tim.filter((o) => o.kode_event === kode);
+  const orang = tim.filter((o) => o.kode_event === kode && aktif(o));
   const jumlahTetap = orang.filter((o) => o.peran === PERAN.TETAP).length;
   const persenTetap = jumlahTetap === 1 ? ATURAN.bonusTetapPersen.satu : ATURAN.bonusTetapPersen.perOrang;
   const barisTim = orang.map((o) => {

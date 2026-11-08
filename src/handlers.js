@@ -12,7 +12,7 @@ import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMo
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
-import { KATEGORI } from './parsers.js';
+import { KATEGORI, ambilTanggal } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti } from './bukti.js';
 import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk } from './struk.js';
@@ -374,9 +374,27 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
   return balas(baris.join('\n'));
 }
 
-async function catatOmzet(ctx, pesan, { grup, event, teks }) {
+// Beberapa hari sekaligus (rekap event lama): "#omzet 23 sept 12jt, 24 sept 15,5jt" atau satu per baris.
+async function catatOmzetBanyak(ctx, pesan, { grup, event, teks }) {
+  const badan = teks.replace(/^#omzet\b/i, '');
+  if (/:/.test(badan)) return catatOmzet(ctx, pesan, { grup, event, teks });
+  const bagian = badan.split(/\n+|,\s+|;\s*/).map((b) => b.trim()).filter(Boolean);
+  const rentang = { mulai: event.mulai, selesai: event.selesai };
+  const hariIni = tanggalLokal(pesan.waktu);
+  const layak = bagian.filter((b) => parseMoney(b) && ambilTanggal(b, hariIni, rentang).tanggal);
+  if (bagian.length < 2 || layak.length !== bagian.length) return catatOmzet(ctx, pesan, { grup, event, teks });
+  const hasil = [];
+  for (const [i, b] of bagian.entries()) {
+    hasil.push(...(await catatOmzet(ctx, { ...pesan, id: `${pesan.id || ''}-${i}` }, { grup, event, teks: `#omzet ${b}`, ringkas: true })));
+  }
+  const total = (await ctx.store.all('Omzet')).filter((r) => r.kode_event === event.kode && r.status !== STATUS.BATAL)
+    .reduce((s, r) => s + Number(r.omzet || 0) - Number(r.refund || 0), 0);
+  return balas(`✅ *Omzet ${bagian.length} hari tercatat* (${event.kode})\n${hasil.map((h) => h.text).join('\n')}\nTotal omzet event: *${rupiah(total)}*`);
+}
+
+async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   const tahun = Number(tanggalLokal(pesan.waktu).slice(0, 4));
-  const o = parseOmzet(teks, tahun);
+  const o = parseOmzet(teks, tahun, { hariIni: tanggalLokal(pesan.waktu), rentang: { mulai: event.mulai, selesai: event.selesai } });
   if (!o.omzet) {
     return balas('⚠️ Nominal omzet tidak terbaca. Contoh:\n#omzet\nOMZET TERVERIFIKASI: Rp 12.500.000\nJUMLAH TRANSAKSI: 85');
   }
@@ -396,6 +414,7 @@ async function catatOmzet(ctx, pesan, { grup, event, teks }) {
     status: STATUS.OK,
     dicatat: `${waktuLokal(pesan.waktu)}:${pesan.id || ''}`,
   });
+  if (ringkas) return balas(`• ${tanggal}: ${rupiah(o.omzet)}${lama ? ' (mengganti laporan lama)' : ''}`);
 
   const omzetEvent = (await ctx.store.all('Omzet'))
     .filter((r) => r.kode_event === event.kode && r.status !== STATUS.BATAL)
@@ -416,6 +435,48 @@ async function catatOmzet(ctx, pesan, { grup, event, teks }) {
     baris.push(`Perkiraan transfer IO: ${rupiah(bersih)}, dijadwalkan ${jatuhTempo(tanggal, event)}`);
   }
   return balas(baris.join('\n'));
+}
+
+// Status event menurut tanggal: belum mulai / sedang berjalan / sudah selesai.
+export function statusEvent(event, hariIni) {
+  if (!event) return '';
+  if (event.status === 'SELESAI' || (event.selesai && event.selesai < hariIni)) return 'selesai';
+  if (event.mulai && event.mulai > hariIni) return 'belum';
+  return 'berjalan';
+}
+
+const tglKata = (ymd) => `${Number(String(ymd).slice(8, 10))} ${['', 'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'agu', 'sep', 'okt', 'nov', 'des'][Number(String(ymd).slice(5, 7))]}`;
+const tglPendek = (ymd) => { const [y, m, d] = String(ymd).split('-'); return `${Number(d)}/${Number(m)}/${y}`; };
+
+// Langkah yang perlu dilakukan di grup pengeluaran, sesuai status event.
+function panduanStatus(event, hariIni) {
+  const st = statusEvent(event, hariIni);
+  const wajibStruk = eventWajibStruk(event)
+    ? '\n🧾 Pengeluaran *≥ Rp 100.000 wajib foto struk*; tanpa struk ditahan sampai owner *acc*.'
+    : '';
+  if (st === 'selesai') {
+    return [
+      `📚 *Event ${event.kode} sudah selesai (${tglPendek(event.mulai)} – ${tglPendek(event.selesai)}) → mode REKAP DATA LAMA*`,
+      'Grup tim *tidak perlu* didaftarkan. Masukkan semua data di grup ini, tulis tanggalnya:',
+      `1️⃣ *Pengeluaran*: \`hotel ${tglKata(event.mulai)} 350rb uang ${event.pic || 'pic'}\` (boleh banyak sekaligus, pisah koma/baris)`,
+      `2️⃣ *Omzet harian*: \`#omzet ${tglKata(event.mulai)} 12,5jt\` (boleh beberapa baris sekaligus)`,
+      '3️⃣ *Transfer dari IO*: `#trf 45jt`',
+      '4️⃣ *Potongan IO* (listrik/air/gas/galon): `#potongan listrik 250rb`',
+      '5️⃣ *Bahan dari gudang*: `kiriman 10 pack keju` / `sisa 2 pack keju`',
+      'Cek kapan saja dengan *#rekap*. Hasil lengkap ada di file event di Drive.',
+    ].join('\n');
+  }
+  if (st === 'belum') {
+    return [
+      `🗓️ *Event ${event.kode} belum mulai* (mulai ${tglPendek(event.mulai)}).`,
+      'Pengeluaran persiapan (tiket, ekspedisi, sewa) sudah bisa dicatat di grup ini.',
+      `Saat event mulai, daftarkan grup tim: kirim *#daftar event ${event.kode}* di grup tim.${wajibStruk}`,
+    ].join('\n');
+  }
+  return [
+    `🟢 *Event ${event.kode} sedang berjalan.* Catat pengeluaran di grup ini; omzet harian dikirim di grup tim.`,
+    `Daftarkan grup tim: kirim *#daftar event ${event.kode}* di grup tim.${wajibStruk}`,
+  ].join('\n');
 }
 
 async function perintahEvent(ctx, pesan, grup, cmd) {
@@ -465,7 +526,8 @@ async function perintahEvent(ctx, pesan, grup, cmd) {
     grup && grup.jenis !== 'pengeluaran'
       ? `Grup ini terdaftar sebagai grup ${grup.jenis}.`
       : 'Grup ini menjadi *grup pengeluaran* event tersebut.',
-    `Untuk grup tim, kirim di grup tim: *#daftar event ${data.kode}*`,
+    '',
+    panduanStatus(event, tanggalLokal(pesan.waktu)),
   ].filter((b) => b !== null).join('\n'));
 }
 
@@ -844,7 +906,7 @@ export async function handlePesan(ctx, pesan) {
       case 'omzet':
       case 'omset':
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
-        return catatOmzet(ctx, pesan, { grup, event, teks });
+        return catatOmzetBanyak(ctx, pesan, { grup, event, teks });
       case 'tim':
       case 'tambah':
       case 'berhenti':
@@ -917,11 +979,21 @@ export async function handlePesan(ctx, pesan) {
   if (hasil.length || !ctx.sesi) return hasil;
 
   // Pertanyaan/obrolan ke bot (tanpa angka): beri petunjuk singkat, paling sering sekali per 10 menit per grup.
+  // "Okk sekarang kita rekap pengeluaran ya", "mulai input ya": jawab dengan langkah sesuai status event.
+  if (/\b(rekap\w*|ngerekap\w*|mulai|input|masukin|masukkan|isi data|data lama)\b/i.test(teks)) {
+    const kunci = `panduan:${pesan.groupId}`;
+    const terakhir = ctx.sesi.get(kunci);
+    if (!terakhir || Date.now() - terakhir.waktu > 2 * 60 * 1000) {
+      ctx.sesi.set(kunci, { waktu: Date.now() });
+      return balas(`👍 Siap!\n\n${panduanStatus(event, tanggalLokal(pesan.waktu))}`);
+    }
+  }
   if (/\?|(^|\s)(kamu|bot|gimana|bagaimana|sudah|udah|sampai mana)(\s|$)/i.test(teks)) {
     const kunci = `petunjuk:${pesan.groupId}`;
     const terakhir = ctx.sesi.get(kunci);
     if (terakhir && Date.now() - terakhir.waktu < 10 * 60 * 1000) return [];
     ctx.sesi.set(kunci, { waktu: Date.now() });
+    if (statusEvent(event, tanggalLokal(pesan.waktu)) === 'selesai') return balas(`🤖 Maaf, saya belum bisa diajak ngobrol.\n\n${panduanStatus(event, tanggalLokal(pesan.waktu))}`);
     return balas([
       '🤖 Maaf, saya belum bisa diajak ngobrol. Yang bisa saya lakukan:',
       '• *#rekap* - lihat total omzet, pengeluaran, dan laba event ini (sudah termasuk koreksi)',

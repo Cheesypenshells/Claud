@@ -27,7 +27,7 @@ export async function namaOwner(store) {
 export async function tentukanUangSiapa(ctx, pesan, kodeEvent, siapa) {
   if (siapa === KAS_USAHA) return KAS_USAHA;
   const owner = await namaOwner(ctx.store);
-  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === kodeEvent);
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === kodeEvent && o.status !== 'BATAL');
   if (siapa === '@owner') return owner;
   if (siapa === '@pic') return tim.find((o) => o.peran === 'PIC')?.nama || 'PIC';
   if (!siapa || siapa === '@pengirim') {

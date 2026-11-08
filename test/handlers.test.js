@@ -606,3 +606,37 @@ test('struk: event yang sudah berjalan sebelum aturan struk tidak ditahan', asyn
   assert.match(await kirim(G_KELUAR, PIC, 'hotel valen 350rb'), /T0001 hotel valen/);
   assert.equal((await store.all('Transaksi'))[0].bukti, '');
 });
+
+test('event yang sudah selesai: mode rekap data lama, omzet per tanggal sekaligus, tim terbaca benar', async () => {
+  const { store, kirim } = setup();
+  const blok = `#event
+Kode: BAL26-09
+Kota: Bali
+IO: Jangkrik kuliner
+Tanggal: 23 Sep - 4 Okt 2026
+Wilayah harga: Jawa
+Bagi hasil: 30%
+Admin: 0
+PIC: Melia
+Senior: Dena, tiar veri, dan dw1
+DW: Dw nya hanya1 100k harga nya
+Kasir: Dena atau tiar`;
+  const r = await kirim(G_KELUAR, OWNER, blok);
+  assert.match(r, /sudah selesai.*mode REKAP DATA LAMA.*tidak perlu/s);
+  assert.doesNotMatch(r, /Hanya harga|Tetap 1|Dena atau tiar - Kasir/);
+  const tim = (await store.all('Tim Event')).map((o) => `${o.nama}/${o.peran}`);
+  assert.deepEqual(tim, ['Melia/PIC', 'Dena/Tetap', 'Tiar veri/Tetap', 'DW 1/DW']);
+  assert.match(await kirim(G_KELUAR, OWNER, 'Okk sekarang kita rekapn pengeluaran ya, ini event yang sudah selesai'), /Siap!.*mode REKAP/s);
+  const o = await kirim(G_KELUAR, OWNER, '#omzet 23 sept 12,5jt\n24 sept 15jt\n25 sept 9.750.000');
+  assert.match(o, /Omzet 3 hari tercatat.*2026-09-23: Rp 12.500.000.*2026-09-25: Rp 9.750.000.*Total omzet event: \*Rp 37.250.000\*/s);
+  assert.equal((await store.all('Omzet')).length, 3);
+  assert.match(await kirim(G_KELUAR, OWNER, '#omzet 26 sept 11jt'), /Omzet 2026-09-26 tercatat/);
+});
+
+test('status event: belum mulai dan sedang berjalan', async () => {
+  const { kirim } = setup();
+  const belum = await kirim(G_KELUAR, OWNER, BLOK_EVENT.replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 20-28 Nov 2026'));
+  assert.match(belum, /belum mulai.*persiapan.*#daftar event JMB26-11/s);
+  const { kirim: k2 } = setup();
+  assert.match(await k2(G_KELUAR, OWNER, BLOK_EVENT), /sedang berjalan/);
+});

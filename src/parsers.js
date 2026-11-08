@@ -406,7 +406,7 @@ export function parseEvent(teks) {
 //   JUMLAH TRANSAKSI: 85
 //   SELISIH / REFUND / KOREKSI: 0
 // Bentuk singkat juga diterima: "#omzet 12,5jt"
-export function parseOmzet(teks, tahunDefault) {
+export function parseOmzet(teks, tahunDefault, { hariIni = '', rentang = null } = {}) {
   const baris = String(teks).split('\n');
   const hasil = { omzet: null, jumlah_transaksi: '', refund: 0, tanggal: null, catatan: '' };
 
@@ -426,6 +426,8 @@ export function parseOmzet(teks, tahunDefault) {
     else if (nilai.trim()) catatan.push(`${m[1].trim()}: ${bersihkan(nilai)}`);
   }
   hasil.catatan = catatan.join(' | ');
+  // "#omzet 24 sept 12,5jt" / "#omzet tgl 24 12,5jt": tanggal di baris pertama.
+  if (!hasil.tanggal && hariIni) hasil.tanggal = ambilTanggal(pertama, hariIni, rentang).tanggal || null;
   return hasil;
 }
 
@@ -465,8 +467,21 @@ const KUNCI_PERAN = {
 const KATA_PENGISI = /^((karyawan|senior|junior|tetap|nya|namanya|yaitu|adalah|yang|jaga|si|pak|bu|mas|mbak|dw|daily|worker|freelance|kasir|kasirnya|pic|picnya|orang|org)\s+)+/i;
 const HANYA_PERAN = /^(karyawan|senior|junior|tetap|dw|daily worker|freelance|kasir|pic|orang|org)$/i;
 
+// Kata yang bukan nama: "Dw nya hanya1 100k harga nya" -> 1 DW, upah 100rb.
+const KATA_BUKAN_NAMA = /\b(nya|hanya|cuma|cuman|saja|aja|harga|harganya|upah|upahnya|gaji|gajinya|per\s*hari|perhari|sehari|\/hari|hari|orang|org|ada|jumlah|jumlahnya|sekitar|kurang|lebih|total)\b/gi;
+
 export function parseOrang(teks, peran) {
-  const t = bersihkan(teks);
+  // Angka menempel ke huruf ("hanya1") dipisah dulu, kecuali kode seperti "dw1".
+  const t = bersihkan(String(teks).replace(/([a-z]{3,})(\d)/gi, (m, a, d) => (/^(dw|kasir)$/i.test(a) ? m : `${a} ${d}`)));
+  const lainPeran = t.match(/^(dw|daily worker|freelance)\s*(\d+)?$/i);
+  if (lainPeran && peran !== PERAN.DW) return [{ nama: `DW ${lainPeran[2] || 1}`, peran: PERAN.DW, upah_harian: UPAH_DEFAULT[PERAN.DW] }];
+  // Tanpa nama: "Dw nya hanya 1 100k harga nya", "2 orang 120rb" -> DW 1..N dengan upahnya.
+  const tanpaUang = bersihkan(t.replace(/(rp\.?\s*)?\d+(?:[.,]\d+)*\s*(juta|jt|ribu|rb|k)\b/gi, ' ').replace(/(rp\.?\s*)\d+(?:[.,]\d+)*/gi, ' '));
+  const sisaKata = bersihkan(tanpaUang.replace(KATA_BUKAN_NAMA, ' ').replace(KATA_PENGISI, ' ').replace(/\b(dw|daily worker|freelance|kasir|karyawan)\b/gi, ' '));
+  if (/^\d{1,2}$/.test(sisaKata) && Number(sisaKata) > 0 && Number(sisaKata) <= 20 && !/[,;]|\bdan\b/i.test(t)) {
+    const upah = parseMoney(t.replace(/\b\d{1,2}\b(?!\s*(rb|ribu|k|jt|juta|[.,]\d))/i, ' '));
+    return Array.from({ length: Number(sisaKata) }, (_, i) => ({ nama: `${peran} ${i + 1}`, peran, upah_harian: upah ?? UPAH_DEFAULT[peran] }));
+  }
   // "4 orang" / "3 dw" -> orang tanpa nama: DW 1, DW 2, ...
   const jumlah = t.match(/^(\d+)\s*(orang|org|dw|daily worker|freelance|kasir|senior|karyawan)?(\s+(@|upah)?\s*(.*))?$/i);
   if (jumlah && Number(jumlah[1]) > 0 && Number(jumlah[1]) <= 20) {
@@ -475,10 +490,16 @@ export function parseOrang(teks, peran) {
   }
   let tanpaNama = 0;
   return t
-    .split(/[,;]|\bdan\b/i)
+    .split(/[,;/]|\bdan\b|\batau\b/i)
     .map((x) => bersihkan(x))
     .filter((x) => x && x !== '-')
     .map((x) => {
+      // "dw1" di daftar karyawan tetap = DW, bukan karyawan tetap bernama "1".
+      const kode = x.match(/^(dw|daily worker|freelance|kasir)\s*(\d+)?$/i);
+      if (kode) {
+        const p2 = /kasir/i.test(kode[1]) ? PERAN.KASIR : PERAN.DW;
+        return { nama: `${p2} ${kode[2] || ++tanpaNama}`, peran: p2, upah_harian: UPAH_DEFAULT[p2] };
+      }
       const upah = parseMoney(x);
       let nama = bersihkan(x.replace(/(rp\.?\s*)?[\d.,]+\s*(juta|jt|ribu|rb|k)?/gi, '').replace(/[()]/g, ''));
       if (!HANYA_PERAN.test(nama)) nama = bersihkan(nama.replace(KATA_PENGISI, ''));
@@ -496,7 +517,14 @@ export function parseTim(teks) {
     const peran = KUNCI_PERAN[m[1].toLowerCase().trim()];
     if (peran) hasil.push(...parseOrang(m[2].replace(/\(.*?\)/g, ''), peran));
   }
-  return hasil;
+  // Kasir yang juga PIC/karyawan tetap ("Dena atau tiar") tidak dihitung sebagai kasir berbayar.
+  const depan = (n) => String(n).toLowerCase().split(/\s+/)[0];
+  const bukanKasir = hasil.filter((o) => o.peran !== PERAN.KASIR).map((o) => depan(o.nama));
+  const tanpaRangkap = hasil.filter((o) => o.peran !== PERAN.KASIR || !bukanKasir.includes(depan(o.nama)));
+  // Orang yang sama disebut dua kali (misal "dw1" di daftar senior & "1 DW 100rb") cukup sekali, pakai data terakhir.
+  const unik = new Map();
+  for (const o of tanpaRangkap) unik.set(`${o.peran}|${o.nama.toLowerCase()}`, o);
+  return [...unik.values()];
 }
 
 // ---------- Bahan baku ----------
