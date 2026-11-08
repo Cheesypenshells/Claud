@@ -8,6 +8,8 @@ case "${1:-}" in
   reset) rm -rf auth; echo "Login WhatsApp lama dihapus." ;;
   qr) rm -rf auth; export NOMOR_BOT=""; echo "Mode QR: scan QR yang muncul dari HP nomor bot." ;;
 esac
+# Pembaca foto bukti trf (OCR gratis). Dipasang sekali kalau belum ada.
+command -v tesseract >/dev/null || { echo "Memasang pembaca foto bukti trf (sekali saja, 1-2 menit)..."; pkg install -y tesseract >/dev/null 2>&1 || echo "Gagal memasang tesseract; cek foto bukti belum aktif."; }
 termux-wake-lock 2>/dev/null || true
 trap 'termux-wake-unlock 2>/dev/null; echo; echo "Bot dimatikan."; exit 0' INT TERM
 

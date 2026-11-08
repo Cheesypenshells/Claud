@@ -14,6 +14,7 @@ import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } f
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
 import { KATEGORI } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
+import { bacaGambar, bacaBukti } from './bukti.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -204,13 +205,28 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
       .filter((x) => x.lama);
     if (dobel.length) {
       items = items.filter((i) => !dobel.some((d) => d.i === i));
-      if (ctx.sesi) ctx.sesi.set(kunciDobel(pesan), { items: dobel.map((d) => d.i), buku, kodeEvent, waktu: Date.now() });
+      if (ctx.sesi) {
+        ctx.sesi.set(kunciDobel(pesan), {
+          items: dobel.map((d) => d.i), buku, kodeEvent, waktu: Date.now(),
+          lama: dobel.map((d) => ({ id: d.lama.id, keterangan: d.lama.keterangan, tanggal: String(d.lama.tanggal || '').slice(0, 10), nominal: Number(d.lama.nominal) })),
+        });
+      }
     }
   }
+  const hariIni = tanggalLokal(pesan.waktu);
   const pesanDobel = dobel.length ? [
-    '⚠️ *Belum saya catat, sepertinya dobel:*',
-    ...dobel.map((d) => `• ${d.i.keterangan} ${rupiah(d.i.nominal)} = sama dengan *${d.lama.id}* ${d.lama.keterangan}`),
-    '_Kalau memang pengeluaran lain, balas *catat*. Kalau mau mengoreksi catatan lama, reply pesan catatannya._',
+    '⚠️ *Belum saya catat, nominalnya sama dengan catatan lama:*',
+    ...dobel.flatMap((d) => {
+      const tglBaru = d.i.tanggal || hariIni;
+      const tglLama = String(d.lama.tanggal || '').slice(0, 10);
+      return [
+        `• Baru: ${d.i.keterangan} ${rupiah(d.i.nominal)} (tgl ${tglBaru})`,
+        `  Lama: *${d.lama.id}* ${d.lama.keterangan} ${rupiah(d.lama.nominal)} (tgl ${tglLama}, dicatat ${d.lama.dicatat || '-'})`,
+        tglBaru === tglLama ? '  ⚠️ Tanggalnya juga sama.' : '  Tanggalnya beda.',
+      ];
+    }),
+    'Supaya pasti, *kirim foto bukti trf/struk*-nya, nanti saya cek nominal & tanggalnya.',
+    '_Atau balas *catat* kalau memang pengeluaran lain, *batal* kalau dobel._',
   ] : [];
   if (!items.length) return balas(pesanDobel.join('\n'));
 
@@ -402,6 +418,45 @@ async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
   return balas(`✅ *Sudah diubah* (${apa}):\n${hasil.map((t) => barisItem(t, tanggalLokal(pesan.waktu))).join('\n')}${lewat}`);
 }
 
+// Foto bukti untuk catatan yang nominalnya sama dengan catatan lama: cocokkan nominal & tanggal.
+async function periksaBukti(ctx, pesan, d) {
+  let teksFoto = null;
+  try {
+    teksFoto = await (ctx.bacaGambar || bacaGambar)(await pesan.ambilFoto());
+  } catch {
+    teksFoto = null;
+  }
+  if (!teksFoto) {
+    return balas('⚠️ Fotonya belum bisa saya baca (pembaca foto belum terpasang di HP bot, atau foto gagal diunduh).\nBalas *catat* kalau memang pengeluaran lain, atau *batal* kalau dobel.');
+  }
+  const bukti = bacaBukti(teksFoto);
+  const terbaca = `Terbaca di bukti: ${bukti.nominal.length ? bukti.nominal.slice(0, 4).map(rupiah).join(', ') : 'nominal tidak terbaca'}${bukti.tanggal ? `, tanggal ${bukti.tanggal}` : ', tanggal tidak terbaca'}`;
+  const dicatat = [];
+  const tetap = [];
+  const baris = ['🔍 *Bukti saya cek*', terbaca];
+  d.items.forEach((item, i) => {
+    const lama = (d.lama || [])[i] || {};
+    if (!bukti.nominal.includes(Number(item.nominal))) {
+      baris.push(`• ${item.keterangan} ${rupiah(item.nominal)}: nominal ini *tidak ada* di bukti.`);
+      tetap.push({ item, lama });
+    } else if (bukti.tanggal && bukti.tanggal === lama.tanggal) {
+      baris.push(`• ${item.keterangan} ${rupiah(item.nominal)}: nominal & tanggal (${bukti.tanggal}) sama dengan *${lama.id}* → ini catatan yang sama, *tidak saya catat lagi*.`);
+    } else {
+      baris.push(`• ${item.keterangan} ${rupiah(item.nominal)}: cocok dengan bukti${bukti.tanggal ? `, tanggal ${bukti.tanggal} beda dengan ${lama.id} (${lama.tanggal || '-'})` : ''} → *dicatat*.`);
+      dicatat.push({ ...item, ...(bukti.tanggal ? { tanggal: bukti.tanggal } : {}), sumber: 'foto bukti' });
+    }
+  });
+  if (tetap.length) {
+    ctx.sesi.set(kunciDobel(pesan), { ...d, items: tetap.map((x) => x.item), lama: tetap.map((x) => x.lama), waktu: Date.now() });
+    baris.push('_Kirim foto lain, atau balas *catat* / *batal* untuk yang belum jelas._');
+  } else {
+    ctx.sesi.hapus(kunciDobel(pesan));
+  }
+  if (!dicatat.length) return balas(baris.join('\n'));
+  const hasil = await catatUang(ctx, pesan, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: dicatat });
+  return balas(`${baris.join('\n')}\n\n${hasil.map((h) => h.text).join('\n')}`);
+}
+
 async function perintahBatal(ctx, pesan, cmd, isOwner) {
   const id = (cmd.argumen[0] || '').toUpperCase();
   const semua = await ctx.store.all('Transaksi');
@@ -502,6 +557,18 @@ export async function handlePesan(ctx, pesan) {
 
   const event = await cariEvent(ctx.store, grup.kode_event);
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
+
+  // Peringatan dobel: "batal" = tidak dicatat; foto bukti trf dicek nominal & tanggalnya.
+  if (ctx.sesi) {
+    const d = ctx.sesi.get(kunciDobel(pesan));
+    if (d && Date.now() - d.waktu < 60 * 60 * 1000) {
+      if (!cmd && /^(batal|dobel|hapus|gak jadi|tidak jadi|ga jadi|ya dobel|iya dobel)$/i.test(teks)) {
+        ctx.sesi.hapus(kunciDobel(pesan));
+        return balas(`👌 Oke, tidak dicatat (dobel dengan ${(d.lama || []).map((x) => x.id).join(', ') || 'catatan lama'}).`);
+      }
+      if (pesan.adaFoto && pesan.ambilFoto && !parseMoney(teks)) return periksaBukti(ctx, pesan, d);
+    }
+  }
 
   // Jawaban "catat" atas peringatan dobel.
   if (!cmd && ctx.sesi && /^(catat|catat aja|catat saja|ya catat|iya catat|tetap catat|lanjut catat)$/i.test(teks)) {

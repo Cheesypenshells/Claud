@@ -17,7 +17,7 @@ judul() { echo; echo "=== $1 ==="; }
 
 judul "1/5 Memasang Node.js dan git (beberapa menit)"
 yes | pkg upgrade -y -o Dpkg::Options::="--force-confnew" >/dev/null 2>&1 || true
-pkg install -y nodejs-lts git >/dev/null
+pkg install -y nodejs-lts git tesseract >/dev/null
 echo "Node.js $(node -v) terpasang."
 
 judul "2/5 Izin membaca folder Download"

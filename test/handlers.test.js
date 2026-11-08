@@ -471,8 +471,50 @@ test('pengaman dobel: nominal sama dengan catatan lama ditanya dulu, "catat" unt
   await kirim(G_KELUAR, PIC, 'Hotel valen 1081.171k');
   const r = await kirim(G_KELUAR, PIC, 'Hotel 1081.171k, parkir 5rb');
   assert.match(r, /T0002 parkir/);
-  assert.match(r, /sepertinya dobel.*sama dengan \*T0001\*/s);
+  assert.match(r, /nominalnya sama dengan catatan lama.*Lama: \*T0001\*.*kirim foto bukti/s);
   assert.equal((await store.all('Transaksi')).length, 2);
   assert.match(await kirim(G_KELUAR, PIC, 'catat'), /T0003 Hotel - \*Rp 1.081.171\*/);
   assert.equal((await store.all('Transaksi')).length, 3);
+});
+
+test('foto bukti trf untuk catatan dobel: nominal & tanggal dicek', async () => {
+  const { store, kirim, ctx } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'Hotel valen tanggal 2 nov 1081.171k');
+  const foto = (teks) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(teks) });
+  ctx.bacaGambar = async (buf) => buf.toString();
+  const jumlah = async () => (await store.all('Transaksi')).length;
+
+  // Tanggal di bukti sama dengan catatan lama -> tidak dicatat lagi
+  assert.match(await kirim(G_KELUAR, PIC, 'Hotel 1081.171k'), /Tanggalnya beda/);
+  const r1 = await kirim(G_KELUAR, PIC, '', foto('Transfer Berhasil\n02 Nov 2026 14:32\nRp 1.081.171'));
+  assert.match(r1, /sama dengan \*T0001\*.*tidak saya catat lagi/s);
+  assert.equal(await jumlah(), 1);
+
+  // Tanggal di bukti beda -> dicatat dengan tanggal bukti
+  await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
+  const r2 = await kirim(G_KELUAR, PIC, '', foto('BRImo\nTanggal 03/11/2026\nNominal IDR 1,081,171.00'));
+  assert.match(r2, /cocok dengan bukti.*dicatat.*T0002 Hotel/s);
+  const t2 = (await store.all('Transaksi')).find((t) => t.id === 'T0002');
+  assert.equal(t2.tanggal, '2026-11-03');
+  assert.equal(t2.sumber, 'foto bukti');
+
+  // Nominal tidak ada di bukti -> tetap ditanya; "batal" -> tidak dicatat
+  await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('Rp 50.000 03 Nov 2026')), /tidak ada\* di bukti/);
+  assert.match(await kirim(G_KELUAR, PIC, 'batal'), /tidak dicatat \(dobel/);
+  assert.equal(await jumlah(), 2);
+
+  // Foto tidak terbaca
+  ctx.bacaGambar = async () => null;
+  await kirim(G_KELUAR, PIC, 'Hotel 1081.171k');
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('x')), /belum bisa saya baca/);
+});
+
+test('baca bukti: nominal & tanggal dari teks OCR', async () => {
+  const { bacaBukti } = await import('../src/bukti.js');
+  assert.deepEqual(bacaBukti('Transfer Berhasil\n22 Sep 2026 » 14:32:10 WITA\nRp 1.081.171\nBCA 1234567890\nNo. Referensi\n2026092214321055\nTotal\nRp1.081.171,00'),
+    { nominal: [1081171], tanggal: '2026-09-22' });
+  assert.deepEqual(bacaBukti('BRImo\nTanggal 05/10/2026 09:12\nNominal IDR 222,540.00\nBiaya IDR 2,500.00'), { nominal: [222540, 2500], tanggal: '2026-10-05' });
+  assert.equal(bacaBukti('2026-10-07 transfer Rp 50.000').tanggal, '2026-10-07');
 });

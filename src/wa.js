@@ -3,7 +3,7 @@
 // Foto tidak diunduh; bot hanya mencatat bahwa pesan berisi foto.
 
 import {
-  makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers,
+  makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers, downloadMediaMessage,
 } from 'baileys';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -151,6 +151,8 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
           adaFoto,
           waktu,
           kutipan,
+          // Foto diunduh hanya kalau dibutuhkan (memeriksa bukti trf untuk catatan yang nominalnya sama).
+          ambilFoto: adaFoto ? () => downloadMediaMessage(m, 'buffer', {}, { logger, reuploadRequest: sock.updateMediaMessage }) : null,
         };
         pencatat.tandai(m.key.id);
         await onPesan(pesan, (text) => kirim(groupId, text, m));
