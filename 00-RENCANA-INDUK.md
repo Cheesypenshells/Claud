@@ -6,6 +6,15 @@ membuat, merakit, dan mengevaluasi**. George cukup syuting, cek, dan posting.
 
 ---
 
+## 0. Keputusan terbaru (8 Nov 2026)
+- **Fokus Instagram dulu.** TikTok sudah ada: cukup upload ulang video IG (tanpa watermark), tanpa kerja tambahan. YouTube nanti.
+- **Waktu syuting: 5 jam/minggu** → pembagian di `konten/08-stack-ai-gratis.md`.
+- **Budget: Rp0 dulu** → pakai stack AI gratis (`konten/08-stack-ai-gratis.md`).
+- **Jam upload (uji 3 minggu):** **19.00 WIB** (utama) & **12.00 WIB** (pembanding).
+  Lalu cek Insight → Pengikut → *Waktu paling aktif* dan kunci jam terbaik.
+- **Kota berikutnya: Semarang, mulai 14 Nov** → `konten/07-semarang-14-nov.md`.
+- **Pengingat otomatis:** setiap **Senin 09.47 WIB** Claude minta insight & bikin paket minggu itu.
+
 ## 1. Target per akun
 
 ### @geov10 (personal branding, "dari nol, tanpa backing, bersama Tuhan")
