@@ -1,0 +1,10 @@
+{
+  "output": "hasil.mp4",
+  "scenes": [
+    {"media": "bahan/s1.png", "top": "OYSTER BAKAR", "bottom": "KEJU LUMER"},
+    {"media": "bahan/s2.png", "top": "TARIK...", "bottom": "LUMERNYA!"},
+    {"media": "bahan/s3.png", "bottom": "DIBAKAR DI TEMPAT", "bottom_size": 88, "color": "#ff6b00"},
+    {"media": "bahan/s4.png", "top": "SEMARANG", "bottom": "MULAI 14 NOV"}
+  ],
+  "endcard": {"headline": "CUMA 15 RIBUAN", "sub": "Lokasi lengkap di bio", "handle": "@cheesypenshells"}
+}

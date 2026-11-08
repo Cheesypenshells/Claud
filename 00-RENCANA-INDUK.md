@@ -117,4 +117,8 @@ membuat, merakit, dan mengevaluasi**. George cukup syuting, cek, dan posting.
 | `konten/07-semarang-14-nov.md` | Paket promo Semarang |
 | `konten/08-stack-ai-gratis.md` | Alat AI gratis |
 | `konten/09-gaya-editorial.md` | Gaya editorial B&W + prompt AI |
+| `konten/kalender-nov-des-2026.md` | Kalender tema s/d 31 Des |
+| `konten/minggu-01-9-15-nov.md` | Paket minggu 1 (script siap) |
+| `SISTEM.md`, `tools/studio.py`, `produksi/` | Mesin video & pelacak |
+| `data/`, `laporan/` | Angka & laporan progres |
 | `bisnis/rencana-perusahaan-video.md` | Rencana studio video |

@@ -1,6 +1,6 @@
 # Studio Konten: Talent x Claude
 
-👉 **Mulai dari [`00-RENCANA-INDUK.md`](00-RENCANA-INDUK.md)**: target, step by step, mesin mingguan.
+👉 **Mulai dari [`00-RENCANA-INDUK.md`](00-RENCANA-INDUK.md)** (target & langkah) dan **[`SISTEM.md`](SISTEM.md)** (cara kerja mesin).
 
 Kamu = **talent** (punya cerita & wajah).
 Claude = **tim kreatif** (riset, ide, script, caption, kalender konten).

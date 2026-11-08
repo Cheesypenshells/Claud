@@ -1,0 +1,9 @@
+{
+  "output": "hasil.mp4",
+  "scenes": [
+    {"media": "bahan/p1.png", "line1": "semua orang lihat senyumnya,", "line2": "nggak ada yang lihat prosesnya.", "duration": 5, "photo_height": 982},
+    {"media": "bahan/p2.png", "line1": "tanpa bantuan orang tua,", "line2": "tanpa backing siapa-siapa.", "duration": 5, "photo_height": 982},
+    {"media": "bahan/p3.png", "line1": "cuma gua,", "line2": "dan Tuhan.", "duration": 5, "grade": "contrast=1.1:brightness=0.08:gamma=1.25", "size1": 84, "size2": 96}
+  ],
+  "signature": {"name": "George Vallentino", "title": "FOUNDER  ·  CHEESY PEN SHELLS", "duration": 4}
+}
