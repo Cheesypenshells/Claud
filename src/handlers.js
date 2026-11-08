@@ -398,6 +398,15 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     });
   }
 
+  // Pesan (dan foto yang di-reply) yang sudah menjadi catatan diingat, supaya reply berikutnya ke pesan/foto
+  // yang sama dianggap koreksi, bukan catatan baru.
+  if (ctx.sesi) {
+    for (const idPesan of [pesan.id, pesan.kutipan?.id].filter(Boolean)) {
+      const lama = ctx.sesi.get(`pesancatat:${pesan.groupId}:${idPesan}`)?.ids || [];
+      ctx.sesi.set(`pesancatat:${pesan.groupId}:${idPesan}`, { ids: [...new Set([...lama, ...tersimpan.map((t) => t.id)])] });
+    }
+  }
+
   // Diingat sebentar supaya pesan lanjutan seperti "uang valen" berlaku untuk catatan ini.
   if (ctx.terakhir) ctx.terakhir.set(`${pesan.groupId}|${pesan.senderId}`, { ids: tersimpan.map((t) => t.id), waktu: Date.now() });
 
@@ -849,7 +858,7 @@ export async function handleGrupBaru(ctx, groupId) {
 }
 
 export async function handlePesan(ctx, pesan) {
-  const teks = String(pesan.text || '').trim();
+  let teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
   const grup = await cariGrup(ctx.store, pesan.groupId);
@@ -892,6 +901,11 @@ export async function handlePesan(ctx, pesan) {
   if (grup.jenis === 'gudang') return []; // Tahap 2
 
   const event = await cariEvent(ctx.store, grup.kode_event);
+  // Reply ke foto dengan angka kecil tanpa satuan ("makan mama 38") = ribuan (38rb).
+  if (!cmd && pesan.kutipan?.foto && !parseMoney(teks) && /(^|\s)\d{1,3}(\s|$)/.test(teks)) {
+    pesan = { ...pesan, text: teks.replace(/(^|\s)(\d{1,3})(?=\s|$)/, '$1$2rb') };
+    teks = pesan.text;
+  }
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
 
   // Pengeluaran yang ditahan (menunggu struk / ACC owner / detail cash).
@@ -940,6 +954,22 @@ export async function handlePesan(ctx, pesan) {
     if (d && Date.now() - d.waktu < 60 * 60 * 1000) {
       ctx.sesi.hapus(kunciDobel(pesan));
       return catatUang(ctx, pesan, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: d.items });
+    }
+  }
+
+  // Reply ke pesan/foto yang sudah tercatat: koreksi untuk catatan itu, tidak pernah dicatat dua kali.
+  const sudahCatat = !cmd && pesan.kutipan?.id && ctx.sesi?.get(`pesancatat:${pesan.groupId}:${pesan.kutipan.id}`);
+  if (sudahCatat?.ids?.length) {
+    const hasil = await koreksiCatatan(ctx, pesan, event, sudahCatat.ids, isOwner);
+    if (hasil) return hasil;
+    const semua = await ctx.store.all('Transaksi');
+    const catatan = sudahCatat.ids.map((id) => semua.find((t) => t.id === id)).filter((t) => t && t.status !== STATUS.BATAL);
+    if (catatan.length) {
+      return balas([
+        '✅ *Pesan/foto ini sudah tercatat*, tidak saya catat lagi:',
+        ...catatan.map((t) => barisItem(t, tanggalLokal(pesan.waktu))),
+        '_Mau mengubah? Reply dengan: *uang melia* · *harusnya 38rb* · *tanggal 22 sept* · *batal*. Pengeluaran lain kirim sebagai pesan baru (tanpa reply)._',
+      ].join('\n'));
     }
   }
 

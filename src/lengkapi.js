@@ -160,6 +160,8 @@ export function jawabLengkapi(ctx, pesan, daftarBahan) {
     return { bahan: { gerak: sesi.gerak, teks: `${b.bahan} ${sesi.jumlah} ${b.satuan}` } };
   }
   if (sesi.tipe === 'kategori') {
+    // Reply ke pesan lain (bukan pertanyaan kategori) bukan jawaban kategori.
+    if (pesan.kutipan && !/belum jelas/i.test(pesan.kutipan.teks || '')) return null;
     // Pesan bernominal adalah pengeluaran baru, bukan jawaban: pertanyaan tetap menunggu.
     if (findMoney(teks).length) return null;
     const hasil = jawabKategori(sesi, teks);

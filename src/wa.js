@@ -51,7 +51,8 @@ function isiPesan(m) {
   const info = inti.extendedTextMessage?.contextInfo || inti.imageMessage?.contextInfo || inti.documentMessage?.contextInfo;
   const q = info?.quotedMessage;
   const teksKutipan = q ? (q.conversation || q.extendedTextMessage?.text || q.imageMessage?.caption || '') : '';
-  return { teks, adaFoto, kutipan: teksKutipan ? { teks: teksKutipan, pengirim: angkaId(info.participant) } : null };
+  const kutipan = q ? { teks: teksKutipan, pengirim: angkaId(info.participant), id: info.stanzaId || '', foto: Boolean(q.imageMessage) } : null;
+  return { teks, adaFoto, kutipan };
 }
 
 export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan, onGrupBaru }) {

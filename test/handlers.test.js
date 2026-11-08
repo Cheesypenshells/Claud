@@ -773,3 +773,27 @@ test('foto bukti: "dikurangi 500k jadi 2120k uang melia" mengubah nominal, lalu 
   await kirim(G_KELUAR, PIC, '', foto('IDR 900,000.00\nTransfer ke rekening BCA'));
   assert.match(await kirim(G_KELUAR, PIC, 'villa dikurangi deposit 200k'), /T0003 villa - \*Rp 700.000\*/);
 });
+
+test('reply ke foto yang sudah tercatat tidak mencatat dua kali; "38" di reply foto = 38rb', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async () => 'struk buram';
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const foto = { id: 'foto1', adaFoto: true, ambilFoto: async () => Buffer.from('x') };
+  await kirim(G_KELUAR, PIC, 'Makan mama', foto);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  const kutipFoto = { kutipan: { teks: 'Makan mama', id: 'foto1', foto: true } };
+  assert.match(await kirim(G_KELUAR, PIC, '', { ...kutipFoto, text: 'Makan mama 38 uang melia ya' }), /T0001 Makan mama - \*Rp 38.000\*.*uang Melia/s);
+  // reply lagi ke foto yang sama: tidak dicatat lagi
+  assert.match(await kirim(G_KELUAR, PIC, '', { ...kutipFoto, text: 'Uang melia untuk makan 38k ya' }), /sudah tercatat\*, tidak saya catat lagi.*T0001/s);
+  assert.match(await kirim(G_KELUAR, PIC, '', { ...kutipFoto, text: 'harusnya 40rb' }), /Sudah diubah.*Rp 40.000/s);
+  assert.equal((await store.all('Transaksi')).length, 1);
+});
+
+test('pertanyaan kategori tidak menangkap reply ke pesan lain', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, PIC, 'mkn siang krywn 60rb'), /T0001/);
+  const sebelum = (await store.all('Transaksi'))[0].kategori;
+  await kirim(G_KELUAR, PIC, '', { kutipan: { teks: 'Foto lain', id: 'zz' }, text: 'masuk transport' });
+  assert.equal((await store.all('Transaksi'))[0].kategori, sebelum);
+});

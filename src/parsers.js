@@ -226,7 +226,7 @@ export function parsePengeluaranDetail(teks, { adaFoto = false, hariIni = '', re
   const dilewati = [];
   const { siapa: siapaSemua, sisa: teksBersih } = ambilUangSemua(teks);
   // Singkatan umum di chat: "mlm" = malam, "kryawan"/"krywn" = karyawan.
-  const teksNormal = teksBersih.replace(/\bmlm\b/gi, 'malam').replace(/\b(kryawan|krywn|karywan|kary)\b/gi, 'karyawan');
+  const teksNormal = teksBersih.replace(/\bmlm\b/gi, 'malam').replace(/\bmkn\b/gi, 'makan').replace(/\bmnm\b/gi, 'minum').replace(/\b(kryawan|krywn|karywan|kary)\b/gi, 'karyawan');
   const kelompok = teksNormal.split(/\n+/).map((b) => b.trim()).filter(Boolean).map(pecahBaris);
   // Bagian tanpa harga yang berisi keterangan ("makan tanggal 1 oktober") menjadi konteks bagian
   // berikutnya di baris yang sama; yang hanya berisi tanggal/uang siapa/metode berlaku untuk semua.
