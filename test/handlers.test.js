@@ -640,3 +640,20 @@ test('status event: belum mulai dan sedang berjalan', async () => {
   const { kirim: k2 } = setup();
   assert.match(await k2(G_KELUAR, OWNER, BLOK_EVENT), /sedang berjalan/);
 });
+
+test('foto bukti trf dengan caption tanpa harga: nominal & tanggal dibaca dari foto', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async (buf) => buf.toString();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  const r = await kirim(G_KELUAR, PIC, 'Dp penginapan bali', foto('IDR 530,000.00\nNama Penerima YULIANTI\nRekening Tujuan 236 - 026 - 8929\n03 Nov 2026'));
+  assert.match(r, /T0001 Dp penginapan bali - \*Rp 530.000\* \[Penginapan.*Nominal dibaca dari foto/s);
+  assert.equal((await store.all('Transaksi'))[0].tanggal, '2026-11-03');
+  // pesan susulan "Uang mami" berlaku untuk catatan itu
+  assert.match(await kirim(G_KELUAR, PIC, 'Uang mama'), /Sudah diubah.*uang Mama/s);
+  // foto tanpa caption: ditanya untuk apa
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('Total Rp 75.000')), /terbaca \*Rp 75.000\*.*untuk apa/s);
+  // struk dengan beberapa angka: ambil baris total
+  const { nominalUtama } = await import('../src/bukti.js');
+  assert.equal(nominalUtama('Nasi 25.000\nEs teh 5.000\nTOTAL Rp 30.000\nTunai 50.000\nKembali 20.000'), 30000);
+});

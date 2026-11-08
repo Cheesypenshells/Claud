@@ -14,7 +14,7 @@ import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } f
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
 import { KATEGORI, ambilTanggal } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
-import { bacaGambar, bacaBukti } from './bukti.js';
+import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti } from './bukti.js';
 import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
@@ -155,6 +155,21 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
     if (terakhir.length) baris.push('', 'Catatan terakhir kamu:', ...terakhir.map((t) => barisItem(t)), '', `Kalau ada yang salah: balas *#batal ${terakhir.at(-1).id}*, lalu kirim ulang yang benar.`);
     baris.push('Untuk mencatat: satu pengeluaran per baris, contoh *minum karyawan 67.865*');
     return balas(baris.join('\n'));
+  }
+
+  // Foto bukti/struk tanpa harga di caption: nominal (dan tanggal) dibaca dari foto.
+  if (!items.length && jenis === JENIS.KELUAR && pesan.adaFoto && pesan.ambilFoto && !dilewati.length) {
+    const foto = await bacaFotoPesan(ctx, pesan);
+    const n = foto.teks ? nominalUtama(foto.teks) : null;
+    if (n && !teks.trim() && ctx.sesi) return balas(`📷 Dari foto terbaca *${rupiah(n)}*.\n${tanyaKeterangan(ctx, pesan, n)}`);
+    if (n) {
+      const ev = await cariEvent(ctx.store, kodeEvent);
+      ({ items, dilewati } = parsePengeluaranDetail(`${teks} ${n}`, { adaFoto: true, hariIni: tanggalLokal(pesan.waktu), rentang: ev ? { mulai: ev.mulai, selesai: ev.selesai } : null }));
+      const tgl = tanggalBukti(foto.teks);
+      for (const i of items) { if (!i.tanggal && tgl) i.tanggal = tgl; i._dariFoto = true; }
+    } else if (foto.gagal || foto.teks) {
+      return balas('⚠️ Nominal belum ada di caption, dan tidak terbaca dari foto. Mohon tulis harganya, contoh: *dp penginapan 530rb*');
+    }
   }
 
   if (!items.length) {
@@ -369,6 +384,7 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
+  if (tersimpan.some((t) => t._dariFoto)) baris.push('_📷 Nominal dibaca dari foto. Kalau salah, reply: *harusnya 530rb*_');
   if (infoTunda.length) baris.push('', ...infoTunda);
   if (pesanDobel.length) baris.push('', ...pesanDobel);
   return balas(baris.join('\n'));

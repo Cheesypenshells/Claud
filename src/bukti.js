@@ -7,8 +7,30 @@ import { findMoney, BULAN } from './util.js';
 
 const BATAS_WAKTU_MS = 90_000;
 
+// Membaca foto: tanda putar kamera (EXIF) diterapkan, gambar diperkecil supaya cepat di HP, lalu dibaca.
+// Kalau tidak ada nominal terbaca, foto dicoba diputar 180°, 90°, 270° (foto struk dari kamera bisa miring).
+export async function bacaGambar(buffer) {
+  let gambar = null;
+  try {
+    const { Jimp } = await import('jimp');
+    gambar = await Jimp.read(buffer);
+    if (gambar.bitmap.width > 1600) gambar.resize({ w: 1600 });
+  } catch {
+    return ocr(buffer); // bukan gambar yang bisa dibuka jimp: kirim apa adanya
+  }
+  let teksPertama = null;
+  for (const putar of [0, 180, 90, 270]) {
+    const g = putar ? gambar.clone().rotate({ deg: putar }) : gambar;
+    const teks = await ocr(await g.getBuffer('image/png'));
+    if (teks === null) return teksPertama;
+    if (teksPertama === null) teksPertama = teks;
+    if (nominalBukti(teks).length) return teks;
+  }
+  return teksPertama;
+}
+
 // Mengembalikan teks hasil OCR, atau null kalau Tesseract belum terpasang / gagal.
-export function bacaGambar(buffer) {
+function ocr(buffer) {
   return new Promise((resolve) => {
     let selesai = false;
     const akhiri = (hasil) => { if (!selesai) { selesai = true; resolve(hasil); } };
@@ -61,6 +83,15 @@ export function nominalBukti(teks) {
   const denganRp = semua.filter((u) => /^rp/i.test(u.teks));
   const dipakai = denganRp.length ? denganRp : semua.filter((u) => !/^(19|20)\d{2}$/.test(String(u.nilai)));
   return [...new Set(dipakai.map((u) => u.nilai))];
+}
+
+// Nominal utama di bukti/struk: satu-satunya nominal, atau yang ada di baris "total", atau yang terbesar.
+export function nominalUtama(teks) {
+  const semua = nominalBukti(teks);
+  if (semua.length <= 1) return semua[0] || null;
+  const total = String(teks).split(/\n+/).filter((b) => /\b(total|jumlah|nominal|grand)\b/i.test(b)).flatMap((b) => nominalBukti(b));
+  if (total.length) return total[total.length - 1];
+  return Math.max(...semua);
 }
 
 export function bacaBukti(teks) {
