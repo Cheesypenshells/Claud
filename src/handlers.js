@@ -15,6 +15,8 @@ import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan
 import { KATEGORI } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti } from './bukti.js';
+import { BATAS_STRUK, periksaStruk, perluDetail } from './struk.js';
+import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -28,7 +30,9 @@ const BANTUAN = {
   lalamove 150k
   makan malam 120rb cash
   ember 2 unit @30rb
-• Foto bukti boleh dikirim, tapi harga tetap ditulis di caption
+• *≥ Rp 100.000 wajib foto struk* (harga & keterangan di caption). Struk dicek: nominal, tanggal, toko, kategori, tidak kembar. Tanpa struk / tidak sesuai → ditahan sampai owner reply *acc*
+• Cash < Rp 100.000 tanpa struk: tulis detailnya (beli apa & di mana)
+• Owner: *acc* (reply pesan bot) · *acc semua* · *acc P0001*
 • #trf 3.500.000 omzet 1-2 Nov  (transfer masuk dari IO)
 • #potongan listrik 250rb  (potongan IO: listrik/air/gas/galon)
 • #omzet 12,5jt  (omzet harian, kalau tidak dikirim di grup event)
@@ -120,7 +124,7 @@ async function simpanTransaksi(store, dasar, items) {
 }
 
 function barisItem(t, hariIni) {
-  const info = [t.kategori, t.metode].filter(Boolean).join(', ');
+  const info = [t.kategori, t.metode, t.bukti === 'Struk ✓' ? '🧾 struk ✓' : (String(t.bukti || '').startsWith('ACC') ? '👍 ACC owner' : '')].filter(Boolean).join(', ');
   const uang = t.dibayar_oleh ? ` (uang ${t.dibayar_oleh})` : '';
   const tgl = hariIni && t.tanggal && t.tanggal !== hariIni ? ` 📅 ${t.tanggal}` : '';
   return `${t.id} ${t.keterangan} - *${rupiah(t.nominal)}*${info ? ` [${info}]` : ''}${uang}${tgl}`;
@@ -192,7 +196,94 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
 
 const kunciDobel = (pesan) => `dobel|${pesan.groupId}|${pesan.senderId}`;
 
+// Foto di pesan dibaca sekali (OCR). { teks, buffer } atau { gagal: true }.
+async function bacaFotoPesan(ctx, pesan) {
+  if (pesan._foto) return pesan._foto;
+  try {
+    const buffer = await pesan.ambilFoto();
+    const teks = await (ctx.bacaGambar || bacaGambar)(buffer);
+    pesan._foto = teks ? { teks, buffer } : { gagal: true };
+  } catch {
+    pesan._foto = { gagal: true };
+  }
+  return pesan._foto;
+}
+
+// Cara bayar menurut struk: "TUNAI/CASH" = CASH, "QRIS/DEBIT/TRANSFER" = TRANSFER.
+const metodeStruk = (teks, lama) => (/\b(tunai|cash)\b/i.test(teks) ? 'CASH' : (/\b(qris|debit|transfer|trf|bca|mandiri|bri|bni|gopay|ovo|dana|shopeepay)\b/i.test(teks) ? 'TRANSFER' : lama || ''));
+
+// Struk yang masih berlaku (catatannya tidak dibatalkan), untuk mendeteksi struk kembar.
+async function strukBerlaku(store) {
+  const batal = new Set((await store.all('Transaksi')).filter((t) => t.status === STATUS.BATAL).map((t) => t.id));
+  return (await store.all('Struk')).filter((s) => !batal.has(s.id_transaksi));
+}
+
+// Aturan struk untuk pengeluaran baru: memisahkan item yang boleh langsung dicatat dan yang ditahan.
+async function terapkanAturanStruk(ctx, pesan, { buku, kodeEvent, items }) {
+  const isOwner = ctx.ownerIds.has(pesan.senderId);
+  const event = buku === BUKU.EVENT ? await cariEvent(ctx.store, kodeEvent) : null;
+  const foto = pesan.adaFoto && pesan.ambilFoto ? await bacaFotoPesan(ctx, pesan) : null;
+  const daftarStruk = foto?.teks ? await strukBerlaku(ctx.store) : [];
+  const nominalFoto = foto?.teks ? bacaBukti(foto.teks).nominal : [];
+  let fotoDipakai = false;
+  const lanjut = [];
+  const ditahan = [];
+  for (const item of items) {
+    const besar = Number(item.nominal) >= BATAS_STRUK;
+    const pakaiFoto = foto?.teks && !fotoDipakai && (items.length === 1 || nominalFoto.includes(Number(item.nominal)));
+    if (pakaiFoto) {
+      fotoDipakai = true;
+      const cek = periksaStruk({ item, teksOcr: foto.teks, buffer: foto.buffer, event, daftarStruk });
+      if (cek.ok) {
+        lanjut.push({ ...item, bukti: 'Struk ✓', metode: metodeStruk(foto.teks, item.metode), ...(cek.tanggal ? { tanggal: cek.tanggal } : {}), _sidik: cek.sidik });
+      } else {
+        ditahan.push(tambahTunda(ctx, pesan, { item, buku, kodeEvent, perlu: 'cek', alasan: cek.alasan }));
+      }
+    } else if (besar && !isOwner) {
+      const alasan = foto?.gagal ? ['Foto struk tidak bisa dibaca, kirim ulang yang lebih jelas.'] : (foto?.teks ? ['Struk di foto bukan untuk pengeluaran ini.'] : []);
+      ditahan.push(tambahTunda(ctx, pesan, { item, buku, kodeEvent, perlu: 'struk', alasan }));
+    } else if (besar) {
+      lanjut.push({ ...item, bukti: 'Tanpa struk (input owner)' });
+    } else if (!isOwner && !pesan.adaFoto && perluDetail(item.keterangan)) {
+      ditahan.push(tambahTunda(ctx, pesan, { item, buku, kodeEvent, perlu: 'detail', alasan: [] }));
+    } else {
+      lanjut.push({ ...item, bukti: pesan.adaFoto ? 'Foto (tidak terbaca)' : 'Tanpa struk (< 100rb)' });
+    }
+  }
+  return { lanjut, ditahan };
+}
+
+// Pesan untuk pengeluaran yang ditahan.
+function pesanTunda(ditahan) {
+  if (!ditahan.length) return [];
+  const rp = (p) => `${p.id} ${p.item.keterangan} *${rupiah(p.item.nominal)}*`;
+  const baris = [];
+  const struk = ditahan.filter((p) => p.perlu === 'struk');
+  const cek = ditahan.filter((p) => p.perlu === 'cek');
+  const detail = ditahan.filter((p) => p.perlu === 'detail');
+  if (struk.length) {
+    baris.push(`⏳ *Belum masuk pembukuan, wajib struk (≥ ${rupiah(BATAS_STRUK)}):*`, ...struk.map((p) => `• ${rp(p)}${p.alasan?.length ? `\n  _${p.alasan.join(' ')}_` : ''}`),
+      'Kirim *foto struk* dengan *reply pesan ini*. Tidak ada struk? *Owner* reply *acc* untuk menyetujui.');
+  }
+  if (cek.length) {
+    if (baris.length) baris.push('');
+    baris.push('❌ *Struk tidak sesuai, belum masuk pembukuan:*', ...cek.map((p) => `• ${rp(p)}\n${p.alasan.map((a) => `  - ${a}`).join('\n')}`),
+      'Mohon *penjelasannya di grup* 🙏 (reply pesan ini). Kirim struk yang benar, atau *owner* reply *acc* kalau memang benar. Salah input? reply *batal*.');
+  }
+  if (detail.length) {
+    if (baris.length) baris.push('');
+    baris.push('✍️ *Pengeluaran cash, detailnya belum jelas:*', ...detail.map((p) => `• ${rp(p)} → beli apa saja & di mana?`),
+      'Reply pesan ini dengan detailnya, contoh: *lakban & plastik di toko Maju*.');
+  }
+  return baris;
+}
+
 async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilewati, paksa = false }) {
+  // Aturan struk (hanya untuk pengeluaran baru; yang sudah lolos/ACC dikirim dengan paksa).
+  let ditahan = [];
+  if (jenis === JENIS.KELUAR && !paksa && ctx.sesi && ctx.wajibStruk) {
+    ({ lanjut: items, ditahan } = await terapkanAturanStruk(ctx, pesan, { buku, kodeEvent, items }));
+  }
   // Pengaman dobel: nominal >= 50rb yang sama persis dengan catatan aktif di event ini tidak langsung
   // dicatat (biasanya koreksi yang terkirim sebagai pesan baru). Pengirim bisa membalas "catat".
   let dobel = [];
@@ -201,7 +292,8 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
       .filter((t) => t.kode_event === kodeEvent && t.jenis === JENIS.KELUAR && t.status !== STATUS.BATAL);
     const kata = (x) => String(x).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
     const mirip = (i, t) => i.kategori === t.kategori || kata(i.keterangan).some((w) => kata(t.keterangan).includes(w));
-    dobel = items.map((i) => ({ i, lama: Number(i.nominal) >= 50000 && ada.find((t) => Number(t.nominal) === Number(i.nominal) && mirip(i, t)) }))
+    // Item dengan struk yang sudah dicek tidak perlu (struk kembar sudah diperiksa).
+    dobel = items.filter((i) => i.bukti !== 'Struk ✓').map((i) => ({ i, lama: Number(i.nominal) >= 50000 && ada.find((t) => Number(t.nominal) === Number(i.nominal) && mirip(i, t)) }))
       .filter((x) => x.lama);
     if (dobel.length) {
       items = items.filter((i) => !dobel.some((d) => d.i === i));
@@ -228,7 +320,8 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     'Supaya pasti, *kirim foto bukti trf/struk*-nya, nanti saya cek nominal & tanggalnya.',
     '_Atau balas *catat* kalau memang pengeluaran lain, *batal* kalau dobel._',
   ] : [];
-  if (!items.length) return balas(pesanDobel.join('\n'));
+  const infoTunda = pesanTunda(ditahan);
+  if (!items.length) return balas([...infoTunda, ...(infoTunda.length && pesanDobel.length ? [''] : []), ...pesanDobel].join('\n'));
 
   const tersimpan = await simpanTransaksi(ctx.store, {
     tanggal: tanggalLokal(pesan.waktu),
@@ -239,6 +332,15 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     pengirim: namaPengirim(pesan),
     dicatat: waktuLokal(pesan.waktu),
   }, items);
+
+  // Struk yang dipakai dicatat di tab Struk supaya tidak bisa dipakai lagi.
+  for (const t of tersimpan) {
+    if (!t._sidik) continue;
+    await ctx.store.append('Struk', {
+      id_transaksi: t.id, kode_event: kodeEvent, tanggal: t._sidik.tanggal, nominal: Number(t.nominal), toko: t._sidik.toko,
+      referensi: t._sidik.referensi, hash: t._sidik.hash, dicatat: waktuLokal(pesan.waktu),
+    });
+  }
 
   // Diingat sebentar supaya pesan lanjutan seperti "uang valen" berlaku untuk catatan ini.
   if (ctx.terakhir) ctx.terakhir.set(`${pesan.groupId}|${pesan.senderId}`, { ids: tersimpan.map((t) => t.id), waktu: Date.now() });
@@ -266,6 +368,7 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
   if (ctx.sesi && jenis === JENIS.KELUAR && tersimpan.length === 1 && tersimpan[0].kategori === KATEGORI.LAIN) {
     baris.push('', tanyaKategori(ctx, pesan, tersimpan[0].id, tersimpan[0].keterangan));
   }
+  if (infoTunda.length) baris.push('', ...infoTunda);
   if (pesanDobel.length) baris.push('', ...pesanDobel);
   return balas(baris.join('\n'));
 }
@@ -418,6 +521,91 @@ async function koreksiCatatan(ctx, pesan, event, ids, isOwner) {
   return balas(`✅ *Sudah diubah* (${apa}):\n${hasil.map((t) => barisItem(t, tanggalLokal(pesan.waktu))).join('\n')}${lewat}`);
 }
 
+// Mencatat pengeluaran yang tadinya ditahan, atas nama pengirim aslinya.
+async function catatTunda(ctx, pesan, daftar, ubah) {
+  const hasil = [];
+  const kelompok = new Map();
+  for (const p of daftar) {
+    const k = `${p.buku}|${p.kodeEvent}|${p.senderId}`;
+    if (!kelompok.has(k)) kelompok.set(k, []);
+    kelompok.get(k).push(p);
+  }
+  for (const grup of kelompok.values()) {
+    const p0 = grup[0];
+    const atasNama = { ...pesan, senderId: p0.senderId, senderName: p0.senderName, adaFoto: false };
+    const items = grup.map((p) => ubah(p));
+    const r = await simpanDanBalas(ctx, atasNama, { buku: p0.buku, jenis: JENIS.KELUAR, kodeEvent: p0.kodeEvent, items, dilewati: [], paksa: true });
+    hasil.push(...r.map((x) => x.text));
+  }
+  hapusTunda(ctx, pesan.groupId, daftar.map((p) => p.id));
+  return hasil;
+}
+
+// Balasan untuk pengeluaran yang ditahan: foto struk, "acc" (owner), "batal", detail cash, atau penjelasan.
+async function selesaikanTunda(ctx, pesan, { cmd, isOwner, teks }) {
+  const semua = daftarTunda(ctx, pesan.groupId);
+  if (!semua.length) return null;
+  const ids = [...idTundaDariTeks(pesan.kutipan?.teks), ...idTundaDariTeks(teks)];
+  const acc = /^(#?acc|setuju|approve|disetujui|ok acc|acc ya|acc semua)\b/i.test(teks);
+  const batal = /^(#?batal|hapus|salah input|gak jadi|tidak jadi|ga jadi)\b/i.test(teks) && !/T\d{4}/i.test(teks);
+  let target = semua.filter((p) => ids.includes(p.id));
+  if (!target.length) {
+    if (acc && isOwner && /semua/i.test(teks)) target = semua;
+    else if (acc && isOwner && semua.length === 1) target = semua;
+    else if (acc && isOwner) return balas(`Ada ${semua.length} pengeluaran menunggu: ${semua.map((p) => p.id).join(', ')}.\nReply pesan bot yang berisi nomornya dengan *acc*, ketik *acc P0001*, atau *acc semua*.`);
+    else if (pesan.adaFoto && pesan.ambilFoto && !parseMoney(teks)) target = semua.filter((p) => p.senderId === pesan.senderId && p.perlu !== 'detail');
+    if (!target.length) return null;
+  }
+  if (cmd && !acc && !batal) return null;
+
+  if (acc) {
+    if (!isOwner) return balas('⚠️ Hanya *owner* yang bisa ACC pengeluaran tanpa struk / struk tidak sesuai.');
+    const teksAcc = await catatTunda(ctx, pesan, target, (p) => ({
+      ...p.item,
+      keterangan: p.penjelasan ? `${p.item.keterangan} (${p.penjelasan})` : p.item.keterangan,
+      bukti: p.perlu === 'cek' ? 'ACC owner (struk tidak sesuai)' : (p.perlu === 'struk' ? 'ACC owner (tanpa struk)' : 'ACC owner'),
+    }));
+    return balas(`👍 *Disetujui owner:* ${target.map((p) => p.id).join(', ')}\n\n${teksAcc.join('\n\n')}`);
+  }
+  if (batal) {
+    const boleh = target.filter((p) => isOwner || p.senderId === pesan.senderId);
+    if (!boleh.length) return balas('⚠️ Hanya owner atau pengirim asli yang bisa membatalkan.');
+    hapusTunda(ctx, pesan.groupId, boleh.map((p) => p.id));
+    return balas(`🗑️ Tidak dicatat: ${boleh.map((p) => `${p.id} ${p.item.keterangan} ${rupiah(p.item.nominal)}`).join(', ')}`);
+  }
+  // Foto struk
+  if (pesan.adaFoto && pesan.ambilFoto && !parseMoney(teks)) {
+    const butuhStruk = target.filter((p) => p.perlu !== 'detail');
+    if (!butuhStruk.length) return null;
+    const foto = await bacaFotoPesan(ctx, pesan);
+    if (!foto.teks) return balas('⚠️ Foto struknya belum bisa saya baca. Kirim ulang foto yang lebih jelas (tidak miring/buram), atau owner reply *acc*.');
+    const nominal = bacaBukti(foto.teks).nominal;
+    const cocok = butuhStruk.length === 1 ? butuhStruk : butuhStruk.filter((p) => nominal.includes(Number(p.item.nominal))).slice(0, 1);
+    if (!cocok.length) return balas(`❌ Struk ini tidak cocok dengan ${butuhStruk.map((p) => p.id).join(', ')} (nominal di struk: ${nominal.slice(0, 4).map(rupiah).join(', ') || 'tidak terbaca'}). Reply pesan yang berisi nomornya dengan struk yang benar.`);
+    const p = cocok[0];
+    const event = p.buku === BUKU.EVENT ? await cariEvent(ctx.store, p.kodeEvent) : null;
+    const cek = periksaStruk({ item: p.item, teksOcr: foto.teks, buffer: foto.buffer, event, daftarStruk: await strukBerlaku(ctx.store) });
+    if (!cek.ok) {
+      ubahTunda(ctx, pesan.groupId, p.id, { perlu: 'cek', alasan: cek.alasan });
+      return balas(pesanTunda([{ ...p, perlu: 'cek', alasan: cek.alasan }]).join('\n'));
+    }
+    const hasil = await catatTunda(ctx, pesan, [p], (x) => ({ ...x.item, bukti: 'Struk ✓', metode: metodeStruk(foto.teks, x.item.metode), ...(cek.tanggal ? { tanggal: cek.tanggal } : {}), _sidik: cek.sidik }));
+    return balas(`🧾 *Struk sesuai* (nominal, tanggal${cek.tanggal ? ` ${cek.tanggal}` : ''}, toko ${cek.sidik.toko || '-'}).\n\n${hasil.join('\n\n')}`);
+  }
+  // Teks tanpa harga: detail cash (pengirim asli) atau penjelasan untuk struk yang tidak sesuai.
+  if (!teks || parseMoney(teks)) return null;
+  const detail = target.filter((p) => p.perlu === 'detail' && p.senderId === pesan.senderId);
+  if (detail.length) {
+    if (perluDetail(teks)) return balas('✍️ Masih kurang jelas. Tulis barangnya & tempat belinya, contoh: *lakban & plastik di toko Maju*.');
+    const hasil = await catatTunda(ctx, pesan, detail, (p) => ({ ...p.item, keterangan: `${p.item.keterangan} (${teks})`, bukti: 'Tanpa struk (< 100rb, detail)' }));
+    return balas(hasil.join('\n\n'));
+  }
+  const dijelaskan = target.filter((p) => p.perlu !== 'detail');
+  if (!dijelaskan.length || !pesan.kutipan) return null;
+  for (const p of dijelaskan) ubahTunda(ctx, pesan.groupId, p.id, { penjelasan: teks.slice(0, 200) });
+  return balas(`📝 Penjelasan dicatat untuk ${dijelaskan.map((p) => p.id).join(', ')}. Masih menunggu *struk yang sesuai* atau *owner* reply *acc*.`);
+}
+
 // Foto bukti untuk catatan yang nominalnya sama dengan catatan lama: cocokkan nominal & tanggal.
 async function periksaBukti(ctx, pesan, d) {
   let teksFoto = null;
@@ -502,7 +690,11 @@ async function perintahRekap(ctx, pesan, grup, cmd, isOwner) {
     omzet: await ctx.store.all('Omzet'),
     transaksi: await ctx.store.all('Transaksi'),
   }, hariIni);
-  return balas(formatRekapEvent(r, hariIni));
+  const tunda = ctx.sesi ? daftarTunda(ctx, pesan.groupId) : [];
+  const infoTunda = tunda.length
+    ? `\n\n⏳ *Belum dihitung, menunggu struk/ACC/detail:* ${tunda.length} pengeluaran, ${rupiah(tunda.reduce((s, p) => s + Number(p.item.nominal || 0), 0))}\n${tunda.map((p) => `• ${p.id} ${p.item.keterangan} ${rupiah(p.item.nominal)} (${{ struk: 'menunggu struk', cek: 'struk tidak sesuai', detail: 'detail cash' }[p.perlu]})`).join('\n')}`
+    : '';
+  return balas(formatRekapEvent(r, hariIni) + infoTunda);
 }
 
 // Bot baru dimasukkan ke grup: kalau grup belum terdaftar, bot menyapa dan bertanya grup ini untuk apa.
@@ -557,6 +749,12 @@ export async function handlePesan(ctx, pesan) {
 
   const event = await cariEvent(ctx.store, grup.kode_event);
   const teksTanpaPerintah = cmd ? [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n') : teks;
+
+  // Pengeluaran yang ditahan (menunggu struk / ACC owner / detail cash).
+  if (ctx.sesi) {
+    const hasil = await selesaikanTunda(ctx, pesan, { cmd, isOwner, teks });
+    if (hasil) return hasil;
+  }
 
   // Peringatan dobel: "batal" = tidak dicatat; foto bukti trf dicek nominal & tanggalnya.
   if (ctx.sesi) {

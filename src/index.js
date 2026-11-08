@@ -35,7 +35,7 @@ async function main() {
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
   mkdirSync(config.folderLogin, { recursive: true });
-  const ctx = { store, ownerIds: config.ownerIds, sesi: buatSesi(path.join(config.folderLogin, 'sesi.json')), terakhir: new Map() };
+  const ctx = { store, ownerIds: config.ownerIds, sesi: buatSesi(path.join(config.folderLogin, 'sesi.json')), terakhir: new Map(), wajibStruk: true };
   // Sheet Main dihitung ulang paling lambat 30 detik setelah ada laporan baru.
   let perluPerbaruiMain = false;
 

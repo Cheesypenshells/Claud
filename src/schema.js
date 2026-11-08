@@ -48,6 +48,21 @@ export const KOLOM = {
       k('pengirim', 'Dicatat Oleh', 200),
       k('status', 'Status', 85, { catatan: 'OK = dihitung, BATAL = tidak dihitung. Jangan hapus baris; ganti saja menjadi BATAL' }),
       k('dicatat', 'Waktu Dicatat', 140),
+      k('bukti', 'Bukti', 170, { catatan: 'Struk ✓ = struk dicek bot (nominal, tanggal, toko). ACC owner = tanpa struk / struk tidak sesuai tapi disetujui owner. Wajib untuk pengeluaran >= Rp 100.000' }),
+    ],
+  },
+  // Struk yang sudah dipakai: supaya satu struk tidak dipakai dua kali.
+  Struk: {
+    warna: '#795548',
+    kolom: [
+      k('id_transaksi', 'No. Catatan', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('tanggal', 'Tanggal Struk', 115),
+      k('nominal', 'Nominal', 130, { format: 'rupiah' }),
+      k('toko', 'Toko / Merek', 200),
+      k('referensi', 'No. Referensi', 170),
+      k('hash', 'Sidik Foto', 150, { catatan: 'Sidik digital foto struk (foto yang sama persis akan terdeteksi)', sembunyi: true }),
+      k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
   Omzet: {

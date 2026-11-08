@@ -9,7 +9,7 @@ import { PERAN, KATEGORI } from './parsers.js';
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
 // Naikkan kalau tata letak file event berubah: file event lama ikut dirapikan ulang sekali.
-export const VERSI_TATA_LETAK = '8';
+export const VERSI_TATA_LETAK = '9';
 
 // "2026-09-24", "2026-10-11" -> "24 Sep - 11 Okt 2026"; bulan sama -> "1 - 14 Nov 2026"
 export function rentangTanggal(mulai, selesai) {
@@ -149,7 +149,7 @@ export const TAB_KATEGORI = [
 const KOLOM_KATEGORI = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Keterangan', lebar: 280 },
   { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Uang Siapa', lebar: 120 }, { label: 'Metode', lebar: 90 },
-  { label: 'Dicatat Oleh', lebar: 190 },
+  { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Bukti', lebar: 170 },
 ];
 
 const KOLOM_IO = [
@@ -160,7 +160,7 @@ const KOLOM_IO = [
 export const KOLOM_TRANSAKSI_EVENT = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No. Catatan', lebar: 95 }, { label: 'Jenis', lebar: 115 }, { label: 'Kategori', lebar: 190 },
   { label: 'Keterangan', lebar: 260 }, { label: 'Nominal', lebar: 130, format: 'rupiah' }, { label: 'Metode', lebar: 95 },
-  { label: 'Uang Siapa', lebar: 120 }, { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 100 },
+  { label: 'Uang Siapa', lebar: 120 }, { label: 'Dicatat Oleh', lebar: 190 }, { label: 'Status', lebar: 100 }, { label: 'Bukti', lebar: 170 },
 ];
 
 const urutTanggal = (a, b) => String(a.tanggal).localeCompare(String(b.tanggal)) || String(a.id).localeCompare(String(b.id));
@@ -171,13 +171,13 @@ export function tabelKategoriEvent(r, transaksi) {
   const aktif = milik.filter((t) => t.status !== 'BATAL');
   const keluar = aktif.filter((t) => t.jenis === JENIS.KELUAR);
   const dikenal = new Set(TAB_KATEGORI.flatMap((k) => k.kategori || []));
-  const baris = (t) => [t.tanggal, t.id, t.keterangan, Number(t.nominal) || 0, t.dibayar_oleh || '', t.metode || '', t.pengirim];
+  const baris = (t) => [t.tanggal, t.id, t.keterangan, Number(t.nominal) || 0, t.dibayar_oleh || '', t.metode || '', t.pengirim, t.bukti || ''];
 
   const tabel = TAB_KATEGORI.map((k) => {
     const isi = keluar.filter((t) => (k.kategori ? k.kategori.includes(t.kategori) : !dikenal.has(t.kategori))).map(baris);
     if (k.gudang) {
       for (const b of r.barisBahan.filter((x) => x.keluar || x.restock)) {
-        isi.push(['', 'Gudang', `${b.bahan} dari gudang: keluar ${b.keluar} + restock ${b.restock} ${b.satuan} × ${b.harga.toLocaleString('id-ID')}`, b.nilaiBawa, 'Gudang', '', 'Bot (dari laporan bahan)']);
+        isi.push(['', 'Gudang', `${b.bahan} dari gudang: keluar ${b.keluar} + restock ${b.restock} ${b.satuan} × ${b.harga.toLocaleString('id-ID')}`, b.nilaiBawa, 'Gudang', '', 'Bot (dari laporan bahan)', 'Laporan gudang']);
       }
     }
     return { tab: k.tab, judul: k.judul, warna: k.warna, kolom: KOLOM_KATEGORI, baris: isi, total: isi.reduce((s, x) => s + (Number(x[3]) || 0), 0) };
@@ -194,7 +194,7 @@ export function tabelKategoriEvent(r, transaksi) {
   const urut = [...milik.filter((t) => !batal(t)), ...milik.filter(batal)];
   tabel.push({
     tab: 'Semua Transaksi', judul: 'SEMUA CATATAN (yang dibatalkan dicoret di bawah & tidak dihitung)', warna: '#5F6368', kolom: KOLOM_TRANSAKSI_EVENT,
-    baris: urut.map((t) => [t.tanggal, t.id, t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, batal(t) ? '❌ BATAL' : '✅ OK']),
+    baris: urut.map((t) => [t.tanggal, t.id, t.jenis, t.kategori, t.keterangan, Number(t.nominal) || 0, t.metode, t.dibayar_oleh || '', t.pengirim, batal(t) ? '❌ BATAL' : '✅ OK', t.bukti || '']),
     barisCoret: urut.map((t, i) => (batal(t) ? i : -1)).filter((i) => i >= 0),
     total: keluar.reduce((s, t) => s + (Number(t.nominal) || 0), 0),
   });

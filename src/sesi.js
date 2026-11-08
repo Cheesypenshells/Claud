@@ -18,7 +18,9 @@ export function buatSesi(file) {
     get(id) {
       const s = data[id];
       if (!s) return null;
-      if (Date.now() - s.waktu > KEDALUWARSA_MS) {
+      // Pengeluaran yang menunggu struk/ACC disimpan lebih lama (60 hari).
+      const batas = String(id).startsWith('tunda|') ? 60 * 24 * 60 * 60 * 1000 : KEDALUWARSA_MS;
+      if (Date.now() - s.waktu > batas) {
         delete data[id];
         simpan();
         return null;
