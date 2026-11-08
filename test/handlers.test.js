@@ -751,3 +751,25 @@ test('peringatan dobel tidak menelan foto bukti transfer lain', async () => {
   assert.match(await kirim(G_KELUAR, PIC, '', foto('IDR 600,000.00\nTransfer ke rekening BCA\n21 Sep 2026')), /Rp 600.000\*, tapi belum jelas/);
   assert.equal((await store.all('Transaksi')).length, 1);
 });
+
+test('foto bukti: "dikurangi 500k jadi 2120k uang melia" mengubah nominal, lalu ditanya untuk apa', async () => {
+  const { store, kirim, ctx } = setup();
+  ctx.bacaGambar = async (buf) => buf.toString();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const foto = (t) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(t) });
+  assert.match(await kirim(G_KELUAR, PIC, '', foto('IDR 2,620,000.00\nTransfer ke rekening BCA')), /Rp 2.620.000\* ini untuk apa/);
+  const r = await kirim(G_KELUAR, PIC, 'Biaya total bukan 2620k tapi dokurangi 500k hadi total nya 2120k uang melia');
+  assert.match(r, /nominal jadi \*Rp 2.120.000\* \(Rp 2.620.000 dikurangi Rp 500.000\), uang Melia.*ini untuk apa/s);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.match(await kirim(G_KELUAR, PIC, 'hotel'), /T0001 hotel - \*Rp 2.120.000\* \[Penginapan\] \(uang Melia\)/);
+
+  // jawaban lewat reply oleh orang lain memakai nominal & uang siapa yang baru
+  const q = await kirim(G_KELUAR, PIC, '', foto('IDR 1,000,000.00\nTransfer ke rekening BCA'));
+  const r2 = await kirim(G_KELUAR, PIC, 'dikurangi deposit 300k uang melia');
+  assert.match(r2, /nominal jadi \*Rp 700.000\*/);
+  assert.match(await kirim(G_KELUAR, OWNER, '', { kutipan: { teks: r2 }, text: 'kos karyawan' }), /T0002 kos karyawan - \*Rp 700.000\*.*uang Melia/s);
+  assert.ok(q);
+  // langsung dengan keterangan
+  await kirim(G_KELUAR, PIC, '', foto('IDR 900,000.00\nTransfer ke rekening BCA'));
+  assert.match(await kirim(G_KELUAR, PIC, 'villa dikurangi deposit 200k'), /T0003 villa - \*Rp 700.000\*/);
+});

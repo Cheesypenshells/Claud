@@ -910,7 +910,8 @@ export async function handlePesan(ctx, pesan) {
       if (asal) { ctx.sesi.hapus(kunci); ctx.sesi.hapus(`lengkapi:${pesan.groupId}:${asal.senderId}`); }
       const atasNama = asal ? { ...pesan, senderId: asal.senderId, senderName: asal.senderName } : pesan;
       const ruko = grup.jenis === 'ruko';
-      return catatUang(ctx, atasNama, { buku: ruko ? BUKU.RUKO : BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: ruko ? 'RUKO' : event.kode, teks: `${teks} ${nominal}` });
+      const uangSiapa = asal?.uangSiapa && !ambilUangSiapa(teks).siapa ? ` uang ${asal.uangSiapa}` : '';
+      return catatUang(ctx, atasNama, { buku: ruko ? BUKU.RUKO : BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: ruko ? 'RUKO' : event.kode, teks: `${teks} ${nominal}${uangSiapa}` });
     }
   }
 
@@ -968,6 +969,13 @@ export async function handlePesan(ctx, pesan) {
   // Jawaban atas pertanyaan bot sebelumnya (harga / jumlah bahan / nama bahan / kategori).
   if (!cmd && ctx.sesi) {
     const jawab = jawabLengkapi(ctx, pesan, await ctx.store.all('Harga Bahan'));
+    // Nominal pertanyaan "ini untuk apa?" berubah (dikurangi deposit dll): pindahkan catatan foto ke nominal baru.
+    if (jawab?.nominalBaru && jawab.nominalLama) {
+      const lama = ctx.sesi.get(`fototanya:${pesan.groupId}:${jawab.nominalLama}`);
+      const sesiBaru = ctx.sesi.get(`lengkapi:${pesan.groupId}:${pesan.senderId}`);
+      ctx.sesi.hapus(`fototanya:${pesan.groupId}:${jawab.nominalLama}`);
+      if (lama && sesiBaru) ctx.sesi.set(`fototanya:${pesan.groupId}:${jawab.nominalBaru}`, { ...lama, uangSiapa: sesiBaru.uangSiapa || '' });
+    }
     if (jawab?.balasan) return balas(jawab.balasan);
     if (jawab?.kategori) {
       // Ingat pilihan ini supaya catatan berikutnya dengan keterangan yang sama langsung berkategori.
