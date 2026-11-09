@@ -1,3 +1,0 @@
-# giokk
-
-Folder proyek giokk.
