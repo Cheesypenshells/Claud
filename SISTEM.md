@@ -17,7 +17,7 @@ Sistem ini dibuat supaya **George cukup kasih target, cerita, dan rekaman**. Sis
 ```
 SENIN  George: kirim screenshot insight + 1 cerita + info kota
        Claude: isi data/metrics.csv → laporan progres → paket minggu ini
-SELASA George: rekam (±2 jam) → kirim file asli (chat / Google Drive)
+SELASA George: rekam (±2 jam) → upload file asli langsung di chat
 RABU   Claude: rakit video (studio.py) → kirim hasil
 KAMIS  George: cek, jadwalkan upload 19.00 WIB
 TIAP HARI George: balas komen & DM 15 menit
@@ -26,7 +26,8 @@ TIAP HARI George: balas komen & DM 15 menit
 ## Yang George kirim (cukup ini)
 1. **Screenshot**: Dasbor → Insight (tayangan, pengikut baru) untuk 2 akun + 3 reel teratas
 2. **Cerita**: voice note diketik / chat bebas
-3. **File asli** rekaman (bukan screenshot, bukan hasil download IG)
+3. **File asli** rekaman (bukan screenshot, bukan hasil download IG): **upload langsung di chat**.
+   Google Drive hanya untuk dokumen/file kecil (memori Drive terbatas).
 
 ## Batasan
 - Claude tidak bisa posting/menjadwalkan ke IG langsung, tidak bisa menonton video/mendengar audio.
