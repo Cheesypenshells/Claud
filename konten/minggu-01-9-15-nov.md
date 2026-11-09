@@ -5,7 +5,7 @@
 ## Jadwal
 | Tgl | @geov10 | @cheesypenshells |
 |---|---|---|
-| Sen 9 | **#1 Editorial "senyumnya"** (siap posting: `produksi/contoh-editorial/hasil.mp4`) | **Teaser Semarang** (siap: `konten/demo/teaser-semarang-v2.mp4`) |
+| Sen 9 | ~~#1 Editorial~~ **DITUNDA**: dibuat ulang dari rekaman asli | ~~Teaser~~ **DITUNDA**: pakai klip asli dari galeri HP |
 | Sel 10 | **#2 "Siapa gua"** (rekam) → **PIN** | – |
 | Rab 11 | **#3 Rugi 404 Juta, Ep 1** | **Cheese pull + Semarang 14 Nov** (rekam/klip lama) |
 | Kam 12 | – 🕛 | **"Ketik KERANG"** 🕛 |
@@ -15,7 +15,7 @@
 
 ---
 
-## @geov10 #1: Editorial "senyumnya" (SIAP)
+## @geov10 #1: Editorial "senyumnya" (DITUNDA: dibuat ulang dari rekaman asli, caption tetap)
 **Caption:**
 ```
 semua orang lihat senyumnya.
