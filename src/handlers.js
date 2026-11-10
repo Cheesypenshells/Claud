@@ -17,6 +17,7 @@ import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './kore
 import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti, daftarPesanan } from './bukti.js';
 import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk, batasTanggal } from './struk.js';
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
+import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perintahKpi } from './handlersKpi.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -62,6 +63,7 @@ const BANTUAN = {
 • #keluar / #restock / #kembali + bahan per baris (mozzarella 20 pack)
 • #gratis 3 porsi mozzarella isi 4 untuk @influencer`,
   owner: `*Khusus owner*
+• *KPI:* #nilai (penilaian tim event, juga bisa PIC) · #nilai Dena 5 4 4 3 · #nilai tim 4 · #poin Dena +20 bantu masak bumbu · #poin Dena -10 SOP tidak dikerjakan · #poinbatal K0001 · #kpi · #kpi Dena · #kpi 2026-09
 • #eventbaru - bot bertanya data event satu per satu
 • #mulai - bot menanyakan grup ini untuk apa
 • #ubah bagi hasil 27 / #ubah tanggal 1-16 Nov 2026 - ubah data event
@@ -858,7 +860,22 @@ export async function handleGrupBaru(ctx, groupId) {
   return balas(mulaiSapaan(ctx, groupId));
 }
 
+// Chat pribadi dengan bot: hanya penilaian KPI (PIC/owner) dan perintah KPI owner; selain itu diabaikan.
+async function handlePribadi(ctx, pesan) {
+  const teks = String(pesan.text || '').trim();
+  const cmd = parsePerintah(teks);
+  const isOwner = ctx.ownerIds.has(pesan.senderId);
+  if (!cmd) return (await jawabPenilaian(ctx, pesan)) || [];
+  const opsi = { event: null, argumen: cmd.argumen, isOwner };
+  if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
+  if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
+  if (isOwner && cmd.perintah === 'poin') return perintahPoin(ctx, pesan, opsi);
+  if (isOwner && cmd.perintah === 'poinbatal') return perintahPoinBatal(ctx, pesan, opsi);
+  return [];
+}
+
 export async function handlePesan(ctx, pesan) {
+  if (pesan.pribadi) return handlePribadi(ctx, pesan);
   let teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
@@ -902,6 +919,11 @@ export async function handlePesan(ctx, pesan) {
   if (grup.jenis === 'gudang') return []; // Tahap 2
 
   const event = await cariEvent(ctx.store, grup.kode_event);
+  // Penilaian KPI yang sedang berjalan (jawaban "5 4 4 3").
+  if (!cmd && ctx.sesi) {
+    const jawabNilai = await jawabPenilaian(ctx, pesan);
+    if (jawabNilai) return jawabNilai;
+  }
   // Reply ke foto dengan angka kecil tanpa satuan ("makan mama 38") = ribuan (38rb).
   if (!cmd && pesan.kutipan?.foto && !parseMoney(teks) && /(^|\s)\d{1,3}(\s|$)/.test(teks)) {
     pesan = { ...pesan, text: teks.replace(/(^|\s)(\d{1,3})(?=\s|$)/, '$1$2rb') };
@@ -1034,6 +1056,12 @@ export async function handlePesan(ctx, pesan) {
   if (cmd) {
     switch (cmd.perintah) {
       case 'rekap': return perintahRekap(ctx, pesan, grup, cmd, isOwner);
+      case 'nilai':
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Penilaian KPI dilakukan di grup pengeluaran (owner + PIC) atau chat pribadi dengan bot, bukan di grup tim.');
+        return perintahNilai(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
+      case 'poin': return perintahPoin(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
+      case 'poinbatal': return perintahPoinBatal(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
+      case 'kpi': return perintahKpi(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
       case 'batal': return perintahBatal(ctx, pesan, cmd, isOwner);
       case 'kategori': return perintahKategori(ctx, cmd);
       case 'uang':

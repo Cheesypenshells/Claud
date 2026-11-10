@@ -253,3 +253,26 @@ Semua file bot ada di **PROJECT CHEESY PEN SHELLS > 0. KANTOR AI (BOT)**:
 `#owner tidak` (25%) | `#owner 1 hari` (20%) | `#owner setengah` (15%) | `#owner penuh` (10%), atau `#owner 4 hari`.
 
 Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot menyala.
+
+
+## KPI karyawan
+
+**Skor maksimal 100 poin per bulan** = 60 individu + 40 kelompok, lalu + poin plus − poin minus (dibatasi 0–100). Poin = persen klaim bonus (skor 80 → 80% bonus maksimal).
+
+| Bagian | Poin | Sumber |
+|---|---|---|
+| Absen (20% individu) | 12 | Nilai PIC 1–5 |
+| Performa kinerja (40%) | 24 | Nilai PIC 1–5 |
+| Attitude (20%) | 12 | Nilai PIC 1–5 |
+| Karir (20%) | 12 | Nilai PIC 1–5 |
+| Omzet vs target | 15 | Omzet event ÷ target |
+| Ketepatan stok | 10 | (deteksi stok menyusul; sementara penuh) |
+| Kebersihan & komplain | 10 | −2 per komplain pelanggan (QR booth menyusul) |
+| Kinerja tim | 5 | Nilai PIC 1–5 |
+
+- **Penilaian PIC:** sehari setelah event selesai (jam 10.00) bot chat pribadi ke PIC dan menanyakan tiap anggota tim satu per satu: balas 4 angka `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Syarat: nama & nomor WA PIC ada di tab **Karyawan** PEMBUKUAN. Kalau tidak ada, bot mengingatkan di grup pengeluaran: ketik `#nilai`.
+- **Langsung:** `#nilai Dena 5 4 4 3`, `#nilai tim 4`, untuk event lama `#nilai BAL26-09`.
+- **Poin plus/minus (owner):** `#poin Dena +20 bantu masak bumbu`, `#poin Dena -10 SOP tidak dikerjakan`, batalkan `#poinbatal K0001`.
+- **Lihat (owner):** `#kpi` (peringkat bulan terakhir), `#kpi Dena`, `#kpi 2026-09`. Karyawan nanti melihat nilainya sendiri lewat QR kartu + PIN.
+- **File KPI KARYAWAN** di Drive diperbarui otomatis: Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung.
+- **Tab Karyawan** (PEMBUKUAN): isi kode, nama (sama dengan nama di tim event), nomor WA, peran, keahlian, foto, mulai kerja, status.

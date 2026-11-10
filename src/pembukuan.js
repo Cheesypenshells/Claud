@@ -5,6 +5,8 @@ import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './la
 import { bacaData } from './main.js';
 import { JENIS, STATUS } from './schema.js';
 import { eventWajibStruk } from './struk.js';
+import { rekapBulanKPI, skorEvent } from './kpi.js';
+import { namaBulan } from './util.js';
 import { PERAN, KATEGORI } from './parsers.js';
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -206,6 +208,67 @@ export function tabelKategoriEvent(r, transaksi) {
   return tabel;
 }
 
+// ---------- File 4: KPI KARYAWAN ----------
+
+const KOLOM_KPI_BULAN = [
+  { label: 'Bulan', lebar: 110 }, { label: 'Peringkat', lebar: 85, format: 'angka' }, { label: 'Nama', lebar: 140 }, { label: 'Peran', lebar: 90 },
+  { label: 'Jumlah Event', lebar: 90, format: 'angka' }, { label: 'Hari Kerja', lebar: 85, format: 'angka' },
+  { label: 'Individu (maks 60)', lebar: 120, format: 'poin' }, { label: 'Kelompok (maks 40)', lebar: 125, format: 'poin' },
+  { label: 'Poin Plus', lebar: 85, format: 'poin' }, { label: 'Poin Minus', lebar: 90, format: 'poin' },
+  { label: 'SKOR AKHIR (maks 100)', lebar: 140, format: 'poin' },
+  { label: 'Bonus Maksimal', lebar: 130, format: 'rupiah' }, { label: 'Estimasi Bonus Diterima', lebar: 160, format: 'rupiah' },
+  { label: 'Catatan', lebar: 260 },
+];
+const KOLOM_KPI_EVENT = [
+  { label: 'Kode Event', lebar: 100 }, { label: 'Lokasi', lebar: 100 }, { label: 'Tanggal', lebar: 170 }, { label: 'Nama', lebar: 140 },
+  { label: 'Peran', lebar: 85 }, { label: 'Hari', lebar: 60, format: 'angka' },
+  { label: 'Absen (12)', lebar: 85, format: 'poin' }, { label: 'Kinerja (24)', lebar: 90, format: 'poin' },
+  { label: 'Attitude (12)', lebar: 95, format: 'poin' }, { label: 'Karir (12)', lebar: 85, format: 'poin' },
+  { label: 'INDIVIDU (60)', lebar: 105, format: 'poin' },
+  { label: 'Omzet vs Target (15)', lebar: 130, format: 'poin' }, { label: 'Stok (10)', lebar: 80, format: 'poin' },
+  { label: 'Kebersihan & Komplain (10)', lebar: 160, format: 'poin' }, { label: 'Kinerja Tim (5)', lebar: 110, format: 'poin' },
+  { label: 'KELOMPOK (40)', lebar: 110, format: 'poin' }, { label: 'TOTAL (100)', lebar: 100, format: 'poin' },
+  { label: 'Status', lebar: 170 },
+];
+const KOLOM_KPI_POIN = [
+  { label: 'Tanggal', lebar: 100 }, { label: 'No.', lebar: 70 }, { label: 'Nama', lebar: 140 }, { label: 'Poin', lebar: 70, format: 'angka' },
+  { label: 'Alasan', lebar: 300 }, { label: 'Kode Event', lebar: 100 }, { label: 'Dicatat Oleh', lebar: 190 },
+];
+const KOLOM_KPI_CARA = [{ label: 'Bagian', lebar: 220 }, { label: 'Penjelasan', lebar: 760 }];
+const CARA_HITUNG_KPI = [
+  ['Skor maksimal', '100 poin per bulan: 60 individu + 40 kelompok, lalu + poin plus − poin minus (dibatasi 0–100).'],
+  ['Individu (60)', 'Dinilai PIC setelah event (skala 1–5): Absen 20% (12) · Performa kinerja 40% (24) · Attitude 20% (12) · Karir 20% (12). Bot menanyakan ke PIC lewat chat pribadi sehari setelah event selesai, atau ketik #nilai di grup pengeluaran.'],
+  ['Kelompok (40)', 'Sama untuk satu tim event: Omzet vs target (15) · Ketepatan stok (10, deteksi stok menyusul) · Kebersihan & komplain pelanggan (10, −2 per komplain) · Kinerja tim dari PIC (5).'],
+  ['Skor bulan', 'Rata-rata skor semua event di bulan itu (ditimbang hari kerja), ditambah poin plus dan dikurangi poin minus.'],
+  ['Poin plus / minus', 'Dicatat owner: #poin Dena +20 bantu masak bumbu · #poin Dena -10 SOP tidak dikerjakan · batalkan: #poinbatal K0001.'],
+  ['Bonus', 'Poin = persen klaim bonus. Skor 100 → 100% bonus maksimal; skor 80 → 80%. Bonus maksimal dari hitungan event (karyawan tetap: % omzet; DW & kasir: bonus harian).'],
+  ['Peringkat', 'Diurutkan dari skor akhir tertinggi per bulan. Karyawan yang eventnya belum dinilai PIC belum punya skor.'],
+];
+
+export function tabelKpi(hasil, { nilai, poin }) {
+  const rekap = rekapBulanKPI(hasil, { nilai, poin });
+  const evIndex = new Map(hasil.map((r) => [r.event.kode, r.event]));
+  const bulan = rekap.map((h) => [namaBulan(h.bulan), h.peringkat || '', h.nama, h.peran, h.jumlahEvent, h.hari,
+    h.individu ?? '', h.kelompok ?? '', h.plus, h.minus, h.skor ?? '', h.bonusMaks, h.bonusDiterima ?? '',
+    h.belumDinilai ? `${h.belumDinilai} event belum dinilai PIC` : '']);
+  const perEvent = hasil.flatMap((r) => skorEvent(r, { nilai }).map((s) => {
+    const e = evIndex.get(s.kode);
+    return [s.kode, e.kota, `${e.mulai} s/d ${e.selesai}`, s.nama, s.peran, s.hari, s.absen ?? '', s.kinerja ?? '', s.attitude ?? '', s.karir ?? '',
+      s.individu ?? '', s.omzet, s.stok, s.komplain, s.tim ?? '', s.kelompok, s.total ?? '',
+      s.lengkap ? '✅ Lengkap' : (s.individu === null ? '⏳ Belum dinilai PIC' : '⏳ Kinerja tim belum dinilai')];
+  }));
+  const riwayat = poin.filter((p) => p.status !== 'BATAL').map((p) => [p.tanggal, p.id, p.nama, Number(p.poin) || 0, p.alasan, p.kode_event, p.dicatat_oleh]);
+  return [
+    { tab: 'Peringkat & Bonus', judul: 'PERINGKAT KPI & ESTIMASI BONUS PER BULAN', warna: '#3949AB', kolom: KOLOM_KPI_BULAN, baris: bulan,
+      total: bulan.reduce((s, b) => s + (Number(b[12]) || 0), 0) },
+    { tab: 'Nilai per Event', judul: 'NILAI KPI PER EVENT (individu dari PIC + kelompok dari data event)', warna: '#00897B', kolom: KOLOM_KPI_EVENT, baris: perEvent,
+      total: `${perEvent.filter((b) => String(b[17]).startsWith('✅')).length}/${perEvent.length} dinilai` },
+    { tab: 'Riwayat Poin', judul: 'RIWAYAT POIN PLUS / MINUS', warna: '#E8710A', kolom: KOLOM_KPI_POIN, baris: riwayat,
+      total: `${riwayat.reduce((s, b) => s + b[3], 0) >= 0 ? '+' : ''}${riwayat.reduce((s, b) => s + b[3], 0)} poin` },
+    { tab: 'Cara Hitung', judul: 'CARA HITUNG KPI & BONUS', warna: '#5F6368', kolom: KOLOM_KPI_CARA, baris: CARA_HITUNG_KPI, total: '' },
+  ];
+}
+
 // ---------- Proses utama ----------
 
 // Menyimpan isi terakhir tiap file supaya hanya file yang berubah yang ditulis ulang.
@@ -277,6 +340,15 @@ export async function perbaruiPembukuan(store) {
     await store.tulisTabel(store.spreadsheetId, 'Gaji per Event', { kolom: KOLOM_GAJI, baris: hasil.flatMap(barisGaji), warna: '#8E24AA', index: 1 });
     await store.tulisTabel(store.spreadsheetId, 'Penggantian Uang', { kolom: KOLOM_PENGGANTIAN, baris: hasil.flatMap(barisPenggantian), warna: '#5F6368', index: 2 });
     terakhirDitulis.set('PEMBUKUAN', isiPembukuan);
+  }
+  // File KPI KARYAWAN (tab Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung).
+  if (atur.file_kpi) {
+    const tabel = tabelKpi(hasil, { nilai: await store.all('Nilai KPI'), poin: await store.all('Poin KPI') });
+    const isiKpi = JSON.stringify(tabel);
+    if (terakhirDitulis.get('KPI') !== isiKpi) {
+      await store.tulisBanyakTabel(atur.file_kpi, tabel, { hapus: ['Sheet1'], mulaiIndex: 0 });
+      terakhirDitulis.set('KPI', isiKpi);
+    }
   }
   return { jumlahEvent: hasil.length, catatan };
 }

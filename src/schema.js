@@ -51,6 +51,55 @@ export const KOLOM = {
       k('bukti', 'Bukti', 170, { catatan: 'Struk ✓ = struk dicek bot (nominal, tanggal, toko). ACC owner = tanpa struk / struk tidak sesuai tapi disetujui owner. Wajib untuk pengeluaran >= Rp 100.000' }),
     ],
   },
+  // ---------- KPI karyawan ----------
+  // Data karyawan (diisi owner). PIN disimpan dalam bentuk acak (hash), tidak bisa dibaca.
+  Karyawan: {
+    warna: '#3949AB',
+    kolom: [
+      k('kode', 'Kode', 80, { catatan: 'Kode kartu, contoh K01' }),
+      k('nama', 'Nama', 150, { catatan: 'Sama persis dengan nama di tim event' }),
+      k('nomor_wa', 'Nomor WA', 140, { catatan: '0812... atau 62812...' }),
+      k('peran', 'Peran', 100, { catatan: 'Tetap / PIC / DW / Kasir' }),
+      k('keahlian', 'Keahlian', 240, { catatan: 'Jago di bagian apa, contoh: grill, kasir, closing pembeli' }),
+      k('foto', 'Foto (link)', 200),
+      k('mulai_kerja', 'Mulai Kerja', 110),
+      k('status', 'Status', 90, { catatan: 'AKTIF / KELUAR' }),
+      k('pin', 'PIN (terkunci)', 120, { catatan: 'Diisi bot saat karyawan membuat PIN. Jangan diubah.', sembunyi: true }),
+      k('catatan', 'Catatan', 200),
+    ],
+  },
+  // Penilaian PIC per event (skala 1-5 atau persen 0-100). Baris bernama TIM = nilai kinerja tim.
+  'Nilai KPI': {
+    warna: '#3949AB',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 150, { catatan: 'TIM = nilai kinerja tim keseluruhan' }),
+      k('absen', 'Absen (20%)', 100, { catatan: '1-5 atau 0-100' }),
+      k('kinerja', 'Performa Kinerja (40%)', 140),
+      k('attitude', 'Attitude (20%)', 105),
+      k('karir', 'Karir (20%)', 100),
+      k('tim', 'Kinerja Tim', 100, { catatan: 'Hanya di baris TIM, 1-5' }),
+      k('catatan', 'Catatan', 220),
+      k('penilai', 'Dinilai Oleh', 160),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Poin plus / minus (contoh: SOP tidak dikerjakan -10, bantu masak bumbu +20).
+  'Poin KPI': {
+    warna: '#3949AB',
+    kolom: [
+      k('id', 'No.', 80),
+      k('tanggal', 'Tanggal', 105),
+      k('nama', 'Nama', 150),
+      k('poin', 'Poin', 80, { format: 'angka' }),
+      k('alasan', 'Alasan', 260),
+      k('kode_event', 'Kode Event', 110),
+      k('dicatat_oleh', 'Dicatat Oleh', 180),
+      k('status', 'Status', 85, { catatan: 'OK / BATAL' }),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Struk yang sudah dipakai: supaya satu struk tidak dipakai dua kali.
   Struk: {
     warna: '#795548',

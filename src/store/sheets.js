@@ -14,6 +14,7 @@ const FORMAT_ANGKA = {
   rupiah: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
   persen: { type: 'NUMBER', pattern: '0.##"%"' },
   angka: { type: 'NUMBER', pattern: '#,##0' },
+  poin: { type: 'NUMBER', pattern: 'General' },
 };
 
 // Nama tab di rumus/rentang harus diberi kutip kalau ada spasi, misalnya 'Tim Event'!A1.

@@ -11,6 +11,7 @@ import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
 import { isiHargaAwal } from './main.js';
 import { perbaruiPembukuan } from './pembukuan.js';
+import { tugasPenilaian } from './handlersKpi.js';
 
 async function main() {
   let store;
@@ -61,6 +62,13 @@ async function main() {
   });
 
   const tugasJatuhTempo = buatPenjadwal({ store, jam: config.jam });
+  // Penilaian KPI ke PIC sehari setelah event selesai (dicek tiap 10 menit).
+  setInterval(() => jalankan(async () => {
+    for (const p of await tugasPenilaian(ctx)) {
+      if (p.nomor) await wa.kirimPribadi(p.nomor, p.text);
+      else await wa.kirim(p.groupId, p.text);
+    }
+  }), 10 * 60_000);
   setInterval(() => jalankan(async () => {
     for (const p of await tugasJatuhTempo()) await wa.kirim(p.groupId, p.text);
   }), 60_000);

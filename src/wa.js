@@ -130,14 +130,16 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
       if (type !== 'notify' && type !== 'append') return;
       for (const m of messages) {
         const groupId = m.key.remoteJid;
-        if (!groupId?.endsWith('@g.us') || m.key.fromMe || !m.message) continue;
+        // Grup, atau chat pribadi (untuk penilaian KPI / perintah owner). Status & siaran diabaikan.
+        const pribadi = /@(s\.whatsapp\.net|lid)$/.test(groupId || '');
+        if ((!groupId?.endsWith('@g.us') && !pribadi) || m.key.fromMe || !m.message) continue;
         if (pencatat.sudah(m.key.id)) continue;
         const waktu = new Date(Number(m.messageTimestamp) * 1000);
         if (type === 'append' && Date.now() - waktu.getTime() > BATAS_TERTUNDA_MS) continue;
         const { teks, adaFoto, kutipan } = isiPesan(m);
         if (!teks && !adaFoto) continue;
 
-        if (!namaGrup.has(groupId)) {
+        if (!pribadi && !namaGrup.has(groupId)) {
           const meta = await sock.groupMetadata(groupId).catch(() => null);
           namaGrup.set(groupId, meta?.subject || groupId);
         }
@@ -145,8 +147,9 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
         const pesan = {
           id: m.key.id,
           groupId,
-          groupName: namaGrup.get(groupId),
-          senderId: angkaId(m.key.participantPn || m.key.participant),
+          groupName: pribadi ? 'chat pribadi' : namaGrup.get(groupId),
+          senderId: pribadi ? angkaId(m.key.senderPn || m.key.remoteJidAlt || groupId) : angkaId(m.key.participantPn || m.key.participant),
+          pribadi,
           senderName: m.pushName || '',
           text: teks,
           adaFoto,
@@ -162,5 +165,6 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
   };
 
   sambung();
-  return { kirim: (groupId, text) => kirim(groupId, text) };
+  // kirimPribadi: chat langsung ke nomor (contoh meminta penilaian KPI ke PIC).
+  return { kirim: (groupId, text) => kirim(groupId, text), kirimPribadi: (nomor, text) => kirim(`${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}@s.whatsapp.net`, text) };
 }
