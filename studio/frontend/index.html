@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geo Content Studio</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<aside class="side">
+  <div class="brand"><span class="dot"></span> Content Studio</div>
+  <nav>
+    <a data-view="projects" class="active">Projects</a>
+    <a data-view="bank">Content Bank</a>
+    <a data-view="styles">Style DNA</a>
+    <a data-view="activity">Agent Activity</a>
+    <a data-view="premiere">Premiere Bridge</a>
+    <a data-view="toolkit">Toolkit</a>
+  </nav>
+  <div class="team">
+    <div class="label">Tim agent</div>
+    <div class="agent"><b>Producer</b><span>orkestrasi pipeline</span></div>
+    <div class="agent"><b>Research</b><span>Style DNA + riset web</span></div>
+    <div class="agent"><b>Creative Director</b><span>konsep, hook, script, review</span></div>
+    <div class="agent"><b>Editor</b><span>cut, zoom, caption, render</span></div>
+    <div class="agent"><b>Librarian</b><span>analisa bank konten</span></div>
+  </div>
+  <div id="llm" class="llm"></div>
+</aside>
+
+<main id="main"></main>
+
+<template id="t-projects">
+  <header class="top"><h1>Projects</h1><button class="primary" id="newBtn">+ Video baru</button></header>
+  <form id="briefForm" class="card brief hidden">
+    <h3>Brief</h3>
+    <div class="grid2">
+      <label>Tema / topik<input name="topic" required placeholder="mis. kenapa anak muda susah nabung"></label>
+      <label>Pesan utama (beda dari referensi)<input name="message" placeholder="opini / insight lu sendiri"></label>
+      <label>Referensi gaya<input name="reference_handle" value="theoderick_"></label>
+      <label>Talent (muka lu)<input name="talent_handle" value="geov10"></label>
+      <label>Platform referensi<select name="platform"><option>instagram</option><option>tiktok</option><option>youtube</option></select></label>
+      <label>Durasi target (detik)<input name="duration" type="number" value="45"></label>
+    </div>
+    <label>Catatan untuk Creative Director<textarea name="notes" rows="2" placeholder="mood, larangan, CTA, dll"></textarea></label>
+    <div class="row"><label class="chk"><input type="checkbox" name="auto_download" checked> auto-download referensi</label>
+      <label class="chk"><input type="checkbox" name="autopilot" checked> autopilot</label>
+      <button class="primary">Jalankan</button></div>
+  </form>
+  <div id="projList" class="list"></div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
