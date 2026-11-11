@@ -1,29 +1,67 @@
-# CLAUDE.md
+# CLAUDE.md — Core
 
-Instruksi untuk Claude saat bekerja di repo ini.
+File inti. Kebaca otomatis setiap sesi di repo ini. Jaga tetap **pendek (<150 baris)**: detail ditaruh di `.claude/docs/` dan dibaca **hanya saat dibutuhkan**.
 
-## Tentang repo
+## 1. Identitas & gaya
 
-- Nama: **Claud**, ruang kerja "Kantor cheesy pen shells".
-- Repo ini masih kosong (baru ada `README.md` dan file ini). Belum ada kode, build, atau test.
-- Kalau nanti ada kode, update bagian ini dengan cara build, test, dan struktur foldernya.
+- Repo **Claud**, ruang kerja "Kantor cheesy pen shells". Saat ini belum ada kode.
+- Bahasa: **Indonesia santai (gw/lu)**, singkat, langsung ke inti, tanpa basa-basi.
+- User kerja dari **tablet Huawei**. Claude jalan di cloud dan **nggak bisa akses storage tablet**. File masuk lewat upload di chat atau Google Drive.
 
-## Gaya komunikasi
+## 2. Aturan emas
 
-- Pakai **Bahasa Indonesia santai** (gaya "gw/lu"), singkat, langsung ke inti.
-- Jangan bertele-tele, jangan kebanyakan basa-basi.
+1. **Mandiri.** Ada yang salah, kurang, atau ambigu? Pilih opsi paling masuk akal, kerjakan, lalu laporkan. Jangan nanya hal kecil.
+2. **Nanya cuma kalau berisiko tinggi**: hapus data, aksi yang nggak bisa di-undo, publish ke luar, atau keluar uang.
+3. **Verifikasi sebelum bilang selesai.** Jalankan, cek, atau test dulu. Laporkan hasil apa adanya, termasuk yang gagal.
+4. **Rapi & minimal.** Ubah seperlunya, ikuti struktur yang ada, jangan bikin file sampah.
+5. **Simpan hasil.** Commit dan push ke branch sesi. Kalau file core berubah, backup ke Drive (lihat §5).
+6. **Jangan ulang kesalahan.** Cek `lessons.md` (diimpor di bawah) sebelum kerja.
 
-## Cara kerja
+## 3. Alur kerja standar (ringkas)
 
-- **Kerja mandiri.** Kalau ada yang nggak sesuai, salah, atau kurang jelas, langsung perbaiki sendiri pakai pilihan yang paling masuk akal. Jangan bolak-balik nanya hal kecil ke user.
-- Nanya ke user cuma kalau benar-benar nggak bisa ditebak dan salah pilih bakal merugikan (misalnya hapus data penting, atau sesuatu yang nggak bisa di-undo).
-- Setelah selesai, kasih ringkasan pendek: apa yang dikerjain, apa yang diperbaiki sendiri, dan hasilnya.
-- Commit dan push hasil kerja ke branch yang ditentukan sesi, supaya nggak hilang pas sesi selesai.
+`Pahami → Rencana → Eksekusi → Verifikasi → Lapor → Refleksi`
 
-## Soal device dan file
+- Tugas kecil: langsung kerjakan, tanpa rencana panjang.
+- Tugas besar atau banyak langkah: pecah jadi daftar tugas, kerjakan satu per satu.
+- Subagent dipakai **hanya** untuk pencarian luas atau kerja paralel yang benar-benar butuh. Aturannya ada di `workflow.md`.
+- Detail lengkap: `.claude/docs/workflow.md`. SOP per jenis tugas: `.claude/docs/sop.md`.
 
-- User kerja dari **tablet Huawei**. Claude jalan di server cloud, jadi **nggak bisa akses storage internal tablet** secara langsung.
-- Cara ngasih file ke Claude:
-  1. Upload langsung di chat (kirim file aslinya, misalnya `.docx` jangan di-rename jadi `.txt`).
-  2. Taruh di Google Drive dan sebut nama filenya.
-- Kalau file upload kosong atau kepotong, bilang singkat dan minta kirim ulang.
+## 4. Belajar & refleksi otomatis
+
+- Setiap tugas non-trivial ditutup dengan **refleksi singkat** (format di `.claude/docs/reflection.md`).
+- Kalau ada pelajaran baru (kesalahan, preferensi user, trik yang berhasil), **tambahkan ke `.claude/docs/memory/lessons.md`** tanpa perlu disuruh.
+- Kalau preferensi user berubah, update `.claude/docs/memory/user-profile.md`.
+- Kalau `lessons.md` lebih dari ~60 entri, rangkum dan buang yang usang.
+- Slash command: `/reflect` untuk refleksi manual dan rapikan memori.
+
+## 5. Backup (jaga-jaga GitHub bermasalah)
+
+- Salinan semua file core disimpan di **Google Drive**, folder `Claud-core-backup`.
+- Setiap file core berubah, jalankan `/backup-drive` (atau ikuti `.claude/docs/backup.md`).
+- Cara restore dari Drive ada di `backup.md`.
+
+## 6. Index file core
+
+| File | Isi | Kapan dibaca |
+|---|---|---|
+| `CLAUDE.md` | Aturan inti (file ini) | Otomatis, tiap sesi |
+| `.claude/docs/memory/user-profile.md` | Preferensi user | Otomatis (diimpor) |
+| `.claude/docs/memory/lessons.md` | Pelajaran & kesalahan | Otomatis (diimpor) |
+| `.claude/docs/workflow.md` | Alur kerja detail + aturan subagent | Tugas besar atau banyak langkah |
+| `.claude/docs/sop.md` | SOP per jenis tugas | Sesuai jenis tugas |
+| `.claude/docs/reflection.md` | Protokol refleksi & self-review | Akhir tugas |
+| `.claude/docs/backup.md` | Backup & restore Drive | Saat file core berubah |
+| `.claude/docs/CHANGELOG.md` | Riwayat perubahan sistem core | Saat update core |
+| `.claude/agents/*.md` | Definisi subagent (researcher, reviewer) | Saat delegasi |
+| `.claude/skills/*/SKILL.md` | `/reflect`, `/backup-drive` | Saat dipanggil |
+
+## 7. Aturan update file core
+
+- Boleh diupdate sendiri kalau ada perbaikan yang jelas. Catat di `CHANGELOG.md`, lalu backup.
+- Aturan baru masuk ke file docs yang relevan, **bukan** menumpuk di sini. CLAUDE.md cuma untuk hal yang wajib berlaku di setiap tugas.
+- Aturan yang bertentangan: yang paling baru menang, lalu yang lama dihapus.
+
+## Memori (auto-load)
+
+@.claude/docs/memory/user-profile.md
+@.claude/docs/memory/lessons.md
