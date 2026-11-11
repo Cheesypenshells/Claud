@@ -23,6 +23,8 @@
 | 4 | Penuh: planner → builder → verifier → reviewer | sonnet (build), opus (plan/review) | high | multi-file, desain fitur, migrasi |
 | 5 | Penuh + riset + review ketat | opus | high | arsitektur, keamanan, aksi irreversible |
 
+**Risiko tinggi tapi teknis mekanis** (R tinggi, C ≤ 2, contoh hapus branch): opus cuma untuk plan & review, eksekusi pakai sonnet/haiku, dan konfirmasi user sesuai aturan emas.
+
 **Paralel:** V ≥ 4 **dan** subtugas tidak berbagi file → split ke ≤3 subagent paralel. Selain itu, jalankan serial.
 
 ## 3. Eskalasi & de-eskalasi
@@ -56,4 +58,5 @@ Diisi oleh learner berdasarkan `arena/scoreboard.md`. Kosong berarti pakai defau
 
 | Agent | Model sekarang | Sejak | Alasan (run id) |
 |---|---|---|---|
-| – | – | – | – |
+| reviewer | opus (default) — kandidat: sonnet | – | R001: sonnet 96 vs opus 89; butuh 2 run lagi |
+| (larangan) | haiku jangan untuk reviewer; verifier tetap haiku hanya untuk cek mekanis (jalankan test), cek logika/edge case → sonnet | 2026-11-11 | R001: haiku 62 di T004, menyangkal edge case |

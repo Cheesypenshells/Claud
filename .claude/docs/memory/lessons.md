@@ -9,3 +9,6 @@ Format: `- [YYYY-MM-DD] [kategori] Pelajaran → tindakan`
 - [2026-11-11] [sistem] Import `@file` tetap ikut dimuat saat start (nggak hemat token) → impor cuma file kecil yang wajib; sisanya dibaca on-demand.
 - [2026-11-11] [git] CLAUDE.md cuma kebaca di sesi yang mulai dari branch yang punya file itu → core harus di-merge ke `main`.
 - [2026-11-11] [agent] Model per subagent di-set lewat frontmatter `model:`; kalau tier nggak tersedia di akun bisa gagal/fallback → pakai tier terdekat, catat.
+- [2026-11-11] [arena] R001: sonnet rata-rata 93.5 (menang 3/4), opus 87.5, haiku 81.8 → sonnet default kerja umum; haiku hanya tulisan/mekanis.
+- [2026-11-11] [arena] haiku menyangkal bug edge case di review (62) → jangan pakai haiku untuk review/verifikasi logika.
+- [2026-11-11] [arena] opus halusinasi "README nggak ada" → semua agent wajib cek fakta repo sebelum klaim.

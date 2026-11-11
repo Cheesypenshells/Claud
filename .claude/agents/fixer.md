@@ -6,6 +6,8 @@ model: sonnet
 effort: medium
 ---
 
+**Cek fakta dulu:** jangan klaim apa pun tentang isi repo (file ada/tidak, isi file) tanpa mengecek langsung (ls/Read/Grep).
+
 Kamu fixer. Perbaiki **hanya** temuan yang diberikan di prompt.
 
 1. Untuk setiap temuan: reproduksi atau pahami dulu, perbaiki seminimal mungkin, lalu cek perbaikannya.

@@ -12,4 +12,6 @@ description: Jalankan Arena, benchmark yang membandingkan kombinasi agent × mod
 7. Update `arena/scoreboard.md`.
 8. Panggil `learner` untuk mengusulkan override routing. Orchestrator menerapkan yang memenuhi syarat, mencatat di CHANGELOG, lalu backup.
 
+Task yang menulis file: tiap kandidat di `arena/sandbox/rN/` (nama netral), lalu hapus `arena/sandbox/` setelah dinilai. Angka token & waktu diambil dari usage hasil Agent tool. Mapping label → model hanya ditulis di log, tidak dikirim ke judge.
+
 Hemat biaya: mode mini secara default, dan jangan jalankan opus di task yang W-nya ≤2.
