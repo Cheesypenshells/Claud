@@ -21,14 +21,12 @@
 
 ## Aturan subagent (agentic)
 
-- **Default: kerjakan sendiri.** Subagent mulai dari nol konteks, jadi mahal dan lambat.
-- Pakai subagent hanya kalau:
-  - pencarian luas di banyak file atau web yang hasilnya cukup kesimpulan saja (`researcher`), atau
-  - review independen untuk perubahan besar (`reviewer`), atau
-  - beberapa tugas yang benar-benar independen dan bisa jalan paralel.
-- Prompt subagent harus lengkap: tujuan, konteks, batasan, dan format output. Subagent nggak bisa lihat percakapan ini.
+Sistem lengkap ada di `.claude/docs/agents/README.md` dan `routing.md`. Ringkasnya:
+- **Default: kerjakan sendiri** kalau W≤2. Subagent mulai dari nol konteks, jadi mahal.
+- Prompt subagent harus lengkap (tujuan, potongan plan, lane, kriteria selesai, kontrak handoff), karena subagent nggak bisa lihat percakapan.
 - Subagent nggak bisa memanggil subagent lain. Orkestrasi tetap di agent utama.
-- Hasil subagent **diverifikasi** dulu sebelum dipakai. Jangan percaya mentah-mentah.
+- Paralel maksimal 3, satu file satu penulis, builder paralel pakai worktree.
+- Hasil subagent **diverifikasi** sebelum dipakai.
 
 ## Efisiensi
 

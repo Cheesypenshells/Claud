@@ -23,8 +23,9 @@ File inti. Kebaca otomatis setiap sesi di repo ini. Jaga tetap **pendek (<150 ba
 
 - Tugas kecil: langsung kerjakan, tanpa rencana panjang.
 - Tugas besar atau banyak langkah: pecah jadi daftar tugas, kerjakan satu per satu.
-- Subagent dipakai **hanya** untuk pencarian luas atau kerja paralel yang benar-benar butuh. Aturannya ada di `workflow.md`.
-- Detail lengkap: `.claude/docs/workflow.md`. SOP per jenis tugas: `.claude/docs/sop.md`.
+- **Sistem agent:** sesi utama = **Orchestrator**. Setiap tugas non-trivial: jalankan skill `route-task` (skor P/C/R/A/V → bobot W → jalur + model). W≤2: kerjakan sendiri. W≥3: skill `plan-task` (planner → builder paralel → verifier → reviewer → fixer → scribe → learner).
+- Gerbang wajib sebelum bilang selesai: verifier lolos + reviewer tanpa temuan parah/sedang (W≥4).
+- Detail: `.claude/docs/agents/README.md` & `routing.md`. Alur umum: `.claude/docs/workflow.md`. SOP: `.claude/docs/sop.md`.
 
 ## 4. Belajar & refleksi otomatis
 
@@ -32,7 +33,7 @@ File inti. Kebaca otomatis setiap sesi di repo ini. Jaga tetap **pendek (<150 ba
 - Kalau ada pelajaran baru (kesalahan, preferensi user, trik yang berhasil), **tambahkan ke `.claude/docs/memory/lessons.md`** tanpa perlu disuruh.
 - Kalau preferensi user berubah, update `.claude/docs/memory/user-profile.md`.
 - Kalau `lessons.md` lebih dari ~60 entri, rangkum dan buang yang usang.
-- Slash command: `/reflect` untuk refleksi manual dan rapikan memori.
+- Slash command: `/reflect` untuk refleksi manual dan rapikan memori. `/arena` untuk kalibrasi model per agent (tiap ~10 tugas).
 
 ## 5. Backup (jaga-jaga GitHub bermasalah)
 
@@ -48,12 +49,15 @@ File inti. Kebaca otomatis setiap sesi di repo ini. Jaga tetap **pendek (<150 ba
 | `.claude/docs/memory/user-profile.md` | Preferensi user | Otomatis (diimpor) |
 | `.claude/docs/memory/lessons.md` | Pelajaran & kesalahan | Otomatis (diimpor) |
 | `.claude/docs/workflow.md` | Alur kerja detail + aturan subagent | Tugas besar atau banyak langkah |
+| `.claude/docs/agents/README.md` | Arsitektur multi-agent, roster, kolaborasi | Tugas W≥3 |
+| `.claude/docs/agents/routing.md` | Skor tugas → model, effort, paralel, cadence | Awal setiap tugas non-trivial |
+| `arena/` | Benchmark agent × model + scoreboard | `/arena` tiap ~10 tugas |
 | `.claude/docs/sop.md` | SOP per jenis tugas | Sesuai jenis tugas |
 | `.claude/docs/reflection.md` | Protokol refleksi & self-review | Akhir tugas |
 | `.claude/docs/backup.md` | Backup & restore Drive | Saat file core berubah |
 | `.claude/docs/CHANGELOG.md` | Riwayat perubahan sistem core | Saat update core |
-| `.claude/agents/*.md` | Definisi subagent (researcher, reviewer) | Saat delegasi |
-| `.claude/skills/*/SKILL.md` | `/reflect`, `/backup-drive` | Saat dipanggil |
+| `.claude/agents/*.md` | planner, researcher, builder, verifier, reviewer, fixer, scribe, learner, judge | Saat delegasi |
+| `.claude/skills/*/SKILL.md` | `/route-task`, `/plan-task`, `/review-fix-loop`, `/arena`, `/reflect`, `/backup-drive` | Saat dipanggil |
 
 ## 7. Aturan update file core
 

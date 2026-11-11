@@ -10,7 +10,7 @@ Tujuan: sistem core tetap aman walaupun akun atau repo GitHub bermasalah.
 ## Cara backup (Claude)
 
 1. Gabungkan file core:
-   `CLAUDE.md`, `.claude/docs/**`, `.claude/agents/**`, `.claude/skills/**`
+   `CLAUDE.md`, `.claude/docs/**`, `.claude/agents/**`, `.claude/skills/**`, `arena/**`
 2. Upload ke Drive sebagai file baru `Claud-core-backup.md`, dengan tanggal di judul kalau versi lama mau disimpan. Simpan sebagai teks/Markdown, jangan di-convert ke Google Docs.
 3. Catat tanggal backup di `CHANGELOG.md`.
 

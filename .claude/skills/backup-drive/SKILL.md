@@ -1,11 +1,11 @@
 ---
 name: backup-drive
-description: Backup semua file core (CLAUDE.md, .claude/docs, .claude/agents, .claude/skills) ke Google Drive sebagai satu file Markdown. Pakai setiap kali file core berubah atau saat user minta backup.
+description: Backup semua file core (CLAUDE.md, .claude/docs, .claude/agents, .claude/skills, arena) ke Google Drive sebagai satu file Markdown. Pakai setiap kali file core berubah atau saat user minta backup.
 ---
 
 1. Gabungkan file core jadi satu file di scratchpad:
    ```bash
-   for f in CLAUDE.md $(find .claude/docs .claude/agents .claude/skills -type f -name '*.md' | sort); do
+   for f in CLAUDE.md $(find .claude/docs .claude/agents .claude/skills arena -type f -name '*.md' | sort); do
      printf '\n===== FILE: %s =====\n' "$f"; cat "$f"; done > <scratchpad>/Claud-core-backup.md
    ```
 2. Cari folder `Claud-core-backup` di Drive. Kalau belum ada, buat dulu.
