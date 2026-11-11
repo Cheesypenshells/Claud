@@ -21,7 +21,17 @@ Brief ─▶ Research (Style DNA) ─▶ Creative Director (konsep + 3 hook + sc
 | **Editor** | Bikin EDL dari footage lu: buang silence & retake (kalimat yang lu ulang), jump-cut dengan punch-in zoom per beat, caption gaya word-pop (kata penting diwarnai), title hook, b-roll & musik dari bank (musik otomatis ducking pas lu ngomong), loudness -14 LUFS |
 | **Librarian** | Index & analisa semua file di bank konten, termasuk folder hard disk lu tanpa copy |
 
-### Jalanin
+### Jalanin dari tablet / HP (tanpa laptop): GitHub Codespaces
+1. Buka link ini di browser tablet (login GitHub):
+   **https://codespaces.new/cheesypenshells/claud/tree/claude/video-creator-agentic-dashboard-f0k4nt**
+2. Klik **Create codespace**, terus tunggu sekitar 3–5 menit. Python, ffmpeg, dan semua dependensi ke-install otomatis.
+3. Dashboard kebuka sendiri di tab baru. Kalau gak kebuka: buka tab **PORTS**, cari port **8787**, klik ikon 🌐.
+4. (Opsional, biar agent pakai Claude) github.com → Settings → Codespaces → **New secret** `ANTHROPIC_API_KEY`, pilih repo `claud`, terus restart codespace.
+
+Rekam muka dari kamera tablet bisa langsung di tab **Teleprompter & Rekam**, soalnya link Codespaces udah HTTPS. Video final tinggal di-download ke tablet. Premiere Pro gak ada di Android/Huawei, jadi file XML-nya baru kepake nanti kalau lu buka di PC.
+Gratis 120 core-jam per bulan. Stop codespace kalau udah gak dipakai (github.com/codespaces).
+
+### Jalanin di laptop/PC
 ```bash
 cd studio
 cp .env.example .env        # isi ANTHROPIC_API_KEY (+ STUDIO_COOKIES_BROWSER=chrome)

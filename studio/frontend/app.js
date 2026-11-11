@@ -130,7 +130,7 @@ function tPrompter(p, el) {
   let scrolling = null;
   $("#scroll").onclick = () => { if (scrolling) { clearInterval(scrolling); scrolling = null; $("#scroll").textContent = "▶ Auto-scroll"; } else { scrolling = setInterval(() => $("#pr").scrollTop += +$("#spd").value / 2, 30); $("#scroll").textContent = "⏸ Stop"; } };
   $("#camOn").onclick = async () => {
-    state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1080, height: 1920, facingMode: "user" }, audio: true });
+    state.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1080 }, height: { ideal: 1920 }, facingMode: "user" }, audio: true });
     $("#cam").srcObject = state.stream; $("#recBtn").classList.remove("hidden");
   };
   $("#recBtn").onclick = () => {

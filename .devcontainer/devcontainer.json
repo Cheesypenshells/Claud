@@ -1,0 +1,14 @@
+{
+  "name": "Content Studio",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "containerEnv": {
+    "STUDIO_WHISPER_MODEL": "base",
+    "STUDIO_LANGUAGE": "id"
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg fonts-inter && pip install -r studio/requirements.txt",
+  "postAttachCommand": "bash studio/scripts/codespace_start.sh",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": { "label": "Content Studio", "onAutoForward": "openBrowser" }
+  }
+}
