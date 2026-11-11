@@ -24,7 +24,7 @@ function go(view, extra = {}) {
 
 async function render() {
   try {
-    const fn = { projects: vProjects, project: vProject, bank: vBank, styles: vStyles, activity: vActivity, premiere: vPremiere, toolkit: vToolkit }[state.view];
+    const fn = { guide: vGuide, projects: vProjects, project: vProject, bank: vBank, styles: vStyles, activity: vActivity, premiere: vPremiere, toolkit: vToolkit }[state.view];
     await fn();
   } catch (e) { console.error(e); }
 }
@@ -216,13 +216,32 @@ async function vPremiere() {
   <div class="card"><h3>Sudah di-import (${done.length})</h3>${done.map((j) => `<div>${esc(j.name)}</div>`).join("") || '<span class="mute">-</span>'}</div></div>`;
 }
 
+function vGuide() {
+  const ai = state.llm?.online;
+  const step = (n, t, d) => `<div class="card"><h3><span class="pill" style="color:var(--acc)">${n}</span> ${t}</h3>${d}</div>`;
+  main.innerHTML = `<header class="top"><h1>Panduan pakai</h1></header>
+  ${ai ? "" : `<div class="card" style="border-color:var(--warn)"><b>AI belum aktif.</b> Agent sekarang pakai template bawaan, jadi script-nya masih umum.
+   Biar pakai Claude: github.com → Settings → Codespaces → <b>New secret</b> → nama <code>ANTHROPIC_API_KEY</code>, isi key lu, pilih repo <b>claud</b> → restart codespace.</div>`}
+  ${step(1, "Isi bank konten (sekali aja, nambah kapan pun)", `<ul class="clean"><li>Menu <b>Content Bank → Upload file</b>.</li>
+   <li><b>reference</b> = video creator yang mau ditiru gayanya (mis. reels @theoderick_ yang udah lu save). Isi tag: <code>theoderick_</code>. Upload 3–8 video.</li>
+   <li><b>broll</b> = potongan video pendukung (kota, uang, laptop…). Kasih tag yang jelas, mis. <code>money, city</code>.</li>
+   <li><b>music</b> = lagu latar. Tag mood, mis. <code>lofi</code>.</li></ul>`)}
+  ${step(2, "Bikin video baru", `<ul class="clean"><li>Menu <b>Projects → + Video baru</b>.</li><li>Isi <b>tema</b> + <b>pesan lu sendiri</b> (opini lu, bukan nyontek). Referensi: <code>theoderick_</code>, talent: <code>geov10</code>.</li><li>Klik <b>Jalankan</b>. Matiin "auto-download" kalau referensi udah lu upload manual.</li></ul>`)}
+  ${step(3, "Tunggu agent kerja (±1–3 menit)", `<ul class="clean"><li><b>Research</b> ngukur gaya referensi → tab <b>Riset & Style DNA</b>.</li><li><b>Creative Director</b> bikin 3 hook + script → tab <b>Konsep & Hook</b>. Pilih hook, edit kalimat kalau mau, klik <b>Simpan script</b>.</li></ul>`)}
+  ${step(4, "Rekam muka lu", `<ul class="clean"><li>Tab <b>Teleprompter & Rekam</b> → <b>Nyalakan kamera</b> (izinkan kamera & mic) → <b>● Rekam</b>.</li><li>Baca teks yang jalan. Salah ngomong? Diam 1 detik, ulang kalimatnya — retake dibuang otomatis.</li><li>Klik <b>■ Stop & kirim</b>. Atau upload video yang direkam pakai kamera tablet.</li></ul>`)}
+  ${step(5, "Editor ngedit otomatis (±2–5 menit)", `<ul class="clean"><li>Jeda & retake dibuang, jump-cut + zoom, caption, judul hook, b-roll, musik.</li><li>Tab <b>Hasil Edit</b> → tonton → <b>Download MP4</b>.</li></ul>`)}
+  ${step(6, "Cek review & posting", `<ul class="clean"><li>Tab <b>Review CD</b>: skor + saran revisi. Mau ulang? Edit script / rekam ulang → <b>Re-edit</b>.</li><li>Caption post + hashtag ada di tab Konsep & Hook. Upload MP4 ke IG/TikTok.</li></ul>`)}
+  <div class="card mute small">Tips: rekam vertikal, cahaya dari depan, HP/tablet sejajar mata. Stop codespace di github.com/codespaces kalau udah selesai biar kuota gratis gak kebuang.</div>`;
+}
+
 async function vToolkit() {
   const rs = await api("/api/toolkit");
   main.innerHTML = `<header class="top"><h1>Toolkit & repo relevan</h1></header>` + rs.map((r) => `<div class="card"><b><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a></b><div class="mute">${esc(r.why)}</div></div>`).join("");
 }
 
 (async function boot() {
-  const s = await api("/api/status");
+  const s = await api("/api/status"); state.llm = s.llm;
   $("#llm").innerHTML = s.llm.online ? `<b class="on">● AI online</b><br>${esc(s.llm.model)}` : `<b class="off">● Offline playbook</b><br>${esc(s.llm.reason || "")}`;
-  go("projects");
+  const ps = await api("/api/projects");
+  go(ps.length ? "projects" : "guide");
 })();
