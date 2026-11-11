@@ -194,8 +194,7 @@ test('tanya-jawab: grup baru, setup event, ubah data lewat chat', async () => {
   assert.match(sapa, /Grup ini untuk apa/);
   assert.equal((await handleGrupBaru(ctx, G_KELUAR)).length, 0); // tidak menyapa dua kali
 
-  assert.equal(await kirim(G_KELUAR, PIC, '1'), ''); // bukan owner: diabaikan
-  assert.match(await kirim(G_KELUAR, OWNER, '1'), /\(1\/13\) Lokasi/);
+  assert.match(await kirim(G_KELUAR, PIC, '1'), /\(1\/13\) Lokasi/); // siapa pun di grup boleh menjawab
   const jawaban = ['Lokasi di jambi', 'Kepo Market', '2-8 Nov 2026', '2', 'ok', '500rb', '1', '11.00', '150jt', 'Budi', 'Andi', 'Joko, Tono 120rb', 'Sari'];
   let r = '';
   for (const j of jawaban.slice(0, 2)) r = await kirim(G_KELUAR, OWNER, j);
@@ -808,4 +807,13 @@ test('reply "ini pengeluaran makan" / "ini untuk makan bukan influencer" menggan
   assert.match(await kirim(G_KELUAR, PIC, '', { kutipan: { teks: r2 }, text: 'Ini untuk makam bukan influencer, kategorinya diganti jadi konsumsi' }), /keterangan "Makan".*kategori Konsumsi/s);
   const t = await store.all('Transaksi');
   assert.deepEqual(t.map((x) => [x.keterangan, x.kategori]), [['Makan', 'Konsumsi'], ['Makan', 'Konsumsi']]);
+});
+
+test('tanya-jawab setup event boleh dijawab siapa pun di grup', async () => {
+  const { store, kirim } = setup();
+  assert.match(await kirim(G_KELUAR, OWNER, '#eventbaru'), /\(1\/13\) Lokasi/);
+  assert.match(await kirim(G_KELUAR, KARYAWAN, 'Semarang'), /Kota: Semarang.*\(2\/13\)/s);
+  assert.match(await kirim(G_KELUAR, PIC, 'Jangkrik Kuliner'), /\(3\/13\)/);
+  assert.match(await kirim(G_KELUAR, KARYAWAN, '#eventbaru'), /khusus owner/);
+  assert.equal((await store.all('Event')).length, 0);
 });

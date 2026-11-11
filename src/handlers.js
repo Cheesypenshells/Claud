@@ -886,8 +886,8 @@ export async function handlePesan(ctx, pesan) {
     return balas(`ID WhatsApp ${pesan.senderName || ''}: *${pesan.senderId}*${isOwner ? ' (owner)' : ''}`);
   }
 
-  // Tanya-jawab bot (setup grup / event). Hanya jawaban owner yang dibaca; perintah # tetap jalan seperti biasa.
-  if (isOwner && ctx.sesi && (!cmd || cmd.perintah === 'batal' && !cmd.argumen.length)) {
+  // Tanya-jawab bot (setup grup / event): siapa pun di grup boleh menjawab (memulainya tetap khusus owner).
+  if (ctx.sesi && (!cmd || cmd.perintah === 'batal' && !cmd.argumen.length)) {
     const hasil = prosesJawaban(ctx, pesan, { events: await ctx.store.all('Event') });
     if (hasil?.blok) {
       return perintahEvent(ctx, pesan, grup, { badan: hasil.blok.split('\n').slice(1).join('\n') });
