@@ -3,8 +3,9 @@
 import { STATUS } from './schema.js';
 import { parseTim, parseOrang, parseBahan, parseGratis, PERAN, ambilTanggal } from './parsers.js';
 import { cocokkan, hargaJual } from './katalog.js';
+import { hitungBahan, BAHAN_DIBELI } from './bahan.js';
 import { ATURAN } from './laporan.js';
-import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan } from './util.js';
+import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan, parseMoney } from './util.js';
 
 const balas = (text) => [{ text }];
 const namaPengirim = (pesan) => (pesan.senderName ? `${pesan.senderName} (${pesan.senderId})` : pesan.senderId);
@@ -100,54 +101,113 @@ export const PERINTAH_BAHAN = Object.keys(GERAK);
 // atau grup pengeluaran (dengan nilai rupiah dari tab Harga Bahan). Untuk rekap event yang sudah selesai,
 // tanggal boleh ditulis ("restock keju 3 balok 28 sep"); tanpa tanggal: awal = hari pertama event,
 // sisa = hari terakhir event, restock = hari ini (atau hari pertama kalau event sudah selesai).
-export async function perintahBahan(ctx, pesan, event, cmd, { harga: denganHarga = false } = {}) {
+// Oyster dari supplier = pembelian di lokasi (pengeluaran biasa), bukan barang gudang.
+// Setelah sisa dilaporkan, bot bertanya di grup pengeluaran: sisa ini dihargai berapa per satuan?
+export async function perintahBahan(ctx, pesan, event, cmd, { harga: denganHarga = false, grupPengeluaran = [] } = {}) {
   const gerak = GERAK[cmd.perintah];
   const hargaBahan = await ctx.store.all('Harga Bahan');
   const hariIni = tanggalLokal(pesan.waktu);
   const mentah = [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n');
   const { tanggal: tglTulis, sisa: tanpaTanggal } = ambilTanggal(mentah, hariIni, { mulai: event.mulai, selesai: event.selesai });
-  const items = parseBahan(tglTulis ? tanpaTanggal : mentah, hargaBahan, cocokkan);
+  let items = parseBahan(tglTulis ? tanpaTanggal : mentah, hargaBahan, cocokkan);
   if (!items.length) {
-    return balas(`Format: *#${cmd.perintah}* lalu satu bahan per baris, contoh:\n#${cmd.perintah}\nmozzarella 20 pack\nbumbu garlic 5 pack\noyster 100 kg\n\nBahan yang dikenali: ${hargaBahan.map((b) => b.bahan).join(', ')}`);
+    return balas(`Format: *#${cmd.perintah}* lalu satu bahan per baris, contoh:\n#${cmd.perintah}\nmozzarella 20 pack\nbumbu garlic 5 pack\n\nBahan yang dikenali: ${hargaBahan.map((b) => b.bahan).join(', ')}`);
   }
+  // Oyster dll. dibeli di lokasi: bukan awal/restock gudang.
+  const dibeli = gerak === 'Kembali' ? [] : items.filter((i) => BAHAN_DIBELI.includes(i.bahan));
+  items = items.filter((i) => !dibeli.includes(i));
+  const infoBeli = dibeli.length
+    ? `🦪 *${dibeli.map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}`).join(', ')}* tidak dicatat sebagai bahan gudang: ${dibeli.map((i) => i.bahan).join(', ')} dibeli dari supplier, jadi dicatat sebagai *pengeluaran pembelian* dengan harganya${denganHarga ? `, contoh: *${dibeli[0].bahan.toLowerCase()} ${dibeli[0].jumlah} ${dibeli[0].satuan} 3,9jt*` : ' di grup pengeluaran'}.`
+    : '';
+  if (!items.length) return balas(infoBeli);
+
   const selesai = event.selesai && hariIni > event.selesai;
   const tanggal = tglTulis || (gerak === 'Keluar' ? event.mulai : gerak === 'Kembali' && selesai ? event.selesai : selesai ? event.mulai : hariIni) || hariIni;
+  const dicatat = `${waktuLokal(pesan.waktu)}:${pesan.id || ''}`;
   for (const it of items) {
     await ctx.store.append('Bahan Event', {
-      tanggal,
-      kode_event: event.kode,
-      bahan: it.bahan,
-      gerak,
-      jumlah: it.jumlah,
-      satuan: it.satuan,
-      pengirim: namaPengirim(pesan),
-      status: STATUS.OK,
-      dicatat: waktuLokal(pesan.waktu),
+      tanggal, kode_event: event.kode, bahan: it.bahan, gerak, jumlah: it.jumlah, satuan: it.satuan,
+      pengirim: namaPengirim(pesan), status: STATUS.OK, dicatat, harga_satuan: '',
     });
   }
   const semua = (await ctx.store.all('Bahan Event')).filter((b) => b.kode_event === event.kode && b.status !== STATUS.BATAL);
+  const hitung = hitungBahan(semua, hargaBahan);
   const hargaDari = (nama) => Number(hargaBahan.find((x) => x.bahan === nama)?.harga || 0);
-  let totalTerpakai = 0;
-  const ringkas = [...new Set(items.map((i) => i.bahan))].map((nama) => {
-    const g = semua.filter((b) => b.bahan === nama);
-    const t = (j) => g.filter((b) => b.gerak === j).reduce((s, b) => s + Number(b.jumlah || 0), 0);
-    const satuan = items.find((i) => i.bahan === nama).satuan;
-    const terpakai = t('Keluar') + t('Restock') - t('Kembali');
-    const nilai = denganHarga ? ` × ${rupiah(hargaDari(nama))} = *${rupiah(terpakai * hargaDari(nama))}*` : '';
-    totalTerpakai += terpakai * hargaDari(nama);
-    return `• ${nama}: awal ${t('Keluar')} + restock ${t('Restock')} = ${t('Keluar') + t('Restock')}, sisa ${t('Kembali')} → terpakai *${terpakai} ${satuan}*${nilai}`;
-  });
+  const ringkas = hitung.filter((b) => items.some((i) => i.bahan === b.bahan)).map((b) => (b.dibeli
+    ? `• ${b.bahan} (dibeli di lokasi): sisa ${b.sisa} ${b.satuan}`
+    : `• ${b.bahan}: awal ${b.awal} + restock ${b.restock} = ${b.awal + b.restock}, sisa ${b.sisa} → terpakai *${b.terpakai} ${b.satuan}*${denganHarga ? ` = *${rupiah(b.nilaiTerpakai)}*` : ''}`));
   const judul = { Keluar: 'Bahan baku pengiriman pertama', Restock: 'Restock bahan baku', Kembali: 'Sisa bahan baku' }[gerak];
-  const rincian = items.map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}${denganHarga ? ` × ${rupiah(hargaDari(i.bahan))} = ${rupiah(i.jumlah * hargaDari(i.bahan))}` : ''}`).join('\n');
-  const semuaBahan = [...new Set(semua.map((b) => b.bahan))];
-  const totalEvent = semuaBahan.reduce((s, nama) => {
-    const g = semua.filter((b) => b.bahan === nama);
-    const t = (j) => g.filter((b) => b.gerak === j).reduce((x, b) => x + Number(b.jumlah || 0), 0);
-    return s + (t('Keluar') + t('Restock') - t('Kembali')) * hargaDari(nama);
-  }, 0);
-  const catatan = gerak === 'Kembali' ? '\n_Pack yang sudah dibuka dianggap habis; tulis pack utuh saja. Sisa mengurangi biaya bahan baku._' : '';
+  const rincian = items.map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}${denganHarga && gerak !== 'Kembali' ? ` × ${rupiah(hargaDari(i.bahan))} = ${rupiah(i.jumlah * hargaDari(i.bahan))}` : ''}`).join('\n');
+  const totalEvent = hitung.reduce((s, b) => s + b.nilaiTerpakai, 0);
   const infoHarga = denganHarga ? `\n*Biaya bahan baku event (terpakai, semua bahan): ${rupiah(totalEvent)}*\n_Masuk rekap pengeluaran. Harga per satuan dari tab Harga Bahan._` : '';
-  return balas(`✅ *${judul}* (${event.kode}) – tgl ${tanggal}\n${rincian}\n\nTotal event:\n${ringkas.join('\n')}${infoHarga}${catatan}`);
+  const keluar = [{ text: [`✅ *${judul}* (${event.kode}) – tgl ${tanggal}\n${rincian}\n\nTotal event:\n${ringkas.join('\n')}${gerak === 'Kembali' ? '' : infoHarga}`, infoBeli].filter(Boolean).join('\n\n') }];
+
+  // Sisa: tanyakan nilainya di grup pengeluaran (harga tidak pernah dikirim ke grup tim).
+  if (gerak === 'Kembali' && ctx.sesi) {
+    const tujuan = denganHarga ? [pesan.groupId] : grupPengeluaran;
+    const daftar = items.map((i, n) => `${n + 1}. ${i.bahan} ${i.jumlah} ${i.satuan} – harga tab: ${rupiah(hargaDari(i.bahan))}/${i.satuan}`).join('\n');
+    const contoh = items.length > 1 ? `*${items.map((i) => `${i.bahan.split(' ')[0].toLowerCase()} 200rb`).join(', ')}*` : '*200rb*';
+    const tanya = `💰 *Sisa bahan ${event.kode} dihargai berapa per satuan?*\n${daftar}\n\nBalas ${contoh} (harga per satuan), *ya* = pakai harga tab, atau *0* kalau tidak bernilai (rusak/busuk).`;
+    for (const g of tujuan) {
+      ctx.sesi.set(`nilaisisa:${g}`, { kode: event.kode, dicatat, items: items.map((i) => ({ bahan: i.bahan, jumlah: i.jumlah, satuan: i.satuan })), waktu: Date.now() });
+      if (g === pesan.groupId) keluar[0].text += `\n\n${tanya}`;
+      else keluar.push({ groupId: g, text: tanya });
+    }
+    if (!tujuan.length) keluar[0].text += '\n\n_Nilai sisa akan ditanyakan di grup pengeluaran (belum terdaftar)._';
+  }
+  return keluar;
+}
+
+// Jawaban "sisa ... dihargai berapa?": "200rb" / "keju 200rb, garlic 450rb" / "ya" / "0".
+// Mengembalikan balasan, atau null kalau pesan ini bukan jawaban (pesan pengeluaran biasa).
+export async function jawabNilaiSisa(ctx, pesan, event) {
+  if (!ctx.sesi || !event) return null;
+  const kunci = `nilaisisa:${pesan.groupId}`;
+  const s = ctx.sesi.get(kunci);
+  if (!s || s.kode !== event.kode || Date.now() - s.waktu > 2 * 24 * 60 * 60 * 1000) return null;
+  const t = String(pesan.text || '').trim();
+  if (!t || t.startsWith('#')) return null;
+  const balasTanya = /dihargai berapa/i.test(pesan.kutipan?.teks || '');
+  const hargaBahan = await ctx.store.all('Harga Bahan');
+  const hargaTab = (nama) => Number(hargaBahan.find((x) => x.bahan === nama)?.harga || 0);
+  const nilai = new Map();
+  if (/^(ya|y|iya|ok|oke|pakai|pakai harga tab|sesuai|sama|harga tab)$/i.test(t)) {
+    for (const i of s.items) nilai.set(i.bahan, hargaTab(i.bahan));
+  } else if (/^(0|nol|tidak|gak|ga|tidak bernilai|busuk|rusak|hangus|gratis)$/i.test(t)) {
+    for (const i of s.items) nilai.set(i.bahan, 0);
+  } else {
+    const bagian = t.split(/\n|,|;|\s+dan\s+/i).map((x) => x.trim()).filter(Boolean);
+    for (const b of bagian) {
+      const uang = parseMoney(b) ?? (/^\s*0\s*$|\b(0|nol)\b/.test(b) ? 0 : null);
+      const kandidat = hargaBahan.filter((h) => s.items.some((i) => i.bahan === h.bahan));
+      const dikenal = cocokkan(b, kandidat, 'bahan')?.bahan;
+      const cocok = s.items.find((i) => i.bahan === dikenal || b.toLowerCase().includes(i.bahan.toLowerCase().split(' ')[0]));
+      const target = cocok || (s.items.length === 1 && bagian.length === 1 ? s.items[0] : null);
+      if (!target || uang === null) continue;
+      // "keju 2 balok total 400rb" -> per satuan
+      nilai.set(target.bahan, /\btotal\b/i.test(b) ? Math.round(uang / target.jumlah) : uang);
+    }
+    // Bukan jawaban: tidak ada nilai terbaca dan bukan reply ke pertanyaannya.
+    if (!nilai.size) return balasTanya ? balas('Belum terbaca. Contoh: *200rb* (per satuan), *keju 200rb, garlic 450rb*, *ya* (harga tab), atau *0*.') : null;
+    // Pesan yang juga berisi kata lain (pengeluaran biasa) tanpa reply: jangan ditelan.
+    const sisaKata = t.toLowerCase().replace(/\d[\d.,]*\s*(rb|ribu|k|jt|juta)?/g, ' ').split(/[^a-z]+/).filter((w) => w.length > 2
+      && !/^(per|pack|balok|kg|kantong|total|dan|sisa|harga|dihargai|nilai|satuan|rp)$/.test(w)
+      && !s.items.some((i) => {
+        const h = hargaBahan.find((x) => x.bahan === i.bahan);
+        const alias = [i.bahan, ...String(h?.alias || '').split(',')].join(' ').toLowerCase();
+        return alias.split(/[^a-z]+/).includes(w);
+      }));
+    if (sisaKata.length && !balasTanya) return null;
+  }
+  for (const [bahan, h] of nilai) {
+    await ctx.store.updateWhere('Bahan Event', (r) => r.kode_event === s.kode && r.dicatat === s.dicatat && r.bahan === bahan && r.gerak === 'Kembali', { harga_satuan: h });
+  }
+  const belum = s.items.filter((i) => !nilai.has(i.bahan));
+  if (belum.length) ctx.sesi.set(kunci, { ...s, items: belum, waktu: Date.now() }); else ctx.sesi.hapus(kunci);
+  const semua = (await ctx.store.all('Bahan Event')).filter((b) => b.kode_event === s.kode && b.status !== STATUS.BATAL);
+  const total = hitungBahan(semua, hargaBahan).reduce((x, b) => x + b.nilaiTerpakai, 0);
+  const baris = s.items.filter((i) => nilai.has(i.bahan)).map((i) => `• ${i.bahan} ${i.jumlah} ${i.satuan} × ${rupiah(nilai.get(i.bahan))} = *${rupiah(i.jumlah * nilai.get(i.bahan))}*`);
+  return balas(`✅ *Nilai sisa bahan ${s.kode} dicatat* (mengurangi biaya bahan baku)\n${baris.join('\n')}${belum.length ? `\nBelum: ${belum.map((i) => i.bahan).join(', ')}` : ''}\n*Biaya bahan baku event sekarang: ${rupiah(total)}*`);
 }
 
 // ---------- Porsi gratis ----------

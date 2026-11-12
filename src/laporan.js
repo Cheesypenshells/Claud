@@ -1,6 +1,7 @@
 // Perhitungan sheet Main: bedah untung/rugi satu event.
 // Murni (tanpa WhatsApp/Sheets) supaya mudah dites. Aturan mengikuti docs/SPEK-MAIN-EVENT.md.
 
+import { hitungBahan } from './bahan.js';
 import { JENIS, STATUS, BUKU } from './schema.js';
 import { KATEGORI, PERAN } from './parsers.js';
 import { omzetPerTanggal, jatuhTempo } from './finance.js';
@@ -110,22 +111,8 @@ export function hitungEvent(event, data) {
   const potonganIO = trx.filter((t) => t.jenis === JENIS.POTONGAN_IO).reduce((s, t) => s + num(t.nominal), 0);
 
   // ---------- Bahan dari gudang ----------
-  const harga = new Map(hargaBahan.map((b) => [b.bahan, b]));
   const gerak = bahan.filter((b) => b.kode_event === kode && aktif(b));
-  const namaBahan = [...new Set([...hargaBahan.map((b) => b.bahan), ...gerak.map((g) => g.bahan)])];
-  const barisBahan = namaBahan.map((nama) => {
-    const g = gerak.filter((x) => x.bahan === nama);
-    const total = (jenis) => g.filter((x) => x.gerak === jenis).reduce((s, x) => s + num(x.jumlah), 0);
-    const k = total('Keluar');
-    const r = total('Restock');
-    const kembali = total('Kembali');
-    const h = num(harga.get(nama)?.harga);
-    return {
-      bahan: nama, satuan: harga.get(nama)?.satuan || g[0]?.satuan || '',
-      keluar: k, restock: r, kembali, terpakai: k + r - kembali, harga: h,
-      nilaiBawa: (k + r) * h, nilaiTerpakai: (k + r - kembali) * h, nilaiKembali: kembali * h,
-    };
-  }).filter((b) => b.keluar || b.restock || b.kembali);
+  const barisBahan = hitungBahan(gerak, hargaBahan).filter((b) => b.keluar || b.restock || b.kembali);
   const nilaiBahanDibawa = barisBahan.reduce((s, b) => s + b.nilaiBawa, 0);
   const nilaiSisaKembali = barisBahan.reduce((s, b) => s + b.nilaiKembali, 0);
 

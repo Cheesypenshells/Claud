@@ -228,6 +228,7 @@ export const KOLOM = {
       k('pengirim', 'Dicatat Oleh', 200),
       k('status', 'Status', 85),
       k('dicatat', 'Waktu Dicatat', 140),
+      k('harga_satuan', 'Nilai Sisa per Satuan', 140, { format: 'rupiah', catatan: 'Khusus baris Kembali (sisa): nilai per satuan yang disebut owner. Kosong = harga tab Harga Bahan' }),
     ],
   },
   'Porsi Gratis': {

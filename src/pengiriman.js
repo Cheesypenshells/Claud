@@ -10,6 +10,7 @@
 import { STATUS } from './schema.js';
 import { parseBahan } from './parsers.js';
 import { cocokkan } from './katalog.js';
+import { BAHAN_DIBELI } from './bahan.js';
 import { tanggalLokal, waktuLokal, rupiah, bersihkan, parseMoney } from './util.js';
 
 const BERLAKU_MS = 3 * 60 * 60 * 1000;
@@ -97,6 +98,7 @@ function ringkasan(sesi, hargaBahan, { harga = false } = {}) {
     baris.push('Isi bahan baku:');
     let total = 0;
     for (const it of d.dikenal || []) {
+      if (BAHAN_DIBELI.includes(it.bahan)) { baris.push(`• ${it.bahan} ${it.jumlah} ${it.satuan}${harga ? ' _(dibeli dari supplier: catat sebagai pengeluaran pembelian dengan harganya)_' : ''}`); continue; }
       const h = Number(hargaBahan.find((x) => x.bahan === it.bahan)?.harga || 0);
       total += h * it.jumlah;
       baris.push(harga ? `• ${it.bahan} ${it.jumlah} ${it.satuan} × ${rupiah(h)} = *${rupiah(h * it.jumlah)}*` : `• ${it.bahan} ${it.jumlah} ${it.satuan}`);
@@ -229,7 +231,7 @@ async function simpan(ctx, pesan, sesi, hargaBahan, { namaPengirim, grupPengelua
     rincian: [...(d.dikenal || []).map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}`), ...(d.lain || [])].join('; '),
     pengirim, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
   });
-  for (const it of d.dikenal || []) {
+  for (const it of (d.dikenal || []).filter((i) => !BAHAN_DIBELI.includes(i.bahan))) {
     await ctx.store.append('Bahan Event', {
       tanggal: tanggalLokal(pesan.waktu), kode_event: sesi.kode, bahan: it.bahan, gerak: 'Keluar', jumlah: it.jumlah, satuan: it.satuan,
       pengirim: `${pengirim} (stok awal)`, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),

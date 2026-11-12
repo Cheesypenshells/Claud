@@ -309,8 +309,9 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - Kata yang dikenali: *pengiriman / kiriman / awal / stok awal / kirim / bawa* = **awal**; *restock / tambahan bahan / datang* = **restock**; *sisa / sisah / stok akhir / kembali* = **sisa**.
 - Tanggal boleh ditulis. Tanpa tanggal: awal = hari pertama event, sisa = hari terakhir event.
 - **Jangan tulis harganya**: nilai dihitung dari tab **Harga Bahan** (contoh keju Rp 234.000/pack). Kalau ditulis harga, pesan itu dicatat sebagai pengeluaran biasa.
-- Biaya bahan baku = (awal + restock − sisa) × harga. Masuk ke `#rekap`, file event (tab Bahan Baku: baris awal+restock dan baris SISA bernilai minus), dan sheet Main (tabel ⑤: Awal, Restock, Sisa, Terpakai).
-- Oyster yang **dibeli di lokasi** sudah tercatat sebagai pengeluaran biasa. Tulis oyster di bahan baku hanya kalau dikirim dari gudang, supaya tidak terhitung dua kali.
+- **Nilai sisa ditanya bot**: setelah sisa dilaporkan, bot bertanya di grup pengeluaran *"sisa dihargai berapa per satuan?"*. Balas `200rb` (satu bahan), `keju 200rb, garlic 450rb`, `ya` (pakai harga tab Harga Bahan), atau `0` (rusak/busuk). Sisa yang dilaporkan dari grup tim juga ditanyakan di grup pengeluaran. Nilainya tersimpan di kolom *Nilai Sisa per Satuan* tab Bahan Event.
+- Biaya bahan baku = (awal + restock) × harga tab − nilai sisa. Masuk ke `#rekap`, file event (tab Bahan Baku: baris awal+restock dan baris SISA bernilai minus), dan sheet Main (tabel ⑤: Awal, Restock, Sisa, Terpakai).
+- **Oyster dari supplier = pembelian di lokasi**: catat sebagai pengeluaran dengan harganya (`oyster 100 kg 3,9jt`). Kalau oyster ditulis di pengiriman pertama/restock, bot tidak menghitungnya sebagai bahan gudang dan mengingatkan. **Sisa oyster** tetap boleh dilaporkan (`sisa oyster 5 kg`); nilainya mengurangi biaya.
 
 ## Laporan foto: loading in, harian, loading out (grup tim)
 

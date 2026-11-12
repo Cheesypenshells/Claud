@@ -1,6 +1,7 @@
 // Perhitungan keuangan: perkiraan transfer IO, rekap event, rekap bulanan.
 // Semua fungsi di sini murni (tanpa akses WhatsApp/Sheets) supaya mudah dites.
 
+import { hitungBahan } from './bahan.js';
 import { JENIS, STATUS, BUKU } from './schema.js';
 import { tambahHari, hariDalamMinggu, rupiah, persen, namaBulan } from './util.js';
 
@@ -60,14 +61,8 @@ export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], harg
   for (const t of pengeluaran) perKategori[t.kategori || 'Lain-lain'] = (perKategori[t.kategori || 'Lain-lain'] || 0) + num(t.nominal);
   // Bahan baku dari gudang: (awal + restock − sisa) × harga di tab Harga Bahan.
   const gerak = bahan.filter((b) => b.kode_event === event.kode && aktif(b));
-  const barisBahan = [...new Set(gerak.map((b) => b.bahan))].map((nama) => {
-    const g = gerak.filter((b) => b.bahan === nama);
-    const t = (j) => g.filter((b) => b.gerak === j).reduce((s, b) => s + num(b.jumlah), 0);
-    const h = num(hargaBahan.find((x) => x.bahan === nama)?.harga);
-    const awal = t('Keluar'); const restock = t('Restock'); const sisa = t('Kembali');
-    return { bahan: nama, satuan: g[0]?.satuan || '', awal, restock, sisa, terpakai: awal + restock - sisa, harga: h, nilai: (awal + restock - sisa) * h };
-  });
-  const biayaBahan = barisBahan.reduce((s, b) => s + b.nilai, 0);
+  const barisBahan = hitungBahan(gerak, hargaBahan);
+  const biayaBahan = barisBahan.reduce((s, b) => s + b.nilaiTerpakai, 0);
   const totalPengeluaran = pengeluaran.reduce((s, t) => s + num(t.nominal), 0) + biayaBahan;
 
   return {
@@ -116,7 +111,11 @@ export function formatRekapEvent(r, hariIni) {
   for (const [k, v] of kategori) baris.push(`${k}: ${rupiah(v)}`);
   if (r.barisBahan?.length) {
     baris.push(`Bahan baku dari gudang (terpakai): ${rupiah(r.biayaBahan)}`);
-    for (const b of r.barisBahan) baris.push(`  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} × ${rupiah(b.harga)}`);
+    for (const b of r.barisBahan) {
+      baris.push(b.dibeli
+        ? `  • Sisa ${b.bahan} (dibeli di lokasi) ${b.sisa} ${b.satuan}: -${rupiah(b.nilaiSisa)}`
+        : `  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} → ${rupiah(b.nilaiTerpakai)}${b.sisaBelumDihargai ? ' _(nilai sisa belum disebut, pakai harga tab)_' : ''}`);
+    }
   }
   baris.push(`Total pengeluaran: *${rupiah(r.totalPengeluaran)}*`);
 
