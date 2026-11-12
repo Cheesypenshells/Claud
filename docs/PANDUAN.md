@@ -304,6 +304,10 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 - **DW & kasir**: kalau gajinya sudah dicatat sebagai pengeluaran (kategori Gaji & Upah), angka itulah yang dipakai, tanpa bonus perkiraan. Untuk rekap event lama (omzet total), DW tampil satu baris = total catatan gaji dari rekapan PIC, tanpa hari kerja.
 - Rekap event lama dengan omzet total (satu angka): semua tanggal event dihitung sebagai hari kerja.
 
+## Fee PIC khusus event
+
+Biasanya fee PIC mengikuti kehadiran owner (`#owner`): tidak hadir 25% · 1 hari 20% · setengah 15% · penuh 10% dari laba sebelum fee. Untuk event tertentu owner bisa menetapkan angka sendiri di grup pengeluaran: `#feepic 20` atau kalimat `bonus pic nya 20 persen`. Kembali ke aturan biasa: `#feepic normal`. Tersimpan di kolom *Fee PIC Khusus (%)* tab Event.
+
 ## Bahan baku: pengiriman pertama, restock, sisa
 
 Bisa di **grup tim** (tanpa harga) atau **grup pengeluaran** (dengan nilai rupiah). Untuk event yang sudah selesai, masukkan di grup pengeluaran:

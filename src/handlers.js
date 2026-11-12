@@ -91,6 +91,20 @@ function gerakBahanDariKalimat(teks) {
   return null;
 }
 
+// #feepic 20 / "bonus pic 20 persen": fee PIC khusus event. #feepic normal = kembali ke aturan kehadiran owner.
+async function perintahFeePic(ctx, event, teks) {
+  if (!event) return balas('⚠️ Event untuk grup ini belum dibuat.');
+  if (/\b(normal|hapus|batal|reset|otomatis)\b/i.test(teks)) {
+    await ctx.store.update('Event', 'kode', event.kode, { fee_pic_persen: '' });
+    return balas(`↩️ Fee PIC ${event.kode} kembali mengikuti kehadiran owner (tidak hadir 25% · 1 hari 20% · setengah 15% · penuh 10%).`);
+  }
+  const m = String(teks).match(/(\d+(?:[.,]\d+)?)\s*(%|persen)?/i);
+  const p = m ? Number(m[1].replace(',', '.')) : NaN;
+  if (!(p >= 0 && p <= 100)) return balas('Format: *#feepic 20* (persen dari laba sebelum fee), atau *#feepic normal*.');
+  await ctx.store.update('Event', 'kode', event.kode, { fee_pic_persen: p });
+  return balas(`✅ *Fee PIC ${event.kode}: ${p}%* dari laba sebelum fee (khusus event ini, menggantikan aturan kehadiran owner).\n_Kembali ke aturan biasa: *#feepic normal*._`);
+}
+
 // Grup pengeluaran milik event (untuk pesan yang berisi harga).
 async function grupPengeluaranEvent(ctx, event) {
   if (!event) return [];
@@ -1028,6 +1042,10 @@ export async function handlePesan(ctx, pesan) {
     const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
     if (lapor) return lapor;
   }
+  // "bonus pic nya 20 persen" / "fee pic 20%" (owner, grup pengeluaran) = fee PIC khusus event ini.
+  if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && /\b(fee|bonus|bagian|jatah)\s+(pic|melia|untuk pic)\b/i.test(teks) && /\d+(?:[.,]\d+)?\s*(%|persen)/i.test(teks)) {
+    return perintahFeePic(ctx, event, teks);
+  }
   // "gaji tiara, veri, dena masing masing 2 juta" (owner, grup pengeluaran) = gaji khusus event karyawan tetap.
   if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && adalahPerintahGaji(teks)) {
     const hasil = await perintahGajiTetap(ctx, pesan, event, teks);
@@ -1223,6 +1241,12 @@ export async function handlePesan(ctx, pesan) {
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
+      }
+      case 'feepic':
+      case 'fee': {
+        if (!isOwner) return balas('⚠️ Fee PIC hanya diatur owner.');
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Fee PIC hanya diatur di grup pengeluaran.');
+        return perintahFeePic(ctx, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '));
       }
       case 'gaji': {
         if (!isOwner) return balas('⚠️ Gaji khusus event hanya diatur owner.');

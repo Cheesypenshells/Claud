@@ -235,7 +235,9 @@ export function hitungEvent(event, data) {
   const labaSebelumFee = omzetBersih - totalBiaya + nilaiSisaKembali;
   // Fee PIC hanya untuk PIC yang bukan owner.
   const picBerhakFee = orang.filter((o) => o.peran === PERAN.PIC && !adalahOwner(o));
-  const feePicPersen = picBerhakFee.length ? persenFeePic(event.owner_hadir) : 0;
+  // Fee PIC khusus event (#feepic 20) menimpa aturan kehadiran owner.
+  const feeKhusus = event.fee_pic_persen === '' || event.fee_pic_persen == null ? null : num(event.fee_pic_persen);
+  const feePicPersen = picBerhakFee.length ? (feeKhusus ?? persenFeePic(event.owner_hadir)) : 0;
   const feePic = labaSebelumFee > 0 ? (labaSebelumFee * feePicPersen) / 100 : 0;
   const laba = labaSebelumFee - feePic;
   const namaPic = picBerhakFee.map((o) => o.nama);

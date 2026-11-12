@@ -1107,3 +1107,19 @@ test('gaji khusus event karyawan tetap: "gaji tiara, veri, dena masing masing 2 
   });
   assert.equal(hasil.biaya.find((b) => /Gaji karyawan tetap/.test(b[0]))[1], 6000000);
 });
+
+test('fee PIC khusus event: "bonus pic nya 20 persen" / #feepic, kembali normal', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, OWNER, 'Terus ini karena senior nya banyak bonus pic nya itu 20 persen ya');
+  assert.match(r, /Fee PIC JMB26-11: 20%/);
+  assert.equal((await store.all('Event'))[0].fee_pic_persen, 20);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  const { hitungEvent } = await import('../src/laporan.js');
+  const ev = (await store.all('Event'))[0];
+  const hasil = hitungEvent(ev, { omzet: [{ tanggal: '2026-11-03', kode_event: 'JMB26-11', omzet: 10000000, refund: 0, status: 'OK' }], tim: await store.all('Tim Event') });
+  assert.equal(hasil.feePicPersen, 20);
+  assert.match(await kirim(G_KELUAR, PIC, '#feepic 30'), /hanya diatur owner/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#feepic normal'), /kembali mengikuti kehadiran owner/);
+  assert.equal((await store.all('Event'))[0].fee_pic_persen, '');
+});
