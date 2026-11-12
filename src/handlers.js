@@ -246,6 +246,7 @@ async function catatUang(ctx, pesan, { buku, jenis, kodeEvent, teks, itemsSiap =
   return simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilewati });
 }
 
+const BATAS_RAKSASA = 25000000;
 const kunciDobel = (pesan) => `dobel|${pesan.groupId}|${pesan.senderId}`;
 
 // Foto di pesan dibaca sekali (OCR). { teks, buffer } atau { gagal: true }.
@@ -367,6 +368,10 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     // Item dengan struk yang sudah dicek tidak perlu (struk kembar sudah diperiksa).
     dobel = items.filter((i) => i.bukti !== 'Struk ✓').map((i) => ({ i, lama: Number(i.nominal) >= 50000 && ada.find((t) => Number(t.nominal) === Number(i.nominal) && mirip(i, t)) }))
       .filter((x) => x.lama);
+    // Nominal raksasa (>= Rp 25 juta, biasanya omzet atau salah ketik) juga ditanya dulu.
+    const besar = items.filter((i) => Number(i.nominal) >= BATAS_RAKSASA && !dobel.some((d) => d.i === i))
+      .map((i) => ({ i, lama: null, raksasa: true }));
+    dobel = [...dobel, ...besar];
     if (dobel.length) {
       items = items.filter((i) => !dobel.some((d) => d.i === i));
       if (ctx.sesi) {
@@ -375,15 +380,23 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
         ctx.sesi.set(kunciDobel(pesan), {
           senderId: pesan.senderId, senderName: pesan.senderName || '',
           items: dobel.map((d) => d.i), buku, kodeEvent, waktu: Date.now(),
-          lama: dobel.map((d) => ({ id: d.lama.id, keterangan: d.lama.keterangan, tanggal: String(d.lama.tanggal || '').slice(0, 10), nominal: Number(d.lama.nominal) })),
+          lama: dobel.filter((d) => d.lama).map((d) => ({ id: d.lama.id, keterangan: d.lama.keterangan, tanggal: String(d.lama.tanggal || '').slice(0, 10), nominal: Number(d.lama.nominal) })),
         });
       }
     }
   }
   const hariIni = tanggalLokal(pesan.waktu);
-  const pesanDobel = dobel.length ? [
+  const sama = dobel.filter((d) => !d.raksasa);
+  const raksasa = dobel.filter((d) => d.raksasa);
+  const pesanRaksasa = raksasa.length ? [
+    '⚠️ *Belum saya catat, nominalnya sangat besar untuk pengeluaran:*',
+    ...raksasa.map((d) => `• ${d.i.keterangan} *${rupiah(d.i.nominal)}*`),
+    'Kalau ini *omzet*, tulis: *omset 125jt* (atau *#omzet 125jt*). Kalau salah ketik, kirim ulang angkanya.',
+    '_Balas *catat* kalau memang pengeluaran sebesar ini, atau *batal*._',
+  ] : [];
+  const pesanDobel = sama.length ? [
     '⚠️ *Belum saya catat, nominalnya sama dengan catatan lama:*',
-    ...dobel.flatMap((d) => {
+    ...sama.flatMap((d) => {
       const tglBaru = d.i.tanggal || hariIni;
       const tglLama = String(d.lama.tanggal || '').slice(0, 10);
       return [
@@ -395,6 +408,7 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     'Supaya pasti, *kirim foto bukti trf/struk*-nya, nanti saya cek nominal & tanggalnya.',
     '_Atau balas *catat* kalau memang pengeluaran lain, *batal* kalau dobel._',
   ] : [];
+  pesanDobel.push(...(pesanDobel.length && pesanRaksasa.length ? [''] : []), ...pesanRaksasa);
   const infoTunda = pesanTunda(ditahan);
   if (!items.length) return balas([...infoTunda, ...(infoTunda.length && pesanDobel.length ? [''] : []), ...pesanDobel].join('\n'));
 
@@ -948,8 +962,11 @@ export async function handlePesan(ctx, pesan) {
     pesan = { ...pesan, text: teks };
   }
   // "omset bali 125jt" / "omzet 3 okt 12,5jt" tanpa tanda # = laporan omzet, bukan pengeluaran.
-  if (/^(omset|omzet|omsetnya|omzetnya|total omset|total omzet)\b/i.test(teks) && parseMoney(teks)) {
-    teks = `#omzet ${teks.replace(/^(total\s+)?(omset|omzet)\w*\s*/i, '')}`;
+  // Juga "total omset bali 125jt", "ini omset harian 125jt", "penjualan 3 okt 12jt", "pendapatan event 125jt".
+  const RE_OMZET = /\b(omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales)\b/i;
+  if (!teks.startsWith('#') && RE_OMZET.test(teks) && parseMoney(teks) && teks.split(/\s+/).length <= 10
+    && !/\b(bagi hasil|potongan|potong|admin|fee|bonus|komisi|persen|%)\b/i.test(teks) && !/\n/.test(teks.trim())) {
+    teks = `#omzet ${teks.replace(/\b(ini|itu|total|omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales|harian)\b/gi, ' ').replace(/\s+/g, ' ').trim()}`;
     pesan = { ...pesan, text: teks };
   }
   const cmd = parsePerintah(teks);
@@ -1056,7 +1073,7 @@ export async function handlePesan(ctx, pesan) {
 
   // Peringatan dobel: "batal" = tidak dicatat; foto bukti trf dicek nominal & tanggalnya.
   // Milik pengirim sendiri, atau (kalau me-reply peringatannya) milik siapa pun di grup.
-  const balasDobel = /nominalnya sama dengan catatan lama/i.test(pesan.kutipan?.teks || '');
+  const balasDobel = /nominalnya (sama dengan catatan lama|sangat besar)/i.test(pesan.kutipan?.teks || '');
   const ambilDobel = () => {
     if (!ctx.sesi) return null;
     const sendiri = ctx.sesi.get(kunciDobel(pesan));
@@ -1070,7 +1087,7 @@ export async function handlePesan(ctx, pesan) {
     if (d) {
       if (!cmd && /^(batal|dobel|hapus|gak jadi|tidak jadi|ga jadi|ya dobel|iya dobel|itu dobel|dobel itu)$/i.test(teks.replace(/[.!]+$/, ''))) {
         ctx.sesi.hapus(kunciD);
-        return balas(`👌 Oke, tidak dicatat (dobel dengan ${(d.lama || []).map((x) => x.id).join(', ') || 'catatan lama'}).`);
+        return balas((d.lama || []).length ? `👌 Oke, tidak dicatat (dobel dengan ${d.lama.map((x) => x.id).join(', ')}).` : '👌 Oke, tidak dicatat.');
       }
       // Foto dipakai sebagai bukti dobel hanya kalau me-reply peringatan dobel, atau nominalnya cocok.
       // Foto lain (bukti transfer lain) diproses sebagai pengeluaran baru.

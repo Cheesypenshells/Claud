@@ -1050,3 +1050,21 @@ test('"rekap" tanpa # = #rekap', async () => {
   assert.match(await kirim(G_KELUAR, OWNER, 'rekap'), /REKAP EVENT JMB26-11/);
   assert.match(await kirim(G_KELUAR, OWNER, 'lihat rekap'), /REKAP EVENT JMB26-11/);
 });
+
+test('omzet dikenali dari berbagai tulisan; pengeluaran >= 25jt ditanya dulu (catat / batal)', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  for (const t of ['omset harian 3 nov 12,5jt', 'total omset 4 nov 10jt', 'ini omset 5 nov 9.000.000', 'penjualan 6 nov 8jt']) {
+    assert.match(await kirim(G_KELUAR, OWNER, t), /Omzet .* tercatat/);
+  }
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.equal((await store.all('Omzet')).length, 4);
+  // nominal raksasa
+  const w = await kirim(G_KELUAR, OWNER, 'sewa booth 30jt');
+  assert.match(w, /nominalnya sangat besar.*sewa booth \*Rp 30.000.000\*.*omset 125jt/s);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.match(await kirim(G_KELUAR, OWNER, 'catat', { kutipan: { teks: w, id: 'w' } }), /T0001 sewa booth - \*Rp 30.000.000\*/);
+  await kirim(G_KELUAR, OWNER, 'kulkas 26jt');
+  assert.match(await kirim(G_KELUAR, OWNER, 'batal'), /Oke, tidak dicatat\./);
+  assert.equal((await store.all('Transaksi')).length, 1);
+});
