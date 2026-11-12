@@ -60,7 +60,7 @@ export function warnaKelompok(k) {
   return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
 }
 
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 17, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 17, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31, ALOKASI: 31 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -264,7 +264,32 @@ export function hitungEvent(event, data) {
   const harian = [...perTanggal.values()].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
   if (diLuar.pengeluaran) harian.push(diLuar);
 
+  // ---------- Alokasi harian (grafik garis) ----------
+  // Per hari jualan: omzet, potongan IO, bahan baku terpakai, gaji & upah, penginapan, biaya lain, laba.
+  // Bahan baku dibagi menurut porsi omzet hari itu (pemakaian ikut penjualan); gaji, penginapan, dan biaya lain
+  // dibagi rata. Omzet yang diinput sebagai total juga dibagi rata. Jumlah laba semua hari = laba sebelum fee PIC.
+  const nilaiBiaya = (awalan) => biaya.filter((b) => String(b[0]).startsWith(awalan)).reduce((s, b) => s + num(b[1]), 0);
+  const alokasi = [];
+  if (tanggalJualan.length) {
+    const n = tanggalJualan.length;
+    const omzetHari = new Map(hari.map((h) => [h.tanggal, h.bersih]));
+    const omzetDi = (t) => (omzetTotal ? omzetBersih / n : omzetHari.get(t) || 0);
+    const bahanNet = nilaiBiaya('Bahan baku') - nilaiSisaKembali;
+    const io = nilaiBiaya('Potongan bagi hasil IO');
+    const gajiSemua = nilaiBiaya('Gaji karyawan tetap') + nilaiBiaya('Upah DW') + nilaiBiaya('Estimasi bonus');
+    const inap = nilaiBiaya('Penginapan');
+    const lain = totalBiaya - nilaiBiaya('Bahan baku') - io - gajiSemua - inap;
+    for (const t of tanggalJualan) {
+      const o = omzetDi(t);
+      const porsi = omzetBersih ? o / omzetBersih : 1 / n;
+      const baris = { tanggal: t, omzet: o, io: io * porsi, bahan: bahanNet * porsi, gaji: gajiSemua / n, penginapan: inap / n, lain: lain / n };
+      baris.laba = o - baris.io - baris.bahan - baris.gaji - baris.penginapan - baris.lain;
+      alokasi.push(baris);
+    }
+  }
+
   return {
+    alokasi,
     event, hari, harian, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis, jumlahHariJualan: tanggalJualan.length,
     labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
     penggantian: hitungPenggantian(transaksi, kode),
@@ -343,6 +368,8 @@ export function barisDataMain(r) {
     ['Laba bersih (margin)', r.laba, r.omzetBersih ? r.laba / r.omzetBersih : 0],
   ]);
   tambah('HARIAN', r.harian.map((h) => [h.tanggal, h.omzet, h.pengeluaran, h.omzet - h.pengeluaran]));
+  const bulat = (x) => Math.round(x);
+  tambah('ALOKASI', (r.alokasi || []).map((a) => [a.tanggal, bulat(a.omzet), bulat(a.io), bulat(a.bahan), bulat(a.gaji), bulat(a.penginapan), bulat(a.lain), bulat(a.laba)]));
   tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]), { jumlah: [1, 2, 3] });
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]), { jumlah: [7, 8] });
   return baris;

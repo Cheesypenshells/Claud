@@ -229,3 +229,14 @@ test('rekap event lama: omzet total -> semua hari event dihitung; upah DW = tota
   assert.equal(dw.bonus, 0);
   assert.equal(r.biaya.find((b) => b[0] === 'Upah DW + kasir')[1], 1450000);
 });
+
+test('alokasi harian: bahan menurut porsi omzet, biaya lain dibagi rata, jumlah laba = laba sebelum fee', () => {
+  const r = hitungEvent(event, data);
+  assert.equal(r.alokasi.length, r.jumlahHariJualan);
+  const jumlah = (k) => r.alokasi.reduce((s, a) => s + a[k], 0);
+  assert.ok(Math.abs(jumlah('laba') - r.labaSebelumFee) < 1);
+  assert.ok(Math.abs(jumlah('omzet') - r.omzetBersih) < 1);
+  const baris = barisDataMain(r).filter((x) => x[1] === 'ALOKASI');
+  assert.equal(baris.length, r.alokasi.length);
+  assert.equal(baris[0].length, 11);
+});

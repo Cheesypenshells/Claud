@@ -14,7 +14,11 @@ const GARIS = { top: HITAM, bottom: HITAM, left: HITAM, right: HITAM, innerHoriz
 const KOMPOSISI = { judul: 23, kolom: 24, data: 25, akhir: 24 + BATAS_BARIS.GRAFIK };
 const WARNA_NETRAL = '#37474F'; // baris omzet & laba di tabel komposisi
 const HARIAN = { judul: 64, kolom: 65, data: 66, akhir: 65 + BATAS_BARIS.HARIAN };
-const JUDUL_GRAFIK = ['Omzet Harian', 'Omzet & Pengeluaran Harian', 'Omzet vs Biaya', 'Porsi Biaya', 'Porsi Biaya (% dari total biaya)'];
+// Alokasi harian (sumber grafik garis): kolom L:S di bawah tabel harian.
+const ALOKASI = { judul: 99, kolom: 100, data: 101, akhir: 100 + BATAS_BARIS.ALOKASI };
+const KOLOM_ALOKASI = ['Tanggal', 'Omzet', 'Potongan IO', 'Bahan baku terpakai', 'Gaji & upah', 'Penginapan', 'Biaya lain', 'Laba'];
+const WARNA_ALOKASI = ['#1A73E8', '#FF6D01', '#EA4335', '#46BDC6', '#8E24AA', '#9AA0A6', '#0B8043'];
+const JUDUL_GRAFIK = ['Omzet Harian', 'Omzet & Pengeluaran Harian', 'Omzet vs Biaya', 'Porsi Biaya', 'Porsi Biaya (% dari total biaya)', 'Grafik Harian: Omzet, Bahan Baku, Gaji, Hotel & Laba'];
 const ANGKA = { type: 'NUMBER', pattern: '#,##0' };
 
 // Kolom B = indeks 1. Setiap bagian: baris judul bagian, baris judul kolom, lalu baris data.
@@ -114,6 +118,9 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   nilai.push({ range: `${qt}!L${HARIAN.judul}`, values: [['OMZET & PENGELUARAN PER TANGGAL', '', '', '']] });
   nilai.push({ range: `${qt}!L${HARIAN.kolom}`, values: [['Tanggal', 'Omzet', 'Pengeluaran (catatan grup)', 'Selisih']] });
   nilai.push({ range: `${qt}!L${HARIAN.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:G;${DATA}!A2:A=$C$2;${DATA}!B2:B="HARIAN");"")`]] });
+  nilai.push({ range: `${qt}!L${ALOKASI.judul}`, values: [['📈 PER HARI: OMZET & BIAYA (gaji, hotel, biaya lain dibagi rata; bahan baku menurut porsi omzet)', '', '', '', '', '', '', '']] });
+  nilai.push({ range: `${qt}!L${ALOKASI.kolom}`, values: [KOLOM_ALOKASI] });
+  nilai.push({ range: `${qt}!L${ALOKASI.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:K;${DATA}!A2:A=$C$2;${DATA}!B2:B="ALOKASI");"")`]] });
   const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
   nilai.push({ range: `${qt}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   // Area kanan di bawah tabel komposisi dikosongkan dulu (letak tabel harian bisa berpindah antar versi).
@@ -264,6 +271,12 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   format(sel(HARIAN.data, HARIAN.akhir, 11, 15), { backgroundColorStyle: { rgbColor: warna('#1A73E8', 0.95) }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'backgroundColorStyle,verticalAlignment,wrapStrategy');
   format(sel(HARIAN.data, HARIAN.akhir, 12, 15), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
   req.push({ updateBorders: { range: sel(HARIAN.judul, HARIAN.akhir, 11, 15), ...GARIS } });
+  // Tabel alokasi harian (L:S).
+  format(sel(ALOKASI.judul, ALOKASI.judul, 11, 19), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#0B8043') }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
+  format(sel(ALOKASI.kolom, ALOKASI.kolom, 11, 19), { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna('#0B8043', 0.82) }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'textFormat,backgroundColorStyle,horizontalAlignment,verticalAlignment,wrapStrategy');
+  format(sel(ALOKASI.data, ALOKASI.akhir, 11, 19), { backgroundColorStyle: { rgbColor: warna('#0B8043', 0.95) }, verticalAlignment: 'MIDDLE' }, 'backgroundColorStyle,verticalAlignment');
+  format(sel(ALOKASI.data, ALOKASI.akhir, 12, 19), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
+  req.push({ updateBorders: { range: sel(ALOKASI.judul, ALOKASI.akhir, 11, 19), ...GARIS } });
 
   // Grafik dibuat ulang setiap tata letak diperbarui (rentang datanya bisa berubah).
   for (const c of main.charts || []) {
@@ -328,6 +341,26 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
           },
         },
         position: posisi(K.akhir + 3, 11, 654, 420),
+      },
+    },
+  });
+
+  // Kanan grafik "Omzet vs Biaya": grafik garis per hari (omzet, potongan IO, bahan, gaji, hotel, biaya lain, laba).
+  req.push({
+    addChart: {
+      chart: {
+        spec: {
+          title: 'Grafik Harian: Omzet, Bahan Baku, Gaji, Hotel & Laba',
+          basicChart: {
+            chartType: 'LINE',
+            legendPosition: 'BOTTOM_LEGEND',
+            headerCount: 1,
+            axis: [{ position: 'BOTTOM_AXIS', title: 'Tanggal' }, { position: 'LEFT_AXIS', title: 'Rupiah per hari' }],
+            domains: [{ domain: sumberSel(ALOKASI.kolom, ALOKASI.akhir, 11) }],
+            series: WARNA_ALOKASI.map((hex, i) => ({ series: sumberSel(ALOKASI.kolom, ALOKASI.akhir, 12 + i), targetAxis: 'LEFT_AXIS', colorStyle: { rgbColor: warna(hex) }, lineStyle: { width: i === 0 || i === 6 ? 3 : 2 } })),
+          },
+        },
+        position: posisi(K.akhir + 12, 16, 640, 420),
       },
     },
   });
