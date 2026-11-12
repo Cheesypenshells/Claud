@@ -164,6 +164,14 @@ export function jawabLengkapi(ctx, pesan, daftarBahan) {
     if (pesan.kutipan && !/belum jelas/i.test(pesan.kutipan.teks || '')) return null;
     // Pesan bernominal adalah pengeluaran baru, bukan jawaban: pertanyaan tetap menunggu.
     if (findMoney(teks).length) return null;
+    // Tanpa reply ke pertanyaannya, hanya jawaban pendek ("9", "masuk konsumsi") dalam 30 menit yang dihitung.
+    // Daftar bahan ("bahan baku kiriman pertama keju 55 pack, ...") atau kalimat panjang bukan jawaban.
+    const balasTanya = /belum jelas/i.test(pesan.kutipan?.teks || '');
+    if (!balasTanya) {
+      const panjang = teks.trim().split(/\s+/).length > 6;
+      const daftar = /,|\n/.test(teks) || /\d+\s*(pack|pcs|kg|gr|gram|balok|kantong|liter|koli|botol|dus|box|ikat|buah)\b/i.test(teks);
+      if (panjang || daftar || Date.now() - sesi.waktu > 30 * 60 * 1000) return null;
+    }
     const hasil = jawabKategori(sesi, teks);
     if (!hasil) return null;
     const sisa = (sesi.antrean || []).filter((x) => x.id !== hasil.target.id);

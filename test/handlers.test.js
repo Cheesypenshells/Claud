@@ -1028,3 +1028,18 @@ test('bahan baku di grup pengeluaran (event selesai): awal, restock bertanggal, 
 async function kirimRawTim(ctx, groupId, senderId, text, waktu) {
   return handlePesan(ctx, { id: `tim${Math.random()}`, groupId, groupName: groupId, senderId, senderName: 'Budi', text, adaFoto: false, waktu });
 }
+
+test('pertanyaan kategori yang menunggu tidak menelan daftar bahan baku ("bahan baku kiriman pertama ...")', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, OWNER, 'barang aneh 75rb'), /belum jelas/);
+  const r = await kirim(G_KELUAR, OWNER, 'bahan baku kiriman pertama keju balok 55 pack, bumbu garlic 50 pack, bumbu merah 4 pack, saus keju 32 pack');
+  assert.match(r, /pengiriman pertama.*Mozzarella 55 pack.*Bumbu Garlic 50 pack.*Bumbu Merah 4 pack.*Saus Keju 32/s);
+  assert.doesNotMatch(r, /sekarang kategori/);
+  assert.equal((await store.all('Kamus Kategori')).length, 0);
+  assert.equal((await store.all('Bahan Event')).length, 4);
+  // jawaban pendek tetap diterima
+  assert.match(await kirim(G_KELUAR, OWNER, '9'), /T0001 sekarang kategori/);
+});
