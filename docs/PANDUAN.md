@@ -290,6 +290,6 @@ Setelah grup tim didaftarkan (`#daftar event KODE` atau pilih 2 saat bot masuk g
 Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–5 untuk mengubah, `batal` untuk berhenti. Mulai ulang kapan saja dengan `#kirim` (atau `#stokawal`).
 
 - Bahan baku tercatat sebagai **keluar dari gudang** → masuk pembukuan event sebagai *Bahan baku (dari gudang)* dengan harga di tab **Harga Bahan** (contoh keju 5 × harga per balok/pack).
-- Di grup tim hanya jumlah barang; **nilai rupiah dikirim ke grup pengeluaran** (owner + PIC).
+- **Harga tidak ditampilkan di grup mana pun.** Grup tim dan grup pengeluaran hanya mendapat jumlah barang; nilai rupiahnya hanya masuk pembukuan (spreadsheet).
 - Bahan yang belum ada di tab Harga Bahan (misalnya packaging) tetap dicatat di tab **Pengiriman**, tapi belum dihitung nilainya.
 - Akhir event: laporkan sisa (`sisa keju 2 balok`); sisa mengurangi biaya bahan baku.

@@ -2,8 +2,8 @@
 // bot menanyakan: penanggung jawab pengiriman, moda (truk / kereta-transit / lainnya), jumlah koli bahan
 // kering, jumlah koli bahan baku, dan rincian isi bahan baku.
 // Bahan baku dicatat sebagai "Keluar" dari gudang (masuk pembukuan bahan baku event; sisa yang
-// dikembalikan di akhir event mengurangi biaya). Di grup tim hanya jumlah barang; nilai rupiah hanya
-// dikirim ke grup pengeluaran (owner + PIC).
+// dikembalikan di akhir event mengurangi biaya). Harga tidak ditampilkan di grup mana pun;
+// grup pengeluaran mendapat info jumlah barangnya.
 
 import { STATUS } from './schema.js';
 import { parseBahan } from './parsers.js';
@@ -143,7 +143,9 @@ async function simpan(ctx, pesan, sesi, hargaBahan, { namaPengirim, grupPengelua
       pengirim: `${pengirim} (stok awal)`, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
     });
   }
-  const info = `📦 *Stok awal ${sesi.kode} – bahan baku dari gudang* (dicatat ${pengirim})\n${ringkasan(sesi, hargaBahan, { harga: true })}\n\n_Masuk pembukuan event sebagai *Bahan baku (dari gudang)*. Sisa yang dikembalikan di akhir event mengurangi biaya ini. Harga per satuan bisa diubah di tab *Harga Bahan*._`;
+  // Harga tidak pernah ditampilkan di grup; nilainya hanya masuk pembukuan (spreadsheet).
+  const tanpaHarga = (d.lain || []).length ? `\n_Belum ada di tab Harga Bahan (belum dihitung di pembukuan): ${d.lain.join(', ')}_` : '';
+  const info = `📦 *Stok awal ${sesi.kode} – bahan baku dari gudang* (dicatat ${pengirim})\n${ringkasan(sesi, hargaBahan)}\n\n_Bahan baku ini masuk pembukuan event (nilai dihitung dari tab Harga Bahan). Sisa yang dikembalikan di akhir event mengurangi biayanya._${tanpaHarga}`;
   // Dijawab di grup pengeluaran: cukup satu pesan lengkap dengan harga.
   if (grupPengeluaran.includes(pesan.groupId)) return [{ text: info }];
   // Dijawab di grup tim: tanpa harga di grup tim, nilai rupiah dikirim ke grup pengeluaran.
