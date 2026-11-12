@@ -288,10 +288,13 @@ Setelah grup tim didaftarkan, bot menanyakan ini di **grup pengeluaran** (owner 
 1. Penanggung jawab pengiriman ke lokasi
 2. Dikirim pakai apa: 1 = Truk, 2 = Kereta (transit), 3 = lainnya
 3. Jumlah koli bahan kering
-4. Jumlah koli bahan baku (0 = pertanyaan 5 dilewati)
-5. Isi bahan baku, contoh `keju 5 balok, bumbu garlic 3 pack, oyster 100 kg`
+4. Isi bahan kering (daftar barang, satu per baris; 0 koli = dilewati)
+5. Jumlah koli bahan baku (0 = pertanyaan 6 dilewati)
+6. Isi bahan baku, contoh `keju 5 balok, bumbu garlic 3 pack, oyster 100 kg`
 
-Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–5 untuk mengubah, `batal` untuk berhenti. Mulai ulang kapan saja dengan `#kirim` (atau `#stokawal`).
+**Daftar barang bernomor dari karyawan** (contoh `CPS Barang Dry Semarang` lalu `1. Freezer`, `2. Box L`, …) dikenali otomatis sebagai isi bahan kering, baik dikirim di grup tim maupun grup pengeluaran, sebelum atau saat pertanyaan berjalan. Kalau jumlah koli belum dijawab, jumlah baris daftar dipakai sebagai jumlah koli. Daftar yang dikirim sebelum ditanya disimpan, lalu bot menawarkannya di pertanyaan 4 (balas `ya`). Daftar dengan nominal (pengeluaran) tetap dicatat sebagai pengeluaran.
+
+Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–6 untuk mengubah, `batal` untuk berhenti. Mulai ulang kapan saja dengan `#kirim` (atau `#stokawal`).
 
 - Bahan baku tercatat sebagai **keluar dari gudang** → masuk pembukuan event sebagai *Bahan baku (dari gudang)* dengan harga di tab **Harga Bahan** (contoh keju 5 × harga per balok/pack).
 - Di grup tim hanya jumlah barang; **nilai rupiah dikirim ke grup pengeluaran** (owner + PIC).

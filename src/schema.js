@@ -109,6 +109,7 @@ export const KOLOM = {
       k('penanggung_jawab', 'Penanggung Jawab', 150),
       k('moda', 'Dikirim Pakai', 140, { catatan: 'Truk / Kereta (transit) / lainnya' }),
       k('koli_kering', 'Koli Bahan Kering', 120, { format: 'angka' }),
+      k('isi_kering', 'Isi Bahan Kering', 320),
       k('koli_baku', 'Koli Bahan Baku', 120, { format: 'angka' }),
       k('rincian', 'Isi Bahan Baku', 320),
       k('pengirim', 'Dicatat Oleh', 190),

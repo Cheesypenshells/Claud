@@ -944,7 +944,7 @@ export async function handlePesan(ctx, pesan) {
   // Data pengiriman & stok awal yang sedang ditanyakan.
   if (!cmd && ctx.sesi && event) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
-    const jawabKirim = await jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluaran });
+    const jawabKirim = await jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluaran, event });
     if (jawabKirim) return jawabKirim;
   }
   // Penilaian KPI yang sedang berjalan (jawaban "5 4 4 3").

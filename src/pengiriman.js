@@ -1,6 +1,8 @@
 // Pengiriman & stok awal event (loading in). Setelah grup tim didaftarkan, atau lewat #kirim / #stokawal,
 // bot menanyakan: penanggung jawab pengiriman, moda (truk / kereta-transit / lainnya), jumlah koli bahan
-// kering, jumlah koli bahan baku, dan rincian isi bahan baku.
+// kering + daftar isinya, jumlah koli bahan baku, dan rincian isi bahan baku.
+// Daftar bernomor yang dikirim karyawan ("CPS Barang Dry Semarang\n1. Freezer\n2. Box L ...") dikenali
+// kapan saja (di grup tim maupun pengeluaran, sebelum atau saat pertanyaan berjalan) sebagai isi bahan kering.
 // Bahan baku dicatat sebagai "Keluar" dari gudang (masuk pembukuan bahan baku event; sisa yang
 // dikembalikan di akhir event mengurangi biaya). Di grup tim hanya jumlah barang; nilai rupiah hanya
 // dikirim ke grup pengeluaran (owner + PIC).
@@ -12,13 +14,17 @@ import { tanggalLokal, waktuLokal, rupiah, bersihkan, parseMoney } from './util.
 
 const BERLAKU_MS = 3 * 60 * 60 * 1000;
 const kunci = (groupId) => `kirim:${groupId}`;
+const kunciDaftar = (kode) => `daftarkirim:${kode}`;
+const DAFTAR_BERLAKU_MS = 4 * 24 * 60 * 60 * 1000;
 const balas = (text) => [{ text }];
+const RE_JUDUL = /barang|dry|kering|kirim|koli|muat|loading|packing|perlengkapan/i;
 const LEWATI = /^(-|0|tidak ada|nggak ada|gak ada|ga ada|kosong|lewati)$/i;
 
 const LANGKAH = [
   { k: 'pj', tanya: 'Siapa *penanggung jawab pengiriman* barang ke lokasi?', contoh: 'Imam' },
   { k: 'moda', tanya: 'Barang dikirim pakai apa?\n1 = Truk\n2 = Kereta (transit)\n3 = Lainnya (tulis, contoh: kapal, ekspedisi, mobil sendiri)', contoh: '1' },
   { k: 'koli_kering', tanya: 'Berapa *koli bahan kering* yang dikirim? (*0* kalau tidak ada)', contoh: '6' },
+  { k: 'isi_kering', tanya: 'Apa saja *isi bahan kering*-nya? Kirim daftarnya, satu per baris (boleh bernomor).', contoh: '1. Freezer\n2. Box L\n3. Lampu display depan\n4. Meja besi 2' },
   { k: 'koli_baku', tanya: 'Berapa *koli bahan baku* (frozen/dingin) yang dikirim? (*0* kalau tidak ada)', contoh: '4' },
   { k: 'rincian', tanya: 'Apa saja *isi bahan baku*-nya? Satu per baris atau pisah koma.', contoh: 'keju 5 balok\nbumbu garlic 3 pack\nbumbu merah 1 pack\noyster 100 kg' },
 ];
@@ -32,6 +38,28 @@ export function mulaiPengiriman(ctx, groupId, event) {
   const sesi = { kode: event.kode, langkah: 0, data: {}, waktu: Date.now() };
   ctx.sesi.set(kunci(groupId), sesi);
   return `🚚 *Data pengiriman & stok awal ${event.kode}* (${event.kota})\nBahan baku yang dikirim akan dicatat ke pembukuan event.\n\n${tanya(sesi)}`;
+}
+
+const L = Object.fromEntries(LANGKAH.map((l, i) => [l.k, i]));
+
+// Daftar barang bernomor (minimal 3 baris "1. Freezer"). Baris tanpa nomor di atasnya = judul.
+export function bacaDaftar(teks) {
+  const baris = String(teks || '').split('\n').map((b) => b.trim()).filter(Boolean);
+  const barang = [];
+  let judul = '';
+  for (const b of baris) {
+    const m = b.match(/^\d{1,3}\s*[.)\-]\s*(.+)$/);
+    if (m) barang.push(m[1].trim());
+    else if (!barang.length && !judul) judul = b;
+    else if (barang.length) barang[barang.length - 1] += ` ${b}`; // lanjutan baris panjang
+  }
+  if (barang.length < 3) return null;
+  return { judul, barang, frozen: barang.filter((b) => /frozen|beku|dingin/i.test(b)).length };
+}
+
+function teksDaftar(daftar) {
+  const f = daftar.frozen ? ` (${daftar.frozen} di antaranya frozen)` : '';
+  return `${daftar.barang.length} barang${f}`;
 }
 
 const MODA = { 1: 'Truk', 2: 'Kereta (transit)' };
@@ -62,8 +90,9 @@ function ringkasan(sesi, hargaBahan, { harga = false } = {}) {
     `Penanggung jawab: *${d.pj}*`,
     `Pengiriman: *${d.moda}*`,
     `Bahan kering: *${d.koli_kering} koli*`,
-    `Bahan baku: *${d.koli_baku} koli*`,
   ];
+  if (d.isi_kering?.length) baris.push(...d.isi_kering.map((b, i) => `   ${i + 1}. ${b}`));
+  baris.push(`Bahan baku: *${d.koli_baku} koli*`);
   if (d.dikenal?.length || d.lain?.length) {
     baris.push('Isi bahan baku:');
     let total = 0;
@@ -79,17 +108,43 @@ function ringkasan(sesi, hargaBahan, { harga = false } = {}) {
 }
 
 // Jawaban pertanyaan pengiriman. Mengembalikan balasan (boleh berisi pesan untuk grup lain) atau null.
-export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluaran = [] }) {
+export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluaran = [], event = null }) {
   if (!ctx.sesi) return null;
-  const sesi = ctx.sesi.get(kunci(pesan.groupId));
-  if (!sesi || Date.now() - sesi.waktu > BERLAKU_MS) return null;
   const t = String(pesan.text || '').trim();
   if (!t || t.startsWith('#')) return null;
+  const sesi = ctx.sesi.get(kunci(pesan.groupId));
+  const aktif = sesi && Date.now() - sesi.waktu <= BERLAKU_MS;
+  // Daftar barang: bukan daftar pengeluaran (tanpa nominal). Di luar sesi hanya yang berjudul barang/dry/kering.
+  let daftar = parseMoney(t) ? null : bacaDaftar(t);
+  if (daftar && !aktif && !RE_JUDUL.test(daftar.judul)) daftar = null;
+  if (daftar && (aktif || event)) {
+    const kode = aktif ? sesi.kode : event.kode;
+    const simpanan = { ...daftar, pengirim: namaPengirim(pesan), waktu: Date.now() };
+    if (!aktif || sesi.langkah === L.rincian) {
+      // Pertanyaan belum berjalan di grup ini (atau sedang di grup lain): simpan, dipakai saat ditanyakan.
+      if (!aktif) {
+        ctx.sesi.set(kunciDaftar(kode), simpanan);
+        return balas(`📝 Daftar barang dari ${simpanan.pengirim} tercatat: *${teksDaftar(daftar)}*. Dipakai sebagai *isi bahan kering* data pengiriman ${kode}.`);
+      }
+    } else {
+      sesi.data.isi_kering = daftar.barang;
+      if (!(sesi.data.koli_kering > 0)) sesi.data.koli_kering = daftar.barang.length;
+      ctx.sesi.hapus(kunciDaftar(kode));
+      let info = `📝 Isi bahan kering tercatat: *${teksDaftar(daftar)}*.`;
+      if (sesi.langkah === L.koli_kering || sesi.langkah === L.isi_kering) {
+        sesi.langkah = sesi.ubahSatu ? LANGKAH.length : L.koli_baku;
+        info += ` Jumlah koli bahan kering = *${sesi.data.koli_kering}*.`;
+      }
+      return lanjut(ctx, pesan, sesi, info);
+    }
+  }
+  if (!aktif) return null;
   // Pesan pengeluaran ("lalamove 150k") atau kalimat panjang bukan jawaban: biarkan diproses biasa.
-  if (parseMoney(t) || (sesi.langkah !== 4 && t.split(/\s+/).length > 6)) return null;
+  const bebas = sesi.langkah === L.rincian || sesi.langkah === L.isi_kering; // jawaban berupa daftar
+  if (parseMoney(t) || (!bebas && t.split(/\s+/).length > 6)) return null;
   // Obrolan ("oke pak siap", "makasih") bukan jawaban.
   const OBROLAN = /^(oke|ok|okk|okey|siap|sip|iya|ya|yaa|pak|bu|kak|mas|mbak|bos|boss|baik|noted|mantap|makasih|terima|kasih|thanks|nanti|bentar|sebentar|aman|done|hehe|wkwk)$/i;
-  if (sesi.langkah !== 1 && sesi.langkah < LANGKAH.length && t.split(/\s+/).every((w) => OBROLAN.test(w.replace(/[^a-z]/gi, '')))) return null;
+  if (sesi.langkah !== L.moda && !(sesi.langkah === L.isi_kering && ctx.sesi.get(kunciDaftar(sesi.kode))) && sesi.langkah < LANGKAH.length && t.split(/\s+/).every((w) => OBROLAN.test(w.replace(/[^a-z]/gi, '')))) return null;
   if (/^batal$/i.test(t)) { ctx.sesi.hapus(kunci(pesan.groupId)); return balas('❎ Data pengiriman dibatalkan. Mulai lagi dengan *#kirim*.'); }
   const hargaBahan = await ctx.store.all('Harga Bahan');
   const d = sesi.data;
@@ -100,8 +155,13 @@ export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluara
       return simpan(ctx, pesan, sesi, hargaBahan, { namaPengirim, grupPengeluaran });
     }
     const no = Number(t);
-    if (no >= 1 && no <= LANGKAH.length) { sesi.langkah = no - 1; sesi.ubahSatu = true; ctx.sesi.set(kunci(pesan.groupId), { ...sesi, waktu: Date.now() }); return balas(tanya(sesi)); }
-    return balas('Balas *ya* untuk menyimpan, angka *1–5* untuk mengubah jawaban, atau *batal*.');
+    if (no >= 1 && no <= LANGKAH.length) {
+      sesi.langkah = no - 1; sesi.ubahSatu = true;
+      if (sesi.langkah === L.isi_kering) d.isi_kering = []; // mau diganti: tanya lagi
+      sesi.waktu = Date.now(); ctx.sesi.set(kunci(pesan.groupId), sesi);
+      return balas(tanya(sesi));
+    }
+    return balas(`Balas *ya* untuk menyimpan, angka *1–${LANGKAH.length}* untuk mengubah jawaban, atau *batal*.`);
   }
 
   const l = LANGKAH[sesi.langkah];
@@ -111,6 +171,16 @@ export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluara
     const m = bacaModa(t);
     if (!m) return balas('Balas *1* (truk), *2* (kereta/transit), atau tulis moda lainnya.');
     d.moda = m;
+  } else if (l.k === 'isi_kering') {
+    const simpanan = ctx.sesi.get(kunciDaftar(sesi.kode));
+    if (simpanan && /^(ya|y|iya|pakai|oke|ok|sama|itu)$/i.test(t)) {
+      d.isi_kering = simpanan.barang;
+    } else if (LEWATI.test(t)) {
+      d.isi_kering = [];
+    } else {
+      d.isi_kering = t.split(/\n|,/).map((b) => b.replace(/^\d{1,3}\s*[.)\-]\s*/, '').trim()).filter(Boolean);
+    }
+    ctx.sesi.hapus(kunciDaftar(sesi.kode));
   } else if (l.k === 'koli_kering' || l.k === 'koli_baku') {
     const n = LEWATI.test(t) ? 0 : Number((t.match(/\d+/) || [])[0]);
     if (!(n >= 0)) return balas('Balas angka jumlah koli, contoh *4* (atau *0*).');
@@ -125,12 +195,29 @@ export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluara
     }
   }
   sesi.langkah = sesi.ubahSatu ? LANGKAH.length : sesi.langkah + 1;
+  return lanjut(ctx, pesan, sesi);
+}
+
+// Lewati pertanyaan yang tidak perlu, simpan sesi, lalu tanya langkah berikutnya / minta konfirmasi.
+async function lanjut(ctx, pesan, sesi, awalan = '') {
+  const d = sesi.data;
+  // Bahan kering 0 koli atau isinya sudah ada: daftar tidak ditanya.
+  if (sesi.langkah === L.isi_kering && (d.koli_kering === 0 || d.isi_kering?.length)) { d.isi_kering = d.isi_kering || []; sesi.langkah = sesi.ubahSatu ? LANGKAH.length : L.koli_baku; }
   // Bahan baku 0 koli: rincian tidak ditanya.
-  if (sesi.langkah === 4 && d.koli_baku === 0) { d.dikenal = []; d.lain = []; sesi.langkah = LANGKAH.length; }
+  if (sesi.langkah === L.rincian && d.koli_baku === 0) { d.dikenal = []; d.lain = []; sesi.langkah = LANGKAH.length; }
   sesi.waktu = Date.now();
   ctx.sesi.set(kunci(pesan.groupId), sesi);
-  if (sesi.langkah < LANGKAH.length) return balas(tanya(sesi));
-  return balas(`📋 *Cek data pengiriman ${sesi.kode}*\n${ringkasan(sesi, hargaBahan)}\n\nBalas *ya* untuk menyimpan, angka *1–5* untuk mengubah, atau *batal*.`);
+  const depan = awalan ? `${awalan}\n\n` : '';
+  if (sesi.langkah < LANGKAH.length) {
+    let q = tanya(sesi);
+    const simpanan = ctx.sesi.get(kunciDaftar(sesi.kode));
+    if (sesi.langkah === L.isi_kering && simpanan && Date.now() - simpanan.waktu <= DAFTAR_BERLAKU_MS) {
+      q += `\n\n📝 Sudah ada daftar dari *${simpanan.pengirim}*${simpanan.judul ? ` ("${simpanan.judul}")` : ''}: *${teksDaftar(simpanan)}*. Balas *ya* untuk memakai daftar itu.`;
+    }
+    return balas(depan + q);
+  }
+  const hargaBahan = await ctx.store.all('Harga Bahan');
+  return balas(`${depan}📋 *Cek data pengiriman ${sesi.kode}*\n${ringkasan(sesi, hargaBahan)}\n\nBalas *ya* untuk menyimpan, angka *1–${LANGKAH.length}* untuk mengubah, atau *batal*.`);
 }
 
 async function simpan(ctx, pesan, sesi, hargaBahan, { namaPengirim, grupPengeluaran }) {
@@ -138,7 +225,7 @@ async function simpan(ctx, pesan, sesi, hargaBahan, { namaPengirim, grupPengelua
   const pengirim = namaPengirim(pesan);
   await ctx.store.append('Pengiriman', {
     kode_event: sesi.kode, tanggal: tanggalLokal(pesan.waktu), penanggung_jawab: d.pj, moda: d.moda,
-    koli_kering: d.koli_kering, koli_baku: d.koli_baku,
+    koli_kering: d.koli_kering, isi_kering: (d.isi_kering || []).join('; '), koli_baku: d.koli_baku,
     rincian: [...(d.dikenal || []).map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}`), ...(d.lain || [])].join('; '),
     pengirim, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
   });

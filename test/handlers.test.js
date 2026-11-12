@@ -829,23 +829,47 @@ test('pengiriman & stok awal: ditanya di grup pengeluaran setelah grup tim didaf
   const daftar = await kirimRaw(G_TIM, OWNER, '#daftar event JMB26-11');
   const keKeluar = daftar.filter((b) => b.groupId === G_KELUAR);
   assert.equal(keKeluar.length, 1);
-  assert.match(keKeluar[0].text, /\(1\/5\).*penanggung jawab pengiriman/s);
+  assert.match(keKeluar[0].text, /\(1\/6\).*penanggung jawab pengiriman/s);
   assert.match(daftar.filter((b) => !b.groupId).map((b) => b.text).join('\n'), /grup event.*Tim JMB26-11/s);
   // pengeluaran biasa & obrolan tetap jalan selama pertanyaan pengiriman menunggu
   assert.match(await teks(G_KELUAR, PIC, 'lalamove 150k'), /T0001 lalamove/);
   assert.equal(await teks(G_KELUAR, PIC, 'oke pak siap'), '');
-  assert.match(await teks(G_KELUAR, PIC, 'Imam'), /\(2\/5\)/);
-  assert.match(await teks(G_KELUAR, PIC, '2'), /\(3\/5\).*bahan kering/s);
-  assert.match(await teks(G_KELUAR, OWNER, '6'), /\(4\/5\).*bahan baku/s);
-  assert.match(await teks(G_KELUAR, PIC, '4'), /\(5\/5\).*isi bahan baku/s);
+  // karyawan mengirim daftar barang kering di grup tim (seperti di WhatsApp): disimpan
+  const LIST = 'CPS Barang Dry Semarang\n\n1. Freezer\n2. Box L\n3. Lampu display depan\n4. Meja besi 2\n5. Color box 300kg ( kompor 3 )\n6. Color box 200kg ( prabotan masak, hexos,\n kain hitam )\n7. Styrofoam keju balok ( Frozen )';
+  assert.match(await teks(G_TIM, '6289999999999', LIST), /Daftar barang.*7 barang \(1 di antaranya frozen\).*isi bahan kering/s);
+  assert.match(await teks(G_KELUAR, PIC, 'Imam'), /\(2\/6\)/);
+  assert.match(await teks(G_KELUAR, PIC, '2'), /\(3\/6\).*bahan kering/s);
+  assert.match(await teks(G_KELUAR, OWNER, '7'), /\(4\/6\).*isi bahan kering.*Sudah ada daftar.*7 barang.*Balas \*ya\*/s);
+  assert.match(await teks(G_KELUAR, PIC, 'ya'), /\(5\/6\).*koli bahan baku/s);
+  assert.match(await teks(G_KELUAR, PIC, '4'), /\(6\/6\).*isi bahan baku/s);
   const cek = await teks(G_KELUAR, PIC, 'keju 5 balok, bumbu garlic 3 pack, packaging 886 pcs');
-  assert.match(cek, /Kereta \(transit\).*6 koli.*4 koli.*Mozzarella 5 pack.*Bumbu Garlic 3 pack.*packaging 886 pcs/s);
+  assert.match(cek, /Kereta \(transit\).*7 koli.*1\. Freezer.*6\. Color box 200kg \( prabotan masak, hexos, kain hitam \).*4 koli.*Mozzarella 5 pack.*Bumbu Garlic 3 pack.*packaging 886 pcs/s);
   const hasil = await kirimRaw(G_KELUAR, PIC, 'ya');
   assert.equal(hasil.length, 1);
   assert.match(hasil[0].text, /Mozzarella 5 pack × Rp 234.000 = \*Rp 1.170.000\*.*Total nilai bahan baku: Rp 2.670.000/s);
   const bahan = await store.all('Bahan Event');
   assert.deepEqual(bahan.map((b) => [b.bahan, b.gerak, b.jumlah]), [['Mozzarella', 'Keluar', 5], ['Bumbu Garlic', 'Keluar', 3]]);
+  assert.match((await store.all('Pengiriman'))[0].isi_kering, /^Freezer; Box L; .*Styrofoam keju balok \( Frozen \)$/);
   assert.equal((await store.all('Pengiriman'))[0].moda, 'Kereta (transit)');
+});
+
+test('pengiriman: daftar barang bernomor dikirim saat ditanya langsung dipakai sebagai isi bahan kering', async () => {
+  const { store, ctx } = setup();
+  let n = 0;
+  const teks = async (g, s, text) => (await handlePesan(ctx, { id: `d${++n}`, groupId: g, groupName: g, senderId: s, senderName: 'Alam', text, adaFoto: false, waktu: WAKTU })).map((r) => r.text).join('\n');
+  await teks(G_KELUAR, OWNER, BLOK_EVENT);
+  await teks(G_TIM, OWNER, '#daftar event JMB26-11');
+  assert.match(await teks(G_TIM, OWNER, '#kirim'), /\(1\/6\)/);
+  await teks(G_TIM, PIC, 'Alam');
+  // daftar dikirim saat bot masih menanyakan moda: daftar tercatat, pertanyaan moda tetap menunggu
+  const r = await teks(G_TIM, PIC, 'Barang Dry\n1. Freezer\n2. Box L\n3. Tangga\n4. Troli');
+  assert.match(r, /Isi bahan kering tercatat: \*4 barang\*.*\(2\/6\)/s);
+  assert.match(await teks(G_TIM, PIC, 'truk'), /\(3\/6\)/);
+  assert.match(await teks(G_TIM, PIC, '4'), /\(5\/6\).*bahan baku/s); // isi kering sudah ada, tidak ditanya lagi
+  assert.match(await teks(G_TIM, PIC, '0'), /Cek data.*4 koli.*1\. Freezer.*4\. Troli/s);
+  // daftar pengeluaran bernomor dengan nominal tetap dicatat sebagai pengeluaran
+  assert.match(await teks(G_KELUAR, PIC, 'Belanja\n1. lakban 20rb\n2. tali 15rb\n3. plastik 30rb'), /lakban/);
+  assert.equal((await store.all('Pengiriman')).length, 0);
 });
 
 test('anggota grup tim: tiap karyawan menyebut namanya, nomor pengirim tercatat otomatis', async () => {
