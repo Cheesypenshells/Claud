@@ -306,7 +306,7 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 
 ## Fee PIC khusus event
 
-Biasanya fee PIC mengikuti kehadiran owner (`#owner`): tidak hadir 25% · 1 hari 20% · setengah 15% · penuh 10% dari laba sebelum fee. Untuk event tertentu owner bisa menetapkan angka sendiri di grup pengeluaran: `#feepic 20` atau kalimat `bonus pic nya 20 persen`. Kembali ke aturan biasa: `#feepic normal`. Tersimpan di kolom *Fee PIC Khusus (%)* tab Event.
+Biasanya fee PIC mengikuti kehadiran owner (`#owner`): tidak hadir 25% · 1 hari 20% · setengah 15% · penuh 10% dari laba sebelum fee. **Kalau karyawan tetap (senior) di tim ada 3 orang atau lebih, fee PIC paling tinggi 20%** (kalau owner hadir dan aturannya lebih kecil, yang lebih kecil yang dipakai). Untuk event tertentu owner bisa menetapkan angka sendiri di grup pengeluaran: `#feepic 20` atau kalimat `bonus pic nya 20 persen`. Kembali ke aturan biasa: `#feepic normal`. Tersimpan di kolom *Fee PIC Khusus (%)* tab Event.
 
 ## Bahan baku: pengiriman pertama, restock, sisa
 

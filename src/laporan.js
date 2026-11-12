@@ -24,13 +24,16 @@ export const ATURAN = {
   budgetPorsiGratis: 500000, // per event, dinilai dengan harga jual
   // Fee PIC: maksimal 25% dari laba bersih, dikurangi menurut kehadiran owner di event.
   feePicMaks: 25,
+  seniorBanyak: { jumlah: 3, feeMaks: 20 }, // 3 karyawan tetap atau lebih: fee PIC paling tinggi 20%
   potonganFeePic: { tidak: 0, '1 hari': 5, setengah: 10, penuh: 15 },
 };
 
 // Kehadiran owner tersimpan di Event.owner_hadir: tidak / 1 hari / setengah / penuh.
-export function persenFeePic(ownerHadir) {
+// jumlahSenior: karyawan tetap di tim event. 3 orang atau lebih -> fee PIC paling tinggi 20%.
+export function persenFeePic(ownerHadir, jumlahSenior = 0) {
   const k = String(ownerHadir || 'tidak').toLowerCase();
-  return ATURAN.feePicMaks - (ATURAN.potonganFeePic[k] ?? 0);
+  const menurutOwner = ATURAN.feePicMaks - (ATURAN.potonganFeePic[k] ?? 0);
+  return jumlahSenior >= ATURAN.seniorBanyak.jumlah ? Math.min(menurutOwner, ATURAN.seniorBanyak.feeMaks) : menurutOwner;
 }
 
 // Kategori lama (versi awal bot) dibaca sebagai kategori baru.
@@ -237,7 +240,7 @@ export function hitungEvent(event, data) {
   const picBerhakFee = orang.filter((o) => o.peran === PERAN.PIC && !adalahOwner(o));
   // Fee PIC khusus event (#feepic 20) menimpa aturan kehadiran owner.
   const feeKhusus = event.fee_pic_persen === '' || event.fee_pic_persen == null ? null : num(event.fee_pic_persen);
-  const feePicPersen = picBerhakFee.length ? (feeKhusus ?? persenFeePic(event.owner_hadir)) : 0;
+  const feePicPersen = picBerhakFee.length ? (feeKhusus ?? persenFeePic(event.owner_hadir, jumlahTetap)) : 0;
   const feePic = labaSebelumFee > 0 ? (labaSebelumFee * feePicPersen) / 100 : 0;
   const laba = labaSebelumFee - feePic;
   const namaPic = picBerhakFee.map((o) => o.nama);

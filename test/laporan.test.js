@@ -240,3 +240,16 @@ test('alokasi harian: bahan menurut porsi omzet, biaya lain dibagi rata, jumlah 
   assert.equal(baris.length, r.alokasi.length);
   assert.equal(baris[0].length, 11);
 });
+
+test('fee PIC: 3 karyawan tetap atau lebih -> paling tinggi 20%; owner hadir tetap bisa lebih kecil', async () => {
+  const { persenFeePic } = await import('../src/laporan.js');
+  assert.equal(persenFeePic('tidak', 2), 25);
+  assert.equal(persenFeePic('tidak', 3), 20);
+  assert.equal(persenFeePic('tidak', 4), 20);
+  assert.equal(persenFeePic('setengah', 3), 15);
+  assert.equal(persenFeePic('penuh', 3), 10);
+  const ev = { kode: 'S', mulai: '2026-11-02', selesai: '2026-11-03', bagi_hasil_persen: 25, owner_hadir: 'tidak' };
+  const tim = ['A', 'B', 'C'].map((n) => ({ kode_event: 'S', nama: n, peran: 'Tetap', status: 'AKTIF' })).concat({ kode_event: 'S', nama: 'Budi', peran: 'PIC', status: 'AKTIF' });
+  const r = hitungEvent(ev, { omzet: [{ tanggal: '2026-11-02', kode_event: 'S', omzet: 20000000, refund: 0, status: 'OK' }], tim });
+  assert.equal(r.feePicPersen, 20);
+});
