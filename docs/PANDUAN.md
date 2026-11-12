@@ -276,3 +276,20 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 - **Lihat (owner):** `#kpi` (peringkat bulan terakhir), `#kpi Dena`, `#kpi 2026-09`. Karyawan nanti melihat nilainya sendiri lewat QR kartu + PIN.
 - **File KPI KARYAWAN** di Drive diperbarui otomatis: Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung.
 - **Tab Karyawan** (PEMBUKUAN): isi kode, nama (sama dengan nama di tim event), nomor WA, peran, keahlian, foto, mulai kerja, status.
+
+
+## Pengiriman & stok awal event
+
+Setelah grup tim didaftarkan (`#daftar event KODE` atau pilih 2 saat bot masuk grup), bot langsung bertanya (siapa pun boleh menjawab):
+1. Penanggung jawab pengiriman ke lokasi
+2. Dikirim pakai apa: 1 = Truk, 2 = Kereta (transit), 3 = lainnya
+3. Jumlah koli bahan kering
+4. Jumlah koli bahan baku (0 = pertanyaan 5 dilewati)
+5. Isi bahan baku, contoh `keju 5 balok, bumbu garlic 3 pack, oyster 100 kg`
+
+Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–5 untuk mengubah, `batal` untuk berhenti. Mulai ulang kapan saja dengan `#kirim` (atau `#stokawal`).
+
+- Bahan baku tercatat sebagai **keluar dari gudang** → masuk pembukuan event sebagai *Bahan baku (dari gudang)* dengan harga di tab **Harga Bahan** (contoh keju 5 × harga per balok/pack).
+- Di grup tim hanya jumlah barang; **nilai rupiah dikirim ke grup pengeluaran** (owner + PIC).
+- Bahan yang belum ada di tab Harga Bahan (misalnya packaging) tetap dicatat di tab **Pengiriman**, tapi belum dihitung nilainya.
+- Akhir event: laporkan sisa (`sisa keju 2 balok`); sisa mengurangi biaya bahan baku.

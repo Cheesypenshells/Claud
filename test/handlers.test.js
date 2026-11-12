@@ -817,3 +817,38 @@ test('tanya-jawab setup event boleh dijawab siapa pun di grup', async () => {
   assert.match(await kirim(G_KELUAR, KARYAWAN, '#eventbaru'), /khusus owner/);
   assert.equal((await store.all('Event')).length, 0);
 });
+
+test('pengiriman & stok awal: ditanya setelah grup tim didaftarkan; harga hanya ke grup pengeluaran', async () => {
+  const { store, ctx } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  let n = 0;
+  const kirimRaw = (groupId, senderId, text) => handlePesan(ctx, { id: `k${++n}`, groupId, groupName: groupId, senderId, senderName: senderId === OWNER ? 'George' : 'Budi', text, adaFoto: false, waktu: WAKTU });
+  const teks = async (...a) => (await kirimRaw(...a)).map((r) => r.text).join('\n');
+  await teks(G_KELUAR, OWNER, BLOK_EVENT); // event 2-8 Nov, hari ini 3 Nov (berjalan)
+  const daftar = await teks(G_TIM, OWNER, '#daftar event JMB26-11');
+  assert.match(daftar, /grup event.*\(1\/5\).*penanggung jawab pengiriman/s);
+  assert.match(await teks(G_TIM, PIC, 'Imam'), /\(2\/5\)/);
+  assert.match(await teks(G_TIM, PIC, '2'), /\(3\/5\).*bahan kering/s);
+  assert.match(await teks(G_TIM, KARYAWAN, '6'), /\(4\/5\).*bahan baku/s);
+  assert.match(await teks(G_TIM, PIC, '4'), /\(5\/5\).*isi bahan baku/s);
+  const cek = await teks(G_TIM, PIC, 'keju 5 balok, bumbu garlic 3 pack, packaging 886 pcs');
+  assert.match(cek, /Kereta \(transit\).*6 koli.*4 koli.*Mozzarella 5 pack.*Bumbu Garlic 3 pack.*packaging 886 pcs/s);
+  assert.doesNotMatch(cek, /Rp/);
+  const hasil = await kirimRaw(G_TIM, PIC, 'ya');
+  assert.equal(hasil.length, 2);
+  assert.doesNotMatch(hasil[0].text, /Rp/); // grup tim: tanpa harga
+  assert.equal(hasil[1].groupId, G_KELUAR);
+  assert.match(hasil[1].text, /Mozzarella 5 pack × Rp 234.000 = \*Rp 1.170.000\*.*Bumbu Garlic 3 pack × Rp 500.000 = \*Rp 1.500.000\*.*packaging 886 pcs _\(belum ada di tab Harga Bahan.*Total nilai bahan baku: Rp 2.670.000/s);
+  const bahan = await store.all('Bahan Event');
+  assert.deepEqual(bahan.map((b) => [b.bahan, b.gerak, b.jumlah]), [['Mozzarella', 'Keluar', 5], ['Bumbu Garlic', 'Keluar', 3]]);
+  assert.equal((await store.all('Pengiriman'))[0].moda, 'Kereta (transit)');
+  // #kirim di grup pengeluaran, bahan baku 0 koli -> rincian tidak ditanya
+  await teks(G_KELUAR, OWNER, '#kirim');
+  await teks(G_KELUAR, OWNER, 'Imam');
+  await teks(G_KELUAR, OWNER, 'truk');
+  await teks(G_KELUAR, OWNER, '3');
+  assert.match(await teks(G_KELUAR, OWNER, '0'), /Cek data pengiriman.*Truk.*3 koli.*0 koli/s);
+  const s2 = await kirimRaw(G_KELUAR, OWNER, 'ya');
+  assert.equal(s2.length, 1);
+});

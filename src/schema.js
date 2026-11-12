@@ -100,6 +100,22 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Pengiriman & stok awal event (loading in).
+  Pengiriman: {
+    warna: '#6D4C41',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('tanggal', 'Tanggal', 105),
+      k('penanggung_jawab', 'Penanggung Jawab', 150),
+      k('moda', 'Dikirim Pakai', 140, { catatan: 'Truk / Kereta (transit) / lainnya' }),
+      k('koli_kering', 'Koli Bahan Kering', 120, { format: 'angka' }),
+      k('koli_baku', 'Koli Bahan Baku', 120, { format: 'angka' }),
+      k('rincian', 'Isi Bahan Baku', 320),
+      k('pengirim', 'Dicatat Oleh', 190),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Struk yang sudah dipakai: supaya satu struk tidak dipakai dua kali.
   Struk: {
     warna: '#795548',

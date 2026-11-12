@@ -53,7 +53,11 @@ async function main() {
     kodePairing: config.kodePairing,
     onPesan: (pesan, balasKe) => jalankan(async () => {
       const balasan = await handlePesan(ctx, pesan);
-      for (const b of balasan) await balasKe(b.text);
+      // Balasan bisa juga untuk grup lain (contoh: nilai bahan baku dikirim ke grup pengeluaran).
+      for (const b of balasan) {
+        if (b.groupId && b.groupId !== pesan.groupId) await wa.kirim(b.groupId, b.text);
+        else await balasKe(b.text);
+      }
       if (balasan.length) perluPerbaruiMain = true;
     }),
     onGrupBaru: (groupId) => jalankan(async () => {
