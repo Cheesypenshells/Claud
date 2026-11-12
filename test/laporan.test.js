@@ -61,10 +61,10 @@ test('hitungEvent: biaya per kategori, gaji, bonus, bahan, laba', () => {
   assert.equal(biaya['Barang kering non-konsumtif ⚠️ kelalaian'], 25000);
   assert.equal(biaya['Iklan & endorse'], 500000);
 
-  // Karyawan tetap (1 orang): gaji pokok 2,5 jt / 30 x 3 hari; bonus 1,5% x 65 jt
+  // Karyawan tetap (1 orang, 1 event dalam sebulan): gaji pokok 2,5 jt penuh; omzet 65 jt (<= 100 jt): tanpa bonus
   const andi = r.barisTim.find((o) => o.nama === 'Andi');
-  assert.equal(Math.round(andi.upah), 250000);
-  assert.equal(andi.bonus, 975000);
+  assert.equal(Math.round(andi.upah), 2500000);
+  assert.equal(andi.bonus, 0);
   // DW Joko 3 hari x 100rb; bonus: 20 jt (>15 jt) 50rb + 35 jt (>30 jt) 100rb + 10 jt 0 = 150rb
   const joko = r.barisTim.find((o) => o.nama === 'Joko');
   assert.equal(joko.upah, 300000);
@@ -98,15 +98,34 @@ test('hitungEvent: biaya per kategori, gaji, bonus, bahan, laba', () => {
   assert.equal(r.hari[1].diterima, 6000000);
 });
 
-test('bonus karyawan tetap: 2 orang masing-masing 1%, omzet < 50 jt tidak dapat bonus', () => {
+test('bonus senior: omzet > 100 jt; 1 event sebulan = 0,5% dibagi, 2+ event = 1% per orang; gaji pokok dibagi per event', () => {
   const dua = [...tim, { kode_event: 'JMB26-11', nama: 'Rudi', peran: 'Tetap', upah_harian: 0 }];
-  const r = hitungEvent(event, { ...data, tim: dua });
-  assert.equal(r.barisTim.find((o) => o.nama === 'Andi').bonus, 650000);
-  assert.equal(r.barisTim.find((o) => o.nama === 'Rudi').bonus, 650000);
+  const ramai = omzet.map((o) => ({ ...o, omzet: Number(o.omzet) * 2 })); // 130 jt
+  // 1 event dalam sebulan: 0,5% x 130 jt = 650rb dibagi 2 senior
+  const r = hitungEvent(event, { ...data, omzet: ramai, tim: dua });
+  assert.equal(r.omzetBersih, 130000000);
+  assert.equal(r.barisTim.find((o) => o.nama === 'Andi').bonus, 325000);
+  assert.equal(r.barisTim.find((o) => o.nama === 'Rudi').bonus, 325000);
+  assert.equal(r.barisTim.find((o) => o.nama === 'Andi').upah, 2500000);
 
-  const sepi = omzet.map((o) => ({ ...o, omzet: 10000000 }));
-  const r2 = hitungEvent(event, { ...data, omzet: sepi });
-  assert.equal(r2.barisTim.find((o) => o.nama === 'Andi').bonus, 0);
+  // Ada event lain (tempat berbeda) yang mulai < 1 bulan: tiap senior 1% (tidak dibagi) = 1,3 jt
+  const lain = { kode: 'LMB26-11', kota: 'Lombok', mulai: '2026-11-10', selesai: '2026-11-15', status: 'AKTIF' };
+  const r2 = hitungEvent(event, { ...data, omzet: ramai, tim: dua, events: [event, lain] });
+  assert.equal(r2.barisTim.find((o) => o.nama === 'Andi').bonus, 1300000);
+  assert.equal(r2.barisTim.find((o) => o.nama === 'Rudi').bonus, 1300000);
+  // Andi tidak jaga di Lombok: gaji pokok tetap penuh di event ini
+  assert.equal(r2.barisTim.find((o) => o.nama === 'Andi').upah, 2500000);
+  // Andi juga jaga event berikutnya (berturut-turut): gaji pokok dibagi 2
+  const timDua = [...dua, { kode_event: 'LMB26-11', nama: 'Andi', peran: 'Tetap', upah_harian: 0, status: 'AKTIF' }];
+  const r3 = hitungEvent(event, { ...data, omzet: ramai, tim: timDua, events: [event, lain] });
+  assert.equal(r3.barisTim.find((o) => o.nama === 'Andi').upah, 1250000);
+  assert.equal(r3.barisTim.find((o) => o.nama === 'Rudi').upah, 2500000);
+  // Event lain yang jaraknya > 1 bulan tidak dihitung
+  const jauh = { ...lain, mulai: '2026-12-20', selesai: '2026-12-25' };
+  assert.equal(hitungEvent(event, { ...data, omzet: ramai, tim: dua, events: [event, jauh] }).barisTim.find((o) => o.nama === 'Andi').bonus, 325000);
+
+  // Omzet 65 jt (<= 100 jt): tidak ada bonus
+  assert.equal(hitungEvent(event, { ...data, tim: dua }).barisTim.find((o) => o.nama === 'Andi').bonus, 0);
 });
 
 test('barisDataMain: bagian lengkap dan tidak melebihi batas baris sheet Main', () => {
@@ -198,7 +217,8 @@ test('gaji yang dibayar lewat grup dipakai sebagai upah (sama dengan #rekap), wa
   assert.equal(upah[1], 3100000);
   const totalCatatan = gaji.filter((t) => t.jenis === JENIS.KELUAR).reduce((s, t) => s + t.nominal, 0);
   // tanpa omzet & tanpa bahan gudang/gaji tetap: total biaya = jumlah semua pengeluaran grup + bahan gudang
-  assert.equal(r.totalBiaya - r.biaya.find(([n]) => n === 'Bahan baku')[1] + 1500000 - r.biaya.find(([n]) => n === 'Admin IO + listrik/air/gas/galon')[1] + 0, totalCatatan - 0);
+  assert.equal(r.totalBiaya - r.biaya.find(([n]) => n === 'Bahan baku')[1] + 1500000 - r.biaya.find(([n]) => n === 'Admin IO + listrik/air/gas/galon')[1]
+    - r.biaya.find(([n]) => n === 'Gaji karyawan tetap (porsi event)')[1], totalCatatan);
 });
 
 test('rekap event lama: omzet total -> semua hari event dihitung; upah DW = total catatan gaji PIC (satu baris); gaji khusus tetap tanpa bonus', async () => {

@@ -13,10 +13,14 @@ const aktif = (r) => (r.status || STATUS.OK) !== STATUS.BATAL;
 const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const ATURAN = {
+  // Karyawan tetap (senior), dibayar langsung oleh owner:
+  // - Gaji pokok Rp 2,5 jt/bulan, dibebankan ke event yang dijaganya dalam rentang sebulan (1 event = penuh,
+  //   2 event = masing-masing setengah, dst.).
+  // - Bonus kalau omzet kotor event > Rp 100 jt: bulan itu hanya 1 event -> 0,5% dibagi rata ke senior yang
+  //   jaga; 2 event atau lebih (jarak mulai < 1 bulan, tempat sama atau berbeda) -> tiap senior 1% (tidak dibagi).
   gajiPokokTetap: 2500000,
-  hariPerBulan: 30,
-  omzetMinBonusTetap: 50000000,
-  bonusTetapPersen: { satu: 1.5, perOrang: 1 }, // 1 orang: 1,5%; 2 orang: masing-masing 1%
+  jendelaBulanHari: 30,
+  bonusTetap: { batasOmzet: 100000000, satuEventPersen: 0.5, banyakEventPersen: 1 },
   bonusDw: [[30000000, 100000], [15000000, 50000]], // omzet hari itu > batas
   bonusKasir: [[30000000, 200000], [20000000, 150000], [10000000, 100000]], // omzet hari itu >= batas
   budgetMakanKaryawan: 30000,
@@ -126,7 +130,17 @@ export function hitungEvent(event, data) {
   // ---------- Tim, gaji, bonus ----------
   const orang = tim.filter((o) => o.kode_event === kode && aktif(o));
   const jumlahTetap = orang.filter((o) => o.peran === PERAN.TETAP).length;
-  const persenTetap = jumlahTetap === 1 ? ATURAN.bonusTetapPersen.satu : ATURAN.bonusTetapPersen.perOrang;
+  // Event lain yang mulainya kurang dari sebulan dari event ini (semua tempat) -> menentukan persen bonus senior.
+  const selisihHari = (a, b) => Math.abs((new Date(`${a}T00:00:00Z`) - new Date(`${b}T00:00:00Z`)) / 86400000);
+  const semuaEvent = (data.events || [event]).filter((e) => e.status !== STATUS.BATAL && e.status !== 'BATAL' && e.mulai);
+  const eventDekat = semuaEvent.filter((e) => e.kode === kode || (event.mulai && selisihHari(e.mulai, event.mulai) < ATURAN.jendelaBulanHari));
+  if (!eventDekat.some((e) => e.kode === kode)) eventDekat.push(event);
+  const jumlahEventBulan = eventDekat.length;
+  const persenTetap = jumlahEventBulan >= 2 ? ATURAN.bonusTetap.banyakEventPersen : ATURAN.bonusTetap.satuEventPersen / Math.max(1, jumlahTetap);
+  const samaN = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  // Berapa event dalam rentang sebulan yang dijaga senior ini (untuk membagi gaji pokok).
+  const eventSenior = (nama) => Math.max(1, eventDekat.filter((e) => e.kode === kode
+    || tim.some((t) => t.kode_event === e.kode && aktif(t) && t.peran === PERAN.TETAP && samaN(t.nama, nama))).length);
   // Gaji/upah yang sudah dibayar lewat grup (kategori Gaji & Upah) = angka sebenarnya untuk DW & kasir:
   // dicocokkan per nama di keterangan ("bayar gaji tyos"); yang tidak menyebut nama ditampilkan terpisah.
   const trxGaji = keluar.filter((t) => t.kategori === KATEGORI.GAJI);
@@ -153,10 +167,10 @@ export function hitungEvent(event, data) {
     } else if (o.peran === PERAN.TETAP) {
       // Gaji khusus event dari owner (#gaji) menggantikan estimasi gaji pokok ÷ 30 × hari kerja.
       const khusus = num(o.gaji_event);
-      upahHarian = khusus ? khusus / Math.max(1, hariKerja.length) : ATURAN.gajiPokokTetap / ATURAN.hariPerBulan;
-      upah = khusus || upahHarian * hariKerja.length;
-      // Gaji khusus event = total yang diterima (tanpa bonus omzet tambahan).
-      if (!khusus && omzetBersih >= ATURAN.omzetMinBonusTetap) bonus = (omzetBersih * persenTetap) / 100;
+      upah = khusus || ATURAN.gajiPokokTetap / eventSenior(o.nama);
+      upahHarian = upah / Math.max(1, hariKerja.length);
+      // Gaji khusus event (#gaji) = total yang diterima (tanpa bonus omzet tambahan).
+      if (!khusus && omzetBersih > ATURAN.bonusTetap.batasOmzet) bonus = (omzetBersih * persenTetap) / 100;
     } else if ((o.peran === PERAN.DW || o.peran === PERAN.KASIR) && pakaiGajiTercatat) {
       upah = gajiDari(o.nama);
       upahHarian = hariKerja.length ? upah / hariKerja.length : 0;
@@ -222,14 +236,16 @@ export function hitungEvent(event, data) {
     ['Penginapan', jumlahKategori(KATEGORI.PENGINAPAN), ''],
     ['Konsumsi', makanTerpakai, `Budget ${budgetMakan.toLocaleString('id-ID')}`],
     ['Gaji karyawan tetap (porsi event)', gajiTetap, orang.some((o) => o.peran === PERAN.TETAP && num(o.gaji_event))
-      ? `Gaji khusus event: ${orang.filter((o) => o.peran === PERAN.TETAP).map((o) => `${o.nama} ${num(o.gaji_event) ? num(o.gaji_event).toLocaleString('id-ID') : 'estimasi'}`).join(', ')}`
-      : 'Estimasi: gaji pokok ÷ 30 × hari kerja'],
+      ? `Gaji khusus event: ${orang.filter((o) => o.peran === PERAN.TETAP).map((o) => `${o.nama} ${num(o.gaji_event) ? num(o.gaji_event).toLocaleString('id-ID') : 'gaji pokok'}`).join(', ')}`
+      : `Gaji pokok 2,5 jt/bulan ÷ jumlah event yang dijaga dalam sebulan (${jumlahEventBulan} event dalam sebulan ini)`],
     // Gaji/upah yang sudah dibayar lewat grup (kategori Gaji & Upah) adalah angka sebenarnya, jadi dipakai
     // menggantikan estimasi dari daftar tim; sama dengan #rekap. Estimasi hanya kalau belum ada catatan.
     ['Upah DW + kasir', gajiTercatat || upahHarian, gajiTercatat
       ? `Dibayar lewat grup (${keluar.filter((t) => t.kategori === KATEGORI.GAJI).length} catatan), dicocokkan per nama di tabel Tim & Gaji`
       : 'Estimasi dari daftar tim'],
-    ['Estimasi bonus (poin KPI 100%)', totalBonus, 'Bonus omzet; bonus absensi & followers menyusul'],
+    ['Estimasi bonus (poin KPI 100%)', totalBonus, omzetBersih > ATURAN.bonusTetap.batasOmzet
+      ? `Senior: ${jumlahEventBulan >= 2 ? '1% omzet kotor per orang (2+ event dalam sebulan)' : `0,5% omzet kotor dibagi ${Math.max(1, jumlahTetap)} senior (1 event dalam sebulan)`}`
+      : 'Senior: omzet kotor belum di atas 100 jt, tidak ada bonus'],
     ['Iklan & endorse', jumlahKategori(KATEGORI.IKLAN), ''],
     ['Tak terduga', jumlahKategori(KATEGORI.TAK_TERDUGA), 'Sakit, ganti rugi, lain-lain'],
     ['Lain-lain', lainnya, ''],

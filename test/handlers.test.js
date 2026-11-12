@@ -360,7 +360,7 @@ test('uang siapa: dari pesan, default pengirim, ubah, penggantian', async () => 
   assert.equal(trx.find((t) => t.jenis === 'Penggantian').nominal, 100000);
   const { hitungEvent } = await import('../src/laporan.js');
   const r2 = hitungEvent((await store.all('Event'))[0], { transaksi: trx, tim: await store.all('Tim Event') });
-  assert.equal(r2.totalBiaya, 150000 + 200000 + 300000 + 50000 + 25000 + 500000); // + admin IO 500rb
+  assert.equal(r2.totalBiaya, 150000 + 200000 + 300000 + 50000 + 25000 + 500000 + 2500000); // + admin IO 500rb + gaji pokok Imam
   assert.equal(r2.penggantian.find((u) => u.nama === 'Mama').sisa, 250000);
 });
 

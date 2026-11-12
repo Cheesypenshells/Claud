@@ -300,7 +300,15 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 
 ## Gaji karyawan tetap & upah DW
 
-- **Karyawan tetap, gaji khusus event** (owner, grup pengeluaran): `#gaji tiara, veri, dena 2jt` atau kalimat `gaji tiara, veri, dena masing masing 2 juta`. Angka ini = total yang diterima untuk event itu (menggantikan estimasi gaji pokok ÷ 30 × hari kerja, tanpa bonus omzet tambahan). Tersimpan di kolom *Gaji Khusus Event* tab Tim Event. Jangan dicatat sebagai pengeluaran biasa.
+**Aturan karyawan tetap (senior)**, gaji pokok dan bonus ditransfer langsung oleh owner (tidak lewat PIC):
+- **Gaji pokok Rp 2,5 jt/bulan** dibebankan ke event yang dijaga dalam rentang sebulan: jaga 1 event = Rp 2,5 jt penuh masuk biaya event itu; jaga 2 event berturut-turut = masing-masing Rp 1,25 jt; dst.
+- **Bonus** hanya kalau omzet kotor event **di atas Rp 100 jt**:
+  - dalam sebulan hanya **1 event**: **0,5%** omzet kotor, **dibagi rata** ke senior yang jaga;
+  - dalam sebulan **2 event atau lebih** (tempat sama atau berbeda, jarak mulai kurang dari sebulan): **setiap senior 1%** omzet kotor event tempat dia jaga, tidak dibagi.
+- Hitungan otomatis; `#gaji` hanya untuk pengecualian (angka itu menggantikan gaji pokok + bonus).
+
+
+- **Pengecualian gaji khusus event** (owner, grup pengeluaran): `#gaji tiara, veri, dena 2jt`. Angka ini = total yang diterima untuk event itu (menggantikan gaji pokok + bonus di atas). Tersimpan di kolom *Gaji Khusus Event* tab Tim Event. Jangan dicatat sebagai pengeluaran biasa.
 - **DW & kasir**: kalau gajinya sudah dicatat sebagai pengeluaran (kategori Gaji & Upah), angka itulah yang dipakai, tanpa bonus perkiraan. Untuk rekap event lama (omzet total), DW tampil satu baris = total catatan gaji dari rekapan PIC, tanpa hari kerja.
 - Rekap event lama dengan omzet total (satu angka): semua tanggal event dihitung sebagai hari kerja.
 
