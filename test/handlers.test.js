@@ -496,6 +496,35 @@ test('peringatan dobel: reply "catat, uang melia" mencatat sekaligus mengubah ua
   assert.equal((await store.all('Transaksi')).length, 3);
 });
 
+test('reply peringatan dobel dengan "catat, uang melia": semua kolom catatan baru dipakai + koreksinya', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'makan karyawan nasi goreng melia 90rb tanggal 2 nov');
+  const peringatan = await kirim(G_KELUAR, PIC, 'makan siang 90rb tanggal 4 nov');
+  assert.match(peringatan, /nominalnya sama dengan catatan lama.*Lama: \*T0001\*/s);
+
+  // Tanpa kata "catat": belum dicatat, catatan lama T0001 juga tidak diubah
+  const r0 = await kirim(G_KELUAR, PIC, '', { kutipan: { teks: peringatan }, text: 'uang melia' });
+  assert.match(r0, /belum saya catat.*catat uang melia/s);
+  assert.equal((await store.all('Transaksi')).length, 1);
+  assert.equal((await store.all('Transaksi'))[0].dibayar_oleh, 'Budi');
+
+  const r = await kirim(G_KELUAR, PIC, '', { kutipan: { teks: peringatan }, text: 'catat, uang melia' });
+  assert.match(r, /T0002 makan siang - \*Rp 90.000\*/i);
+  const semua = await store.all('Transaksi');
+  assert.equal(semua.length, 2);
+  const baru = semua.find((t) => t.id === 'T0002');
+  assert.equal(baru.dibayar_oleh, 'Melia');
+  assert.equal(baru.tanggal, '2026-11-04');
+  assert.equal(Number(baru.nominal), 90000);
+  assert.equal(semua.find((t) => t.id === 'T0001').dibayar_oleh, 'Budi');
+
+  // Tanpa reply juga bisa: "catat tanggal 5 nov"
+  await kirim(G_KELUAR, PIC, 'makan malam 90rb');
+  assert.match(await kirim(G_KELUAR, PIC, 'catat tanggal 5 nov'), /T0003/);
+  assert.equal((await store.all('Transaksi')).find((t) => t.id === 'T0003').tanggal, '2026-11-05');
+});
+
 test('foto bukti trf untuk catatan dobel: nominal & tanggal dicek', async () => {
   const { store, kirim, ctx } = setup();
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);

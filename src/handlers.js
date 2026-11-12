@@ -1065,6 +1065,16 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
+  // Reply koreksi ("uang melia", "tanggal 3 okt", "batal") ke peringatan dobel tanpa kata "catat": jangan sampai
+  // catatan LAMA yang disebut di peringatan ikut berubah/batal. Jelaskan caranya.
+  if (!cmd && balasDobel && !pesan.adaFoto && teks) {
+    const k = bacaKoreksi(teks, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: true, rentang: event ? { mulai: event.mulai, selesai: event.selesai } : null });
+    if (k) {
+      if (!ambilDobel()) return balas('⏳ Catatan baru di peringatan ini sudah tidak tersimpan (lewat 1 jam). Mohon kirim ulang pengeluarannya sebagai pesan baru.');
+      return balas(`📝 Catatan barunya *belum saya catat*. Kalau memang pengeluaran lain, reply peringatan dengan *catat ${teks}* (semua kolom catatan baru dipakai, lalu diubah sesuai koreksimu). Kalau dobel, reply *batal*.`);
+    }
+  }
+
   // Reply ke pesan/foto yang sudah tercatat: koreksi untuk catatan itu, tidak pernah dicatat dua kali.
   const sudahCatat = !cmd && pesan.kutipan?.id && ctx.sesi?.get(`pesancatat:${pesan.groupId}:${pesan.kutipan.id}`);
   if (sudahCatat?.ids?.length) {
