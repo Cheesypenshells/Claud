@@ -364,7 +364,10 @@ async function simpanDanBalas(ctx, pesan, { buku, jenis, kodeEvent, items, dilew
     if (dobel.length) {
       items = items.filter((i) => !dobel.some((d) => d.i === i));
       if (ctx.sesi) {
+        // Penunjuk per grup: siapa pun boleh me-reply peringatan ini dengan "catat" / "batal".
+        ctx.sesi.set(`dobelgrup|${pesan.groupId}`, { kunci: kunciDobel(pesan), waktu: Date.now() });
         ctx.sesi.set(kunciDobel(pesan), {
+          senderId: pesan.senderId, senderName: pesan.senderName || '',
           items: dobel.map((d) => d.i), buku, kodeEvent, waktu: Date.now(),
           lama: dobel.map((d) => ({ id: d.lama.id, keterangan: d.lama.keterangan, tanggal: String(d.lama.tanggal || '').slice(0, 10), nominal: Number(d.lama.nominal) })),
         });
@@ -1013,11 +1016,21 @@ export async function handlePesan(ctx, pesan) {
   }
 
   // Peringatan dobel: "batal" = tidak dicatat; foto bukti trf dicek nominal & tanggalnya.
+  // Milik pengirim sendiri, atau (kalau me-reply peringatannya) milik siapa pun di grup.
+  const balasDobel = /nominalnya sama dengan catatan lama/i.test(pesan.kutipan?.teks || '');
+  const ambilDobel = () => {
+    if (!ctx.sesi) return null;
+    const sendiri = ctx.sesi.get(kunciDobel(pesan));
+    if (sendiri && Date.now() - sendiri.waktu < 60 * 60 * 1000) return { d: sendiri, kunci: kunciDobel(pesan) };
+    const p = balasDobel && ctx.sesi.get(`dobelgrup|${pesan.groupId}`);
+    const lain = p && ctx.sesi.get(p.kunci);
+    return lain && Date.now() - lain.waktu < 60 * 60 * 1000 ? { d: lain, kunci: p.kunci } : null;
+  };
   if (ctx.sesi) {
-    const d = ctx.sesi.get(kunciDobel(pesan));
-    if (d && Date.now() - d.waktu < 60 * 60 * 1000) {
-      if (!cmd && /^(batal|dobel|hapus|gak jadi|tidak jadi|ga jadi|ya dobel|iya dobel)$/i.test(teks)) {
-        ctx.sesi.hapus(kunciDobel(pesan));
+    const { d, kunci: kunciD } = ambilDobel() || {};
+    if (d) {
+      if (!cmd && /^(batal|dobel|hapus|gak jadi|tidak jadi|ga jadi|ya dobel|iya dobel|itu dobel|dobel itu)$/i.test(teks.replace(/[.!]+$/, ''))) {
+        ctx.sesi.hapus(kunciD);
         return balas(`👌 Oke, tidak dicatat (dobel dengan ${(d.lama || []).map((x) => x.id).join(', ') || 'catatan lama'}).`);
       }
       // Foto dipakai sebagai bukti dobel hanya kalau me-reply peringatan dobel, atau nominalnya cocok.
@@ -1031,12 +1044,24 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
-  // Jawaban "catat" atas peringatan dobel.
-  if (!cmd && ctx.sesi && /^(catat|catat aja|catat saja|ya catat|iya catat|tetap catat|lanjut catat)$/i.test(teks)) {
-    const d = ctx.sesi.get(kunciDobel(pesan));
-    if (d && Date.now() - d.waktu < 60 * 60 * 1000) {
-      ctx.sesi.hapus(kunciDobel(pesan));
-      return catatUang(ctx, pesan, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: d.items });
+  // Jawaban "catat" atas peringatan dobel. Boleh dengan tambahan koreksi: "catat, uang melia",
+  // "catat tanggal 3 okt". Me-reply peringatannya dengan "ya" / "lanjut" / "bukan dobel" juga berarti catat.
+  if (!cmd && ctx.sesi) {
+    const m = teks.match(/^(?:ya|iya|oke|ok|tetap|lanjut)?\s*catat(?:\s+(?:aja|saja|ya))?\b[\s,.:;-]*(.*)$/is)
+      || (balasDobel && teks.match(/^(?:ya|iya|yaa|oke|ok|lanjut|benar|betul|bukan dobel|beda|lain)\b[\s,.:;-]*(.*)$/is));
+    const ambil = m && ambilDobel();
+    if (ambil) {
+      const { d, kunci: kunciD } = ambil;
+      ctx.sesi.hapus(kunciD);
+      // Dicatat atas nama pengirim asli pesan pengeluaran.
+      const asal = d.senderId ? { ...pesan, senderId: d.senderId, senderName: d.senderName } : pesan;
+      const hasil = await catatUang(ctx, asal, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: d.items });
+      const tambahan = bersihkanTeks(m[1] || '');
+      if (!tambahan) return hasil;
+      const ids = ctx.sesi.get(`pesancatat:${pesan.groupId}:${pesan.id}`)?.ids || [];
+      const koreksi = ids.length ? await koreksiCatatan(ctx, { ...pesan, text: tambahan }, event, ids, true) : null;
+      if (koreksi) return [...hasil, ...koreksi];
+      return [...hasil, { text: `🤔 Sudah dicatat, tapi "${tambahan}" belum saya pahami. Reply catatannya dengan, contoh: *uang melia* / *tanggal 3 okt* / *masuk konsumsi*.` }];
     }
   }
 

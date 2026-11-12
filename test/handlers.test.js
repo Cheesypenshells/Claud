@@ -476,6 +476,26 @@ test('pengaman dobel: nominal sama dengan catatan lama ditanya dulu, "catat" unt
   assert.equal((await store.all('Transaksi')).length, 3);
 });
 
+test('peringatan dobel: reply "catat, uang melia" mencatat sekaligus mengubah uang siapa; siapa pun boleh menjawab', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, PIC, 'makan karyawan nasi goreng melia 90rb');
+  const warn = await kirim(G_KELUAR, PIC, 'makan siang 90rb');
+  assert.match(warn, /nominalnya sama dengan catatan lama/);
+  const kutip = { kutipan: { teks: warn, pengirim: '', id: 'botwarn' } };
+  // owner (bukan pengirim) me-reply peringatan
+  const r = await kirim(G_KELUAR, OWNER, 'catat, uang melia', kutip);
+  assert.match(r, /T0002 makan siang - \*Rp 90.000\*/);
+  assert.doesNotMatch(r, /belum saya pahami/);
+  const t2 = (await store.all('Transaksi')).find((t) => t.id === 'T0002');
+  assert.match(t2.dibayar_oleh, /melia/i);
+  assert.match(t2.pengirim, /Budi/); // tetap atas nama pengirim asli
+  // reply "ya" ke peringatan juga berarti catat
+  const warn2 = await kirim(G_KELUAR, PIC, 'makan malam 90rb');
+  assert.match(await kirim(G_KELUAR, OWNER, 'ya', { kutipan: { teks: warn2, pengirim: '', id: 'botwarn2' } }), /T0003 makan malam/);
+  assert.equal((await store.all('Transaksi')).length, 3);
+});
+
 test('foto bukti trf untuk catatan dobel: nominal & tanggal dicek', async () => {
   const { store, kirim, ctx } = setup();
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
