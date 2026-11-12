@@ -177,8 +177,9 @@ test('tim, bahan, porsi gratis, dan data sheet Main', async () => {
   await kirim(G_TIM, PIC, '#omzet 20jt');
   await perbaruiMain(store);
   const bagian = (b) => store.dataMain.filter((x) => x[0] === 'JMB26-11' && x[1] === b);
-  assert.equal(bagian('OMZET').length, 1);
-  assert.equal(bagian('GRATIS').length, 1);
+  assert.equal(bagian('OMZET').length, 2); // 1 hari + baris TOTAL
+  assert.equal(bagian('GRATIS').length, 2);
+  assert.equal(bagian('OMZET').at(-1)[3], 'TOTAL');
   assert.equal(bagian('BAHAN').find((x) => x[3] === 'Mozzarella')[8], '7');
   assert.ok(bagian('TIM').some((x) => x[3] === 'Tono' && /berhenti/.test(x[4])));
   const biaya = Object.fromEntries(bagian('BIAYA').map((x) => [x[4], x[5]]));

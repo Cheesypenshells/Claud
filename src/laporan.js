@@ -60,7 +60,7 @@ export function warnaKelompok(k) {
   return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
 }
 
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 16, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 17, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -277,9 +277,17 @@ export function hitungEvent(event, data) {
 export function barisDataMain(r) {
   const kode = r.event.kode;
   const baris = [];
-  const tambah = (bagian, data) => {
+  // jumlah = indeks kolom yang dijumlahkan di baris TOTAL (paling bawah tabel); total dihitung dari semua data.
+  const tambah = (bagian, data, { jumlah = null, label = 0 } = {}) => {
     const batas = BATAS_BARIS[bagian];
-    data.slice(0, batas).forEach((isi, i) => baris.push([kode, bagian, i + 1, ...isi]));
+    let isiTabel = data.slice(0, batas);
+    if (jumlah && data.length) {
+      const total = new Array(Math.max(...data.map((d) => d.length))).fill('');
+      total[label] = 'TOTAL';
+      for (const k of jumlah) total[k] = data.reduce((s, d) => s + (Number(d[k]) || 0), 0);
+      isiTabel = [...data.slice(0, batas - 1), total];
+    }
+    isiTabel.forEach((isi, i) => baris.push([kode, bagian, i + 1, ...isi]));
   };
   // Omzet total (rekap event lama): hari jualan = semua tanggal event.
   const jumlahHari = r.jumlahHariJualan || r.hari.length;
@@ -303,15 +311,15 @@ export function barisDataMain(r) {
   ]);
   tambah('OMZET', r.hari.map((h) => [
     h.tanggal, NAMA_HARI[hariDalamMinggu(h.tanggal)], h.omzet, h.transaksi, h.refund, h.potongan, h.perkiraan, h.diterima, h.perkiraan - h.diterima,
-  ]));
-  tambah('BIAYA', r.biaya.map(([nama, nilai, ket], i) => [String(i + 1), nama, nilai, ket]));
+  ]), { jumlah: [2, 3, 4, 5, 6, 7, 8] });
+  tambah('BIAYA', r.biaya.map(([nama, nilai, ket], i) => [String(i + 1), nama, nilai, ket]), { jumlah: [2], label: 1 });
   tambah('MAKAN', [[r.budgetMakan, r.makanTerpakai, r.budgetMakan - r.makanTerpakai,
     r.budgetMakan - r.makanTerpakai >= 0 ? 'Sisa untuk makan bersama di akhir event' : '⚠️ Melebihi budget']]);
-  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.owner ? ' (owner, tidak digaji)' : '') + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), o.hariTidakTercatat ? '-' : `${o.hari} hari`, o.hariTidakTercatat ? '' : o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
-  tambah('IKLAN', r.iklan.map((t) => [t.tanggal, t.keterangan, Number(t.nominal) || 0]));
+  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.owner ? ' (owner, tidak digaji)' : '') + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), o.hariTidakTercatat ? '-' : `${o.hari} hari`, o.hariTidakTercatat ? '' : o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]), { jumlah: [4, 5, 6] });
+  tambah('IKLAN', r.iklan.map((t) => [t.tanggal, t.keterangan, Number(t.nominal) || 0]), { jumlah: [2] });
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
-  tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]));
+  tambah('GRATIS', r.barisGratis.map((g) => [g.tanggal, g.menu, g.porsi === '' ? '' : String(g.porsi), `${g.pcs} pcs`, g.harga, g.nilai, g.untuk]), { jumlah: [5] });
   // Komposisi untuk grafik batang & pie (urutan tetap, lihat KELOMPOK_GRAFIK): [nama, nilai, porsi].
   // Porsi = pecahan dari total biaya (ditampilkan sebagai %); untuk laba bersih = margin.
   const b = Object.fromEntries(r.biaya.map(([nama, nilai]) => [nama, nilai]));
@@ -335,7 +343,7 @@ export function barisDataMain(r) {
     ['Laba bersih (margin)', r.laba, r.omzetBersih ? r.laba / r.omzetBersih : 0],
   ]);
   tambah('HARIAN', r.harian.map((h) => [h.tanggal, h.omzet, h.pengeluaran, h.omzet - h.pengeluaran]));
-  tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]));
-  tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]));
+  tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]), { jumlah: [1, 2, 3] });
+  tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]), { jumlah: [7, 8] });
   return baris;
 }

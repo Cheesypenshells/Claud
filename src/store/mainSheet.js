@@ -195,6 +195,19 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   });
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}>=0)`, '#0B8043');
   aturan(`=AND($C$${barisLaba}<>"";$C$${barisLaba}<0)`, '#D93025');
+  // Baris TOTAL di bawah tiap tabel: tebal dengan latar abu muda.
+  req.push({
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        ranges: [sel(5, 150, 1, 11)],
+        booleanRule: {
+          condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: '=OR($B5="TOTAL";$C5="TOTAL")' }] },
+          format: { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna('#BDC1C6', 0.55) } },
+        },
+      },
+    },
+  });
 
   // Tabel komposisi & tabel harian di kanan: lebar kolom, warna per kategori, garis hitam.
   const putih = { red: 1, green: 1, blue: 1 };

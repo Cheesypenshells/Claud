@@ -113,7 +113,13 @@ test('barisDataMain: bagian lengkap dan tidak melebihi batas baris sheet Main', 
   const baris = barisDataMain(hitungEvent(event, data));
   const bagian = (b) => baris.filter((x) => x[1] === b);
   for (const [b, batas] of Object.entries(BATAS_BARIS)) assert.ok(bagian(b).length <= batas, b);
-  assert.equal(bagian('OMZET').length, 3);
+  assert.equal(bagian('OMZET').length, 4); // 3 hari + TOTAL
+  const totalBahan = bagian('BAHAN').at(-1);
+  assert.equal(totalBahan[3], 'TOTAL');
+  assert.equal(totalBahan[10], bagian('BAHAN').slice(0, -1).reduce((s, x) => s + x[10], 0));
+  const totalBiaya = bagian('BIAYA').at(-1);
+  assert.equal(totalBiaya[4], 'TOTAL');
+  assert.equal(totalBiaya[5], hitungEvent(event, data).totalBiaya);
   assert.equal(bagian('OMZET')[0][4], 'Senin');
   const ringkasan = Object.fromEntries(bagian('RINGKASAN').map((x) => [x[3], x[4]]));
   assert.match(ringkasan.Status, /UNTUNG/);
