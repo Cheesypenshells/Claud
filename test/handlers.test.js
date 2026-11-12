@@ -1150,3 +1150,23 @@ test('setoran ke PIC: #rekap event selesai menanyakan rekening PIC, jawaban disi
   const fee = baris.find((x) => /^Fee PIC/.test(x[3]))[4];
   assert.equal(total, fee + 500000);
 });
+
+test('#gajian: mulai event Semarang; event sebelumnya sudah dibayar; bonus x KPI, rekening', async () => {
+  const { store, kirim } = setup();
+  const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-22 Nov 2026');
+  await kirim(G_KELUAR, OWNER, `${blok}\nSenior: Adit, Alam`);
+  await kirim(G_KELUAR, OWNER, 'omset 15 nov 130jt');
+  const nanti = { waktu: new Date('2026-11-25T07:00:00Z') };
+  await kirim(G_KELUAR, OWNER, '#rekening Adit BCA 111222333 a.n. Adit', nanti); // owner isi langsung (nama PIC tidak cocok -> PIC)
+  const g = await kirim(G_KELUAR, OWNER, '#gajian', nanti);
+  assert.match(g, /Gajian SMR26-11.*Omzet kotor: Rp 130.000.000 ✅.*Adit\*: gaji pokok Rp 2.500.000 \+ bonus Rp 325.000 × KPI _\(belum dinilai\)_.*Alam/s);
+  await kirim(G_KELUAR, OWNER, '#nilai Adit 5 5 5 5', nanti);
+  await kirim(G_KELUAR, OWNER, '#nilai tim 5', nanti);
+  const g2 = await kirim(G_KELUAR, OWNER, '#gajian', nanti);
+  assert.match(g2, /Adit\*: gaji pokok Rp 2.500.000 \+ bonus Rp 325.000 × KPI \d+% = Rp [\d.]+ → \*Rp [\d.]+\*/);
+  assert.match(await kirim(G_KELUAR, PIC, '#gajian', nanti), /hanya untuk owner/);
+  // event sebelum 14 Nov: sudah dibayar
+  const { perintahGajian } = await import('../src/gajian.js');
+  const lama = await perintahGajian({ store }, {}, { kode: 'X', mulai: '2026-09-23' }, { isOwner: true });
+  assert.match(lama[0].text, /sudah dibayar/);
+});

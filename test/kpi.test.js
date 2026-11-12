@@ -67,6 +67,7 @@ test('#nilai: sesi tanya satu per satu, lalu kinerja tim; skor = individu + kelo
 
 test('#poin plus/minus, #kpi owner saja, skor bulan dibatasi 100', async () => {
   const { store, kirim } = setup();
+  await store.append('Pengaturan', { kunci: 'gaji_mulai', nilai: '2026-01-01' }); // event tes (Nov) ikut penggajian
   await kirim(OWNER, BLOK);
   await kirim(OWNER, '#nilai Andi 5 5 5 5');
   await kirim(OWNER, '#nilai tim 5');

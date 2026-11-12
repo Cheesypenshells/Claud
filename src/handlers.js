@@ -23,6 +23,7 @@ import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggo
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic } from './rekening.js';
+import { perintahGajian } from './gajian.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -965,6 +966,13 @@ async function handlePribadi(ctx, pesan) {
     }
     return balas(cmd.perintah === 'jadwal' ? await perintahJadwal(ctx, pesan, ev, isi) : await perintahIzin(ctx, pesan, ev, isi));
   }
+  if (isOwner && ['gajian', 'penggajian'].includes(cmd.perintah)) {
+    const semua = await ctx.store.all('Event');
+    const kode = cmd.argumen.find((a) => semua.some((e) => e.kode.toLowerCase() === a.toLowerCase()));
+    const aktifEv = semua.filter((e) => e.status !== 'BATAL').sort((a, b) => String(b.mulai).localeCompare(String(a.mulai)));
+    const ev = kode ? semua.find((e) => e.kode.toLowerCase() === kode.toLowerCase()) : aktifEv[0];
+    return perintahGajian(ctx, pesan, ev, { isOwner });
+  }
   if (isOwner && cmd.perintah === 'poin') return perintahPoin(ctx, pesan, opsi);
   if (isOwner && cmd.perintah === 'poinbatal') return perintahPoinBatal(ctx, pesan, opsi);
   return [];
@@ -1255,6 +1263,10 @@ export async function handlePesan(ctx, pesan) {
       case 'rek':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rekening hanya diurus di grup pengeluaran (owner + PIC).');
         return perintahRekening(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { isOwner });
+      case 'gajian':
+      case 'penggajian':
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Daftar gaji hanya bisa dilihat di grup pengeluaran atau chat pribadi dengan bot.');
+        return perintahGajian(ctx, pesan, event, { isOwner });
       case 'setor':
       case 'setoran':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Setoran ke PIC hanya bisa dilihat di grup pengeluaran.');

@@ -1,6 +1,7 @@
 // Perintah KPI: #nilai (penilaian PIC per event), #poin (poin plus/minus), #kpi (skor & peringkat, owner).
 // Penilaian bisa di grup pengeluaran atau chat pribadi dengan bot (bot memulai chat ke PIC setelah event selesai).
 
+import { ikutGajian, gajiMulai } from './gajian.js';
 import { STATUS } from './schema.js';
 import { hitungEvent } from './laporan.js';
 import { bacaData } from './main.js';
@@ -154,8 +155,10 @@ export async function perintahPoinBatal(ctx, pesan, { argumen, isOwner }) {
 export async function perintahKpi(ctx, pesan, { argumen, isOwner }) {
   if (!isOwner) return balas('🔒 Nilai KPI bersifat pribadi. Karyawan bisa melihat nilainya sendiri lewat QR kartu (dengan PIN).');
   const data = await bacaData(ctx.store);
-  const hasil = data.events.map((e) => hitungEvent(e, data));
-  const rekap = rekapBulanKPI(hasil, { nilai: await ctx.store.all('Nilai KPI'), poin: await ctx.store.all('Poin KPI') });
+  // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
+  const hasil = data.events.filter((e) => ikutGajian(e, data.atur)).map((e) => hitungEvent(e, data));
+  const poin = (await ctx.store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(data.atur));
+  const rekap = rekapBulanKPI(hasil, { nilai: await ctx.store.all('Nilai KPI'), poin });
   if (!rekap.length) return balas('Belum ada data KPI. Mulai dengan *#nilai* di grup pengeluaran event.');
   const bulanArg = argumen.find((a) => /^\d{4}-\d{2}$/.test(a));
   const nama = argumen.filter((a) => a !== bulanArg).join(' ');

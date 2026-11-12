@@ -1,6 +1,7 @@
 // File 1 (PEMBUKUAN): tab "Rekap Event" & "Gaji per Event".
 // File 2 (folder EVENT): satu spreadsheet per event, memakai file cadangan "(kosong)" yang dibuat owner.
 
+import { ikutGajian, gajiMulai } from './gajian.js';
 import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './laporan.js';
 import { bacaData } from './main.js';
 import { JENIS, STATUS } from './schema.js';
@@ -347,7 +348,8 @@ export async function perbaruiPembukuan(store) {
   }
   // File KPI KARYAWAN (tab Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung).
   if (atur.file_kpi) {
-    const tabel = tabelKpi(hasil, { nilai: await store.all('Nilai KPI'), poin: await store.all('Poin KPI') });
+    // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
+    const tabel = tabelKpi(hasil.filter((r) => ikutGajian(r.event, atur)), { nilai: await store.all('Nilai KPI'), poin: (await store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(atur)) });
     const isiKpi = JSON.stringify(tabel);
     if (terakhirDitulis.get('KPI') !== isiKpi) {
       await store.tulisBanyakTabel(atur.file_kpi, tabel, { hapus: ['Sheet1'], mulaiIndex: 0 });

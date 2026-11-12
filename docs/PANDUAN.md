@@ -312,6 +312,12 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 - **DW & kasir**: kalau gajinya sudah dicatat sebagai pengeluaran (kategori Gaji & Upah), angka itulah yang dipakai, tanpa bonus perkiraan. Untuk rekap event lama (omzet total), DW tampil satu baris = total catatan gaji dari rekapan PIC, tanpa hari kerja.
 - Rekap event lama dengan omzet total (satu angka): semua tanggal event dihitung sebagai hari kerja.
 
+## Gajian lewat bot (mulai Semarang, 14 Nov 2026)
+
+- Event sebelum 14 Nov 2026 **sudah dibayar** owner: tidak ikut daftar gaji, KPI, dan bonus (pembukuan event-event itu tetap). Batasnya bisa diubah di tab Pengaturan, kunci `gaji_mulai`.
+- `#gajian` (owner, grup pengeluaran) atau `#gajian SMR26-11` (chat pribadi): per karyawan tetap **gaji pokok + bonus omzet × skor KPI** = yang ditransfer, beserta rekening. DW/kasir dan PIC ikut ditampilkan.
+- Bonus baru final setelah PIC/owner menilai KPI (`#nilai`); sehari setelah event selesai bot meminta penilaian otomatis.
+
 ## Setoran ke PIC & rekening
 
 - File event, kanan tabel Ringkasan: tabel **💸 SETORAN KE PIC** = fee PIC + gaji/bonus PIC (kalau ada) + uang PIC yang terpakai (yang belum diganti) → **TOTAL DITRANSFER KE PIC**, beserta rekeningnya.
