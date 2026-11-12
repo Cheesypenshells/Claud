@@ -818,7 +818,7 @@ test('tanya-jawab setup event boleh dijawab siapa pun di grup', async () => {
   assert.equal((await store.all('Event')).length, 0);
 });
 
-test('pengiriman & stok awal: ditanya setelah grup tim didaftarkan; harga hanya ke grup pengeluaran', async () => {
+test('pengiriman & stok awal: ditanya di grup pengeluaran setelah grup tim didaftarkan; harga tidak ke grup tim', async () => {
   const { store, ctx } = setup();
   const { isiHargaAwal } = await import('../src/main.js');
   await isiHargaAwal(store);
@@ -826,51 +826,40 @@ test('pengiriman & stok awal: ditanya setelah grup tim didaftarkan; harga hanya 
   const kirimRaw = (groupId, senderId, text) => handlePesan(ctx, { id: `k${++n}`, groupId, groupName: groupId, senderId, senderName: senderId === OWNER ? 'George' : 'Budi', text, adaFoto: false, waktu: WAKTU });
   const teks = async (...a) => (await kirimRaw(...a)).map((r) => r.text).join('\n');
   await teks(G_KELUAR, OWNER, BLOK_EVENT); // event 2-8 Nov, hari ini 3 Nov (berjalan)
-  const daftar = await teks(G_TIM, OWNER, '#daftar event JMB26-11');
-  assert.match(daftar, /grup event.*\(1\/5\).*penanggung jawab pengiriman/s);
-  assert.match(await teks(G_TIM, PIC, 'Imam'), /\(2\/5\)/);
-  assert.match(await teks(G_TIM, PIC, '2'), /\(3\/5\).*bahan kering/s);
-  assert.match(await teks(G_TIM, KARYAWAN, '6'), /\(4\/5\).*bahan baku/s);
-  assert.match(await teks(G_TIM, PIC, '4'), /\(5\/5\).*isi bahan baku/s);
-  const cek = await teks(G_TIM, PIC, 'keju 5 balok, bumbu garlic 3 pack, packaging 886 pcs');
+  const daftar = await kirimRaw(G_TIM, OWNER, '#daftar event JMB26-11');
+  const keKeluar = daftar.filter((b) => b.groupId === G_KELUAR);
+  assert.equal(keKeluar.length, 1);
+  assert.match(keKeluar[0].text, /\(1\/5\).*penanggung jawab pengiriman/s);
+  assert.match(daftar.filter((b) => !b.groupId).map((b) => b.text).join('\n'), /grup event.*Tim JMB26-11/s);
+  // pengeluaran biasa & obrolan tetap jalan selama pertanyaan pengiriman menunggu
+  assert.match(await teks(G_KELUAR, PIC, 'lalamove 150k'), /T0001 lalamove/);
+  assert.equal(await teks(G_KELUAR, PIC, 'oke pak siap'), '');
+  assert.match(await teks(G_KELUAR, PIC, 'Imam'), /\(2\/5\)/);
+  assert.match(await teks(G_KELUAR, PIC, '2'), /\(3\/5\).*bahan kering/s);
+  assert.match(await teks(G_KELUAR, OWNER, '6'), /\(4\/5\).*bahan baku/s);
+  assert.match(await teks(G_KELUAR, PIC, '4'), /\(5\/5\).*isi bahan baku/s);
+  const cek = await teks(G_KELUAR, PIC, 'keju 5 balok, bumbu garlic 3 pack, packaging 886 pcs');
   assert.match(cek, /Kereta \(transit\).*6 koli.*4 koli.*Mozzarella 5 pack.*Bumbu Garlic 3 pack.*packaging 886 pcs/s);
-  assert.doesNotMatch(cek, /Rp/);
-  const hasil = await kirimRaw(G_TIM, PIC, 'ya');
-  assert.equal(hasil.length, 2);
-  assert.doesNotMatch(hasil[0].text, /Rp/); // grup tim: tanpa harga
-  assert.equal(hasil[1].groupId, G_KELUAR);
-  assert.match(hasil[1].text, /Mozzarella 5 pack × Rp 234.000 = \*Rp 1.170.000\*.*Bumbu Garlic 3 pack × Rp 500.000 = \*Rp 1.500.000\*.*packaging 886 pcs _\(belum ada di tab Harga Bahan.*Total nilai bahan baku: Rp 2.670.000/s);
+  const hasil = await kirimRaw(G_KELUAR, PIC, 'ya');
+  assert.equal(hasil.length, 1);
+  assert.match(hasil[0].text, /Mozzarella 5 pack × Rp 234.000 = \*Rp 1.170.000\*.*Total nilai bahan baku: Rp 2.670.000/s);
   const bahan = await store.all('Bahan Event');
   assert.deepEqual(bahan.map((b) => [b.bahan, b.gerak, b.jumlah]), [['Mozzarella', 'Keluar', 5], ['Bumbu Garlic', 'Keluar', 3]]);
   assert.equal((await store.all('Pengiriman'))[0].moda, 'Kereta (transit)');
-  // #kirim di grup pengeluaran, bahan baku 0 koli -> rincian tidak ditanya
-  await teks(G_KELUAR, OWNER, '#kirim');
-  await teks(G_KELUAR, OWNER, 'Imam');
-  await teks(G_KELUAR, OWNER, 'truk');
-  await teks(G_KELUAR, OWNER, '3');
-  assert.match(await teks(G_KELUAR, OWNER, '0'), /Cek data pengiriman.*Truk.*3 koli.*0 koli/s);
-  const s2 = await kirimRaw(G_KELUAR, OWNER, 'ya');
-  assert.equal(s2.length, 1);
 });
 
-test('anggota grup tim: nomor -> nama & peran (tab Karyawan & tim event), lalu lanjut data pengiriman', async () => {
-  const { store, ctx, kirim } = setup();
-  ctx.anggotaGrup = async () => [
-    { nomor: OWNER }, { nomor: '6284444444444' }, { nomor: '6285555555555' }, { nomor: '9988776655', tersembunyi: true },
-  ];
-  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // tim: Budi (PIC), DW? (BLOK_EVENT hanya PIC)
-  await kirim(G_KELUAR, OWNER, '#tim\nDW: 2 orang');
-  await kirim(G_TIM, '6285555555555', 'halo', { senderName: 'Adit WA' }); // bot mengingat nama WA
+test('anggota grup tim: tiap karyawan menyebut namanya, nomor pengirim tercatat otomatis', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Dena, Tiar veri\nDW: 2 orang`);
   const r = await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
-  assert.match(r, /Anggota grup JMB26-11\* \(4 nomor\).*1\. 081111111111 – \*owner\*.*3\. 085555555555 – nama WA: Adit WA.*nomor tersembunyi 6655/s);
-  const j = await kirim(G_TIM, PIC, '2 Dena senior\n3 Adit dw');
-  assert.match(j, /Dena\* \(Tetap\) _ditambahkan ke tim_.*Adit\* \(DW\) _menggantikan DW 1_.*Belum: 4\./s);
-  const s2 = await kirim(G_TIM, PIC, '4 lewati');
-  assert.match(s2, /Anggota tim tersimpan.*\(1\/5\).*penanggung jawab pengiriman/s);
+  assert.match(r, /Tim JMB26-11.*2\. Dena \(Tetap\).*4\. DW 1 \(DW\).*balas nama sendiri/s);
+  assert.match(await kirim(G_TIM, '6284444444444', 'saya Dena'), /Dena\* \(Tetap\) → 084444444444.*Belum: Budi, Tiar veri, DW 1, DW 2/s);
+  assert.match(await kirim(G_TIM, '6285555555555', '3'), /Tiar veri\* \(Tetap\) → 085555555555/);
+  assert.match(await kirim(G_TIM, '6286666666666', 'saya Joko DW'), /Joko\* \(DW\) → 086666666666 \(menggantikan DW 1\)/);
+  assert.match(await kirim(G_TIM, '6287777777777', 'saya Rina'), /belum ada di tim.*saya Rina DW/s);
+  assert.equal(await kirim(G_TIM, '6287777777777', 'besok booth buka jam berapa ya'), ''); // obrolan biasa diabaikan
   const k = await store.all('Karyawan');
-  assert.deepEqual(k.map((x) => [x.kode, x.nama, x.nomor_wa, x.peran]), [['K01', 'Dena', '084444444444', 'Tetap'], ['K02', 'Adit', '085555555555', 'DW']]);
-  const tim = (await store.all('Tim Event')).map((o) => `${o.nama}/${o.peran}`);
-  assert.ok(tim.includes('Adit/DW') && tim.includes('Dena/Tetap') && tim.includes('DW 2/DW') && !tim.includes('DW 1/DW'));
-  // #anggota menampilkan nama yang sudah dikenal
-  assert.match(await kirim(G_TIM, OWNER, '#anggota'), /2\. 084444444444 – \*Dena\* \(Tetap\)/);
+  assert.deepEqual(k.map((x) => [x.nama, x.nomor_wa, x.peran]), [['Dena', '084444444444', 'Tetap'], ['Tiar veri', '085555555555', 'Tetap'], ['Joko', '086666666666', 'DW']]);
+  assert.ok((await store.all('Tim Event')).some((o) => o.nama === 'Joko' && o.peran === 'DW'));
+  assert.match(await kirim(G_TIM, OWNER, '#anggota'), /2\. Dena \(Tetap\) ✅/);
 });

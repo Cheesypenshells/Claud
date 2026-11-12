@@ -626,10 +626,15 @@ async function perintahDaftar(ctx, pesan, grup, cmd) {
   // Grup tim event yang belum selesai: langsung tanya data pengiriman & stok awal.
   const ev = jenis === 'event' && kode ? await cariEvent(ctx.store, kode) : null;
   if (ev && ctx.sesi && statusEvent(ev, tanggalLokal(pesan.waktu)) !== 'selesai') {
-    // Kenali anggota grup dulu (nama & peran), lalu data pengiriman & stok awal.
+    // Grup tim: karyawan menyebut namanya sendiri (nomor tercatat otomatis).
+    // Grup pengeluaran (owner + PIC): bot menanyakan data pengiriman & stok awal bahan baku.
+    const keluar = [{ text: teksDaftar }];
     const anggota = await mulaiAnggota(ctx, pesan.groupId, ev);
-    if (anggota) return [{ text: teksDaftar }, { text: anggota }];
-    return [{ text: teksDaftar }, { text: mulaiPengiriman(ctx, pesan.groupId, ev) }];
+    if (anggota) keluar.push({ text: anggota });
+    const sudahKirim = (await ctx.store.all('Pengiriman')).some((p) => p.kode_event === ev.kode && p.status !== STATUS.BATAL);
+    const grupKeluar = (await ctx.store.all('Grup')).filter((g) => g.kode_event === ev.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
+    if (!sudahKirim) for (const g of grupKeluar) keluar.push({ groupId: g, text: mulaiPengiriman(ctx, g, ev) });
+    return keluar;
   }
   return balas(teksDaftar);
 }
@@ -934,11 +939,7 @@ export async function handlePesan(ctx, pesan) {
   // Daftar anggota grup (nama & peran) yang sedang ditanyakan; setelah selesai lanjut ke data pengiriman.
   if (!cmd && ctx.sesi && event) {
     const j = await jawabAnggota(ctx, pesan, event);
-    if (j) {
-      const lanjut = j.selesai && statusEvent(event, tanggalLokal(pesan.waktu)) !== 'selesai' && !ctx.sesi.get(`kirim:${pesan.groupId}`)
-        && !(await ctx.store.all('Pengiriman')).some((p) => p.kode_event === event.kode && p.status !== STATUS.BATAL);
-      return lanjut ? [{ text: j.teks }, { text: mulaiPengiriman(ctx, pesan.groupId, event) }] : balas(j.teks);
-    }
+    if (j) return balas(j.teks);
   }
   // Data pengiriman & stok awal yang sedang ditanyakan.
   if (!cmd && ctx.sesi && event) {
@@ -1090,7 +1091,7 @@ export async function handlePesan(ctx, pesan) {
       case 'anggota': {
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
-        return balas(daftarAnggota || '⚠️ Daftar anggota grup belum bisa diambil dari WhatsApp. Coba lagi sebentar.');
+        return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
       }
       case 'kirim':
       case 'stokawal':

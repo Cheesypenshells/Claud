@@ -278,23 +278,13 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 - **Tab Karyawan** (PEMBUKUAN): isi kode, nama (sama dengan nama di tim event), nomor WA, peran, keahlian, foto, mulai kerja, status.
 
 
-## Anggota grup tim (nomor → nama & peran)
+## Anggota grup tim (nomor WhatsApp karyawan)
 
-Setelah grup tim didaftarkan (atau ketik `#anggota` kapan saja), bot mengambil **daftar nomor anggota grup** dari WhatsApp dan bertanya nama & peran tiap nomor. Nama WhatsApp yang pernah terlihat di chat ditampilkan sebagai bantuan. Jawab dengan nomor urut, boleh beberapa baris:
-
-```
-1 Adit senior
-2 Dena kasir
-3 Joko DW
-4 owner
-5 lewati
-```
-
-Peran: PIC / senior (karyawan tetap) / DW / kasir / owner / lewati. Ketik `selesai` kalau sudah. Hasilnya masuk tab **Karyawan** (nama + nomor WA + peran) dan **tim event** (placeholder "DW 1" diganti nama asli). Nomor ini dipakai untuk KPI, chat pribadi ke PIC, dan absensi. Setelah selesai, bot lanjut menanyakan data pengiriman & stok awal.
+Nama tim diisi di grup pengeluaran (setup event / `#tim`). Setelah grup tim didaftarkan (atau `#anggota`), bot menampilkan daftar tim dan meminta **setiap karyawan membalas nama sendiri**: `saya Dena` atau nomor urutnya (`2`). Nomor pengirim langsung tercatat di tab **Karyawan** (✅ = sudah tercatat). DW yang belum bernama: `saya Joko DW` (menggantikan "DW 1"); orang baru: `saya Rina kasir`. Nomor ini dipakai untuk KPI, chat pribadi ke PIC, dan absensi.
 
 ## Pengiriman & stok awal event
 
-Setelah grup tim didaftarkan (`#daftar event KODE` atau pilih 2 saat bot masuk grup), bot langsung bertanya (siapa pun boleh menjawab):
+Setelah grup tim didaftarkan, bot menanyakan ini di **grup pengeluaran** (owner + PIC), siapa pun di grup itu boleh menjawab; pesan pengeluaran & obrolan biasa tetap diproses seperti biasa:
 1. Penanggung jawab pengiriman ke lokasi
 2. Dikirim pakai apa: 1 = Truk, 2 = Kereta (transit), 3 = lainnya
 3. Jumlah koli bahan kering

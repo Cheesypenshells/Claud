@@ -8,7 +8,7 @@
 import { STATUS } from './schema.js';
 import { parseBahan } from './parsers.js';
 import { cocokkan } from './katalog.js';
-import { tanggalLokal, waktuLokal, rupiah, bersihkan } from './util.js';
+import { tanggalLokal, waktuLokal, rupiah, bersihkan, parseMoney } from './util.js';
 
 const BERLAKU_MS = 3 * 60 * 60 * 1000;
 const kunci = (groupId) => `kirim:${groupId}`;
@@ -85,6 +85,11 @@ export async function jawabPengiriman(ctx, pesan, { namaPengirim, grupPengeluara
   if (!sesi || Date.now() - sesi.waktu > BERLAKU_MS) return null;
   const t = String(pesan.text || '').trim();
   if (!t || t.startsWith('#')) return null;
+  // Pesan pengeluaran ("lalamove 150k") atau kalimat panjang bukan jawaban: biarkan diproses biasa.
+  if (parseMoney(t) || (sesi.langkah !== 4 && t.split(/\s+/).length > 6)) return null;
+  // Obrolan ("oke pak siap", "makasih") bukan jawaban.
+  const OBROLAN = /^(oke|ok|okk|okey|siap|sip|iya|ya|yaa|pak|bu|kak|mas|mbak|bos|boss|baik|noted|mantap|makasih|terima|kasih|thanks|nanti|bentar|sebentar|aman|done|hehe|wkwk)$/i;
+  if (sesi.langkah !== 1 && sesi.langkah < LANGKAH.length && t.split(/\s+/).every((w) => OBROLAN.test(w.replace(/[^a-z]/gi, '')))) return null;
   if (/^batal$/i.test(t)) { ctx.sesi.hapus(kunci(pesan.groupId)); return balas('❎ Data pengiriman dibatalkan. Mulai lagi dengan *#kirim*.'); }
   const hargaBahan = await ctx.store.all('Harga Bahan');
   const d = sesi.data;
