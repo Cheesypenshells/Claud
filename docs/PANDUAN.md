@@ -293,6 +293,27 @@ Rina 081244445555 kasir
 ```
 Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
 
+## Laporan foto: loading in, harian, loading out (grup tim)
+
+Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat biasa ("booth sudah siap", "barang sudah tiba"). Beberapa foto sekaligus dihitung satu laporan: foto tanpa caption dari orang yang sama dalam 5 menit ikut masuk. Bot membalas siapa, jam berapa, dan apa yang **belum**. Semua tercatat di tab **Laporan Foto**.
+
+| Tahap | Laporan |
+|---|---|
+| **Loading in** (hari pertama) | `#tiba` armada, muatan, semua koli · `#booth` booth selesai dirakit · `#gudang` freezer, label koli, kondisi bahan · data pengiriman (`#kirim`, otomatis ✅) · `#acc` oleh PIC/owner |
+| **Harian – sebelum buka** | `#posisi` (teks: Kasir/Grill/Plating/Getok) · `#grill` · `#cooler` · `#nampan` · `#followers` (screenshot IG) |
+| **Harian – selama buka** | `#temuan` serpihan/bau/busuk/alat rusak/komplain → langsung diteruskan ke grup pengeluaran |
+| **Harian – setelah tutup** | `#omzet` (otomatis ✅) · `#followers` tutup · `#bersih` · `#pulang` (tiap orang, teks) |
+| **Loading out** (hari terakhir) | `#stokakhir` · `#bongkar` · `#koli` · `#muat` (sopir, nomor kendaraan, jam, tujuan) · `#terima` di tujuan |
+
+**Cek checklist:** `#loadingin` · `#harian` · `#loadingout` (bisa ditambah tanggal, contoh `#harian 2026-11-03`).
+
+**Yang dicek otomatis oleh bot:**
+- Foto terusan (forward) dan foto yang sama persis dengan foto laporan sebelumnya ditolak.
+- Screenshot Instagram dibaca angkanya (OCR); saat tutup bot menulis kenaikan followers hari itu. Kalau tidak terbaca, tulis angkanya di caption: `#followers 12.540`.
+- Saat booth buka, bot menyebut laporan sebelum buka yang belum masuk (dan loading in yang belum lengkap di hari pertama).
+
+**Yang belum bisa:** bot tidak bisa menilai *isi* foto (booth rapi, area bersih, jumlah nampan). Itu tetap dicek PIC/owner dari foto di grup.
+
 ## Absensi foto & denda telat (grup tim)
 
 Syarat: **Jam Buka** event terisi (setup event, atau owner `#ubah jam buka 11.00`). Jam dihitung di zona kota event (WIB / WITA untuk Bali, Lombok, Kalimantan Selatan/Timur, Sulawesi / WIT untuk Papua, Maluku).

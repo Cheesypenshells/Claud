@@ -117,6 +117,26 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Laporan foto SOP: loading in, laporan harian, loading out (grup tim).
+  'Laporan Foto': {
+    warna: '#5E35B1',
+    kolom: [
+      k('id', 'No.', 80),
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('tahap', 'Tahap', 120, { catatan: 'Loading in / Laporan harian / Loading out' }),
+      k('tag', 'Laporan', 100),
+      k('nama', 'Dikirim Oleh', 140),
+      k('jam', 'Jam', 90),
+      k('jumlah_foto', 'Jumlah Foto', 95, { format: 'angka' }),
+      k('isi', 'Keterangan', 260),
+      k('angka', 'Angka (followers)', 120, { format: 'angka' }),
+      k('foto_id', 'ID Foto', 160, { sembunyi: true }),
+      k('sidik', 'Sidik Foto', 160, { sembunyi: true }),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Izin / dispensasi per orang & jadwal khusus per hari (diisi owner lewat #izin / #jadwal).
   'Jadwal Absen': {
     warna: '#00897B',

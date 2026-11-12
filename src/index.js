@@ -13,6 +13,7 @@ import { isiHargaAwal } from './main.js';
 import { perbaruiPembukuan } from './pembukuan.js';
 import { tugasPenilaian } from './handlersKpi.js';
 import { tugasAbsensi } from './absensi.js';
+import { tugasLaporan } from './laporanFoto.js';
 
 async function main() {
   let store;
@@ -79,6 +80,8 @@ async function main() {
     for (const p of await tugasJatuhTempo()) await wa.kirim(p.groupId, p.text);
     // Absensi: gaya foto 2 jam sebelum buka, pengingat saat batas absen (1 jam sebelum buka) lewat.
     for (const p of await tugasAbsensi(ctx)) await wa.kirim(p.groupId, p.text);
+    // Laporan foto: saat booth buka, sebut laporan sebelum buka / loading in yang belum masuk.
+    for (const p of await tugasLaporan(ctx)) await wa.kirim(p.groupId, p.text);
   }), 60_000);
 
   // Isian manual di Sheets (INPUT EVENT LAMA, koreksi owner) ikut terbaca setiap 5 menit.

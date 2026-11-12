@@ -109,7 +109,7 @@ export function batasOrang(j, aturan, nama, tanggal) {
   return { batas: jamKe(tanggal, menit, j.zona), bebas: false, izin };
 }
 
-async function aturanHari(ctx, kode, tanggal) {
+export async function aturanHari(ctx, kode, tanggal) {
   return (await ctx.store.all('Jadwal Absen')).filter((a) => a.kode_event === kode && a.tanggal === tanggal && a.status !== STATUS.BATAL);
 }
 
@@ -144,7 +144,7 @@ export function teksPengumuman(event, tanggal, aturan = []) {
   ].filter((b) => b !== null).join('\n');
 }
 
-async function timEvent(ctx, kode) {
+export async function timEvent(ctx, kode) {
   return (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === kode && o.status !== STATUS.BATAL && o.status !== 'BERHENTI');
 }
 
@@ -152,7 +152,7 @@ const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
 // Nama anggota tim dari nomor pengirim (tab Karyawan).
-async function namaDariNomor(ctx, nomor, tim) {
+export async function namaDariNomor(ctx, nomor, tim) {
   const k = (await ctx.store.all('Karyawan')).find((x) => nomor62(x.nomor_wa) === nomor62(nomor));
   if (!k) return null;
   return tim.find((o) => sama(o.nama, k.nama)) || { nama: k.nama, peran: k.peran };

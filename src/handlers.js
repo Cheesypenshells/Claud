@@ -21,6 +21,7 @@ import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perinta
 import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
 import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
+import { tanganiLaporan } from './laporanFoto.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -58,6 +59,7 @@ const BANTUAN = {
 • #rekap - rekap bulan ini, #rekap bulan 2026-11
 • #batal T0012`,
   event: `*Grup event (tim)*
+• *Laporan foto:* kirim foto + caption tag. Loading in: #tiba #booth #gudang #acc (PIC) · Harian: #posisi #grill #cooler #nampan #followers #temuan #bersih #pulang · Loading out: #stokakhir #bongkar #koli #muat #terima. Cek yang belum: *#loadingin* · *#harian* · *#loadingout*
 • *Absen:* 2 jam sebelum buka bot membagikan *gaya foto* hari ini. Selfie di booth dengan gaya itu, kirim dengan caption *absen* (batas 1 jam sebelum buka). Telat 1-15 mnt Rp 10.000 · 16-30 mnt Rp 25.000 · >30 mnt Rp 50.000/jam. #absen = siapa sudah/belum · #absen denda = rekap denda
 • #omzet + format laporan harian SOP BAB 6:
   #omzet
@@ -964,6 +966,12 @@ export async function handlePesan(ctx, pesan) {
   if (!cmd && event && grup.jenis === 'event') {
     const absen = await tanganiAbsen(ctx, pesan, event, { isOwner });
     if (absen) return balas(absen);
+  }
+  // Laporan foto SOP (loading in, harian, loading out) dan status checklist-nya, di grup tim.
+  if (event && grup.jenis === 'event') {
+    const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
+    const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
+    if (lapor) return lapor;
   }
   // Data pengiriman & stok awal yang sedang ditanyakan.
   if (!cmd && ctx.sesi && event) {
