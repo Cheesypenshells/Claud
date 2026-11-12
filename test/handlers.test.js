@@ -839,8 +839,7 @@ test('pengiriman & stok awal: ditanya setelah grup tim didaftarkan; harga hanya 
   assert.equal(hasil.length, 2);
   assert.doesNotMatch(hasil[0].text, /Rp/); // grup tim: tanpa harga
   assert.equal(hasil[1].groupId, G_KELUAR);
-  assert.match(hasil[1].text, /Stok awal JMB26-11.*Mozzarella 5 pack.*Bumbu Garlic 3 pack.*masuk pembukuan event.*Belum ada di tab Harga Bahan.*packaging 886 pcs/s);
-  assert.doesNotMatch(hasil[1].text, /Rp/); // harga tidak ditampilkan di grup mana pun
+  assert.match(hasil[1].text, /Mozzarella 5 pack × Rp 234.000 = \*Rp 1.170.000\*.*Bumbu Garlic 3 pack × Rp 500.000 = \*Rp 1.500.000\*.*packaging 886 pcs _\(belum ada di tab Harga Bahan.*Total nilai bahan baku: Rp 2.670.000/s);
   const bahan = await store.all('Bahan Event');
   assert.deepEqual(bahan.map((b) => [b.bahan, b.gerak, b.jumlah]), [['Mozzarella', 'Keluar', 5], ['Bumbu Garlic', 'Keluar', 3]]);
   assert.equal((await store.all('Pengiriman'))[0].moda, 'Kereta (transit)');
