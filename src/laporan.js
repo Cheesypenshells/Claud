@@ -286,17 +286,20 @@ export function barisDataMain(r) {
   const margin = r.omzetBersih ? (r.laba / r.omzetBersih) * 100 : 0;
 
   tambah('INFO', [[`${r.event.kota} | ${r.event.io} | ${r.event.mulai} s/d ${r.event.selesai} | Wilayah ${r.event.wilayah || 'Jawa'} | Bagi hasil ${persen(num(r.event.bagi_hasil_persen))}`]]);
+  // Urutan: omzet kotor -> potongan IO -> omzet bersih -> biaya operasional -> laba. 10 baris (batas tabel di sheet).
+  const potIO = r.biaya.find((b) => /bagi hasil IO/i.test(b[0]))?.[1] || 0;
+  const pBagi = persen(num(r.event.bagi_hasil_persen));
   tambah('RINGKASAN', [
-    ['Omzet (setelah refund)', r.omzetBersih],
-    ['Total biaya', r.totalBiaya],
-    ['Sisa bahan dikembalikan ke gudang', r.nilaiSisaKembali],
+    ['Omzet kotor (setelah refund)', r.omzetBersih],
+    [`Potongan bagi hasil IO ${pBagi}`, -potIO],
+    [`Omzet bersih (setelah dipotong IO ${pBagi})`, r.omzetBersih - potIO],
+    ['Biaya operasional (bahan, gaji, transport, dll. – di luar potongan IO)', -(r.totalBiaya - potIO)],
+    ['Sisa bahan dikembalikan ke gudang (mengurangi biaya)', r.nilaiSisaKembali],
     ['Laba sebelum fee PIC', r.labaSebelumFee],
-    [`Fee PIC ${r.feePicPersen}%${r.namaPic.length ? ` (${r.namaPic.join(', ')})` : ''}`, r.feePic],
+    [`Fee PIC ${r.feePicPersen}%${r.namaPic.length ? ` (${r.namaPic.join(', ')})` : ''}`, -r.feePic],
     ['LABA BERSIH', r.laba],
-    ['Status', r.laba >= 0 ? '✅ UNTUNG' : '❌ RUGI'],
-    ['Margin', persen(Number(margin.toFixed(1)))],
-    ['Hari jualan', `${jumlahHari} hari`],
-    ['Laba per hari', jumlahHari ? r.laba / jumlahHari : 0],
+    ['Status', `${r.laba >= 0 ? '✅ UNTUNG' : '❌ RUGI'} · margin ${persen(Number(margin.toFixed(1)))}`],
+    ['Hari jualan', `${jumlahHari} hari · laba per hari Rp ${Math.round(jumlahHari ? r.laba / jumlahHari : 0).toLocaleString('id-ID')}`],
   ]);
   tambah('OMZET', r.hari.map((h) => [
     h.tanggal, NAMA_HARI[hariDalamMinggu(h.tanggal)], h.omzet, h.transaksi, h.refund, h.potongan, h.perkiraan, h.diterima, h.perkiraan - h.diterima,

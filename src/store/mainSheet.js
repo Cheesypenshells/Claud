@@ -179,8 +179,9 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
 
   // Ringkasan: baris LABA / RUGI tebal besar; hijau kalau untung, merah kalau rugi.
   const ring = BAGIAN[0];
-  const barisLaba = barisData(ring) + 5; // baris "LABA BERSIH"
-  format(sel(barisData(ring) + 3, barisData(ring) + 3, 1, 3), { textFormat: { bold: true } }, 'textFormat');
+  const barisLaba = barisData(ring) + 7; // baris "LABA BERSIH"
+  format(sel(barisData(ring), barisData(ring) + 9, 1, 3), { textFormat: { bold: false, fontSize: 10 } }, 'textFormat');
+  for (const i of [2, 5]) format(sel(barisData(ring) + i, barisData(ring) + i, 1, 3), { textFormat: { bold: true } }, 'textFormat'); // omzet bersih, laba sebelum fee
   format(sel(barisLaba, barisLaba, 1, 3), { textFormat: { bold: true, fontSize: 13 } }, 'textFormat');
   for (let n = (main.conditionalFormats || []).length - 1; n >= 0; n -= 1) req.push({ deleteConditionalFormatRule: { sheetId, index: n } });
   const aturan = (rumus, hex) => req.push({

@@ -117,7 +117,12 @@ test('barisDataMain: bagian lengkap dan tidak melebihi batas baris sheet Main', 
   assert.equal(bagian('OMZET')[0][4], 'Senin');
   const ringkasan = Object.fromEntries(bagian('RINGKASAN').map((x) => [x[3], x[4]]));
   assert.match(ringkasan.Status, /UNTUNG/);
-  assert.equal(ringkasan['Hari jualan'], '3 hari');
+  assert.match(ringkasan['Hari jualan'], /^3 hari · laba per hari Rp /);
+  // potongan IO terpisah: omzet kotor - potongan = omzet bersih; bersih - biaya operasional + sisa = laba sebelum fee
+  const nilai = bagian('RINGKASAN').map((x) => x[4]);
+  assert.equal(nilai[0] + nilai[1], nilai[2]);
+  assert.equal(nilai[2] + nilai[3] + nilai[4], nilai[5]);
+  assert.equal(bagian('RINGKASAN').length, 10);
   assert.equal(bagian('BAHAN').find((x) => x[3] === 'Mozzarella')[8], '12');
   assert.ok(baris.every((x) => x.length <= 12));
 });
