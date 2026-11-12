@@ -37,6 +37,28 @@ function warna(hex, terang = 0) {
 }
 
 const huruf = (i) => String.fromCharCode(65 + i);
+
+// Total yang ditulis di judul berwarna tiap tabel (kecuali ringkasan): kolom isi (0 = kolom D di Data Main)
+// dan kolom tempat tulisan "TOTAL". MAKAN tidak punya baris TOTAL: angka "sudah terpakai" baris pertama.
+const TOTAL_JUDUL = {
+  OMZET: { label: 'TOTAL OMZET', kolom: 2, labelKolom: 0 },
+  BIAYA: { label: 'TOTAL BIAYA', kolom: 2, labelKolom: 1 },
+  MAKAN: { label: 'TERPAKAI', kolom: 1, tanpaBarisTotal: true },
+  TIM: { label: 'TOTAL GAJI & BONUS', kolom: 6, labelKolom: 0 },
+  IKLAN: { label: 'TOTAL IKLAN', kolom: 2, labelKolom: 0 },
+  BAHAN: { label: 'TOTAL TERPAKAI', kolom: 7, labelKolom: 0 },
+  UANG: { label: 'TOTAL UANG TERPAKAI', kolom: 1, labelKolom: 0 },
+};
+function judulDenganTotal(b) {
+  const t = TOTAL_JUDUL[b.kode];
+  if (!t) return b.judul;
+  const kol = (i) => `${DATA}!${String.fromCharCode(68 + i)}2:${String.fromCharCode(68 + i)}`;
+  const syarat = [`${DATA}!A2:A=$C$2`, `${DATA}!B2:B="${b.kode}"`];
+  if (!t.tanpaBarisTotal) syarat.push(`${kol(t.labelKolom)}="TOTAL"`);
+  const angka = `INDEX(FILTER(${kol(t.kolom)};${syarat.join(';')});1)`;
+  const teks = b.judul.replace(/"/g, '""');
+  return `="${teks}"&IFERROR("   ·   ${t.label}: Rp "&TEXT(${angka};"#,##0");"")`;
+}
 const DATA = `'${TAB_DATA_MAIN}'`;
 
 function rumusFilter(bagian, jumlahKolom) {
@@ -76,7 +98,7 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
     { range: `${qt}!B3`, values: [['Angka diperbarui otomatis oleh bot setiap ada laporan baru di grup WhatsApp.']] },
   ];
   for (const b of BAGIAN) {
-    nilai.push({ range: `${qt}!B${b.mulai}`, values: [[b.judul]] });
+    nilai.push({ range: `${qt}!B${b.mulai}`, values: [[judulDenganTotal(b)]] });
     if (!b.tanpaJudulKolom) nilai.push({ range: `${qt}!B${b.mulai + 1}`, values: [b.kolom] });
     nilai.push({ range: `${qt}!B${barisData(b)}`, values: [[rumusFilter(b.kode, b.kolom.length)]] });
   }
