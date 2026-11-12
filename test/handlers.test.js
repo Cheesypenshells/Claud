@@ -1068,3 +1068,23 @@ test('omzet dikenali dari berbagai tulisan; pengeluaran >= 25jt ditanya dulu (ca
   assert.match(await kirim(G_KELUAR, OWNER, 'batal'), /Oke, tidak dicatat\./);
   assert.equal((await store.all('Transaksi')).length, 1);
 });
+
+test('revisi bahan: reply pesan bahan baku dengan daftar baru mengganti data lama (bukan menambah)', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const nanti = { waktu: new Date('2026-11-20T07:00:00Z') };
+  const asli = 'bahan baku kiriman pertama keju balok 55 pack, bumbu garlic 50 pack, bumbu merah 4 pack, saus keju 32 pack';
+  await kirim(G_KELUAR, OWNER, asli, nanti);
+  assert.equal(await kirim(G_KELUAR, OWNER, 'revisi', nanti), '');
+  const r = await kirim(G_KELUAR, OWNER, 'keju balok 55 pack, bumbu garlic 30 pack, bumbu merah 4 pack, saus keju 32 pack', { ...nanti, kutipan: { teks: asli, id: 'asli' } });
+  assert.match(r, /Revisi – Bahan baku pengiriman pertama.*tgl 2026-11-02.*Bumbu Garlic 30 pack.*Data lama dibatalkan: Mozzarella 55 pack, Bumbu Garlic 50 pack/s);
+  const aktif = (await store.all('Bahan Event')).filter((b) => b.status !== 'BATAL');
+  assert.deepEqual(aktif.map((b) => [b.bahan, b.jumlah]), [['Mozzarella', 55], ['Bumbu Garlic', 30], ['Bumbu Merah', 4], ['Saus Keju', 32]]);
+  // reply ke balasan bot juga bisa
+  const bot = await kirim(G_KELUAR, OWNER, 'sisa keju 2 balok', nanti);
+  await kirim(G_KELUAR, OWNER, 'ya', nanti); // nilai sisa pakai harga tab
+  assert.match(await kirim(G_KELUAR, OWNER, 'keju 3 balok', { ...nanti, kutipan: { teks: bot, id: 'bot' } }), /Revisi – Sisa bahan baku.*Mozzarella 3 pack/s);
+  assert.equal((await store.all('Bahan Event')).filter((b) => b.status !== 'BATAL' && b.gerak === 'Kembali').map((b) => b.jumlah).join(), '3');
+});

@@ -23,7 +23,7 @@ import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggo
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import { tanganiLaporan } from './laporanFoto.js';
 import {
-  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, perintahGratis, perintahOwner, PERINTAH_BAHAN,
+  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
 
 const BANTUAN = {
@@ -1280,6 +1280,21 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
+  // Revisi bahan: reply ke pesan bahan / balasan bot-nya dengan daftar baru ("keju 55 pack, garlic 30 pack").
+  if (!cmd && event && pesan.kutipan?.teks && !parseMoney(teks)) {
+    const q = pesan.kutipan.teks;
+    const dariBot = q.match(/(Bahan baku pengiriman pertama|Restock bahan baku|Sisa bahan baku)/);
+    const gerakQ = dariBot ? { 'Bahan baku pengiriman pertama': 'Keluar', 'Restock bahan baku': 'Restock', 'Sisa bahan baku': 'Kembali' }[dariBot[1]]
+      : { keluar: 'Keluar', restock: 'Restock', kembali: 'Kembali' }[gerakBahanDariKalimat(q)];
+    const gerakBaru = gerakBahanDariKalimat(teks);
+    if (gerakQ && (!gerakBaru || /\b(revisi|ralat|koreksi|harusnya|seharusnya|yang benar)\b/i.test(teks) || gerakBaru === Object.entries({ keluar: 'Keluar', restock: 'Restock', kembali: 'Kembali' }).find(([, v]) => v === gerakQ)?.[0])) {
+      const r = await revisiBahan(ctx, pesan, event, {
+        gerak: gerakQ, teksLama: q, teksBaru: teks.replace(/\b(revisi|ralat|koreksi|harusnya|seharusnya|yang benar)\b[:\s]*/gi, ''),
+        harga: grup.jenis === 'pengeluaran', grupPengeluaran: await grupPengeluaranEvent(ctx, event),
+      });
+      if (r) return r;
+    }
+  }
   // Kalimat biasa tentang bahan tanpa harga, contoh "kiriman 10 pack keju" / "sisa 3 pack mozzarella".
   if (!cmd && event && !parseMoney(teks)) {
     const gerak = gerakBahanDariKalimat(teks);
