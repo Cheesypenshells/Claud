@@ -5,7 +5,7 @@ import { parseTim, parseOrang, parseBahan, parseGratis, PERAN, ambilTanggal } fr
 import { cocokkan, hargaJual } from './katalog.js';
 import { hitungBahan, BAHAN_DIBELI } from './bahan.js';
 import { ATURAN } from './laporan.js';
-import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan, parseMoney } from './util.js';
+import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan, parseMoney, findMoney } from './util.js';
 
 const balas = (text) => [{ text }];
 const namaPengirim = (pesan) => (pesan.senderName ? `${pesan.senderName} (${pesan.senderId})` : pesan.senderId);
@@ -234,6 +234,43 @@ export async function revisiBahan(ctx, pesan, event, { gerak, teksLama, teksBaru
   });
   hasil[0].text = `${hasil[0].text}\n\n_Data lama dibatalkan: ${dibatalkan.map((b) => `${b.bahan} ${b.jumlah} ${b.satuan}`).join(', ')}._`;
   return hasil;
+}
+
+// ---------- Gaji khusus event karyawan tetap ----------
+// "#gaji tiara, veri, dena 2jt" / "gaji tiara veri dena masing masing 2 juta" (owner).
+// Disimpan di Tim Event (kolom Gaji Khusus Event), menggantikan estimasi gaji pokok ÷ 30 × hari kerja.
+export function adalahPerintahGaji(teks) {
+  return /\bgaji\b/i.test(teks) && /\b(masing|masing2|masing-masing|per orang|perorang|tiap orang|setiap orang|khusus event|event ini)\b/i.test(teks) && parseMoney(teks);
+}
+
+export async function perintahGajiTetap(ctx, pesan, event, teks) {
+  if (!event) return balas('⚠️ Event tidak ditemukan.');
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== STATUS.BATAL);
+  const t = ` ${String(teks).toLowerCase()} `;
+  const disebut = tim.filter((o) => new RegExp(`[^a-z]${String(o.nama).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^a-z]`).test(t));
+  const tetap = disebut.filter((o) => o.peran === PERAN.TETAP);
+  const bukan = disebut.filter((o) => o.peran !== PERAN.TETAP);
+  const semuaTetap = /\b(semua|semuanya)\b/.test(t) && !tetap.length ? tim.filter((o) => o.peran === PERAN.TETAP) : tetap;
+  // Nominal per orang: yang sesudah "masing" / "per orang", kalau tidak ada: nominal pertama.
+  const potongan = t.split(/masing[\s-]*masing|masing2|per ?orang|tiap orang|setiap orang/);
+  const nominal = parseMoney(potongan.length > 1 ? potongan[1].split(/\bjadi\b|\btotal\b/)[0] : t) || findMoney(t)[0]?.nilai;
+  if (!semuaTetap.length || !nominal) {
+    const daftar = tim.filter((o) => o.peran === PERAN.TETAP).map((o) => o.nama).join(', ') || '(belum ada karyawan tetap di tim)';
+    return balas(`Format: *#gaji <nama, nama> <nominal per orang>*, contoh: *#gaji tiara, dena 2jt*\nKaryawan tetap di ${event.kode}: ${daftar}${bukan.length ? `\n_${bukan.map((o) => `${o.nama} (${o.peran})`).join(', ')} bukan karyawan tetap: upahnya dicatat sebagai pengeluaran biasa._` : ''}`);
+  }
+  for (const o of semuaTetap) {
+    await ctx.store.updateWhere('Tim Event', (x) => x.kode_event === event.kode && x.nama === o.nama && x.status !== STATUS.BATAL, { gaji_event: nominal });
+  }
+  const total = nominal * semuaTetap.length;
+  const lain = tim.filter((o) => o.peran === PERAN.TETAP && !semuaTetap.includes(o) && !Number(o.gaji_event));
+  return balas([
+    `✅ *Gaji khusus event ${event.kode}* (karyawan tetap)`,
+    ...semuaTetap.map((o) => `• ${o.nama}: *${rupiah(nominal)}*`),
+    `Total: *${rupiah(total)}*`,
+    '_Menggantikan estimasi gaji pokok ÷ 30 × hari kerja. Masuk #rekap dan file event._',
+    bukan.length ? `_${bukan.map((o) => `${o.nama} (${o.peran})`).join(', ')} bukan karyawan tetap: tidak diubah._` : '',
+    lain.length ? `_Karyawan tetap lain belum diisi: ${lain.map((o) => o.nama).join(', ')}._` : '',
+  ].filter(Boolean).join('\n'));
 }
 
 // ---------- Porsi gratis ----------

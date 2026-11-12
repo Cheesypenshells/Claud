@@ -29,7 +29,7 @@ export function poinDari(nilai, bobot) {
 
 // Orang yang dinilai KPI di sebuah event: semua anggota tim kecuali PIC dan owner.
 export function yangDinilai(r) {
-  return r.barisTim.filter((o) => o.peran !== PERAN.PIC && !o.owner);
+  return r.barisTim.filter((o) => o.peran !== PERAN.PIC && !o.owner && !o.catatanGaji);
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".

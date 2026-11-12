@@ -23,7 +23,7 @@ import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggo
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import { tanganiLaporan } from './laporanFoto.js';
 import {
-  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
+  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
 
 const BANTUAN = {
@@ -908,6 +908,7 @@ async function perintahRekap(ctx, pesan, grup, cmd, isOwner) {
     transaksi: await ctx.store.all('Transaksi'),
     bahan: await ctx.store.all('Bahan Event'),
     hargaBahan: await ctx.store.all('Harga Bahan'),
+    tim: await ctx.store.all('Tim Event'),
   }, hariIni);
   const tunda = ctx.sesi ? daftarTunda(ctx, pesan.groupId) : [];
   const infoTunda = tunda.length
@@ -1026,6 +1027,11 @@ export async function handlePesan(ctx, pesan) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
     const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
     if (lapor) return lapor;
+  }
+  // "gaji tiara, veri, dena masing masing 2 juta" (owner, grup pengeluaran) = gaji khusus event karyawan tetap.
+  if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && adalahPerintahGaji(teks)) {
+    const hasil = await perintahGajiTetap(ctx, pesan, event, teks);
+    if (!/^Format:/.test(hasil[0].text)) return hasil;
   }
   // Jawaban "sisa bahan dihargai berapa?" (grup pengeluaran).
   if (!cmd && event && grup.jenis === 'pengeluaran') {
@@ -1217,6 +1223,11 @@ export async function handlePesan(ctx, pesan) {
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
+      }
+      case 'gaji': {
+        if (!isOwner) return balas('⚠️ Gaji khusus event hanya diatur owner.');
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Gaji hanya diatur di grup pengeluaran (owner + PIC), bukan di grup tim.');
+        return perintahGajiTetap(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '));
       }
       case 'izin':
       case 'ijin':

@@ -298,6 +298,12 @@ Rina 081244445555 kasir
 ```
 Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
 
+## Gaji karyawan tetap & upah DW
+
+- **Karyawan tetap, gaji khusus event** (owner, grup pengeluaran): `#gaji tiara, veri, dena 2jt` atau kalimat `gaji tiara, veri, dena masing masing 2 juta`. Angka ini = total yang diterima untuk event itu (menggantikan estimasi gaji pokok ÷ 30 × hari kerja, tanpa bonus omzet tambahan). Tersimpan di kolom *Gaji Khusus Event* tab Tim Event. Jangan dicatat sebagai pengeluaran biasa.
+- **DW & kasir**: kalau gajinya sudah dicatat sebagai pengeluaran (kategori Gaji & Upah), angka itulah yang dipakai, dicocokkan per nama di keterangan (`bayar gaji tyos 600rb`). Catatan tanpa nama yang cocok ditampilkan di baris *Gaji tanpa nama cocok*. Tidak ada bonus perkiraan.
+- Rekap event lama dengan omzet total (satu angka): semua tanggal event dihitung sebagai hari kerja.
+
 ## Bahan baku: pengiriman pertama, restock, sisa
 
 Bisa di **grup tim** (tanpa harga) atau **grup pengeluaran** (dengan nilai rupiah). Untuk event yang sudah selesai, masukkan di grup pengeluaran:

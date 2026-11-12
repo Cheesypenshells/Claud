@@ -189,3 +189,29 @@ test('gaji yang dibayar lewat grup dipakai sebagai upah (sama dengan #rekap), wa
   // tanpa omzet & tanpa bahan gudang/gaji tetap: total biaya = jumlah semua pengeluaran grup + bahan gudang
   assert.equal(r.totalBiaya - r.biaya.find(([n]) => n === 'Bahan baku')[1] + 1500000 - r.biaya.find(([n]) => n === 'Admin IO + listrik/air/gas/galon')[1] + 0, totalCatatan - 0);
 });
+
+test('rekap event lama: omzet total -> semua hari event dihitung; upah DW dari catatan gaji per nama; gaji khusus tetap tanpa bonus', async () => {
+  const { hitungEvent } = await import('../src/laporan.js');
+  const event = { kode: 'BAL', kota: 'Bali', mulai: '2026-09-23', selesai: '2026-10-04', bagi_hasil_persen: 30, admin: 0, jadwal_trf: 'AKHIR' };
+  const r = hitungEvent(event, {
+    omzet: [{ tanggal: '2026-10-04', kode_event: 'BAL', omzet: 125055000, refund: 0, catatan: 'Omzet total event (tanpa tanggal per hari)', status: 'OK' }],
+    transaksi: [
+      { id: 'T1', kode_event: 'BAL', jenis: 'Pengeluaran', kategori: 'Gaji & Upah', keterangan: 'bayar gaji dave', nominal: 600000, status: 'OK' },
+      { id: 'T2', kode_event: 'BAL', jenis: 'Pengeluaran', kategori: 'Gaji & Upah', keterangan: 'gaji dave', nominal: 550000, status: 'OK' },
+      { id: 'T3', kode_event: 'BAL', jenis: 'Pengeluaran', kategori: 'Gaji & Upah', keterangan: 'gaji dw loading in', nominal: 300000, status: 'OK' },
+    ],
+    tim: [
+      { kode_event: 'BAL', nama: 'Tiara', peran: 'Tetap', upah_harian: 0, mulai: '2026-09-23', status: 'AKTIF', gaji_event: 2000000 },
+      { kode_event: 'BAL', nama: 'Dave', peran: 'DW', upah_harian: 100000, mulai: '2026-09-23', status: 'AKTIF' },
+    ],
+  });
+  const tiara = r.barisTim.find((o) => o.nama === 'Tiara');
+  assert.equal(tiara.hari, 12);
+  assert.equal(tiara.upah, 2000000);
+  assert.equal(tiara.bonus, 0);
+  const dave = r.barisTim.find((o) => o.nama === 'Dave');
+  assert.equal(dave.upah, 1150000);
+  assert.equal(dave.bonus, 0);
+  assert.equal(r.barisTim.find((o) => o.catatanGaji).upah, 300000);
+  assert.equal(r.biaya.find((b) => b[0] === 'Upah DW + kasir')[1], 1450000);
+});

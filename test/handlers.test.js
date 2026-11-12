@@ -1088,3 +1088,21 @@ test('revisi bahan: reply pesan bahan baku dengan daftar baru mengganti data lam
   assert.match(await kirim(G_KELUAR, OWNER, 'keju 3 balok', { ...nanti, kutipan: { teks: bot, id: 'bot' } }), /Revisi – Sisa bahan baku.*Mozzarella 3 pack/s);
   assert.equal((await store.all('Bahan Event')).filter((b) => b.status !== 'BATAL' && b.gerak === 'Kembali').map((b) => b.jumlah).join(), '3');
 });
+
+test('gaji khusus event karyawan tetap: "gaji tiara, veri, dena masing masing 2 juta" -> #rekap & laporan', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Tiara, Veri, Dena\nDW: Joko`);
+  const r = await kirim(G_KELUAR, OWNER, 'Terus untuk masalah gaji, tiara, veri, dena masing masing di event ini dapat masing masing 2 juta ya jadi buat 3 orang ini dapat 6 jt ya');
+  assert.match(r, /Gaji khusus event JMB26-11.*Tiara: \*Rp 2.000.000\*.*Veri.*Dena.*Total: \*Rp 6.000.000\*/s);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.match(await kirim(G_KELUAR, OWNER, '#rekap'), /Gaji karyawan tetap \(khusus event\): Rp 6.000.000.*Total pengeluaran: \*Rp 6.000.000\*/s);
+  assert.match(await kirim(G_KELUAR, PIC, '#gaji dena 3jt'), /hanya diatur owner/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#gaji joko 1jt'), /Joko \(DW\) bukan karyawan tetap/);
+  // pengeluaran gaji DW biasa tetap tercatat sebagai pengeluaran
+  assert.match(await kirim(G_KELUAR, OWNER, 'gaji dave 600rb'), /T0001 gaji dave/);
+  const { hitungEvent } = await import('../src/laporan.js');
+  const hasil = hitungEvent((await store.all('Event'))[0], {
+    omzet: [], transaksi: await store.all('Transaksi'), tim: await store.all('Tim Event'), bahan: [], hargaBahan: [], hargaMenu: [], gratis: [],
+  });
+  assert.equal(hasil.biaya.find((b) => /Gaji karyawan tetap/.test(b[0]))[1], 6000000);
+});

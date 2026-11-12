@@ -30,7 +30,7 @@ export function omzetPerTanggal(omzetRows, kode) {
   return [...map.values()].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 }
 
-export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], hargaBahan = [] }, hariIni) {
+export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], hargaBahan = [], tim = [] }, hariIni) {
   const potong = num(event.bagi_hasil_persen) / 100;
   const hari = omzetPerTanggal(omzet, event.kode).map((r) => {
     const kotor = num(r.omzet) - num(r.refund);
@@ -63,7 +63,12 @@ export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], harg
   const gerak = bahan.filter((b) => b.kode_event === event.kode && aktif(b));
   const barisBahan = hitungBahan(gerak, hargaBahan);
   const biayaBahan = barisBahan.reduce((s, b) => s + b.nilaiTerpakai, 0);
-  const totalPengeluaran = pengeluaran.reduce((s, t) => s + num(t.nominal), 0) + biayaBahan;
+  // Gaji khusus event karyawan tetap (#gaji); yang belum diisi belum dihitung di #rekap.
+  const tetap = tim.filter((o) => o.kode_event === event.kode && aktif(o) && o.peran === 'Tetap');
+  const gajiTetap = tetap.filter((o) => num(o.gaji_event)).map((o) => ({ nama: o.nama, gaji: num(o.gaji_event) }));
+  const totalGajiTetap = gajiTetap.reduce((s, o) => s + o.gaji, 0);
+  const tetapBelum = tetap.filter((o) => !num(o.gaji_event)).map((o) => o.nama);
+  const totalPengeluaran = pengeluaran.reduce((s, t) => s + num(t.nominal), 0) + biayaBahan + totalGajiTetap;
 
   return {
     event,
@@ -79,6 +84,9 @@ export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], harg
     perKategori,
     barisBahan,
     biayaBahan,
+    gajiTetap,
+    totalGajiTetap,
+    tetapBelum,
     totalPengeluaran,
     labaSementara: perkiraanTransfer - totalPengeluaran,
   };
@@ -117,12 +125,16 @@ export function formatRekapEvent(r, hariIni) {
         : `  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} → ${rupiah(b.nilaiTerpakai)}${b.sisaBelumDihargai ? ' _(nilai sisa belum disebut, pakai harga tab)_' : ''}`);
     }
   }
+  if (r.gajiTetap?.length) baris.push(`Gaji karyawan tetap (khusus event): ${rupiah(r.totalGajiTetap)} (${r.gajiTetap.map((o) => `${o.nama} ${rupiah(o.gaji)}`).join(', ')})`);
   baris.push(`Total pengeluaran: *${rupiah(r.totalPengeluaran)}*`);
 
   baris.push(
     '',
     `*LABA SEMENTARA: ${rupiah(r.labaSementara)}*`,
-    r.barisBahan?.length ? '_Belum termasuk gaji karyawan tetap (masuk di tahap berikutnya)._' : '_Belum termasuk bahan dari gudang (belum dilaporkan) dan gaji karyawan tetap._',
+    [
+      !r.barisBahan?.length ? 'bahan dari gudang (belum dilaporkan)' : '',
+      r.tetapBelum?.length ? `gaji karyawan tetap ${r.tetapBelum.join(', ')} (isi dengan *#gaji nama 2jt*)` : '',
+    ].filter(Boolean).reduce((_, __, i, a) => `_Belum termasuk ${a.join(' dan ')}._`, '') || '_Sudah termasuk bahan baku dan gaji karyawan tetap. Bonus omzet belum termasuk._',
   );
   return baris.join('\n');
 }

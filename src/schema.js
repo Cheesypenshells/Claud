@@ -214,6 +214,7 @@ export const KOLOM = {
       k('status', 'Status', 95, { catatan: 'AKTIF / BERHENTI' }),
       k('catatan', 'Catatan', 220),
       k('dicatat', 'Waktu Dicatat', 140),
+      k('gaji_event', 'Gaji Khusus Event', 140, { format: 'rupiah', catatan: 'Karyawan tetap: gaji untuk event ini (menggantikan estimasi gaji pokok ÷ 30 × hari). Diisi lewat #gaji Tiara, Dena 2jt' }),
     ],
   },
   'Bahan Event': {
