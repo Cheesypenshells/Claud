@@ -87,6 +87,7 @@ export function formatRekapEvent(r, hariIni) {
     '*PEMASUKAN*',
     `Omzet kotor (${r.hari.length} hari): ${rupiah(r.omzetKotor)}`,
     `Bagi hasil IO (${persen(e.bagi_hasil_persen || 0)}): -${rupiah(r.bagiHasil)}`,
+    `Omzet bersih (setelah bagi hasil IO): ${rupiah(r.omzetKotor - r.bagiHasil)}`,
   ];
   if (r.admin) baris.push(`Admin IO: -${rupiah(r.admin)}`);
   if (r.potonganIO) baris.push(`Listrik/air/gas/galon: -${rupiah(r.potonganIO)}`);

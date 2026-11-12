@@ -68,8 +68,8 @@ test('alur lengkap: setup event, pengeluaran, omzet, transfer, rekap, batal', as
   // Laporan ulang menggantikan yang lama
   const r3 = await kirim(G_KELUAR, PIC, '#omzet 12jt');
   assert.match(r3, /menggantikan/);
-  assert.match(r3, /Total omzet event sejauh ini: \*Rp 12.000.000\*/);
-  assert.match(r3, /Perkiraan transfer IO: Rp 9.000.000, dijadwalkan 2026-11-04/);
+  assert.match(r3, /Total omzet kotor event sejauh ini: \*Rp 12.000.000\*/);
+  assert.match(r3, /Omzet bersih \(ditransfer IO\): \*Rp 9.000.000\*, dijadwalkan 2026-11-04/);
 
   // Transfer masuk dan potongan IO
   assert.match(await kirim(G_KELUAR, OWNER, '#trf 9.000.000 omzet 3 nov'), /Transfer masuk dari IO tercatat/);
@@ -982,4 +982,15 @@ test('"omset bali 125055000jt" tanpa # = omzet (bukan pengeluaran); angka lengka
   assert.match(r, /Omzet .* tercatat.*Rp 125.055.000/s);
   assert.equal((await store.all('Transaksi')).length, 0);
   assert.equal((await store.all('Omzet'))[0].omzet, 125055000);
+});
+
+test('omset bersih (setelah potongan IO) dikembalikan ke omzet kotor; balasan menampilkan kotor, potongan, bersih', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // bagi hasil 25%
+  const r = await kirim(G_KELUAR, OWNER, 'omset bersih 3 nov 7.500.000');
+  assert.match(r, /Omzet kotor: \*Rp 10.000.000\*.*dari omzet bersih.*Potongan IO 25%: Rp 2.500.000.*Omzet bersih \(ditransfer IO\): \*Rp 7.500.000\*/s);
+  assert.equal((await store.all('Omzet'))[0].omzet, 10000000);
+  const k = await kirim(G_KELUAR, OWNER, 'omset kotor 4 nov 12jt');
+  assert.match(k, /Omzet kotor: \*Rp 12.000.000\*/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#rekap'), /Omzet kotor \(2 hari\): Rp 22.000.000.*Omzet bersih \(setelah bagi hasil IO\): Rp 16.500.000/s);
 });

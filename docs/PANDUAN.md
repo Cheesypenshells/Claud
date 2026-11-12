@@ -134,6 +134,11 @@ SELISIH / REFUND / KOREKSI: 0
 ```
 Bisa juga singkat: `#omzet 12,5jt`
 
+**Omzet kotor & omzet bersih:**
+- Angka omzet yang diinput dianggap **omzet kotor** (sebelum dipotong bagi hasil IO). Boleh tanpa #: `omset 3 okt 12,5jt` / `omset kotor bali 125jt`.
+- Kalau yang dipegang angka **setelah dipotong IO**, tulis kata **bersih**: `omset bersih 3 okt 8.750.000`. Bot mengembalikannya ke omzet kotor (bersih ÷ (100% − bagi hasil)).
+- Balasan bot (grup pengeluaran) menampilkan: omzet kotor, potongan IO, dan omzet bersih yang ditransfer IO. `#rekap` juga menampilkan omzet bersih.
+
 - **Laporan sebelum jam 05.00 pagi** dihitung sebagai omzet hari sebelumnya (closing lewat tengah malam).
 - **Laporan dikirim ulang** untuk tanggal yang sama menggantikan laporan sebelumnya.
 - **Omzet tanggal lain:** tambahkan baris `TANGGAL: 2 Nov 2026`.

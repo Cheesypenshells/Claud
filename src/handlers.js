@@ -476,6 +476,15 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   if (!o.omzet) {
     return balas('⚠️ Nominal omzet tidak terbaca. Contoh:\n#omzet\nOMZET TERVERIFIKASI: Rp 12.500.000\nJUMLAH TRANSAKSI: 85');
   }
+  // Omzet kotor = sebelum dipotong bagi hasil IO (yang disimpan). "omset bersih / nett / setelah potong IO"
+  // = sudah dipotong: dikembalikan ke omzet kotor (bersih ÷ (1 − bagi hasil)).
+  const potongIO = Number(event.bagi_hasil_persen || 0) / 100;
+  const dariBersih = /\b(bersih|nett?|netto|setelah\s+(di)?potong\w*|sudah\s+(di)?potong\w*|dipotong\s+io)\b/i.test(teks) && !/\bkotor\b/i.test(teks);
+  if (dariBersih && potongIO > 0 && potongIO < 1) {
+    const masuk = o.omzet;
+    o.omzet = Math.round(masuk / (1 - potongIO));
+    o.catatan = [o.catatan, `diinput sebagai omzet bersih ${rupiah(masuk)} (setelah potongan IO ${persen(potongIO * 100)})`].filter(Boolean).join('; ');
+  }
   // Event yang sudah selesai (rekap) tanpa tanggal: omzet total dicatat di hari terakhir event.
   const selesai = event.selesai && tanggalLokal(pesan.waktu) > event.selesai;
   const tanggal = o.tanggal || (selesai ? event.selesai : tanggalOperasional(pesan.waktu));
@@ -503,17 +512,21 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
 
   const baris = [
     `✅ *Omzet ${tanggal} tercatat* (${event.kode})${lama ? ' - menggantikan laporan sebelumnya' : ''}`,
-    `Omzet: *${rupiah(o.omzet)}*${o.jumlah_transaksi ? ` dari ${o.jumlah_transaksi} transaksi` : ''}`,
+    `Omzet kotor: *${rupiah(o.omzet)}*${o.jumlah_transaksi ? ` dari ${o.jumlah_transaksi} transaksi` : ''}${dariBersih && potongIO > 0 ? ' _(dihitung dari omzet bersih yang diinput)_' : ''}`,
   ];
   if (o.refund) baris.push(`Refund/koreksi: ${rupiah(o.refund)}`);
-  baris.push(`Total omzet event sejauh ini: *${rupiah(omzetEvent)}*`);
+  baris.push(`Total omzet kotor event sejauh ini: *${rupiah(omzetEvent)}*`);
   const target = Number(event.target_omzet || 0);
   if (target) baris.push(`Target: ${rupiah(target)} (${persen((omzetEvent / target) * 100)} tercapai)`);
 
   // Rincian keuangan hanya untuk grup pengeluaran (owner + PIC), bukan grup tim.
   if (grup.jenis === 'pengeluaran') {
-    const bersih = (o.omzet - o.refund) * (1 - Number(event.bagi_hasil_persen || 0) / 100);
-    baris.push(`Perkiraan transfer IO: ${rupiah(bersih)}, dijadwalkan ${jatuhTempo(tanggal, event)}`);
+    const kotor = o.omzet - o.refund;
+    const bersih = kotor * (1 - potongIO);
+    baris.push(`Potongan IO ${persen(potongIO * 100)}: ${rupiah(kotor - bersih)}`);
+    baris.push(`Omzet bersih (ditransfer IO): *${rupiah(bersih)}*, dijadwalkan ${jatuhTempo(tanggal, event)}`);
+    const bersihEvent = omzetEvent * (1 - potongIO);
+    if (omzetEvent !== kotor) baris.push(`Total omzet bersih event: ${rupiah(bersihEvent)}`);
   }
   return balas(baris.join('\n'));
 }
