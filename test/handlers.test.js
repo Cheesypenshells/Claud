@@ -989,7 +989,7 @@ test('omset bersih (setelah potongan IO) dikembalikan ke omzet kotor; balasan me
   const { store, kirim } = setup();
   await kirim(G_KELUAR, OWNER, BLOK_EVENT); // bagi hasil 25%
   const r = await kirim(G_KELUAR, OWNER, 'omset bersih 3 nov 7.500.000');
-  assert.match(r, /Omzet kotor: \*Rp 10.000.000\*.*dari omzet bersih.*Potongan IO 25%: Rp 2.500.000.*Omzet bersih \(ditransfer IO\): \*Rp 7.500.000\*/s);
+  assert.match(r, /Omzet kotor: \*Rp 10.000.000\*.*setelah dipotong IO.*Potongan IO 25%: Rp 2.500.000.*Omzet bersih \(ditransfer IO\): \*Rp 7.500.000\*/s);
   assert.equal((await store.all('Omzet'))[0].omzet, 10000000);
   const k = await kirim(G_KELUAR, OWNER, 'omset kotor 4 nov 12jt');
   assert.match(k, /Omzet kotor: \*Rp 12.000.000\*/);
@@ -1229,4 +1229,13 @@ test('gaji karyawan tetap yang dicatat di grup tidak dobel dengan estimasi gaji 
   assert.equal(b['Gaji karyawan tetap (porsi event)'], 3600000);
   assert.equal(b['Upah DW + kasir'], 450000);
   assert.equal(r.barisTim.find((o) => o.nama === 'Veri').upah, 1800000);
+});
+
+test('"laba bersih" / "pendapatan bersih" / "omset sudah dipotong" = omzet setelah potongan IO', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // bagi hasil 25%
+  assert.match(await kirim(G_KELUAR, OWNER, 'laba bersih 3 nov 7.500.000'), /Omzet kotor: \*Rp 10.000.000\*.*setelah dipotong IO 25%/s);
+  assert.match(await kirim(G_KELUAR, OWNER, 'pendapatan bersih 4 nov 7.500.000'), /Omzet kotor: \*Rp 10.000.000\*/);
+  assert.match(await kirim(G_KELUAR, OWNER, 'omset sudah dipotong 5 nov 7.500.000'), /Omzet kotor: \*Rp 10.000.000\*/);
+  assert.equal((await store.all('Transaksi')).length, 0);
 });

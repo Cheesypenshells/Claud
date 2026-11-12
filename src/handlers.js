@@ -565,7 +565,7 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
 
   const baris = [
     `✅ *Omzet ${tanggal} tercatat* (${event.kode})${lama ? ' - menggantikan laporan sebelumnya' : ''}`,
-    `Omzet kotor: *${rupiah(o.omzet)}*${o.jumlah_transaksi ? ` dari ${o.jumlah_transaksi} transaksi` : ''}${dariBersih && potongIO > 0 ? ' _(dihitung dari omzet bersih yang diinput)_' : ''}`,
+    `Omzet kotor: *${rupiah(o.omzet)}*${o.jumlah_transaksi ? ` dari ${o.jumlah_transaksi} transaksi` : ''}${dariBersih && potongIO > 0 ? ` _(angka yang diinput dibaca sebagai omzet *setelah dipotong IO ${persen(potongIO * 100)}*, lalu dihitung balik ke omzet kotor)_` : ''}`,
   ];
   if (o.refund) baris.push(`Refund/koreksi: ${rupiah(o.refund)}`);
   baris.push(`Total omzet kotor event sejauh ini: *${rupiah(omzetEvent)}*`);
@@ -1007,6 +1007,11 @@ export async function handlePesan(ctx, pesan) {
   // "omset bali 125jt" / "omzet 3 okt 12,5jt" tanpa tanda # = laporan omzet, bukan pengeluaran.
   // Juga "total omset bali 125jt", "ini omset harian 125jt", "penjualan 3 okt 12jt", "pendapatan event 125jt".
   const RE_OMZET = /\b(omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales)\b/i;
+  // "laba bersih 68jt" / "hasil bersih 68jt" (kata owner untuk omzet setelah dipotong IO) = omzet bersih.
+  if (/^(laba|hasil|uang)\s+bersih\b/i.test(teks) && parseMoney(teks)) {
+    teks = `omset bersih ${teks.replace(/^(laba|hasil|uang)\s+bersih\b\s*/i, '')}`;
+    pesan = { ...pesan, text: teks };
+  }
   const awalOmzet = /^(total\s+)?(omset|omzet|omsetnya|omzetnya)\b/i.test(teks);
   if (!teks.startsWith('#') && RE_OMZET.test(teks) && parseMoney(teks) && (awalOmzet || (teks.split(/\s+/).length <= 15
     && !/\b(bagi hasil|potongan|potong|admin|fee|bonus|komisi)\b/i.test(teks) && !/\n/.test(teks.trim())))) {
