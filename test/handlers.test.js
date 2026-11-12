@@ -887,3 +887,23 @@ test('anggota grup tim: tiap karyawan menyebut namanya, nomor pengirim tercatat 
   assert.ok((await store.all('Tim Event')).some((o) => o.nama === 'Joko' && o.peran === 'DW'));
   assert.match(await kirim(G_TIM, OWNER, '#anggota'), /2\. Dena \(Tetap\) ✅/);
 });
+
+test('anggota: nama WhatsApp dicocokkan otomatis; owner bisa menempel daftar nama + nomor (#karyawan)', async () => {
+  const { store, kirim, ctx } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Alam, Dena, Tiar veri\nDW: 1 orang`);
+  // Alam pernah chat di grup dengan nama WA "Alam (Karyawan Cheesy Banjarmasin)"
+  await kirim(G_TIM, '6281111110001', 'halo semua', { senderName: 'Alam (Karyawan Cheesy Banjarmasin)' });
+  ctx.anggotaGrup = async () => [
+    { nomor: OWNER }, { nomor: '6281111110001' }, { nomor: '6281111110002' }, { nomor: '6281111110003' },
+  ];
+  const r = await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  assert.match(r, /Dicocokkan dari nama WhatsApp: Alam → 081111110001.*Belum tercatat: \*Budi, Dena, Tiar veri, DW 1\*.*belum dikenal: …0002, …0003/s);
+  // Dena chat biasa dengan nama WA "Dena CPS": nomornya tercatat diam-diam
+  await kirim(G_TIM, '6281111110002', 'otw booth', { senderName: 'Dena CPS' });
+  assert.equal((await store.all('Karyawan')).find((k) => k.nama === 'Dena')?.nomor_wa, '081111110002');
+  // owner menempel daftar di grup pengeluaran
+  assert.match(await kirim(G_TIM, OWNER, '#karyawan Tiar 0813'), /hanya di grup pengeluaran/);
+  const t = await kirim(G_KELUAR, OWNER, '#karyawan\n1. Tiar veri 0812-2222-3333\nRina: 081244445555 kasir\nbudi');
+  assert.match(t, /Tiar veri \(Tetap\) → 081222223333.*Rina \(Kasir\) → 081244445555 _\(baru\)_.*Tidak terbaca: budi/s);
+  assert.match(await kirim(G_KELUAR, OWNER, '#karyawan'), /Data karyawan.*Alam.*081111110001.*belum bernomor: \*Budi, DW 1\*/s);
+});

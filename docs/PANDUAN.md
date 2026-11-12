@@ -282,6 +282,17 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 
 Nama tim diisi di grup pengeluaran (setup event / `#tim`). Setelah grup tim didaftarkan (atau `#anggota`), bot menampilkan daftar tim dan meminta **setiap karyawan membalas nama sendiri**: `saya Dena` atau nomor urutnya (`2`). Nomor pengirim langsung tercatat di tab **Karyawan** (✅ = sudah tercatat). DW yang belum bernama: `saya Joko DW` (menggantikan "DW 1"); orang baru: `saya Rina kasir`. Nomor ini dipakai untuk KPI, chat pribadi ke PIC, dan absensi.
 
+**Dicocokkan otomatis:** sebelum bertanya, bot mencocokkan anggota grup yang nama WhatsApp-nya memuat nama tim (contoh nama WA `Alam (Karyawan Cheesy Banjarmasin)` → Alam). Karyawan yang chat di grup selama pendataan berjalan juga dicocokkan diam-diam lewat nama WA-nya. Hanya kecocokan yang pasti (satu nama, satu nomor) yang dicatat; kalau salah, orang yang benar cukup balas `saya [nama]`. Nomor anggota grup yang belum dikenal ditampilkan 4 angka terakhirnya.
+
+**Owner menempel daftar** (grup pengeluaran atau chat pribadi dengan bot, bukan grup tim):
+```
+#karyawan
+Dena 081234567890
+Tiar veri 0812-9876-5432
+Rina 081244445555 kasir
+```
+Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
+
 ## Pengiriman & stok awal event
 
 Setelah grup tim didaftarkan, bot menanyakan ini di **grup pengeluaran** (owner + PIC), siapa pun di grup itu boleh menjawab; pesan pengeluaran & obrolan biasa tetap diproses seperti biasa:

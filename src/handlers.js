@@ -19,7 +19,7 @@ import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk, b
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perintahKpi } from './handlersKpi.js';
 import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
-import { mulaiAnggota, jawabAnggota, ingatNama } from './anggota.js';
+import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -66,6 +66,7 @@ const BANTUAN = {
 • #gratis 3 porsi mozzarella isi 4 untuk @influencer`,
   owner: `*Khusus owner*
 • *KPI:* #nilai (penilaian tim event, juga bisa PIC) · #nilai Dena 5 4 4 3 · #nilai tim 4 · #poin Dena +20 bantu masak bumbu · #poin Dena -10 SOP tidak dikerjakan · #poinbatal K0001 · #kpi · #kpi Dena · #kpi 2026-09
+• *Karyawan:* #karyawan (daftar & nomor) · #karyawan lalu satu per baris *Nama 0812...* (cocokkan nama dengan nomor, grup pengeluaran/chat pribadi) · #anggota di grup tim (karyawan balas *saya [nama]*)
 • #eventbaru - bot bertanya data event satu per satu
 • #mulai - bot menanyakan grup ini untuk apa
 • #ubah bagi hasil 27 / #ubah tanggal 1-16 Nov 2026 - ubah data event
@@ -885,6 +886,7 @@ async function handlePribadi(ctx, pesan) {
   const opsi = { event: null, argumen: cmd.argumen, isOwner };
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
+  if (isOwner && cmd.perintah === 'karyawan') return balas(await perintahKaryawan(ctx, [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), null));
   if (isOwner && cmd.perintah === 'poin') return perintahPoin(ctx, pesan, opsi);
   if (isOwner && cmd.perintah === 'poinbatal') return perintahPoinBatal(ctx, pesan, opsi);
   return [];
@@ -1092,6 +1094,11 @@ export async function handlePesan(ctx, pesan) {
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
+      }
+      case 'karyawan': {
+        if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Data & nomor karyawan hanya di grup pengeluaran atau chat pribadi dengan bot.');
+        return balas(await perintahKaryawan(ctx, [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), event));
       }
       case 'kirim':
       case 'stokawal':
