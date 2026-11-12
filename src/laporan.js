@@ -164,7 +164,15 @@ export function hitungEvent(event, data) {
     }
     return { nama: o.nama, peran: o.peran, hari: hariKerja.length, upahHarian, upah, bonus, status: o.status, owner: adalahOwner(o) };
   });
-  if (pakaiGajiTercatat) {
+  if (pakaiGajiTercatat && omzetTotal) {
+    // Rekap event lama: hari kerja DW tidak tercatat; upah DW = total catatan gaji dari rekapan PIC, satu baris.
+    const dw = barisTim.filter((o) => o.peran === PERAN.DW || o.peran === PERAN.KASIR);
+    for (const o of dw) barisTim.splice(barisTim.indexOf(o), 1);
+    barisTim.push({
+      nama: `DW & kasir${dw.length ? ` (${dw.map((o) => o.nama).join(', ')})` : ''} – sesuai catatan gaji PIC`, peran: 'DW', hari: 0, hariTidakTercatat: true,
+      upahHarian: 0, upah: trxGaji.reduce((s, t) => s + num(t.nominal), 0), bonus: 0, status: 'AKTIF', owner: false, catatanGaji: true,
+    });
+  } else if (pakaiGajiTercatat) {
     const sisaTrx = trxGaji.filter((t) => !terpakaiTrx.has(t));
     const sisa = sisaTrx.reduce((s, t) => s + num(t.nominal), 0);
     if (sisa) barisTim.push({ nama: `Gaji tanpa nama cocok (${sisaTrx.map((t) => t.id).join(', ')})`, peran: 'DW', hari: 0, upahHarian: 0, upah: sisa, bonus: 0, status: 'AKTIF', owner: false, catatanGaji: true });
@@ -295,7 +303,7 @@ export function barisDataMain(r) {
   tambah('BIAYA', r.biaya.map(([nama, nilai, ket], i) => [String(i + 1), nama, nilai, ket]));
   tambah('MAKAN', [[r.budgetMakan, r.makanTerpakai, r.budgetMakan - r.makanTerpakai,
     r.budgetMakan - r.makanTerpakai >= 0 ? 'Sisa untuk makan bersama di akhir event' : '⚠️ Melebihi budget']]);
-  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.owner ? ' (owner, tidak digaji)' : '') + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), `${o.hari} hari`, o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
+  tambah('TIM', r.barisTim.map((o) => [o.nama, o.peran + (o.owner ? ' (owner, tidak digaji)' : '') + (o.status === 'BERHENTI' ? ' (berhenti)' : ''), o.hariTidakTercatat ? '-' : `${o.hari} hari`, o.hariTidakTercatat ? '' : o.upahHarian, o.upah, o.bonus, o.upah + o.bonus]));
   tambah('IKLAN', r.iklan.map((t) => [t.tanggal, t.keterangan, Number(t.nominal) || 0]));
   const sisaGratis = ATURAN.budgetPorsiGratis - r.nilaiGratis;
   tambah('GRATIS_INFO', [[`Budget ${ATURAN.budgetPorsiGratis.toLocaleString('id-ID')} | terpakai ${r.nilaiGratis.toLocaleString('id-ID')} | ${sisaGratis >= 0 ? `sisa ${sisaGratis.toLocaleString('id-ID')}` : `⚠️ lebih ${(-sisaGratis).toLocaleString('id-ID')}`}`]]);
