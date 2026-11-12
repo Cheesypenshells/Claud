@@ -19,6 +19,7 @@ import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk, b
 import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from './tunda.js';
 import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perintahKpi } from './handlersKpi.js';
 import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
+import { mulaiAnggota, jawabAnggota, ingatNama } from './anggota.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -625,6 +626,9 @@ async function perintahDaftar(ctx, pesan, grup, cmd) {
   // Grup tim event yang belum selesai: langsung tanya data pengiriman & stok awal.
   const ev = jenis === 'event' && kode ? await cariEvent(ctx.store, kode) : null;
   if (ev && ctx.sesi && statusEvent(ev, tanggalLokal(pesan.waktu)) !== 'selesai') {
+    // Kenali anggota grup dulu (nama & peran), lalu data pengiriman & stok awal.
+    const anggota = await mulaiAnggota(ctx, pesan.groupId, ev);
+    if (anggota) return [{ text: teksDaftar }, { text: anggota }];
     return [{ text: teksDaftar }, { text: mulaiPengiriman(ctx, pesan.groupId, ev) }];
   }
   return balas(teksDaftar);
@@ -883,6 +887,7 @@ async function handlePribadi(ctx, pesan) {
 
 export async function handlePesan(ctx, pesan) {
   if (pesan.pribadi) return handlePribadi(ctx, pesan);
+  ingatNama(ctx, pesan);
   let teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
@@ -926,6 +931,15 @@ export async function handlePesan(ctx, pesan) {
   if (grup.jenis === 'gudang') return []; // Tahap 2
 
   const event = await cariEvent(ctx.store, grup.kode_event);
+  // Daftar anggota grup (nama & peran) yang sedang ditanyakan; setelah selesai lanjut ke data pengiriman.
+  if (!cmd && ctx.sesi && event) {
+    const j = await jawabAnggota(ctx, pesan, event);
+    if (j) {
+      const lanjut = j.selesai && statusEvent(event, tanggalLokal(pesan.waktu)) !== 'selesai' && !ctx.sesi.get(`kirim:${pesan.groupId}`)
+        && !(await ctx.store.all('Pengiriman')).some((p) => p.kode_event === event.kode && p.status !== STATUS.BATAL);
+      return lanjut ? [{ text: j.teks }, { text: mulaiPengiriman(ctx, pesan.groupId, event) }] : balas(j.teks);
+    }
+  }
   // Data pengiriman & stok awal yang sedang ditanyakan.
   if (!cmd && ctx.sesi && event) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
@@ -1073,6 +1087,11 @@ export async function handlePesan(ctx, pesan) {
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Penilaian KPI dilakukan di grup pengeluaran (owner + PIC) atau chat pribadi dengan bot, bukan di grup tim.');
         return perintahNilai(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
       case 'poin': return perintahPoin(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
+      case 'anggota': {
+        if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
+        const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
+        return balas(daftarAnggota || '⚠️ Daftar anggota grup belum bisa diambil dari WhatsApp. Coba lagi sebentar.');
+      }
       case 'kirim':
       case 'stokawal':
       case 'pengiriman':

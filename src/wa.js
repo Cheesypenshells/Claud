@@ -166,5 +166,16 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
 
   sambung();
   // kirimPribadi: chat langsung ke nomor (contoh meminta penilaian KPI ke PIC).
-  return { kirim: (groupId, text) => kirim(groupId, text), kirimPribadi: (nomor, text) => kirim(`${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}@s.whatsapp.net`, text) };
+  // Daftar anggota grup: [{ nomor, admin }]. Nomor diambil dari phoneNumber/jid; kalau WhatsApp hanya
+  // memberi ID tersembunyi (LID), nomor berisi ID itu dan tersembunyi = true. Nomor bot sendiri tidak ikut.
+  const anggotaGrup = async (groupId) => {
+    const meta = await sock.groupMetadata(groupId).catch(() => null);
+    if (!meta) return [];
+    const saya = new Set([angkaId(sock.user?.id), angkaId(sock.user?.lid)].filter(Boolean));
+    return meta.participants.map((p) => {
+      const jid = [p.phoneNumber, p.jid, p.id].find((x) => String(x || '').endsWith('@s.whatsapp.net')) || p.id;
+      return { nomor: angkaId(jid), tersembunyi: !String(jid).endsWith('@s.whatsapp.net'), lid: angkaId(p.lid || (String(p.id).endsWith('@lid') ? p.id : '')), admin: Boolean(p.admin) };
+    }).filter((a) => a.nomor && !saya.has(a.nomor) && !saya.has(a.lid));
+  };
+  return { anggotaGrup, kirim: (groupId, text) => kirim(groupId, text), kirimPribadi: (nomor, text) => kirim(`${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}@s.whatsapp.net`, text) };
 }

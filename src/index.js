@@ -65,6 +65,7 @@ async function main() {
     }),
   });
 
+  ctx.anggotaGrup = wa.anggotaGrup; // daftar nomor anggota grup (untuk mengenali tim & absensi)
   const tugasJatuhTempo = buatPenjadwal({ store, jam: config.jam });
   // Penilaian KPI ke PIC sehari setelah event selesai (dicek tiap 10 menit).
   setInterval(() => jalankan(async () => {
