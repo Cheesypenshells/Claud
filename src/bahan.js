@@ -24,14 +24,19 @@ export function hitungBahan(rows, hargaBahan) {
     const restock = total('Restock');
     const sisaRows = g.filter((r) => r.gerak === 'Kembali');
     const sisa = sisaRows.reduce((s, r) => s + num(r.jumlah), 0);
-    const nilaiSisa = sisaRows.reduce((s, r) => s + num(r.jumlah) * (adaHarga(r.harga_satuan) ? num(r.harga_satuan) : h), 0);
+    // Sisa barang gudang tanpa stok awal/restock belum bisa dihitung (biaya bahannya belum tercatat):
+    // nilainya 0 sampai stok awal diinput. Bahan yang dibeli di lokasi (oyster) tetap dihitung.
+    const dibeli = BAHAN_DIBELI.includes(n);
+    const sisaTanpaAwal = !dibeli && sisa > 0 && awal + restock === 0;
+    const nilaiSisa = sisaTanpaAwal ? 0 : sisaRows.reduce((s, r) => s + num(r.jumlah) * (adaHarga(r.harga_satuan) ? num(r.harga_satuan) : h), 0);
     const nilaiBawa = (awal + restock) * h;
     return {
       bahan: n, satuan: harga.get(n)?.satuan || g[0]?.satuan || '', harga: h,
-      awal, restock, sisa, terpakai: awal + restock - sisa,
+      awal, restock, sisa, terpakai: sisaTanpaAwal ? 0 : awal + restock - sisa,
       nilaiBawa, nilaiSisa, nilaiTerpakai: nilaiBawa - nilaiSisa,
       sisaBelumDihargai: sisaRows.some((r) => !adaHarga(r.harga_satuan)),
-      dibeli: BAHAN_DIBELI.includes(n),
+      sisaTanpaAwal,
+      dibeli,
       // nama lama (laporan.js / pembukuan.js)
       keluar: awal, kembali: sisa, nilaiKembali: nilaiSisa,
     };

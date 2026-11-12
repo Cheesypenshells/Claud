@@ -273,3 +273,17 @@ test('fee PIC: 3 karyawan tetap atau lebih -> paling tinggi 20%; owner hadir tet
   const r = hitungEvent(ev, { omzet: [{ tanggal: '2026-11-02', kode_event: 'S', omzet: 20000000, refund: 0, status: 'OK' }], tim });
   assert.equal(r.feePicPersen, 20);
 });
+
+test('sisa bahan gudang tanpa stok awal tidak dihitung (laba tidak menggelembung); oyster dibeli tetap dihitung', async () => {
+  const { hitungBahan } = await import('../src/bahan.js');
+  const harga = [{ bahan: 'Mozzarella', harga: 234000, satuan: 'pack' }, { bahan: 'Oyster', harga: 15000, satuan: 'kg' }];
+  const rows = [{ bahan: 'Mozzarella', gerak: 'Kembali', jumlah: 19 }, { bahan: 'Oyster', gerak: 'Kembali', jumlah: 5 }];
+  const h = hitungBahan(rows, harga);
+  const keju = h.find((b) => b.bahan === 'Mozzarella');
+  assert.equal(keju.sisaTanpaAwal, true);
+  assert.equal(keju.nilaiSisa, 0);
+  assert.equal(keju.nilaiTerpakai, 0);
+  assert.equal(h.find((b) => b.bahan === 'Oyster').nilaiSisa, 75000);
+  const lengkap = hitungBahan([...rows, { bahan: 'Mozzarella', gerak: 'Keluar', jumlah: 50 }], harga).find((b) => b.bahan === 'Mozzarella');
+  assert.equal(lengkap.nilaiTerpakai, 31 * 234000);
+});

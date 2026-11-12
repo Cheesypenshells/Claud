@@ -143,7 +143,17 @@ export function hitungEvent(event, data) {
     || tim.some((t) => t.kode_event === e.kode && aktif(t) && t.peran === PERAN.TETAP && samaN(t.nama, nama))).length);
   // Gaji/upah yang sudah dibayar lewat grup (kategori Gaji & Upah) = angka sebenarnya untuk DW & kasir:
   // dicocokkan per nama di keterangan ("bayar gaji tyos"); yang tidak menyebut nama ditampilkan terpisah.
-  const trxGaji = keluar.filter((t) => t.kategori === KATEGORI.GAJI);
+  // Catatan gaji untuk karyawan tetap ("gaji karyawan tetap buat 2 orang", "gaji senior", "gaji pokok imam")
+  // dipisah dari upah DW: dipakai sebagai gaji tetap yang sebenarnya dibayar (menggantikan estimasi + bonus).
+  const namaTetap = orang.filter((o) => o.peran === PERAN.TETAP).map((o) => String(o.nama).toLowerCase()).filter((n) => n.length >= 3);
+  const untukTetap = (t) => {
+    const k = String(t.keterangan || '').toLowerCase();
+    if (/\b(dw|daily|harian|kasir)\b/.test(k)) return false;
+    return /\b(karyawan tetap|kary tetap|tetap|senior|gaji pokok)\b/.test(k) || namaTetap.some((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(k));
+  };
+  const trxGajiTetap = keluar.filter((t) => t.kategori === KATEGORI.GAJI && untukTetap(t));
+  const gajiTetapTercatat = trxGajiTetap.reduce((s, t) => s + num(t.nominal), 0);
+  const trxGaji = keluar.filter((t) => t.kategori === KATEGORI.GAJI && !trxGajiTetap.includes(t));
   const pakaiGajiTercatat = trxGaji.length > 0;
   const kataNama = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const terpakaiTrx = new Set();
@@ -194,10 +204,16 @@ export function hitungEvent(event, data) {
     const sisa = sisaTrx.reduce((s, t) => s + num(t.nominal), 0);
     if (sisa) barisTim.push({ nama: `Gaji tanpa nama cocok (${sisaTrx.map((t) => t.id).join(', ')})`, peran: 'DW', hari: 0, upahHarian: 0, upah: sisa, bonus: 0, status: 'AKTIF', owner: false, catatanGaji: true });
   }
+  // Gaji tetap yang dicatat di grup menggantikan estimasi (dan bonus) karyawan tetap.
+  if (gajiTetapTercatat) {
+    const tetapBaris = barisTim.filter((o) => o.peran === PERAN.TETAP);
+    for (const o of tetapBaris) { o.upah = gajiTetapTercatat / tetapBaris.length; o.bonus = 0; o.upahHarian = o.upah / Math.max(1, o.hari); o.dariCatatan = true; }
+    if (!tetapBaris.length) barisTim.push({ nama: 'Karyawan tetap – sesuai catatan gaji', peran: PERAN.TETAP, hari: 0, hariTidakTercatat: true, upahHarian: 0, upah: gajiTetapTercatat, bonus: 0, status: 'AKTIF', owner: false, catatanGaji: true });
+  }
   const gajiTetap = barisTim.filter((o) => o.peran === PERAN.TETAP).reduce((s, o) => s + o.upah, 0);
   const upahHarian = barisTim.filter((o) => o.peran === PERAN.DW || o.peran === PERAN.KASIR).reduce((s, o) => s + o.upah, 0);
   const totalBonus = barisTim.reduce((s, o) => s + o.bonus, 0);
-  const gajiTercatat = jumlahKategori(KATEGORI.GAJI);
+  const gajiTercatat = trxGaji.reduce((s, t) => s + num(t.nominal), 0);
 
   // ---------- Budget makan ----------
   const budgetMakan = tanggalJualan.reduce((s, t) => {
@@ -235,13 +251,15 @@ export function hitungEvent(event, data) {
     ['Transport & ekspedisi', jumlahKategori(KATEGORI.TRANSPORT), ''],
     ['Penginapan', jumlahKategori(KATEGORI.PENGINAPAN), ''],
     ['Konsumsi', makanTerpakai, `Budget ${budgetMakan.toLocaleString('id-ID')}`],
-    ['Gaji karyawan tetap (porsi event)', gajiTetap, orang.some((o) => o.peran === PERAN.TETAP && num(o.gaji_event))
+    ['Gaji karyawan tetap (porsi event)', gajiTetap, gajiTetapTercatat
+      ? `Dibayar lewat grup: ${trxGajiTetap.map((t) => `${t.id} ${t.keterangan}`).join(', ')}`
+      : orang.some((o) => o.peran === PERAN.TETAP && num(o.gaji_event))
       ? `Gaji khusus event: ${orang.filter((o) => o.peran === PERAN.TETAP).map((o) => `${o.nama} ${num(o.gaji_event) ? num(o.gaji_event).toLocaleString('id-ID') : 'gaji pokok'}`).join(', ')}`
       : `Gaji pokok 2,5 jt/bulan ÷ jumlah event yang dijaga dalam sebulan (${jumlahEventBulan} event dalam sebulan ini)`],
     // Gaji/upah yang sudah dibayar lewat grup (kategori Gaji & Upah) adalah angka sebenarnya, jadi dipakai
     // menggantikan estimasi dari daftar tim; sama dengan #rekap. Estimasi hanya kalau belum ada catatan.
     ['Upah DW + kasir', gajiTercatat || upahHarian, gajiTercatat
-      ? `Dibayar lewat grup (${keluar.filter((t) => t.kategori === KATEGORI.GAJI).length} catatan), dicocokkan per nama di tabel Tim & Gaji`
+      ? `Dibayar lewat grup (${trxGaji.length} catatan), dicocokkan per nama di tabel Tim & Gaji`
       : 'Estimasi dari daftar tim'],
     ['Estimasi bonus (poin KPI 100%)', totalBonus, omzetBersih > ATURAN.bonusTetap.batasOmzet
       ? `Senior: ${jumlahEventBulan >= 2 ? '1% omzet kotor per orang (2+ event dalam sebulan)' : `0,5% omzet kotor dibagi ${Math.max(1, jumlahTetap)} senior (1 event dalam sebulan)`}`

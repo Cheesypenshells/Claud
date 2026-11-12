@@ -1200,3 +1200,33 @@ test('rekening tim setelah event selesai: chat pribadi ke yang bernomor, grup ti
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
   assert.ok(!(await tugasRekening(ctx, new Date('2026-11-24T03:30:00Z'), opsi)).some((x) => /JMB26-11/.test(x.text)));
 });
+
+test('omzet: pesan panjang diawali "omset" tetap omzet; "catat" atas peringatan nominal besar berisi omset = omzet; rentang tanggal = total', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // 2-8 Nov
+  const r = await kirim(G_KELUAR, OWNER, 'omset 93.835.000 dari tanggal 2 sampai 8 november kemarin di jambi ya');
+  assert.match(r, /Omzet 2026-11-08 tercatat.*Rp 93.835.000/s);
+  assert.match((await store.all('Omzet'))[0].catatan, /Omzet total event/);
+  assert.match(await kirim(G_KELUAR, OWNER, 'omset jambi 50jt belum dipotong io'), /Omzet kotor: \*Rp 50.000.000\*/);
+  // pesan yang tidak diawali omset & panjang -> ditahan sebagai nominal besar; "catat" -> omzet
+  const w = await kirim(G_KELUAR, OWNER, 'ini kemarin itu pendapatan omset kita yang di jambi dari awal sampai akhir event 93.835.000 ya pak');
+  if (/sangat besar/.test(w)) {
+    assert.match(await kirim(G_KELUAR, OWNER, 'catat', { kutipan: { teks: w, id: 'w' } }), /Omzet .* tercatat/);
+  }
+  assert.equal((await store.all('Transaksi')).filter((t) => t.status !== 'BATAL').length, 0);
+});
+
+test('gaji karyawan tetap yang dicatat di grup tidak dobel dengan estimasi gaji pokok & tidak masuk upah DW', async () => {
+  const { hitungEvent } = await import('../src/laporan.js');
+  const ev = { kode: 'BNY', mulai: '2026-09-15', selesai: '2026-09-20', bagi_hasil_persen: 27.5 };
+  const tim = [{ kode_event: 'BNY', nama: 'Veri', peran: 'Tetap', status: 'AKTIF' }, { kode_event: 'BNY', nama: 'Imam', peran: 'Tetap', status: 'AKTIF' }];
+  const trx = [
+    { id: 'T1', kode_event: 'BNY', jenis: 'Pengeluaran', kategori: 'Gaji & Upah', keterangan: 'gaji karyawan tetap buat 2 orang', nominal: 3600000, status: 'OK' },
+    { id: 'T2', kode_event: 'BNY', jenis: 'Pengeluaran', kategori: 'Gaji & Upah', keterangan: 'gaji DW sharul', nominal: 450000, status: 'OK' },
+  ];
+  const r = hitungEvent(ev, { omzet: [], transaksi: trx, tim });
+  const b = Object.fromEntries(r.biaya.map(([n, v]) => [n, v]));
+  assert.equal(b['Gaji karyawan tetap (porsi event)'], 3600000);
+  assert.equal(b['Upah DW + kasir'], 450000);
+  assert.equal(r.barisTim.find((o) => o.nama === 'Veri').upah, 1800000);
+});

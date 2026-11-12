@@ -122,7 +122,9 @@ export function formatRekapEvent(r, hariIni) {
     for (const b of r.barisBahan) {
       baris.push(b.dibeli
         ? `  • Sisa ${b.bahan} (dibeli di lokasi) ${b.sisa} ${b.satuan}: -${rupiah(b.nilaiSisa)}`
-        : `  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} → ${rupiah(b.nilaiTerpakai)}${b.sisaBelumDihargai ? ' _(nilai sisa belum disebut, pakai harga tab)_' : ''}`);
+        : b.sisaTanpaAwal
+          ? `  • ${b.bahan}: sisa ${b.sisa} ${b.satuan} ⚠️ _stok awal belum diinput, belum dihitung (kirim: kiriman pertama ${b.bahan.toLowerCase()} ... pack)_`
+          : `  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} → ${rupiah(b.nilaiTerpakai)}${b.sisaBelumDihargai ? ' _(nilai sisa belum disebut, pakai harga tab)_' : ''}`);
     }
   }
   if (r.gajiTetap?.length) baris.push(`Gaji karyawan tetap (khusus event): ${rupiah(r.totalGajiTetap)} (${r.gajiTetap.map((o) => `${o.nama} ${rupiah(o.gaji)}`).join(', ')})`);

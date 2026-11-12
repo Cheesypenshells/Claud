@@ -8,7 +8,7 @@
 import { JENIS_GRUP, BUKU, JENIS, STATUS } from './schema.js';
 import { parsePerintah, parseEvent, parsePengeluaranDetail, parseOmzet, parseTim, DAFTAR_KATEGORI } from './parsers.js';
 import { rekapEvent, formatRekapEvent, rekapBulan, formatRekapBulan, jatuhTempo } from './finance.js';
-import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney, findMoney, bersihkan as bersihkanTeks } from './util.js';
+import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMoney, findMoney, parseRentangTanggal, BULAN, bersihkan as bersihkanTeks } from './util.js';
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
@@ -506,6 +506,18 @@ async function catatOmzetBanyak(ctx, pesan, { grup, event, teks }) {
   return balas(`✅ *Omzet ${bagian.length} hari tercatat* (${event.kode})\n${hasil.map((h) => h.text).join('\n')}\nTotal omzet event: *${rupiah(total)}*`);
 }
 
+// Rentang tanggal di dalam kalimat: "15-20 sept", "15 sampai 20 september", "15 sep - 2 okt".
+function cariRentang(teks, tahun) {
+  const t = String(teks).toLowerCase();
+  const sambung = '\\s*(?:-|–|—|s\\.?d\\.?|sampai|hingga|sd)\\s*';
+  let m = t.match(new RegExp(`(\\d{1,2})${sambung}(\\d{1,2})\\s+([a-z]+)`));
+  if (m && BULAN[m[3]]) return { mulai: ymdTanggal(tahun, BULAN[m[3]], m[1]), selesai: ymdTanggal(tahun, BULAN[m[3]], m[2]) };
+  m = t.match(new RegExp(`(\\d{1,2})\\s+([a-z]+)${sambung}(\\d{1,2})\\s+([a-z]+)`));
+  if (m && BULAN[m[2]] && BULAN[m[4]]) return { mulai: ymdTanggal(tahun, BULAN[m[2]], m[1]), selesai: ymdTanggal(tahun, BULAN[m[4]], m[3]) };
+  return parseRentangTanggal(t.trim(), tahun);
+}
+const ymdTanggal = (y, b, d) => `${y}-${String(b).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
 async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   const tahun = Number(tanggalLokal(pesan.waktu).slice(0, 4));
   const o = parseOmzet(teks, tahun, { hariIni: tanggalLokal(pesan.waktu), rentang: { mulai: event.mulai, selesai: event.selesai } });
@@ -515,7 +527,7 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   // Omzet kotor = sebelum dipotong bagi hasil IO (yang disimpan). "omset bersih / nett / setelah potong IO"
   // = sudah dipotong: dikembalikan ke omzet kotor (bersih ÷ (1 − bagi hasil)).
   const potongIO = Number(event.bagi_hasil_persen || 0) / 100;
-  const dariBersih = /\b(bersih|nett?|netto|setelah\s+(di)?potong\w*|sudah\s+(di)?potong\w*|dipotong\s+io)\b/i.test(teks) && !/\bkotor\b/i.test(teks);
+  const dariBersih = /\b(bersih|nett?|netto|setelah\s+(di)?potong\w*|sudah\s+(di)?potong\w*|dipotong\s+io)\b/i.test(teks) && !/\b(kotor|belum\s+(di)?potong\w*|sebelum\s+(di)?potong\w*)\b/i.test(teks);
   if (dariBersih && potongIO > 0 && potongIO < 1) {
     const masuk = o.omzet;
     o.omzet = Math.round(masuk / (1 - potongIO));
@@ -523,6 +535,11 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   }
   // Event yang sudah selesai (rekap) tanpa tanggal: omzet total dicatat di hari terakhir event.
   const selesai = event.selesai && tanggalLokal(pesan.waktu) > event.selesai;
+  const rentang = cariRentang(teks.replace(/^#omzet\b/i, ''), Number(tanggalLokal(pesan.waktu).slice(0, 4)));
+  if (rentang && rentang.mulai !== rentang.selesai) {
+    o.tanggal = rentang.selesai > event.selesai ? event.selesai : rentang.selesai;
+    o.catatan = [o.catatan, `Omzet total event (${rentang.mulai} s/d ${rentang.selesai})`].filter(Boolean).join('; ');
+  }
   const tanggal = o.tanggal || (selesai ? event.selesai : tanggalOperasional(pesan.waktu));
   if (!o.tanggal && selesai && !o.catatan) o.catatan = 'Omzet total event (tanpa tanggal per hari)';
   const semua = await ctx.store.all('Omzet');
@@ -990,9 +1007,10 @@ export async function handlePesan(ctx, pesan) {
   // "omset bali 125jt" / "omzet 3 okt 12,5jt" tanpa tanda # = laporan omzet, bukan pengeluaran.
   // Juga "total omset bali 125jt", "ini omset harian 125jt", "penjualan 3 okt 12jt", "pendapatan event 125jt".
   const RE_OMZET = /\b(omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales)\b/i;
-  if (!teks.startsWith('#') && RE_OMZET.test(teks) && parseMoney(teks) && teks.split(/\s+/).length <= 10
-    && !/\b(bagi hasil|potongan|potong|admin|fee|bonus|komisi|persen|%)\b/i.test(teks) && !/\n/.test(teks.trim())) {
-    teks = `#omzet ${teks.replace(/\b(ini|itu|total|omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales|harian)\b/gi, ' ').replace(/\s+/g, ' ').trim()}`;
+  const awalOmzet = /^(total\s+)?(omset|omzet|omsetnya|omzetnya)\b/i.test(teks);
+  if (!teks.startsWith('#') && RE_OMZET.test(teks) && parseMoney(teks) && (awalOmzet || (teks.split(/\s+/).length <= 15
+    && !/\b(bagi hasil|potongan|potong|admin|fee|bonus|komisi)\b/i.test(teks) && !/\n/.test(teks.trim())))) {
+    teks = `#omzet ${teks.replace(/\b(ini|itu|total|omset|omzet|omsetnya|omzetnya|penjualan|pendapatan|sales|harian)\b/gi, ' ').replace(/[ \t]+/g, ' ').replace(/\n+/g, ' ').trim()}`;
     pesan = { ...pesan, text: teks };
   }
   const cmd = parsePerintah(teks);
@@ -1153,6 +1171,16 @@ export async function handlePesan(ctx, pesan) {
       ctx.sesi.hapus(kunciD);
       // Dicatat atas nama pengirim asli pesan pengeluaran.
       const asal = d.senderId ? { ...pesan, senderId: d.senderId, senderName: d.senderName } : pesan;
+      // Yang ditahan ternyata omzet ("omset ... 93jt"): catat sebagai omzet, bukan pengeluaran.
+      const omzetItem = d.items.filter((i) => /\b(omset|omzet|penjualan|pendapatan)\b/i.test(i.keterangan));
+      if (omzetItem.length && omzetItem.length === d.items.length && event) {
+        const hasilOmzet = [];
+        for (const [n, i] of omzetItem.entries()) {
+          const tgl = i.tanggal ? ` ${i.tanggal}` : '';
+          hasilOmzet.push(...await catatOmzet(ctx, { ...asal, id: `${pesan.id || ''}-o${n}` }, { grup, event, teks: `#omzet${tgl} ${i.nominal}` }));
+        }
+        return hasilOmzet;
+      }
       const hasil = await catatUang(ctx, asal, { buku: d.buku, jenis: JENIS.KELUAR, kodeEvent: d.kodeEvent, teks: '', itemsSiap: d.items });
       const tambahan = bersihkanTeks(m[1] || '');
       if (!tambahan) return hasil;
