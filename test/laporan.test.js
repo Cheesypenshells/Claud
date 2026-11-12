@@ -207,6 +207,7 @@ test('rekap event lama: omzet total -> semua hari event dihitung; upah DW = tota
   });
   const tiara = r.barisTim.find((o) => o.nama === 'Tiara');
   assert.equal(tiara.hari, 12);
+  assert.equal(r.jumlahHariJualan, 12);
   assert.equal(tiara.upah, 2000000);
   assert.equal(tiara.bonus, 0);
   // DW tidak dipecah per nama / hari: satu baris = total catatan gaji PIC

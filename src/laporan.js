@@ -265,7 +265,7 @@ export function hitungEvent(event, data) {
   if (diLuar.pengeluaran) harian.push(diLuar);
 
   return {
-    event, hari, harian, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis,
+    event, hari, harian, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis, jumlahHariJualan: tanggalJualan.length,
     labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
     penggantian: hitungPenggantian(transaksi, kode),
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
@@ -281,7 +281,8 @@ export function barisDataMain(r) {
     const batas = BATAS_BARIS[bagian];
     data.slice(0, batas).forEach((isi, i) => baris.push([kode, bagian, i + 1, ...isi]));
   };
-  const jumlahHari = r.hari.length;
+  // Omzet total (rekap event lama): hari jualan = semua tanggal event.
+  const jumlahHari = r.jumlahHariJualan || r.hari.length;
   const margin = r.omzetBersih ? (r.laba / r.omzetBersih) * 100 : 0;
 
   tambah('INFO', [[`${r.event.kota} | ${r.event.io} | ${r.event.mulai} s/d ${r.event.selesai} | Wilayah ${r.event.wilayah || 'Jawa'} | Bagi hasil ${persen(num(r.event.bagi_hasil_persen))}`]]);
