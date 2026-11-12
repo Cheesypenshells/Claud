@@ -974,3 +974,12 @@ test('anggota: nama WhatsApp dicocokkan otomatis; owner bisa menempel daftar nam
   assert.match(t, /Tiar veri \(Tetap\) → 081222223333.*Rina \(Kasir\) → 081244445555 _\(baru\)_.*Tidak terbaca: budi/s);
   assert.match(await kirim(G_KELUAR, OWNER, '#karyawan'), /Data karyawan.*Alam.*081111110001.*belum bernomor: \*Budi, DW 1\*/s);
 });
+
+test('"omset bali 125055000jt" tanpa # = omzet (bukan pengeluaran); angka lengkap + jt tidak dikali sejuta', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  const r = await kirim(G_KELUAR, OWNER, 'omset jambi 125055000jt');
+  assert.match(r, /Omzet .* tercatat.*Rp 125.055.000/s);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.equal((await store.all('Omzet'))[0].omzet, 125055000);
+});

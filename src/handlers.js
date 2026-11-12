@@ -476,7 +476,10 @@ async function catatOmzet(ctx, pesan, { grup, event, teks, ringkas = false }) {
   if (!o.omzet) {
     return balas('⚠️ Nominal omzet tidak terbaca. Contoh:\n#omzet\nOMZET TERVERIFIKASI: Rp 12.500.000\nJUMLAH TRANSAKSI: 85');
   }
-  const tanggal = o.tanggal || tanggalOperasional(pesan.waktu);
+  // Event yang sudah selesai (rekap) tanpa tanggal: omzet total dicatat di hari terakhir event.
+  const selesai = event.selesai && tanggalLokal(pesan.waktu) > event.selesai;
+  const tanggal = o.tanggal || (selesai ? event.selesai : tanggalOperasional(pesan.waktu));
+  if (!o.tanggal && selesai && !o.catatan) o.catatan = 'Omzet total event (tanpa tanggal per hari)';
   const semua = await ctx.store.all('Omzet');
   const lama = semua.find((r) => r.kode_event === event.kode && r.tanggal === tanggal && r.status !== STATUS.BATAL);
   if (lama) await ctx.store.update('Omzet', 'dicatat', lama.dicatat, { status: STATUS.BATAL });
@@ -918,6 +921,11 @@ export async function handlePesan(ctx, pesan) {
   if (pesan.pribadi) return handlePribadi(ctx, pesan);
   ingatNama(ctx, pesan);
   let teks = String(pesan.text || '').trim();
+  // "omset bali 125jt" / "omzet 3 okt 12,5jt" tanpa tanda # = laporan omzet, bukan pengeluaran.
+  if (/^(omset|omzet|omsetnya|omzetnya|total omset|total omzet)\b/i.test(teks) && parseMoney(teks)) {
+    teks = `#omzet ${teks.replace(/^(total\s+)?(omset|omzet)\w*\s*/i, '')}`;
+    pesan = { ...pesan, text: teks };
+  }
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
   const grup = await cariGrup(ctx.store, pesan.groupId);
