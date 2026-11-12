@@ -20,7 +20,7 @@ import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from
 import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perintahKpi } from './handlersKpi.js';
 import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
 import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
-import { tanganiAbsen, perintahAbsen } from './absensi.js';
+import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -69,6 +69,7 @@ const BANTUAN = {
   owner: `*Khusus owner*
 • *KPI:* #nilai (penilaian tim event, juga bisa PIC) · #nilai Dena 5 4 4 3 · #nilai tim 4 · #poin Dena +20 bantu masak bumbu · #poin Dena -10 SOP tidak dikerjakan · #poinbatal K0001 · #kpi · #kpi Dena · #kpi 2026-09
 • *Karyawan:* #karyawan (daftar & nomor) · #karyawan lalu satu per baris *Nama 0812...* (cocokkan nama dengan nomor, grup pengeluaran/chat pribadi) · #anggota di grup tim (karyawan balas *saya [nama]*)
+• *Absen (owner):* #izin Dena (bebas denda hari ini) · #izin Dena besok datang 10.00 karena pulang jam 3 pagi (dispensasi) · #izin batal Dena besok · #jadwal sabtu buka 08.00 karena hari pahlawan · #jadwal sabtu datang 07.00 · #jadwal batal sabtu · #jadwal (daftar). Bisa di grup atau chat pribadi bot
 • #eventbaru - bot bertanya data event satu per satu
 • #mulai - bot menanyakan grup ini untuk apa
 • #ubah bagi hasil 27 / #ubah tanggal 1-16 Nov 2026 - ubah data event
@@ -889,6 +890,20 @@ async function handlePribadi(ctx, pesan) {
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
   if (isOwner && cmd.perintah === 'karyawan') return balas(await perintahKaryawan(ctx, [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), null));
+  if (isOwner && ['izin', 'ijin', 'ijjin', 'dispensasi', 'jadwal'].includes(cmd.perintah)) {
+    // Chat pribadi: event dari kode yang ditulis, atau satu-satunya event yang belum selesai.
+    let isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
+    const events = (await ctx.store.all('Event')).filter((e) => e.status !== 'SELESAI');
+    let ev = events.find((e) => new RegExp(`\\b${e.kode}\\b`, 'i').test(isi));
+    if (ev) isi = isi.replace(new RegExp(`\\b${ev.kode}\\b`, 'i'), ' ');
+    else if (events.length === 1) [ev] = events;
+    else if (cmd.perintah !== 'jadwal') {
+      const tim = await ctx.store.all('Tim Event');
+      const cocok = events.filter((e) => tim.some((o) => o.kode_event === e.kode && o.status !== 'BATAL' && new RegExp(`\\b${String(o.nama).split(' ')[0]}\\b`, 'i').test(isi)));
+      if (cocok.length === 1) [ev] = cocok;
+    }
+    return balas(cmd.perintah === 'jadwal' ? await perintahJadwal(ctx, pesan, ev, isi) : await perintahIzin(ctx, pesan, ev, isi));
+  }
   if (isOwner && cmd.perintah === 'poin') return perintahPoin(ctx, pesan, opsi);
   if (isOwner && cmd.perintah === 'poinbatal') return perintahPoinBatal(ctx, pesan, opsi);
   return [];
@@ -1101,6 +1116,15 @@ export async function handlePesan(ctx, pesan) {
         if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
+      }
+      case 'izin':
+      case 'ijin':
+      case 'ijjin':
+      case 'dispensasi':
+      case 'jadwal': {
+        if (!isOwner) return balas('⚠️ Izin, dispensasi, dan jadwal khusus absen hanya bisa diberikan owner.');
+        const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
+        return balas(cmd.perintah === 'jadwal' ? await perintahJadwal(ctx, pesan, event, isi) : await perintahIzin(ctx, pesan, event, isi));
       }
       case 'absen':
       case 'absensi':

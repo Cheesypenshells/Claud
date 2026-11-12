@@ -312,6 +312,20 @@ Syarat: **Jam Buka** event terisi (setup event, atau owner `#ubah jam buka 11.00
 - Bot **tidak bisa melihat gaya tangan di foto**, jadi gayanya dicek owner/PIC. Reply foto absen dengan `tolak` (karyawan harus kirim ulang; denda dihitung dari jam foto ulang) atau `bebas denda` (denda jadi 0, misalnya izin).
 - Nomor karyawan harus sudah dikenal (lihat *Anggota grup tim*); kalau belum, bot meminta `saya [nama]` dulu.
 
+**Izin & dispensasi (owner saja, di grup mana pun atau chat pribadi dengan bot):**
+- `#izin Dena` → hari ini Dena bebas denda telat.
+- `#izin Dena besok datang 10.00 karena pulang jam 3 pagi` → dispensasi: boleh datang s/d 10.00 tanpa denda; lewat dari itu denda dihitung dari 10.00.
+- `#izin Dena, Tiar sabtu` · `#izin Dena 14 Nov` · `#izin batal Dena besok`.
+- Tulis alasan setelah kata **karena**, supaya "jam 3 pagi" di alasan tidak dibaca sebagai jam datang.
+- Kalau izin diberikan setelah karyawan absen, dendanya langsung dihitung ulang.
+- Di chat pribadi, kalau ada lebih dari satu event berjalan, tulis kodenya: `#izin SMG26-11 Dena besok 10.00`.
+
+**Jadwal khusus per hari (owner):**
+- `#jadwal sabtu buka 08.00 karena hari pahlawan` → hari itu buka 08.00, karyawan datang 07.00, gaya foto diumumkan 06.00.
+- `#jadwal sabtu datang 07.00` → hanya jam datang yang diubah (jam buka tetap).
+- `#jadwal batal sabtu` → kembali normal · `#jadwal` → daftar jadwal khusus & izin yang akan datang.
+- Semua tersimpan di tab **Jadwal Absen**.
+
 **Perintah:** `#absen` = siapa sudah/belum absen hari ini · `#absen denda` = rekap denda event · `#absen Joko 10.40` = absen manual oleh owner/PIC (misalnya HP karyawan mati). Denda juga bisa diubah langsung di tab Absensi.
 
 ## Pengiriman & stok awal event

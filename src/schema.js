@@ -117,6 +117,22 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Izin / dispensasi per orang & jadwal khusus per hari (diisi owner lewat #izin / #jadwal).
+  'Jadwal Absen': {
+    warna: '#00897B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 140, { catatan: 'Kosong = jadwal khusus untuk seluruh tim' }),
+      k('jenis', 'Jenis', 120, { catatan: 'IZIN (bebas denda) / DISPENSASI (jam datang khusus) / JADWAL KHUSUS' }),
+      k('buka', 'Jam Buka', 90),
+      k('datang', 'Jam Datang', 95),
+      k('alasan', 'Alasan', 220),
+      k('oleh', 'Diberikan Oleh', 140),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Absensi foto harian tim event (denda telat per hari).
   Absensi: {
     warna: '#00897B',

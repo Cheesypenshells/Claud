@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { handlePesan } from '../src/handlers.js';
 import { MemoryStore } from '../src/store/memory.js';
 import { buatSesi } from '../src/sesi.js';
-import { dendaTelat, zonaKota, jadwalHari, tugasAbsensi, gayaHari } from '../src/absensi.js';
+import { dendaTelat, zonaKota, jadwalHari, tugasAbsensi, gayaHari, bacaAturan } from '../src/absensi.js';
 
 const OWNER = '6281111111111';
 const PIC = '6282222222222';
@@ -84,4 +84,64 @@ test('absensi foto: pengumuman gaya, absen tepat waktu / telat dengan denda, tol
   assert.match(await kirim(G_KELUAR, OWNER, '#absen denda', jam('11:31')), /Dena: 1 hari, telat 0× → \*Rp 0\*.*Tiar: 1 hari, telat 1× → \*Rp 0\*.*Joko: 1 hari, telat 1× → \*Rp 50.000\*.*Total denda: Rp 50.000/s);
   // obrolan yang menyebut absen tidak dibalas
   assert.equal(await kirim(G_TIM, DENA, 'nanti jangan lupa absen ya teman teman', jam('11:40')), '');
+});
+
+test('bacaAturan: tanggal, jam, alasan dari kalimat owner', () => {
+  const h = '2026-11-03'; // Selasa
+  assert.deepEqual(
+    (({ tanggal, datang, jam, alasan, sisa }) => ({ tanggal, datang, jam, alasan, sisa }))(bacaAturan('Dena besok datang jam 10 karena pulang jam 3 pagi', h)),
+    { tanggal: '2026-11-04', datang: '10.00', jam: null, alasan: 'pulang jam 3 pagi', sisa: 'dena' },
+  );
+  const a = bacaAturan('sabtu buka 08.00 karena hari pahlawan', h);
+  assert.equal(a.tanggal, '2026-11-07');
+  assert.equal(a.buka, '08.00');
+  assert.equal(bacaAturan('tiar 14 nov 10.30', h).tanggal, '2026-11-14');
+  assert.equal(bacaAturan('tiar 14 nov 10.30', h).jam, '10.30');
+  assert.equal(bacaAturan('dena, tiar veri hari ini', h).sisa, 'dena, tiar veri');
+});
+
+test('izin, dispensasi & jadwal khusus dari owner', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (groupId, senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `b${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, pribadi: groupId === 'dm', ...extra,
+  })).map((r) => r.text).join('\n');
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  const pada = (tgl, hhmm) => new Date(`${tgl}T${hhmm}:00+07:00`);
+  await kirim(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 2-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar veri', jam('07:00'));
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11', jam('07:01'));
+  await kirim(G_TIM, DENA, 'saya Dena', jam('07:02'));
+  await kirim(G_TIM, TIAR, 'saya Tiar veri', jam('07:03'));
+  await kirim(G_TIM, PIC, 'saya Budi', jam('07:04'));
+
+  // hanya owner
+  assert.match(await kirim(G_TIM, PIC, '#izin Dena', jam('08:00')), /hanya bisa diberikan owner/);
+  // Tiar telat 40 menit (50rb), lalu owner memberi izin -> denda dihitung ulang jadi 0
+  assert.match(await kirim(G_TIM, TIAR, 'absen', jam('10:40'), foto('t1')), /denda \*Rp 50.000\*/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#izin tiar veri karena antar ibu ke RS', jam('10:45')), /Izin Tiar veri\* 2026-11-03: bebas denda.*antar ibu ke RS.*Rp 50.000\* → \*Rp 0\*/s);
+
+  // dispensasi besok untuk Dena: datang s/d 10.00 tanpa denda
+  assert.match(await kirim(G_KELUAR, OWNER, '#izin Dena besok datang jam 10 karena pulang jam 3 pagi', jam('12:00')),
+    /Dispensasi Dena\* 2026-11-04: boleh datang s\/d \*10:00 WIB\* tanpa denda \(pulang jam 3 pagi\)/);
+  const umum = await tugasAbsensi(ctx, pada('2026-11-04', '09:00'));
+  assert.match(umum[0].text, /Dena: dispensasi datang s\/d 10:00 WIB/);
+  // batas 10.00: Dena tidak disebut belum absen (dispensasinya juga 10.00 -> sudah jatuh tempo? tidak, disebut kalau lewat)
+  assert.match(await kirim(G_TIM, DENA, 'absen', pada('2026-11-04', '09:58'), foto('d1')), /✅ Tepat waktu.*dispensasi s\/d 10:00 WIB/s);
+  // Tiar tanpa izin hari ini: telat 5 menit -> 10rb
+  assert.match(await kirim(G_TIM, TIAR, 'absen', pada('2026-11-04', '10:05'), foto('t2')), /Telat \*5 menit\* → denda \*Rp 10.000\*/);
+
+  // jadwal khusus Sabtu: buka 08.00 (hari pahlawan) -> datang 07.00, gaya diumumkan 06.00
+  assert.match(await kirim(G_KELUAR, OWNER, '#jadwal sabtu buka 08.00 karena hari pahlawan', jam('12:10')),
+    /Jadwal khusus JMB26-11 2026-11-07\* \(hari pahlawan\).*Buka \*08:00 WIB\*.*paling lambat \*07:00 WIB\*.*diumumkan \*06:00 WIB\*/s);
+  assert.equal((await tugasAbsensi(ctx, pada('2026-11-07', '05:59'))).length, 0);
+  const sabtu = await tugasAbsensi(ctx, pada('2026-11-07', '06:00'));
+  assert.match(sabtu[0].text, /Jadwal khusus hari ini\* \(hari pahlawan\).*buka \*08:00 WIB\*.*paling lambat \*07:00 WIB\*/s);
+  assert.match(await kirim(G_TIM, DENA, 'absen', pada('2026-11-07', '07:20'), foto('d3')), /Telat \*20 menit\* → denda \*Rp 25.000\*/);
+  // owner hanya mengatur jam datang (via chat pribadi, tanpa kode karena hanya satu event aktif)
+  assert.match(await kirim('dm', OWNER, '#jadwal minggu datang 07.00', pada('2026-11-07', '20:00')), /2026-11-08.*Buka \*11:00 WIB\*.*paling lambat \*07:00 WIB\*/s);
+  assert.match(await kirim('dm', OWNER, '#izin JMB26-11 Budi minggu 09.00', pada('2026-11-07', '20:01')), /Dispensasi Budi\* 2026-11-08: boleh datang s\/d \*09:00 WIB\*/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#jadwal', pada('2026-11-07', '20:02')), /2026-11-08 SEMUA:\s+datang 07:00.*2026-11-08 Budi: dispensasi s\/d 09:00/s);
+  assert.match(await kirim(G_KELUAR, OWNER, '#jadwal batal minggu', pada('2026-11-07', '20:03')), /2026-11-08 kembali normal: buka 11:00/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#izin batal Budi minggu', pada('2026-11-07', '20:04')), /Izin\/dispensasi \*Budi\* 2026-11-08 dibatalkan/);
 });
