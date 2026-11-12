@@ -1043,3 +1043,10 @@ test('pertanyaan kategori yang menunggu tidak menelan daftar bahan baku ("bahan 
   // jawaban pendek tetap diterima
   assert.match(await kirim(G_KELUAR, OWNER, '9'), /T0001 sekarang kategori/);
 });
+
+test('"rekap" tanpa # = #rekap', async () => {
+  const { kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.match(await kirim(G_KELUAR, OWNER, 'rekap'), /REKAP EVENT JMB26-11/);
+  assert.match(await kirim(G_KELUAR, OWNER, 'lihat rekap'), /REKAP EVENT JMB26-11/);
+});

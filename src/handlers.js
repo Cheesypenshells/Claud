@@ -942,6 +942,11 @@ export async function handlePesan(ctx, pesan) {
   if (pesan.pribadi) return handlePribadi(ctx, pesan);
   ingatNama(ctx, pesan);
   let teks = String(pesan.text || '').trim();
+  // "rekap" / "rekapnya" / "lihat rekap" saja (tanpa #) = #rekap.
+  if (/^(lihat\s+|cek\s+|minta\s+)?(rekap|rekapan|rekapnya|rekap dong|rekap ya)[.!?]*$/i.test(teks)) {
+    teks = '#rekap';
+    pesan = { ...pesan, text: teks };
+  }
   // "omset bali 125jt" / "omzet 3 okt 12,5jt" tanpa tanda # = laporan omzet, bukan pengeluaran.
   if (/^(omset|omzet|omsetnya|omzetnya|total omset|total omzet)\b/i.test(teks) && parseMoney(teks)) {
     teks = `#omzet ${teks.replace(/^(total\s+)?(omset|omzet)\w*\s*/i, '')}`;
