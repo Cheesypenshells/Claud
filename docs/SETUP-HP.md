@@ -88,7 +88,7 @@ Kalau WhatsApp menampilkan "coba lagi nanti", tunggu 10–15 menit dulu.
 |---|---|
 | **Menyalakan bot** | Buka Termux, ketik `bot`, Enter |
 | **Mematikan bot** | Di Termux tekan **Ctrl** (tombol di baris atas keyboard Termux) + **C** |
-| **Memperbarui bot** | Matikan bot, ketik `perbarui-bot`, lalu `bot` |
+| **Memperbarui bot** | Otomatis: selama bot menyala, setiap 10 menit bot mengecek GitHub, memasang versi baru, lalu menyala ulang sendiri. `perbarui-bot` hanya kalau ingin memperbarui manual saat bot mati |
 
 Saran pemakaian:
 - **Nyalakan bot minimal sekali sehari**, misalnya malam setelah closing. Saat menyala, bot memproses semua laporan yang tertunda dan membalas di grup.
