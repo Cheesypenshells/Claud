@@ -26,7 +26,7 @@ const BAGIAN = [
   { kode: 'TIM', judul: 'TIM & GAJI (estimasi)', warna: '#8E24AA', mulai: 72, kolom: ['Nama', 'Peran', 'Hari Kerja', 'Upah per Hari', 'Total Upah', 'Estimasi Bonus', 'Total'], rupiah: [3, 4, 5, 6] },
   { kode: 'IKLAN', judul: '④ BIAYA IKLAN & ENDORSE', warna: '#F9AB00', mulai: 95, kolom: ['Tanggal', 'Keterangan', 'Nominal'], rupiah: [2] },
   { kode: 'GRATIS', judul: 'PORSI GRATIS (harga jual, budget per event)', warna: '#F9AB00', mulai: 108, kolom: ['Tanggal', 'Menu', 'Porsi', 'Total pcs', 'Harga per pcs', 'Nilai Jual', 'Diberikan Untuk'], rupiah: [4, 5] },
-  { kode: 'BAHAN', judul: '⑤ SISA BAHAN BAKU (dikembalikan ke gudang)', warna: '#C2185B', mulai: 121, kolom: ['Bahan', 'Satuan', 'Keluar', 'Restock', 'Dikembalikan', 'Terpakai', 'Harga', 'Nilai Terpakai', 'Nilai Dikembalikan'], rupiah: [6, 7, 8] },
+  { kode: 'BAHAN', judul: '⑤ BAHAN BAKU (awal + restock − sisa = terpakai)', warna: '#C2185B', mulai: 121, kolom: ['Bahan', 'Satuan', 'Awal (kiriman 1)', 'Restock', 'Sisa', 'Terpakai', 'Harga', 'Nilai Terpakai', 'Nilai Sisa'], rupiah: [6, 7, 8] },
   { kode: 'UANG', judul: '⑥ UANG SIAPA (penggantian dari owner)', warna: '#5F6368', mulai: 134, kolom: ['Nama', 'Uang yang Terpakai', 'Sudah Diganti', 'Sisa Harus Ditransfer', 'Jumlah Catatan'], rupiah: [1, 2, 3] },
 ];
 

@@ -12,7 +12,7 @@ import { PERAN, KATEGORI } from './parsers.js';
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 export const PENANDA_CADANGAN = '(kosong)';
 // Naikkan kalau tata letak file event berubah: file event lama ikut dirapikan ulang sekali.
-export const VERSI_TATA_LETAK = '10';
+export const VERSI_TATA_LETAK = '11';
 
 // "2026-09-24", "2026-10-11" -> "24 Sep - 11 Okt 2026"; bulan sama -> "1 - 14 Nov 2026"
 export function rentangTanggal(mulai, selesai) {
@@ -184,7 +184,11 @@ export function tabelKategoriEvent(r, transaksi) {
     const isi = keluar.filter((t) => (k.kategori ? k.kategori.includes(t.kategori) : !dikenal.has(t.kategori))).map(baris);
     if (k.gudang) {
       for (const b of r.barisBahan.filter((x) => x.keluar || x.restock)) {
-        isi.push(['', 'Gudang', `${b.bahan} dari gudang: keluar ${b.keluar} + restock ${b.restock} ${b.satuan} × ${b.harga.toLocaleString('id-ID')}`, b.nilaiBawa, 'Gudang', '', 'Bot (dari laporan bahan)', ...(pakaiBukti ? ['Laporan gudang'] : [])]);
+        isi.push(['', 'Gudang', `${b.bahan} dari gudang: awal ${b.keluar} + restock ${b.restock} = ${b.keluar + b.restock} ${b.satuan} × ${b.harga.toLocaleString('id-ID')}`, b.nilaiBawa, 'Gudang', '', 'Bot (dari laporan bahan)', ...(pakaiBukti ? ['Laporan gudang'] : [])]);
+      }
+      // Sisa mengurangi biaya: total tab = bahan terpakai.
+      for (const b of r.barisBahan.filter((x) => x.kembali)) {
+        isi.push(['', 'Gudang', `${b.bahan} SISA ${b.kembali} ${b.satuan} × ${b.harga.toLocaleString('id-ID')} (dikembalikan, mengurangi biaya)`, -b.nilaiKembali, 'Gudang', '', 'Bot (dari laporan bahan)', ...(pakaiBukti ? ['Laporan gudang'] : [])]);
       }
     }
     return { tab: k.tab, judul: k.judul, warna: k.warna, kolom: denganBukti(KOLOM_KATEGORI), baris: isi, total: isi.reduce((s, x) => s + (Number(x[3]) || 0), 0) };

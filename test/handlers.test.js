@@ -162,8 +162,8 @@ test('tim, bahan, porsi gratis, dan data sheet Main', async () => {
   assert.match(await kirim(G_TIM, KARYAWAN, '#berhenti Joko'), /hanya oleh owner/);
 
   const r2 = await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 10 pack\nbumbu garlic 2 pack\noyster 50 kg');
-  assert.match(r2, /Bahan keluar dari gudang/);
-  assert.match(r2, /Mozzarella: keluar 10 \+ restock 0 − kembali 0 = terpakai \*10 pack\*/);
+  assert.match(r2, /Bahan baku pengiriman pertama/);
+  assert.match(r2, /Mozzarella: awal 10 \+ restock 0 = 10, sisa 0 → terpakai \*10 pack\*/);
   assert.match(await kirim(G_TIM, KARYAWAN, '#kembali mozzarella 3 pack'), /terpakai \*7 pack\*/);
 
   const r3 = await kirim(G_KELUAR, PIC, '#gratis 3 porsi mozzarella isi 4 untuk @rina_food');
@@ -260,7 +260,7 @@ test('kalimat biasa tentang bahan dicatat tanpa #perintah', async () => {
   const { isiHargaAwal } = await import('../src/main.js');
   await isiHargaAwal(store);
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
-  assert.match(await kirim(G_KELUAR, PIC, 'kiriman 10 pack keju'), /Bahan keluar dari gudang[\s\S]*Mozzarella 10 pack/);
+  assert.match(await kirim(G_KELUAR, PIC, 'kiriman 10 pack keju'), /Bahan baku pengiriman pertama[\s\S]*Mozzarella 10 pack/);
   assert.match(await kirim(G_KELUAR, PIC, 'restock bumbu garlic 2 pack'), /Restock bahan[\s\S]*Bumbu Garlic 2 pack/);
   assert.match(await kirim(G_KELUAR, PIC, 'barang datang 5 pack keju'), /Restock bahan[\s\S]*Mozzarella 5 pack/);
   assert.match(await kirim(G_KELUAR, PIC, 'kiriman restock 2 pack keju'), /Restock bahan[\s\S]*Mozzarella 2 pack/);
@@ -993,4 +993,23 @@ test('omset bersih (setelah potongan IO) dikembalikan ke omzet kotor; balasan me
   const k = await kirim(G_KELUAR, OWNER, 'omset kotor 4 nov 12jt');
   assert.match(k, /Omzet kotor: \*Rp 12.000.000\*/);
   assert.match(await kirim(G_KELUAR, OWNER, '#rekap'), /Omzet kotor \(2 hari\): Rp 22.000.000.*Omzet bersih \(setelah bagi hasil IO\): Rp 16.500.000/s);
+});
+
+test('bahan baku di grup pengeluaran (event selesai): pengiriman pertama, restock bertanggal, sisa; nilai rupiah & masuk #rekap', async () => {
+  const { store, ctx, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // 2-8 Nov
+  const nanti = { waktu: new Date('2026-11-20T07:00:00Z') }; // event sudah selesai
+  const r1 = await kirim(G_KELUAR, OWNER, 'bahan baku pengiriman pertama keju 10 balok, bumbu garlic 5 pack', nanti);
+  assert.match(r1, /pengiriman pertama\* \(JMB26-11\) – tgl 2026-11-02.*Mozzarella 10 pack × Rp 234.000 = Rp 2.340.000/s);
+  assert.match(await kirim(G_KELUAR, OWNER, 'restock keju 3 balok 5 nov', nanti), /tgl 2026-11-05.*awal 10 \+ restock 3 = 13/s);
+  const r3 = await kirim(G_KELUAR, OWNER, 'sisah keju 2 balok, bumbu garlic 1 pack', nanti);
+  assert.match(r3, /tgl 2026-11-08.*terpakai \*11 pack\* × Rp 234.000 = \*Rp 2.574.000\*.*Biaya bahan baku event .*Rp 4.574.000/s);
+  assert.equal((await store.all('Transaksi')).length, 0); // bukan transaksi uang, tidak dobel
+  const rekap = await kirim(G_KELUAR, OWNER, '#rekap', nanti);
+  assert.match(rekap, /Bahan baku dari gudang \(terpakai\): Rp 4.574.000.*Mozzarella: awal 10 \+ restock 3 − sisa 2 = 11 pack.*Total pengeluaran: \*Rp 4.574.000\*/s);
+  // di grup tim tanpa harga
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11', nanti);
+  assert.doesNotMatch(await kirim(G_TIM, PIC, 'restock keju 1 balok', nanti), /Rp/);
 });

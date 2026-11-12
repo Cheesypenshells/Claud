@@ -130,9 +130,10 @@ test('input event lama (manual) dihitung dengan mesin yang sama', async () => {
   assert.equal(kediri[kol('Fee PIC %')], 10);
   assert.equal(kediri[kol('Bahan Baku')], 10 * 234000);
   assert.equal(kediri[kol('Sisa Bahan Kembali')], 2 * 234000);
-  // tab Bahan Baku memuat bahan dari gudang, totalnya sama dengan biaya bahan baku
+  // tab Bahan Baku memuat bahan dari gudang: awal + restock, dikurangi sisa -> total = bahan terpakai
   const fileKediri = (await store.all('Pengaturan')).find((r) => r.kunci === 'file_event_KDR26-09').nilai;
-  assert.equal(store.tabel[`${fileKediri}/Bahan Baku`].total, 10 * 234000);
+  assert.equal(store.tabel[`${fileKediri}/Bahan Baku`].total, (10 - 2) * 234000);
+  assert.ok(store.tabel[`${fileKediri}/Bahan Baku`].baris.some((x) => /SISA 2 pack/.test(x[2]) && x[3] === -2 * 234000));
   assert.equal(store.tabel[`${fileKediri}/Transport`].baris[0][4], 'George');
   // file event diambil dari cadangan dan dicatat di Pengaturan (tidak dobel saat dihitung ulang)
   assert.equal(store.files[0].nama, 'KEDIRI - JANGKRIK (3 - 5 Sep 2026)');

@@ -84,10 +84,10 @@ const BANTUAN = {
 // Kata kunci kalimat bahan -> perintah bahan (#keluar / #restock / #kembali).
 function gerakBahanDariKalimat(teks) {
   const t = ` ${String(teks).toLowerCase()} `;
-  if (/\s(sisa|kembali|dikembalikan|retur|balik)\s/.test(t)) return 'kembali';
+  if (/\s(sisa|sisah|sisanya|kembali|dikembalikan|retur|balik|stok akhir|stock akhir|bahan akhir)\s/.test(t)) return 'kembali';
   // Barang yang datang ke booth di tengah event disebut restock.
-  if (/\s(restock|restok|tambahan bahan|tambah bahan|datang|tiba|sampai)\s/.test(t)) return 'restock';
-  if (/\s(kirim|kiriman|dikirim|bawa|dibawa|keluar|bahan keluar)\s/.test(t)) return 'keluar';
+  if (/\s(restock|restok|restoc|tambahan bahan|tambah bahan|datang|tiba|sampai)\s/.test(t)) return 'restock';
+  if (/\s(kirim|kiriman|dikirim|pengiriman|bawa|dibawa|keluar|bahan keluar|awal|stok awal|stock awal|bahan awal)\s/.test(t)) return 'keluar';
   return null;
 }
 
@@ -886,6 +886,8 @@ async function perintahRekap(ctx, pesan, grup, cmd, isOwner) {
   const r = rekapEvent(event, {
     omzet: await ctx.store.all('Omzet'),
     transaksi: await ctx.store.all('Transaksi'),
+    bahan: await ctx.store.all('Bahan Event'),
+    hargaBahan: await ctx.store.all('Harga Bahan'),
   }, hariIni);
   const tunda = ctx.sesi ? daftarTunda(ctx, pesan.groupId) : [];
   const infoTunda = tunda.length
@@ -1158,7 +1160,7 @@ export async function handlePesan(ctx, pesan) {
       const hasil = await perintahKategori(ctx, { argumen: [jawab.kategori.id, jawab.kategori.kategori] });
       return balas(`${hasil[0].text}\n_Lain kali "${kata}" otomatis masuk ${jawab.kategori.kategori}._`);
     }
-    if (jawab?.bahan && event) return perintahBahan(ctx, pesan, event, { perintah: jawab.bahan.gerak, sisaBaris: jawab.bahan.teks, badan: '', argumen: [] });
+    if (jawab?.bahan && event) return perintahBahan(ctx, pesan, event, { perintah: jawab.bahan.gerak, sisaBaris: jawab.bahan.teks, badan: '', argumen: [] }, { harga: grup?.jenis === 'pengeluaran' });
     if (jawab?.pengeluaran) {
       if (grup.jenis === 'ruko') return catatUang(ctx, pesan, { buku: BUKU.RUKO, jenis: JENIS.KELUAR, kodeEvent: 'RUKO', teks: jawab.pengeluaran });
       if (event) return catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: event.kode, teks: jawab.pengeluaran });
@@ -1239,7 +1241,7 @@ export async function handlePesan(ctx, pesan) {
       default:
         if (PERINTAH_BAHAN.includes(cmd.perintah)) {
           if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
-          return perintahBahan(ctx, pesan, event, cmd);
+          return perintahBahan(ctx, pesan, event, cmd, { harga: grup.jenis === 'pengeluaran' });
         }
         break;
     }
@@ -1249,7 +1251,7 @@ export async function handlePesan(ctx, pesan) {
   if (!cmd && event && !parseMoney(teks)) {
     const gerak = gerakBahanDariKalimat(teks);
     if (gerak) {
-      const hasil = await perintahBahan(ctx, pesan, event, { perintah: gerak, sisaBaris: teks, badan: '', argumen: [] });
+      const hasil = await perintahBahan(ctx, pesan, event, { perintah: gerak, sisaBaris: teks, badan: '', argumen: [] }, { harga: grup.jenis === 'pengeluaran' });
       if (!/^Format:/.test(hasil[0]?.text || '')) return hasil;
       // Kurang jumlah atau nama bahan: tanyakan.
       const tanya = ctx.sesi && tanyaBahan(ctx, pesan, teks, gerak, await ctx.store.all('Harga Bahan'));

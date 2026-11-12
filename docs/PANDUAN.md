@@ -298,6 +298,20 @@ Rina 081244445555 kasir
 ```
 Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
 
+## Bahan baku: pengiriman pertama, restock, sisa
+
+Bisa di **grup tim** (tanpa harga) atau **grup pengeluaran** (dengan nilai rupiah). Untuk event yang sudah selesai, masukkan di grup pengeluaran:
+```
+bahan baku pengiriman pertama keju 10 balok, bumbu garlic 5 pack
+restock keju 3 balok 28 sep
+sisa keju 2 balok, bumbu garlic 1 pack
+```
+- Kata yang dikenali: *pengiriman / kiriman / awal / stok awal / kirim / bawa* = **awal**; *restock / tambahan bahan / datang* = **restock**; *sisa / sisah / stok akhir / kembali* = **sisa**.
+- Tanggal boleh ditulis. Tanpa tanggal: awal = hari pertama event, sisa = hari terakhir event.
+- **Jangan tulis harganya**: nilai dihitung dari tab **Harga Bahan** (contoh keju Rp 234.000/pack). Kalau ditulis harga, pesan itu dicatat sebagai pengeluaran biasa.
+- Biaya bahan baku = (awal + restock − sisa) × harga. Masuk ke `#rekap`, file event (tab Bahan Baku: baris awal+restock dan baris SISA bernilai minus), dan sheet Main (tabel ⑤: Awal, Restock, Sisa, Terpakai).
+- Oyster yang **dibeli di lokasi** sudah tercatat sebagai pengeluaran biasa. Tulis oyster di bahan baku hanya kalau dikirim dari gudang, supaya tidak terhitung dua kali.
+
 ## Laporan foto: loading in, harian, loading out (grup tim)
 
 Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat biasa ("booth sudah siap", "barang sudah tiba"). Beberapa foto sekaligus dihitung satu laporan: foto tanpa caption dari orang yang sama dalam 5 menit ikut masuk. Bot membalas siapa, jam berapa, dan apa yang **belum**. Semua tercatat di tab **Laporan Foto**.

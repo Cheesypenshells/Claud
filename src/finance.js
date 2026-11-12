@@ -29,7 +29,7 @@ export function omzetPerTanggal(omzetRows, kode) {
   return [...map.values()].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 }
 
-export function rekapEvent(event, { omzet = [], transaksi = [] }, hariIni) {
+export function rekapEvent(event, { omzet = [], transaksi = [], bahan = [], hargaBahan = [] }, hariIni) {
   const potong = num(event.bagi_hasil_persen) / 100;
   const hari = omzetPerTanggal(omzet, event.kode).map((r) => {
     const kotor = num(r.omzet) - num(r.refund);
@@ -58,7 +58,17 @@ export function rekapEvent(event, { omzet = [], transaksi = [] }, hariIni) {
   const pengeluaran = trx.filter((t) => t.jenis === JENIS.KELUAR);
   const perKategori = {};
   for (const t of pengeluaran) perKategori[t.kategori || 'Lain-lain'] = (perKategori[t.kategori || 'Lain-lain'] || 0) + num(t.nominal);
-  const totalPengeluaran = pengeluaran.reduce((s, t) => s + num(t.nominal), 0);
+  // Bahan baku dari gudang: (awal + restock − sisa) × harga di tab Harga Bahan.
+  const gerak = bahan.filter((b) => b.kode_event === event.kode && aktif(b));
+  const barisBahan = [...new Set(gerak.map((b) => b.bahan))].map((nama) => {
+    const g = gerak.filter((b) => b.bahan === nama);
+    const t = (j) => g.filter((b) => b.gerak === j).reduce((s, b) => s + num(b.jumlah), 0);
+    const h = num(hargaBahan.find((x) => x.bahan === nama)?.harga);
+    const awal = t('Keluar'); const restock = t('Restock'); const sisa = t('Kembali');
+    return { bahan: nama, satuan: g[0]?.satuan || '', awal, restock, sisa, terpakai: awal + restock - sisa, harga: h, nilai: (awal + restock - sisa) * h };
+  });
+  const biayaBahan = barisBahan.reduce((s, b) => s + b.nilai, 0);
+  const totalPengeluaran = pengeluaran.reduce((s, t) => s + num(t.nominal), 0) + biayaBahan;
 
   return {
     event,
@@ -72,6 +82,8 @@ export function rekapEvent(event, { omzet = [], transaksi = [] }, hariIni) {
     sisaPiutang: perkiraanTransfer - diterima,
     telat,
     perKategori,
+    barisBahan,
+    biayaBahan,
     totalPengeluaran,
     labaSementara: perkiraanTransfer - totalPengeluaran,
   };
@@ -102,12 +114,16 @@ export function formatRekapEvent(r, hariIni) {
   const kategori = Object.entries(r.perKategori).sort((a, b) => b[1] - a[1]);
   if (!kategori.length) baris.push('(belum ada)');
   for (const [k, v] of kategori) baris.push(`${k}: ${rupiah(v)}`);
+  if (r.barisBahan?.length) {
+    baris.push(`Bahan baku dari gudang (terpakai): ${rupiah(r.biayaBahan)}`);
+    for (const b of r.barisBahan) baris.push(`  • ${b.bahan}: awal ${b.awal} + restock ${b.restock} − sisa ${b.sisa} = ${b.terpakai} ${b.satuan} × ${rupiah(b.harga)}`);
+  }
   baris.push(`Total pengeluaran: *${rupiah(r.totalPengeluaran)}*`);
 
   baris.push(
     '',
     `*LABA SEMENTARA: ${rupiah(r.labaSementara)}*`,
-    '_Belum termasuk bahan dari gudang dan gaji karyawan tetap (masuk di tahap berikutnya)._',
+    r.barisBahan?.length ? '_Belum termasuk gaji karyawan tetap (masuk di tahap berikutnya)._' : '_Belum termasuk bahan dari gudang (belum dilaporkan) dan gaji karyawan tetap._',
   );
   return baris.join('\n');
 }

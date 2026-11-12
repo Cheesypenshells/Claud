@@ -1,7 +1,7 @@
 // Perintah untuk data event: tim, bahan baku, dan porsi gratis.
 
 import { STATUS } from './schema.js';
-import { parseTim, parseOrang, parseBahan, parseGratis, PERAN } from './parsers.js';
+import { parseTim, parseOrang, parseBahan, parseGratis, PERAN, ambilTanggal } from './parsers.js';
 import { cocokkan, hargaJual } from './katalog.js';
 import { ATURAN } from './laporan.js';
 import { rupiah, tanggalLokal, waktuLokal, tambahHari, parseRentangTanggal, bersihkan } from './util.js';
@@ -96,16 +96,25 @@ export async function perintahBerhenti(ctx, pesan, event, cmd) {
 const GERAK = { keluar: 'Keluar', bawa: 'Keluar', restock: 'Restock', tambahbahan: 'Restock', kembali: 'Kembali', sisa: 'Kembali', retur: 'Kembali' };
 export const PERINTAH_BAHAN = Object.keys(GERAK);
 
-export async function perintahBahan(ctx, pesan, event, cmd) {
+// Bahan baku event: pengiriman pertama (Keluar), restock, sisa (Kembali). Bisa di grup tim (tanpa harga)
+// atau grup pengeluaran (dengan nilai rupiah dari tab Harga Bahan). Untuk rekap event yang sudah selesai,
+// tanggal boleh ditulis ("restock keju 3 balok 28 sep"); tanpa tanggal: awal = hari pertama event,
+// sisa = hari terakhir event, restock = hari ini (atau hari pertama kalau event sudah selesai).
+export async function perintahBahan(ctx, pesan, event, cmd, { harga: denganHarga = false } = {}) {
   const gerak = GERAK[cmd.perintah];
   const hargaBahan = await ctx.store.all('Harga Bahan');
-  const items = parseBahan([cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), hargaBahan, cocokkan);
+  const hariIni = tanggalLokal(pesan.waktu);
+  const mentah = [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n');
+  const { tanggal: tglTulis, sisa: tanpaTanggal } = ambilTanggal(mentah, hariIni, { mulai: event.mulai, selesai: event.selesai });
+  const items = parseBahan(tglTulis ? tanpaTanggal : mentah, hargaBahan, cocokkan);
   if (!items.length) {
     return balas(`Format: *#${cmd.perintah}* lalu satu bahan per baris, contoh:\n#${cmd.perintah}\nmozzarella 20 pack\nbumbu garlic 5 pack\noyster 100 kg\n\nBahan yang dikenali: ${hargaBahan.map((b) => b.bahan).join(', ')}`);
   }
+  const selesai = event.selesai && hariIni > event.selesai;
+  const tanggal = tglTulis || (gerak === 'Keluar' ? event.mulai : gerak === 'Kembali' && selesai ? event.selesai : selesai ? event.mulai : hariIni) || hariIni;
   for (const it of items) {
     await ctx.store.append('Bahan Event', {
-      tanggal: tanggalLokal(pesan.waktu),
+      tanggal,
       kode_event: event.kode,
       bahan: it.bahan,
       gerak,
@@ -117,15 +126,28 @@ export async function perintahBahan(ctx, pesan, event, cmd) {
     });
   }
   const semua = (await ctx.store.all('Bahan Event')).filter((b) => b.kode_event === event.kode && b.status !== STATUS.BATAL);
+  const hargaDari = (nama) => Number(hargaBahan.find((x) => x.bahan === nama)?.harga || 0);
+  let totalTerpakai = 0;
   const ringkas = [...new Set(items.map((i) => i.bahan))].map((nama) => {
     const g = semua.filter((b) => b.bahan === nama);
     const t = (j) => g.filter((b) => b.gerak === j).reduce((s, b) => s + Number(b.jumlah || 0), 0);
     const satuan = items.find((i) => i.bahan === nama).satuan;
-    return `• ${nama}: keluar ${t('Keluar')} + restock ${t('Restock')} − kembali ${t('Kembali')} = terpakai *${t('Keluar') + t('Restock') - t('Kembali')} ${satuan}*`;
+    const terpakai = t('Keluar') + t('Restock') - t('Kembali');
+    const nilai = denganHarga ? ` × ${rupiah(hargaDari(nama))} = *${rupiah(terpakai * hargaDari(nama))}*` : '';
+    totalTerpakai += terpakai * hargaDari(nama);
+    return `• ${nama}: awal ${t('Keluar')} + restock ${t('Restock')} = ${t('Keluar') + t('Restock')}, sisa ${t('Kembali')} → terpakai *${terpakai} ${satuan}*${nilai}`;
   });
-  const judul = { Keluar: 'Bahan keluar dari gudang', Restock: 'Restock bahan', Kembali: 'Sisa bahan dikembalikan ke gudang' }[gerak];
-  const catatan = gerak === 'Kembali' ? '\n_Pack yang sudah dibuka dianggap habis; tulis pack utuh saja._' : '';
-  return balas(`✅ *${judul}* (${event.kode})\n${items.map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}`).join('\n')}\n\nTotal event:\n${ringkas.join('\n')}${catatan}`);
+  const judul = { Keluar: 'Bahan baku pengiriman pertama', Restock: 'Restock bahan baku', Kembali: 'Sisa bahan baku' }[gerak];
+  const rincian = items.map((i) => `${i.bahan} ${i.jumlah} ${i.satuan}${denganHarga ? ` × ${rupiah(hargaDari(i.bahan))} = ${rupiah(i.jumlah * hargaDari(i.bahan))}` : ''}`).join('\n');
+  const semuaBahan = [...new Set(semua.map((b) => b.bahan))];
+  const totalEvent = semuaBahan.reduce((s, nama) => {
+    const g = semua.filter((b) => b.bahan === nama);
+    const t = (j) => g.filter((b) => b.gerak === j).reduce((x, b) => x + Number(b.jumlah || 0), 0);
+    return s + (t('Keluar') + t('Restock') - t('Kembali')) * hargaDari(nama);
+  }, 0);
+  const catatan = gerak === 'Kembali' ? '\n_Pack yang sudah dibuka dianggap habis; tulis pack utuh saja. Sisa mengurangi biaya bahan baku._' : '';
+  const infoHarga = denganHarga ? `\n*Biaya bahan baku event (terpakai, semua bahan): ${rupiah(totalEvent)}*\n_Masuk rekap pengeluaran. Harga per satuan dari tab Harga Bahan._` : '';
+  return balas(`✅ *${judul}* (${event.kode}) – tgl ${tanggal}\n${rincian}\n\nTotal event:\n${ringkas.join('\n')}${infoHarga}${catatan}`);
 }
 
 // ---------- Porsi gratis ----------
