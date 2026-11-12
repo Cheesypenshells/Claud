@@ -22,7 +22,7 @@ import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
 import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import { tanganiLaporan } from './laporanFoto.js';
-import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic } from './rekening.js';
+import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, perintahGratis, perintahOwner, PERINTAH_BAHAN,
@@ -947,7 +947,7 @@ async function handlePribadi(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
-  if (!cmd) return (await jawabPenilaian(ctx, pesan)) || [];
+  if (!cmd) return (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
   const opsi = { event: null, argumen: cmd.argumen, isOwner };
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);

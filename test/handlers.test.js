@@ -1170,3 +1170,33 @@ test('#gajian: mulai event Semarang; event sebelumnya sudah dibayar; bonus x KPI
   const lama = await perintahGajian({ store }, {}, { kode: 'X', mulai: '2026-09-23' }, { isOwner: true });
   assert.match(lama[0].text, /sudah dibayar/);
 });
+
+test('rekening tim setelah event selesai: chat pribadi ke yang bernomor, grup tim untuk yang belum; jawaban di chat pribadi disimpan', async () => {
+  const { store, kirim, ctx } = setup();
+  const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-22 Nov 2026');
+  await kirim(G_KELUAR, OWNER, `${blok}\nSenior: Adit, Alam\nDW: Joko`);
+  await kirim(G_TIM, OWNER, '#daftar event SMR26-11');
+  await kirim(G_TIM, '6284444444444', 'saya Adit');
+  const { tugasRekening } = await import('../src/rekening.js');
+  const { ikutGajian } = await import('../src/gajian.js');
+  const { tanggalLokal } = await import('../src/util.js');
+  const opsi = { tanggalLokal, ikutGajian };
+  assert.equal((await tugasRekening(ctx, new Date('2026-11-23T02:00:00Z'), opsi)).length, 0); // 09.00 WIB: belum
+  const t = await tugasRekening(ctx, new Date('2026-11-23T03:30:00Z'), opsi); // 10.30 WIB
+  assert.equal(t.find((x) => x.nomor === '6284444444444')?.text.includes('Halo *Adit*'), true);
+  const grupTim = t.find((x) => x.groupId === G_TIM);
+  assert.match(grupTim.text, /\*Alam, Joko\*:.*chat pribadi ke nomor bot ini/s);
+  assert.equal((await tugasRekening(ctx, new Date('2026-11-23T05:00:00Z'), opsi)).length, 0); // sekali saja
+  // jawaban lewat chat pribadi
+  const dm = (senderId, text) => handlePesan(ctx, { id: `dm${Math.random()}`, groupId: `${senderId}@s.whatsapp.net`, senderId, senderName: 'X', text, pribadi: true, adaFoto: false, waktu: new Date('2026-11-23T04:00:00Z') });
+  assert.match((await dm('6284444444444', 'BCA 123 456 7890 a.n. Adit Pratama'))[0].text, /Terima kasih \*Adit\*.*BCA 1234567890/s);
+  assert.match((await dm('6289999999999', 'BRI 987654321 a.n. Joko'))[0].text, /Terima kasih \*Joko\*/);
+  assert.match((await dm('6288888888888', 'BNI 55556666'))[0].text, /belum dikenal bot/);
+  const k = await store.all('Karyawan');
+  assert.equal(k.find((x) => x.nama === 'Adit').no_rekening, '1234567890');
+  assert.equal(k.find((x) => x.nama === 'Joko').no_rekening, '987654321');
+  assert.equal(k.find((x) => x.nama === 'Joko').peran, 'DW');
+  // event sebelum batas penggajian tidak ditanya
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  assert.ok(!(await tugasRekening(ctx, new Date('2026-11-24T03:30:00Z'), opsi)).some((x) => /JMB26-11/.test(x.text)));
+});

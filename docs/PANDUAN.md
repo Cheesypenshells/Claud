@@ -317,6 +317,7 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 - Event sebelum 14 Nov 2026 **sudah dibayar** owner: tidak ikut daftar gaji, KPI, dan bonus (pembukuan event-event itu tetap). Batasnya bisa diubah di tab Pengaturan, kunci `gaji_mulai`.
 - `#gajian` (owner, grup pengeluaran) atau `#gajian SMR26-11` (chat pribadi): per karyawan tetap **gaji pokok + bonus omzet × skor KPI** = yang ditransfer, beserta rekening. DW/kasir dan PIC ikut ditampilkan.
 - Bonus baru final setelah PIC/owner menilai KPI (`#nilai`); sehari setelah event selesai bot meminta penilaian otomatis.
+- **Rekening tim**: sehari setelah event selesai (jam 10.00), bot meminta rekening ke senior, DW, dan kasir yang belum punya rekening di tab Karyawan, lewat **chat pribadi** (kalau nomornya dikenal). Yang nomornya belum dikenal diminta lewat satu pesan di grup tim untuk mengirim rekening ke chat pribadi bot, contoh `Joko BCA 1234567890 a.n. Joko`. Sekali per event.
 
 ## Setoran ke PIC & rekening
 
