@@ -1048,7 +1048,9 @@ export async function handlePesan(ctx, pesan) {
   // "catat tanggal 3 okt". Me-reply peringatannya dengan "ya" / "lanjut" / "bukan dobel" juga berarti catat.
   if (!cmd && ctx.sesi) {
     const m = teks.match(/^(?:ya|iya|oke|ok|tetap|lanjut)?\s*catat(?:\s+(?:aja|saja|ya))?\b[\s,.:;-]*(.*)$/is)
-      || (balasDobel && teks.match(/^(?:ya|iya|yaa|oke|ok|lanjut|benar|betul|bukan dobel|beda|lain)\b[\s,.:;-]*(.*)$/is));
+      || (balasDobel && teks.match(/^(?:ya|iya|yaa|oke|ok|lanjut|benar|betul|bukan dobel|beda|lain)\b[\s,.:;-]*(.*)$/is))
+      // Reply peringatan dengan koreksi saja ("uang melia semua", "tanggal 3 okt") = catat yang baru dengan koreksi itu.
+      || (balasDobel && !parseMoney(teks) && (() => { const k = bacaKoreksi(teks, { hariIni: tanggalLokal(pesan.waktu), satuCatatan: true }); return k && !k.batal ? [teks, teks] : null; })());
     const ambil = m && ambilDobel();
     if (ambil) {
       const { d, kunci: kunciD } = ambil;

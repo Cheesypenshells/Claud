@@ -570,7 +570,7 @@ export function parseGratis(teks, daftarMenu, cocokkan) {
 const RE_UANG = /\(?\s*(?:pakai|pake|pk|dari|dibayar(?:in)?(?:\s+(?:pakai|pake))?|talangan)?\s*uang(?:nya)?\s+([a-z][a-z.]*)\s*\)?/i;
 
 // "uang transport", "uang makan", "uang muka" adalah jenis pengeluaran, bukan pemilik uang.
-const BUKAN_PEMILIK = ['nya', 'salah', 'itu', 'ini', 'siapa', 'tadi', 'yang', 'yg', 'sudah', 'udah', 'belum', 'kok', 'jadi', 'juga', 'muka', 'saku', 'harian', 'jajan', 'rokok', 'tip', 'ongkos', 'cash', 'tunai', 'kembalian', 'lebih', 'kurang', 'tambahan', 'bulanan', 'mingguan', 'lembur'];
+const BUKAN_PEMILIK = ['semua', 'semuanya', 'smua', 'all', 'nya', 'salah', 'itu', 'ini', 'siapa', 'tadi', 'yang', 'yg', 'sudah', 'udah', 'belum', 'kok', 'jadi', 'juga', 'muka', 'saku', 'harian', 'jajan', 'rokok', 'tip', 'ongkos', 'cash', 'tunai', 'kembalian', 'lebih', 'kurang', 'tambahan', 'bulanan', 'mingguan', 'lembur'];
 
 export function petaUangSiapa(kata) {
   const k = String(kata || '').toLowerCase().replace(/\.$/, '');

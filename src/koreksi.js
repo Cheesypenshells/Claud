@@ -82,13 +82,18 @@ export function bacaKoreksi(teks, { hariIni, satuCatatan, rentang = null, cocokK
 // pilih catatan yang keterangannya paling cocok, lalu buang kata keterangan itu dari teks koreksi.
 export function pilihCatatan(teks, catatan) {
   const kata = (s) => String(s).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
-  const kataTeks = new Set(kata(teks));
+  // "uang melia semua" / "semua uang melia": berlaku untuk semua catatan di pesan itu.
+  if (/\b(semua|semuanya|smua|semua nya)\b/i.test(teks)) return { catatan, teks, cocok: false };
+  // Nama pemilik uang ("uang melia") bukan petunjuk catatan mana yang dimaksud.
+  const kataTeks = new Set(kata(String(teks).replace(/\buang\s+[a-z]+/gi, ' ')));
   const skor = catatan.map((t) => kata(t.keterangan).filter((w) => kataTeks.has(w) && !PENGISI.has(w)).length);
   const maks = Math.max(0, ...skor);
   if (!maks) return { catatan, teks, cocok: false };
   if (catatan.length < 2) return { catatan, teks, cocok: true };
   const pilih = catatan.filter((_, i) => skor[i] === maks);
   const buang = new Set(pilih.flatMap((t) => kata(t.keterangan)));
-  const sisa = String(teks).split(/\s+/).filter((w) => !buang.has(w.toLowerCase().replace(/[^a-z0-9]/g, ''))).join(' ');
+  // Kata sesudah "uang" (nama pemilik) tidak ikut dibuang walau ada di keterangan.
+  const kataAsli = String(teks).split(/\s+/);
+  const sisa = kataAsli.filter((w, i) => /^uang$/i.test(kataAsli[i - 1] || '') || !buang.has(w.toLowerCase().replace(/[^a-z0-9]/g, ''))).join(' ');
   return { catatan: pilih, teks: sisa, cocok: true };
 }

@@ -496,6 +496,25 @@ test('peringatan dobel: reply "catat, uang melia" mencatat sekaligus mengubah ua
   assert.equal((await store.all('Transaksi')).length, 3);
 });
 
+test('reply "uang melia semua": ke peringatan dobel = catat baru uang Melia; ke catatan banyak item = semua jadi Melia', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_KELUAR, OWNER, 'makan karyawan nasi goreng melia 90rb');
+  const warn = await kirim(G_KELUAR, OWNER, 'makan siang 90rb');
+  const r1 = await kirim(G_KELUAR, OWNER, 'uang melia semua', { kutipan: { teks: warn, pengirim: '', id: 'w' } });
+  assert.match(r1, /T0002 makan siang - \*Rp 90.000\*/);
+  const t = await store.all('Transaksi');
+  assert.equal(t.find((x) => x.id === 'T0001').dibayar_oleh, 'George'); // catatan lama tidak diubah
+  assert.equal(t.find((x) => x.id === 'T0002').dibayar_oleh, 'Melia');
+  // "45kuang melia" (angka menempel) terbaca; reply "uang melia semua" mengubah semua item
+  const r2 = await kirim(G_KELUAR, OWNER, 'makan 30.7k, makan 17.8k uang melia, makan 33k, makan melia 2 okt 45kuang melia');
+  assert.match(r2, /T0006 makan melia - \*Rp 45.000\*/);
+  const r3 = await kirim(G_KELUAR, OWNER, 'uang melia semua', { kutipan: { teks: r2, pengirim: '', id: 'r2' } });
+  assert.match(r3, /Sudah diubah\* \(uang Melia\)/);
+  const semua = (await store.all('Transaksi')).filter((x) => ['T0003', 'T0004', 'T0005', 'T0006'].includes(x.id));
+  assert.deepEqual(semua.map((x) => x.dibayar_oleh), ['Melia', 'Melia', 'Melia', 'Melia']);
+});
+
 test('foto bukti trf untuk catatan dobel: nominal & tanggal dicek', async () => {
   const { store, kirim, ctx } = setup();
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
