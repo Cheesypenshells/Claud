@@ -63,7 +63,7 @@ export function warnaKelompok(k) {
   return `#${c((n >> 16) & 255)}${c((n >> 8) & 255)}${c(n & 255)}`;
 }
 
-export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 17, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31, ALOKASI: 31 };
+export const BATAS_BARIS = { INFO: 1, GRATIS_INFO: 1, RINGKASAN: 10, OMZET: 31, BIAYA: 17, MAKAN: 1, TIM: 20, IKLAN: 10, GRATIS: 10, BAHAN: 10, UANG: 10, GRAFIK: 12, HARIAN: 31, ALOKASI: 31, SETOR: 10 };
 
 function hariAktif(orang, tanggalJualan, event) {
   const mulai = orang.mulai || event.mulai;
@@ -77,7 +77,7 @@ function bonusBertingkat(tabel, omzet, inklusif) {
 }
 
 export function hitungEvent(event, data) {
-  const { omzet = [], transaksi = [], tim = [], bahan = [], gratis = [], hargaBahan = [], hargaMenu = [], namaOwner = '' } = data;
+  const { omzet = [], transaksi = [], tim = [], bahan = [], gratis = [], hargaBahan = [], hargaMenu = [], namaOwner = '', karyawan = [] } = data;
   // Owner yang ikut bekerja di event tidak digaji (tanpa upah, bonus, maupun fee PIC).
   const adalahOwner = (o) => Boolean(namaOwner) && String(o.nama).trim().toLowerCase() === String(namaOwner).trim().toLowerCase();
   const kode = event.kode;
@@ -293,11 +293,28 @@ export function hitungEvent(event, data) {
     }
   }
 
+  // ---------- Setoran ke PIC: fee + gaji PIC + uang PIC yang terpakai (belum diganti) ----------
+  const penggantian = hitungPenggantian(transaksi, kode);
+  const samaNama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const setoranPic = picBerhakFee.map((o) => {
+    const uang = penggantian.find((u) => samaNama(u.nama, o.nama));
+    const gaji = barisTim.find((b) => b.nama === o.nama);
+    const k = karyawan.find((x) => samaNama(x.nama, o.nama));
+    const fee = feePic / picBerhakFee.length;
+    const terpakai = uang ? uang.sisa : 0;
+    const upah = gaji ? gaji.upah + gaji.bonus : 0;
+    return {
+      nama: o.nama, fee, upah, terpakai, dibayar: uang ? uang.dibayar : 0, diganti: uang ? uang.diganti : 0,
+      total: fee + upah + terpakai, bank: k?.bank || '', noRekening: String(k?.no_rekening || ''), atasNama: k?.atas_nama || '',
+    };
+  });
+
   return {
     alokasi,
+    setoranPic,
     event, hari, harian, omzetBersih, biaya, totalBiaya, nilaiSisaKembali, laba, nilaiGratis, jumlahHariJualan: tanggalJualan.length,
     labaSebelumFee, feePic, feePicPersen, namaPic, bagiHasil, potonganIO,
-    penggantian: hitungPenggantian(transaksi, kode),
+    penggantian,
     barisBahan, barisTim, barisGratis, budgetMakan, makanTerpakai,
     iklan: keluar.filter((t) => t.kategori === KATEGORI.IKLAN),
   };
@@ -376,6 +393,18 @@ export function barisDataMain(r) {
   const bulat = (x) => Math.round(x);
   tambah('ALOKASI', (r.alokasi || []).map((a) => [a.tanggal, bulat(a.omzet), bulat(a.io), bulat(a.bahan), bulat(a.gaji), bulat(a.penginapan), bulat(a.lain), bulat(a.laba)]));
   tambah('UANG', r.penggantian.map((u) => [u.nama, u.dibayar, u.diganti, u.sisa, `${u.catatan} catatan`]), { jumlah: [1, 2, 3] });
+  // Tabel setoran ke PIC (kanan ringkasan): [keterangan, nilai].
+  const setor = [];
+  for (const p of r.setoranPic || []) {
+    setor.push([`PIC: ${p.nama}`, '']);
+    setor.push([`Fee PIC ${r.feePicPersen}% dari laba sebelum fee`, Math.round(p.fee)]);
+    if (p.upah) setor.push(['Gaji / bonus PIC', Math.round(p.upah)]);
+    setor.push([`Uang PIC yang terpakai (keluar ${Math.round(p.dibayar).toLocaleString('id-ID')}${p.diganti ? `, sudah diganti ${Math.round(p.diganti).toLocaleString('id-ID')}` : ''})`, Math.round(p.terpakai)]);
+    setor.push(['TOTAL DITRANSFER KE PIC', Math.round(p.total)]);
+    setor.push(['Rekening', p.noRekening ? `${p.bank} ${p.noRekening}`.trim() : 'Belum ada – bot menanyakan ke PIC (#rekening)']);
+    if (p.noRekening) setor.push(['Atas nama', p.atasNama || p.nama]);
+  }
+  tambah('SETOR', setor);
   tambah('BAHAN', r.barisBahan.map((b) => [b.bahan, b.satuan, String(b.keluar), String(b.restock), String(b.kembali), String(b.terpakai), b.harga, b.nilaiTerpakai, b.nilaiKembali]), { jumlah: [7, 8] });
   return baris;
 }

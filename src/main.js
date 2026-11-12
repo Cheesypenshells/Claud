@@ -14,16 +14,16 @@ export async function isiHargaAwal(store) {
 }
 
 export async function bacaData(store) {
-  const [semuaEvent, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, pengaturan] = await Promise.all([
+  const [semuaEvent, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, pengaturan, karyawan] = await Promise.all([
     store.all('Event'), store.all('Omzet'), store.all('Transaksi'), store.all('Tim Event'),
     store.all('Bahan Event'), store.all('Porsi Gratis'), store.all('Harga Bahan'), store.all('Harga Menu'),
-    store.all('Pengaturan'),
+    store.all('Pengaturan'), store.all('Karyawan').catch(() => []),
   ]);
   // Event berstatus BATAL (misalnya event tes) tidak ikut direkap.
   const events = semuaEvent.filter((e) => e.status !== 'BATAL');
   const atur = Object.fromEntries(pengaturan.map((r) => [r.kunci, r.nilai]));
   const namaOwner = atur.nama_owner || 'George';
-  const data = { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, namaOwner, atur };
+  const data = { events, omzet, transaksi, tim, bahan, gratis, hargaBahan, hargaMenu, namaOwner, atur, karyawan };
 
   // Data event lama dari file "INPUT EVENT LAMA" (diisi manual oleh owner).
   if (atur.file_input_manual && store.bacaInputManual) {

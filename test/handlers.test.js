@@ -1123,3 +1123,30 @@ test('fee PIC khusus event: "bonus pic nya 20 persen" / #feepic, kembali normal'
   assert.match(await kirim(G_KELUAR, OWNER, '#feepic normal'), /kembali mengikuti kehadiran owner/);
   assert.equal((await store.all('Event'))[0].fee_pic_persen, '');
 });
+
+test('setoran ke PIC: #rekap event selesai menanyakan rekening PIC, jawaban disimpan (bukan pengeluaran), #setor menampilkan total', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT); // PIC Budi
+  await kirim(G_KELUAR, PIC, 'hotel 2 nov 500rb uang budi');
+  await kirim(G_KELUAR, OWNER, 'omset 2 nov 20jt');
+  const nanti = { waktu: new Date('2026-11-20T07:00:00Z') };
+  const rekap = await kirim(G_KELUAR, OWNER, '#rekap', nanti);
+  assert.match(rekap, /Budi\*, mohon kirim \*nomor rekening\*/);
+  const r = await kirim(G_KELUAR, PIC, 'BCA 1234 5678 90 a.n. Budi Santoso', nanti);
+  assert.match(r, /Rekening \*Budi\* disimpan: \*BCA 1234567890\* a\.n\. Budi Santoso/);
+  assert.equal((await store.all('Transaksi')).length, 1); // nomor rekening tidak jadi pengeluaran
+  const k = (await store.all('Karyawan')).find((x) => x.nama === 'Budi');
+  assert.equal(k.no_rekening, '1234567890');
+  assert.doesNotMatch(await kirim(G_KELUAR, OWNER, '#rekap', nanti), /nomor rekening/); // tidak ditanya lagi
+  const setor = await kirim(G_KELUAR, OWNER, '#setor', nanti);
+  assert.match(setor, /Setoran ke PIC Budi.*Fee PIC 25%.*Uang PIC yang terpakai: keluar Rp 500.000 → Rp 500.000.*TOTAL DITRANSFER: Rp .*Rekening: \*BCA 1234567890\* a\.n\. Budi Santoso.*#ganti Budi 500000/s);
+  assert.match(await kirim(G_KELUAR, PIC, '#setor', nanti), /khusus owner/);
+  const { bacaData } = await import('../src/main.js');
+  const { hitungEvent, barisDataMain } = await import('../src/laporan.js');
+  const data = await bacaData(store);
+  const baris = barisDataMain(hitungEvent(data.events[0], data)).filter((x) => x[1] === 'SETOR');
+  assert.deepEqual(baris.map((x) => x[3]).filter((x) => /^(PIC|TOTAL|Rekening|Atas)/.test(x)), ['PIC: Budi', 'TOTAL DITRANSFER KE PIC', 'Rekening', 'Atas nama']);
+  const total = baris.find((x) => x[3] === 'TOTAL DITRANSFER KE PIC')[4];
+  const fee = baris.find((x) => /^Fee PIC/.test(x[3]))[4];
+  assert.equal(total, fee + 500000);
+});

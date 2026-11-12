@@ -22,6 +22,7 @@ import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
 import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
 import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './absensi.js';
 import { tanganiLaporan } from './laporanFoto.js';
+import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic } from './rekening.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -928,7 +929,9 @@ async function perintahRekap(ctx, pesan, grup, cmd, isOwner) {
   const infoTunda = tunda.length
     ? `\n\n⏳ *Belum dihitung, menunggu struk/ACC/detail:* ${tunda.length} pengeluaran, ${rupiah(tunda.reduce((s, p) => s + Number(p.item.nominal || 0), 0))}\n${tunda.map((p) => `• ${p.id} ${p.item.keterangan} ${rupiah(p.item.nominal)} (${{ struk: 'menunggu struk', cek: 'struk tidak sesuai', detail: 'detail cash' }[p.perlu]})`).join('\n')}`
     : '';
-  return balas(formatRekapEvent(r, hariIni) + infoTunda);
+  // Event sudah selesai: rekening PIC untuk transfer fee & penggantian ditanyakan (sekali) kalau belum ada.
+  const tanyaRek = statusEvent(event, hariIni) === 'selesai' ? await tanyaRekeningPic(ctx, pesan, event) : '';
+  return balas(formatRekapEvent(r, hariIni) + infoTunda + (tanyaRek ? `\n\n${tanyaRek}` : ''));
 }
 
 // Bot baru dimasukkan ke grup: kalau grup belum terdaftar, bot menyapa dan bertanya grup ini untuk apa.
@@ -1041,6 +1044,11 @@ export async function handlePesan(ctx, pesan) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
     const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
     if (lapor) return lapor;
+  }
+  // Jawaban PIC atas pertanyaan nomor rekening ("BCA 1234567890 a.n. Melia").
+  if (!cmd && event && grup.jenis === 'pengeluaran') {
+    const rek = await jawabRekening(ctx, pesan, event, { isOwner });
+    if (rek) return rek;
   }
   // "bonus pic nya 20 persen" / "fee pic 20%" (owner, grup pengeluaran) = fee PIC khusus event ini.
   if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && /\b(fee|bonus|bagian|jatah)\s+(pic|melia|untuk pic)\b/i.test(teks) && /\d+(?:[.,]\d+)?\s*(%|persen)/i.test(teks)) {
@@ -1242,6 +1250,15 @@ export async function handlePesan(ctx, pesan) {
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
       }
+      case 'rekening':
+      case 'norek':
+      case 'rek':
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rekening hanya diurus di grup pengeluaran (owner + PIC).');
+        return perintahRekening(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { isOwner });
+      case 'setor':
+      case 'setoran':
+        if (grup.jenis !== 'pengeluaran') return balas('⚠️ Setoran ke PIC hanya bisa dilihat di grup pengeluaran.');
+        return perintahSetor(ctx, pesan, event, { isOwner });
       case 'feepic':
       case 'fee': {
         if (!isOwner) return balas('⚠️ Fee PIC hanya diatur owner.');

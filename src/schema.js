@@ -67,6 +67,9 @@ export const KOLOM = {
       k('status', 'Status', 90, { catatan: 'AKTIF / KELUAR' }),
       k('pin', 'PIN (terkunci)', 120, { catatan: 'Diisi bot saat karyawan membuat PIN. Jangan diubah.', sembunyi: true }),
       k('catatan', 'Catatan', 200),
+      k('bank', 'Bank', 100, { catatan: 'Untuk transfer fee / gaji / penggantian. Diisi bot dari jawaban karyawan (#rekening)' }),
+      k('no_rekening', 'No. Rekening', 160),
+      k('atas_nama', 'Atas Nama', 160),
     ],
   },
   // Penilaian PIC per event (skala 1-5 atau persen 0-100). Baris bernama TIM = nilai kinerja tim.

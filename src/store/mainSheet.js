@@ -16,6 +16,8 @@ const WARNA_NETRAL = '#37474F'; // baris omzet & laba di tabel komposisi
 const HARIAN = { judul: 64, kolom: 65, data: 66, akhir: 65 + BATAS_BARIS.HARIAN };
 // Alokasi harian (sumber grafik garis): kolom L:S di bawah tabel harian.
 const ALOKASI = { judul: 99, kolom: 100, data: 101, akhir: 100 + BATAS_BARIS.ALOKASI };
+// Setoran ke PIC: kanan tabel ringkasan, kolom E:F, baris 4-14.
+const SETOR = { judul: 4, data: 5, akhir: 4 + BATAS_BARIS.SETOR, kolom: 4 };
 const KOLOM_ALOKASI = ['Tanggal', 'Omzet', 'Potongan IO', 'Bahan baku terpakai', 'Gaji & upah', 'Penginapan', 'Biaya lain', 'Laba'];
 const WARNA_ALOKASI = ['#1A73E8', '#FF6D01', '#EA4335', '#46BDC6', '#8E24AA', '#9AA0A6', '#0B8043'];
 const JUDUL_GRAFIK = ['Omzet Harian', 'Omzet & Pengeluaran Harian', 'Omzet vs Biaya', 'Porsi Biaya', 'Porsi Biaya (% dari total biaya)', 'Grafik Harian: Omzet, Bahan Baku, Gaji, Hotel & Laba'];
@@ -121,6 +123,8 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   nilai.push({ range: `${qt}!L${ALOKASI.judul}`, values: [['📈 PER HARI: OMZET & BIAYA (gaji, hotel, biaya lain dibagi rata; bahan baku menurut porsi omzet)', '', '', '', '', '', '', '']] });
   nilai.push({ range: `${qt}!L${ALOKASI.kolom}`, values: [KOLOM_ALOKASI] });
   nilai.push({ range: `${qt}!L${ALOKASI.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:K;${DATA}!A2:A=$C$2;${DATA}!B2:B="ALOKASI");"")`]] });
+  nilai.push({ range: `${qt}!E${SETOR.judul}`, values: [['💸 SETORAN KE PIC (fee + uang yang terpakai)', '']] });
+  nilai.push({ range: `${qt}!E${SETOR.data}`, values: [[`=IFERROR(FILTER(${DATA}!D2:E;${DATA}!A2:A=$C$2;${DATA}!B2:B="SETOR");"Tidak ada PIC yang menerima fee")`]] });
   const gratis = BAGIAN.find((b) => b.kode === 'GRATIS');
   nilai.push({ range: `${qt}!E${gratis.mulai}`, values: [[`=IFERROR(FILTER(${DATA}!D2:D;${DATA}!A2:A=$C$2;${DATA}!B2:B="GRATIS_INFO");"")`]] });
   // Area kanan di bawah tabel komposisi dikosongkan dulu (letak tabel harian bisa berpindah antar versi).
@@ -271,6 +275,20 @@ export async function siapkanMain(api, spreadsheetId, opsi = {}) {
   format(sel(HARIAN.data, HARIAN.akhir, 11, 15), { backgroundColorStyle: { rgbColor: warna('#1A73E8', 0.95) }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'backgroundColorStyle,verticalAlignment,wrapStrategy');
   format(sel(HARIAN.data, HARIAN.akhir, 12, 15), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
   req.push({ updateBorders: { range: sel(HARIAN.judul, HARIAN.akhir, 11, 15), ...GARIS } });
+  // Tabel setoran ke PIC (E:F).
+  format(sel(SETOR.judul, SETOR.judul, 4, 6), { textFormat: { bold: true, fontSize: 11, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#6A1B9A') }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
+  format(sel(SETOR.data, SETOR.akhir, 4, 6), { backgroundColorStyle: { rgbColor: warna('#6A1B9A', 0.92) }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP', textFormat: { bold: false } }, 'backgroundColorStyle,verticalAlignment,wrapStrategy,textFormat.bold');
+  format(sel(SETOR.data, SETOR.akhir, 5, 6), { numberFormat: RP, horizontalAlignment: 'RIGHT' }, 'numberFormat,horizontalAlignment');
+  req.push({ updateBorders: { range: sel(SETOR.judul, SETOR.akhir, 4, 6), ...GARIS } });
+  req.push({
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        ranges: [sel(SETOR.data, SETOR.akhir, 4, 6)],
+        booleanRule: { condition: { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: '=OR(LEFT($E5;5)="TOTAL";LEFT($E5;4)="PIC:")' }] }, format: { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna('#6A1B9A', 0.7) } } },
+      },
+    },
+  });
   // Tabel alokasi harian (L:S).
   format(sel(ALOKASI.judul, ALOKASI.judul, 11, 19), { textFormat: { bold: true, foregroundColorStyle: { rgbColor: putih } }, backgroundColorStyle: { rgbColor: warna('#0B8043') }, verticalAlignment: 'MIDDLE' }, 'textFormat,backgroundColorStyle,verticalAlignment');
   format(sel(ALOKASI.kolom, ALOKASI.kolom, 11, 19), { textFormat: { bold: true }, backgroundColorStyle: { rgbColor: warna('#0B8043', 0.82) }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' }, 'textFormat,backgroundColorStyle,horizontalAlignment,verticalAlignment,wrapStrategy');
