@@ -52,7 +52,8 @@ function isiPesan(m) {
   const q = info?.quotedMessage;
   const teksKutipan = q ? (q.conversation || q.extendedTextMessage?.text || q.imageMessage?.caption || '') : '';
   const kutipan = q ? { teks: teksKutipan, pengirim: angkaId(info.participant), id: info.stanzaId || '', foto: Boolean(q.imageMessage) } : null;
-  return { teks, adaFoto, kutipan };
+  const diteruskan = Boolean(info?.isForwarded || Number(info?.forwardingScore) > 0);
+  return { teks, adaFoto, kutipan, diteruskan };
 }
 
 export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan, onGrupBaru }) {
@@ -136,7 +137,7 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
         if (pencatat.sudah(m.key.id)) continue;
         const waktu = new Date(Number(m.messageTimestamp) * 1000);
         if (type === 'append' && Date.now() - waktu.getTime() > BATAS_TERTUNDA_MS) continue;
-        const { teks, adaFoto, kutipan } = isiPesan(m);
+        const { teks, adaFoto, kutipan, diteruskan } = isiPesan(m);
         if (!teks && !adaFoto) continue;
 
         if (!pribadi && !namaGrup.has(groupId)) {
@@ -153,6 +154,7 @@ export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesa
           senderName: m.pushName || '',
           text: teks,
           adaFoto,
+          diteruskan,
           waktu,
           kutipan,
           // Foto diunduh hanya kalau dibutuhkan (memeriksa bukti trf untuk catatan yang nominalnya sama).

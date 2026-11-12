@@ -20,6 +20,7 @@ import { daftarTunda, tambahTunda, ubahTunda, hapusTunda, idTundaDariTeks } from
 import { perintahNilai, jawabPenilaian, perintahPoin, perintahPoinBatal, perintahKpi } from './handlersKpi.js';
 import { mulaiPengiriman, jawabPengiriman } from './pengiriman.js';
 import { mulaiAnggota, jawabAnggota, ingatNama, perintahKaryawan } from './anggota.js';
+import { tanganiAbsen, perintahAbsen } from './absensi.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -57,6 +58,7 @@ const BANTUAN = {
 • #rekap - rekap bulan ini, #rekap bulan 2026-11
 • #batal T0012`,
   event: `*Grup event (tim)*
+• *Absen:* 2 jam sebelum buka bot membagikan *gaya foto* hari ini. Selfie di booth dengan gaya itu, kirim dengan caption *absen* (batas 1 jam sebelum buka). Telat 1-15 mnt Rp 10.000 · 16-30 mnt Rp 25.000 · >30 mnt Rp 50.000/jam. #absen = siapa sudah/belum · #absen denda = rekap denda
 • #omzet + format laporan harian SOP BAB 6:
   #omzet
   OMZET TERVERIFIKASI: Rp 12.500.000
@@ -943,6 +945,11 @@ export async function handlePesan(ctx, pesan) {
     const j = await jawabAnggota(ctx, pesan, event);
     if (j) return balas(j.teks);
   }
+  // Absensi foto di grup tim (dan reply owner/PIC "tolak" / "bebas denda" ke foto absen).
+  if (!cmd && event && grup.jenis === 'event') {
+    const absen = await tanganiAbsen(ctx, pesan, event, { isOwner });
+    if (absen) return balas(absen);
+  }
   // Data pengiriman & stok awal yang sedang ditanyakan.
   if (!cmd && ctx.sesi && event) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
@@ -1095,6 +1102,9 @@ export async function handlePesan(ctx, pesan) {
         const daftarAnggota = await mulaiAnggota(ctx, pesan.groupId, event);
         return balas(daftarAnggota || '⚠️ Tim event belum ada. Isi tim dulu di grup pengeluaran (#tim).');
       }
+      case 'absen':
+      case 'absensi':
+        return balas(await perintahAbsen(ctx, pesan, event, cmd.argumen, { isOwner }));
       case 'karyawan': {
         if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Data & nomor karyawan hanya di grup pengeluaran atau chat pribadi dengan bot.');

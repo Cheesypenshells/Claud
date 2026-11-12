@@ -293,6 +293,27 @@ Rina 081244445555 kasir
 ```
 Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
 
+## Absensi foto & denda telat (grup tim)
+
+Syarat: **Jam Buka** event terisi (setup event, atau owner `#ubah jam buka 11.00`). Jam dihitung di zona kota event (WIB / WITA untuk Bali, Lombok, Kalimantan Selatan/Timur, Sulawesi / WIT untuk Papua, Maluku).
+
+1. **2 jam sebelum buka** bot mengumumkan di grup tim: jam batas absen, **gaya foto hari ini** (contoh ✌️ peace, 👍 jempol, 🫶 love, 🫡 hormat; berganti setiap hari), format absen, dan aturan denda.
+2. Karyawan wajib datang **1 jam sebelum buka**: selfie di booth dengan gaya hari itu, kirim **langsung dari kamera** dengan caption `absen`.
+3. Bot mencatat jam foto di tab **Absensi** dan membalas tepat waktu / telat + dendanya.
+4. Saat batas absen lewat, bot menyebut siapa yang belum absen.
+
+**Denda telat (per hari):**
+- 1–15 menit: Rp 10.000
+- 16–30 menit: Rp 25.000
+- lebih dari 30 menit: Rp 50.000 per jam, kelipatan (31–60 mnt = 50rb, 61–120 mnt = 100rb, 121–180 mnt = 150rb, dst.)
+
+**Supaya foto valid:**
+- Foto terusan (forward) dan foto yang sama persis dengan foto absen sebelumnya ditolak otomatis. Foto sebelum gaya diumumkan juga ditolak.
+- Bot **tidak bisa melihat gaya tangan di foto**, jadi gayanya dicek owner/PIC. Reply foto absen dengan `tolak` (karyawan harus kirim ulang; denda dihitung dari jam foto ulang) atau `bebas denda` (denda jadi 0, misalnya izin).
+- Nomor karyawan harus sudah dikenal (lihat *Anggota grup tim*); kalau belum, bot meminta `saya [nama]` dulu.
+
+**Perintah:** `#absen` = siapa sudah/belum absen hari ini · `#absen denda` = rekap denda event · `#absen Joko 10.40` = absen manual oleh owner/PIC (misalnya HP karyawan mati). Denda juga bisa diubah langsung di tab Absensi.
+
 ## Pengiriman & stok awal event
 
 Setelah grup tim didaftarkan, bot menanyakan ini di **grup pengeluaran** (owner + PIC), siapa pun di grup itu boleh menjawab; pesan pengeluaran & obrolan biasa tetap diproses seperti biasa:

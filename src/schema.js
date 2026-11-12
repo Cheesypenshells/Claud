@@ -117,6 +117,27 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Absensi foto harian tim event (denda telat per hari).
+  Absensi: {
+    warna: '#00897B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 140),
+      k('peran', 'Peran', 90),
+      k('nomor_wa', 'Nomor WA', 130),
+      k('jam', 'Jam Absen', 100),
+      k('batas', 'Batas Absen', 100, { catatan: '1 jam sebelum booth buka' }),
+      k('telat_menit', 'Telat (menit)', 100, { format: 'angka' }),
+      k('denda', 'Denda', 110, { format: 'rupiah', catatan: '1-15 mnt 10rb · 16-30 mnt 25rb · >30 mnt 50rb per jam (kelipatan). Ubah ke 0 kalau dimaafkan' }),
+      k('gaya', 'Gaya Foto', 220),
+      k('foto_id', 'ID Foto', 160, { sembunyi: true }),
+      k('sidik', 'Sidik Foto', 160, { sembunyi: true }),
+      k('status', 'Status', 90, { catatan: 'OK / DITOLAK' }),
+      k('catatan', 'Catatan', 200),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Struk yang sudah dipakai: supaya satu struk tidak dipakai dua kali.
   Struk: {
     warna: '#795548',
