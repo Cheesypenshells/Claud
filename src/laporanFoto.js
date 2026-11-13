@@ -66,6 +66,10 @@ function tahapHari(event, tanggal) {
   return t;
 }
 
+// Loading in & loading out dihitung satu kesatuan per event (bisa lewat tengah malam, misal mulai 22.00 selesai 03.00);
+// laporan harian per tanggal.
+const diPeriode = (r, tahap, tanggal) => r.tahap === NAMA_TAHAP[tahap] && (tahap !== T.HARIAN || r.tanggal === tanggal);
+
 // Tanggal laporan sebuah tahap: loading in = hari pertama, loading out = hari terakhir.
 function tanggalTahap(event, tahap, hariIni) {
   if (tahap === T.IN) return hariIni < event.mulai ? hariIni : event.mulai;
@@ -125,7 +129,7 @@ function tagDari(teks, cmd, tahapAktif) {
 // Status checklist sebuah tahap.
 export async function teksStatus(ctx, event, tahap, tanggal) {
   const semua = await laporan(ctx, event.kode);
-  const hari = semua.filter((r) => r.tahap === NAMA_TAHAP[tahap] && r.tanggal === tanggal);
+  const hari = semua.filter((r) => diPeriode(r, tahap, tanggal));
   const tim = await timEvent(ctx, event.kode);
   const zona = zonaKota(event.kota);
   const baris = [];
@@ -207,7 +211,12 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
     return null;
   }
 
-  const tag = tagDari(teks, cmd, aktif);
+  let tag = tagDari(teks, cmd, aktif);
+  // Loading in yang belum selesai tetap bisa dilaporkan setelah hari pertama (tidak diulang dari awal).
+  if (!tag && hariIni > event.mulai) {
+    const t2 = tagDari(teks, cmd, [...aktif, T.IN]);
+    if (t2 && PER_TAG[t2].tahap === T.IN && (await teksStatus(ctx, event, T.IN, event.mulai)).includes('❌')) tag = t2;
+  }
   if (!tag) return null;
   const b = PER_TAG[tag];
   const tim = await timEvent(ctx, event.kode);
@@ -233,7 +242,7 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
     }
   }
   const semua = await laporan(ctx, event.kode);
-  if (b.orang && semua.some((r) => r.tag === tag && r.tanggal === tanggal && sama(r.nama, nama))) return balas(`👌 *${nama}* sudah #${tag} hari ini.`);
+  if (b.orang && semua.some((r) => r.tag === tag && diPeriode(r, tahap, tanggal) && sama(r.nama, nama))) return balas(`👌 *${nama}* sudah #${tag}${tahap === T.HARIAN ? ' hari ini' : ''}.`);
 
   // Followers: baca angka dari screenshot.
   let angka = '';

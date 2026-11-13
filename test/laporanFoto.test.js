@@ -273,3 +273,24 @@ test('#bantu: poin sama otomatis ke yang membantu, ucapan terima kasih tanpa ang
   assert.equal((await store.all('Poin KPI')).at(-1).poin, 3);
   assert.doesNotMatch((await raw(G_TIM, OWNER, '#harian', pada('03', '18:00')))[0].text, /Bantu kerjaan owner/);
 });
+
+test('loading in lewat tengah malam tidak diulang dari awal; belum selesai tetap bisa dilaporkan besoknya', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (groupId, senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `m${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  })).map((r) => r.text).join('\n');
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  await kirim(G_KELUAR, OWNER, '#event\nKode: SMR26-11\nKota: Semarang\nIO: Kepo\nTanggal: 14-16 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 10.00\nPIC: Budi\nSenior: Dena, Tiar', pada('10', '09:00'));
+  await kirim(G_TIM, OWNER, '#daftar event SMR26-11', pada('10', '09:01'));
+  await kirim(G_TIM, DENA, 'saya Dena', pada('10', '09:02'));
+  await kirim(G_TIM, TIAR, 'saya Tiar', pada('10', '09:03'));
+  assert.match(await kirim(G_TIM, TIAR, '#tiba', pada('13', '22:30'), foto('tiba')), /Belum: #booth/);
+  const lewat = await kirim(G_TIM, DENA, '#booth', pada('14', '01:00'), foto('booth'));
+  assert.match(lewat, /Booth bagian bawah.*Dena/s);
+  assert.doesNotMatch(lewat, /#tiba/);
+  assert.match(await kirim(G_TIM, DENA, '#loadingin', pada('14', '01:05')), /✅ Barang tiba: Tiar 22:30.*✅ Booth bagian bawah.*: Dena 01:00/s);
+  // hari kedua: loading in belum lengkap masih diterima
+  assert.match(await kirim(G_TIM, DENA, '#listrik', pada('15', '09:00'), foto('lampu')), /Booth bagian atas.*\(#listrik\)/);
+});
