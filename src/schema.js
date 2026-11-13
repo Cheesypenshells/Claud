@@ -147,6 +147,17 @@ export const KOLOM = {
       k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Sidak stok dadakan oleh PIC/owner (#sidak lewat chat pribadi / grup pengeluaran).
+  'Sidak Stok': {
+    warna: '#B71C1C',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('hitung_sidak', 'Hitungan Sidak', 110, { format: 'angka' }), k('satuan', 'Satuan', 80),
+      k('menurut_laporan', 'Menurut Laporan', 115, { format: 'angka', catatan: 'Stok closing terakhir + restock setelahnya' }),
+      k('selisih', 'Selisih', 85, { format: 'angka' }), k('laporan_tanggal', 'Laporan Closing Tgl', 120), k('pelapor', 'Pelapor Closing', 140),
+      k('oleh', 'Disidak Oleh', 160), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Sesi kasir antrian (▶ Mulai kasir / ⏹ Tutup kasir di halaman kasir). Status: BUKA / TUTUP / DITERUSKAN.
   'Sesi Kasir': {
     warna: '#0B8043',

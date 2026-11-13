@@ -136,3 +136,111 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
   }
   return keluar;
 }
+
+// ---------------------------------------------------------------- sidak stok (PIC/owner, dadakan)
+// #sidak (chat pribadi ke bot atau grup pengeluaran; TIDAK di grup tim supaya tetap dadakan)
+//   #sidak              -> format hitungan
+//   #sidak
+//   Mozzarella = 12 pack -> dibandingkan dengan laporan closing terakhir (+ restock setelahnya).
+// Kalau berbeda, bot bertanya: minus berapa poin untuk pelapor closing itu ("minus 5", "minus 5 Bima", "tidak").
+
+const kunciSidak = (pesan) => `sidak:${pesan.pribadi ? pesan.senderId : pesan.groupId}`;
+const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
+const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+// Event yang boleh disidak oleh pengirim: owner = semua event berjalan; PIC = event yang ia pegang.
+export async function eventSidak(ctx, pesan, isOwner) {
+  const hari = tanggalClosing(pesan.waktu);
+  const [events, tim, karyawan] = await Promise.all(['Event', 'Tim Event', 'Karyawan'].map((t) => ctx.store.all(t)));
+  const berjalan = events.filter((e) => e.status !== 'BATAL' && e.status !== 'SELESAI' && e.mulai && e.mulai <= tambahHari(hari, 1) && (!e.selesai || hari <= e.selesai));
+  if (isOwner) return berjalan;
+  const namaSaya = karyawan.filter((k) => nomor62(k.nomor_wa) === String(pesan.senderId)).map((k) => k.nama);
+  return berjalan.filter((e) => sama(e.pic, namaSaya[0]) || tim.some((o) => o.kode_event === e.kode && o.peran === 'PIC' && namaSaya.some((n) => sama(n, o.nama))));
+}
+
+function namaPelapor(pengirim, karyawan) {
+  const no = (String(pengirim || '').match(/\((\d+)\)/) || [])[1];
+  const k = no && karyawan.find((x) => nomor62(x.nomor_wa) === no);
+  return k ? k.nama : String(pengirim || '').replace(/\s*\(\d+\)\s*$/, '') || 'pelapor';
+}
+
+export async function perintahSidak(ctx, pesan, event, cmd) {
+  const hargaBahan = await ctx.store.all('Harga Bahan');
+  const bahanRows = await ctx.store.all('Bahan Event');
+  const teks = [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n').replace(/\b[A-Z]{3}\d{2}-\d{2}(-\d+)?\b/g, '');
+  const items = parseBahan(teks, hargaBahan, cocokkan);
+  const daftar = bahanEvent(event.kode, bahanRows, hargaBahan);
+  if (!items.length) {
+    return balas([`🕵️ *Sidak stok ${event.kode}* (dadakan, tim tidak diberi tahu)`, 'Hitung stok sekarang, ganti titik-titik, lalu kirim:', '', `#sidak ${event.kode}`,
+      ...daftar.map((b) => `${b.bahan} = ... ${b.satuan || ''}`.trim()),
+      '', '_Paling tepat dilakukan sebelum booth buka atau setelah tim melapor stok closing._'].join('\n'));
+  }
+  let stokRows = [];
+  try { stokRows = await ctx.store.all('Stok Harian'); } catch { stokRows = []; }
+  const karyawan = await ctx.store.all('Karyawan');
+  const hasil = items.map((it) => {
+    const lap = stokRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r)).sort((a, b) => `${a.tanggal}${a.dicatat}`.localeCompare(`${b.tanggal}${b.dicatat}`)).pop();
+    if (!lap) return { ...it, laporan: null };
+    const restock = bahanRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r) && r.gerak === 'Restock' && String(r.tanggal) > String(lap.tanggal))
+      .reduce((s, r) => s + num(r.jumlah), 0);
+    const seharusnya = num(lap.jumlah) + restock;
+    return { ...it, laporan: lap, restock, seharusnya, selisih: it.jumlah - seharusnya, pelapor: namaPelapor(lap.pengirim, karyawan) };
+  });
+  const tanggal = tanggalLokal(pesan.waktu);
+  const oleh = pesan.senderName || pesan.senderId;
+  for (const h of hasil) {
+    await ctx.store.append('Sidak Stok', {
+      tanggal, kode_event: event.kode, bahan: h.bahan, hitung_sidak: h.jumlah, satuan: h.satuan,
+      menurut_laporan: h.laporan ? h.seharusnya : '', selisih: h.laporan ? h.selisih : '',
+      laporan_tanggal: h.laporan ? String(h.laporan.tanggal) : '', pelapor: h.pelapor || '', oleh, dicatat: waktuLokal(pesan.waktu),
+    });
+  }
+  const baris = hasil.map((h) => {
+    const s = h.satuan || '';
+    if (!h.laporan) return `• ${h.bahan}: sidak ${fmt(h.jumlah)} ${s} _(belum ada laporan closing untuk dibandingkan)_`;
+    const dasar = `laporan closing ${tglPendek(String(h.laporan.tanggal))} oleh ${h.pelapor}: ${fmt(num(h.laporan.jumlah))}${h.restock ? ` + restock ${fmt(h.restock)}` : ''} = ${fmt(h.seharusnya)}`;
+    if (h.selisih === 0) return `✅ ${h.bahan}: sidak *${fmt(h.jumlah)} ${s}* = sesuai (${dasar})`;
+    return `❌ ${h.bahan}: sidak *${fmt(h.jumlah)} ${s}*, ${dasar} → selisih *${h.selisih > 0 ? '+' : ''}${fmt(h.selisih)} ${s}*`;
+  });
+  const beda = hasil.filter((h) => h.laporan && h.selisih !== 0);
+  const pelapor = [...new Set(beda.map((h) => h.pelapor))];
+  if (beda.length && ctx.sesi) {
+    ctx.sesi.set(kunciSidak(pesan), { kode: event.kode, pelapor, ringkas: beda.map((h) => `${h.bahan} ${h.selisih > 0 ? '+' : ''}${fmt(h.selisih)} ${h.satuan || ''}`.trim()).join(', '), tanggal: String(beda[0].laporan.tanggal), waktu: Date.now() });
+  }
+  return balas([
+    `🕵️ *Hasil sidak stok ${event.kode}* (${oleh})`,
+    ...baris,
+    beda.length
+      ? `\n⚠️ *${beda.length} bahan berbeda dengan laporan.* Mau beri minus poin KPI untuk pelapor closing (${pelapor.join(', ')})?\nBalas: *minus 5* · *minus 5 ${pelapor[0]}* · *tidak*`
+      : (hasil.some((h) => h.laporan) ? '\n✅ Semua sesuai dengan laporan closing.' : ''),
+    '_Hasil sidak tercatat di tab Sidak Stok. Tim tidak diberi tahu._',
+  ].filter(Boolean).join('\n'));
+}
+
+// Jawaban PIC/owner setelah sidak: "minus 5", "minus 5 Bima", "-3 Tiara", "tidak".
+export async function jawabSidak(ctx, pesan) {
+  if (!ctx.sesi) return null;
+  const k = kunciSidak(pesan);
+  const s = ctx.sesi.get(k);
+  if (!s || Date.now() - s.waktu > 24 * 3600e3) return null;
+  const teks = String(pesan.text || '').trim();
+  if (/^(tidak|tdk|gak|nggak|ga|batal|skip|lewati)\b/i.test(teks)) { ctx.sesi.hapus(k); return balas('👌 Tidak ada minus poin untuk sidak ini. Hasilnya tetap tercatat di tab Sidak Stok.'); }
+  const m = teks.match(/^(?:minus|min|kurang|potong|-)\s*(\d+)\s*(?:poin)?\s*(.*)$/i);
+  if (!m) return null;
+  const poin = -Number(m[1]);
+  const sebut = m[2].split(/[,&]|\s+dan\s+|\s+/).map((x) => x.trim()).filter(Boolean);
+  const kenal = [...(await ctx.store.all('Karyawan')).map((x) => x.nama), ...(await ctx.store.all('Tim Event')).filter((t) => t.kode_event === s.kode).map((t) => t.nama)];
+  const dicocokkan = sebut.map((n) => kenal.find((x) => sama(x, n)) || kenal.find((x) => String(x).toLowerCase().startsWith(n.toLowerCase()))).filter(Boolean);
+  const nama = [...new Set(dicocokkan.length ? dicocokkan : s.pelapor)];
+  let urut = (await ctx.store.all('Poin KPI')).length;
+  for (const n of nama) {
+    urut += 1;
+    await ctx.store.append('Poin KPI', {
+      id: `K${String(urut).padStart(4, '0')}`, tanggal: tanggalLokal(pesan.waktu), nama: n, poin,
+      alasan: `Sidak stok: berbeda dengan laporan closing ${tglPendek(s.tanggal)} (${s.ringkas})`, kode_event: s.kode,
+      dicatat_oleh: `${pesan.senderName || pesan.senderId} (sidak)`, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
+    });
+  }
+  ctx.sesi.hapus(k);
+  return balas(`🔻 *${poin} poin KPI* untuk ${nama.join(', ')}: sidak stok ${s.kode} berbeda dengan laporan (${s.ringkas}).\n_Masuk Poin KPI. Salah? *#poinbatal K....* (lihat tab Poin KPI)._`);
+}

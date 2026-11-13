@@ -25,7 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
-import { perintahStok } from './stokHarian.js';
+import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
 import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya, perintahTanyaKasir, tanganiJawabKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
@@ -970,7 +970,14 @@ async function handlePribadi(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
-  if (!cmd) return (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
+  if (!cmd) return (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
+  if (cmd.perintah === 'sidak') {
+    const evs = await eventSidak(ctx, pesan, isOwner);
+    const kode = cmd.argumen.find((a) => /^[A-Z]{3}\d{2}-\d{2}/i.test(a));
+    const ev = kode ? evs.find((e) => e.kode.toLowerCase() === kode.toLowerCase()) : evs.length === 1 ? evs[0] : null;
+    if (!ev) return balas(evs.length ? `Sebutkan eventnya: ${evs.map((e) => `*#sidak ${e.kode}*`).join(' / ')}` : '⚠️ Sidak stok hanya untuk owner atau PIC event yang sedang berjalan.');
+    return perintahSidak(ctx, pesan, ev, cmd);
+  }
   const opsi = { event: null, argumen: cmd.argumen, isOwner };
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
@@ -1109,6 +1116,11 @@ export async function handlePesan(ctx, pesan) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
     const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
     if (lapor) return lapor;
+  }
+  // Jawaban minus poin setelah sidak stok (grup pengeluaran).
+  if (!cmd && event && grup.jenis === 'pengeluaran') {
+    const sd = await jawabSidak(ctx, pesan);
+    if (sd) return sd;
   }
   // Penilaian jobdesk oleh PIC/owner kalau ditanyakan di grup pengeluaran.
   if (!cmd && event && grup.jenis === 'pengeluaran') {
@@ -1346,6 +1358,12 @@ export async function handlePesan(ctx, pesan) {
       case 'kasir': {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahKasir(ctx, event, { bolehLihat: isOwner || milikSaya.some((e) => e.kode === event?.kode) });
+      }
+      case 'sidak': {
+        if (grup.jenis === 'event') return balas('🤫 Sidak dilakukan lewat *chat pribadi ke bot* atau di *grup pengeluaran*, supaya tetap dadakan.');
+        const boleh = isOwner || (await eventSidak(ctx, pesan, false)).some((e) => e.kode === event?.kode);
+        if (!boleh) return balas('⚠️ Sidak stok hanya oleh owner atau PIC event ini.');
+        return perintahSidak(ctx, pesan, event, cmd);
       }
       case 'stok':
       case 'stock':

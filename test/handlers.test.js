@@ -1287,3 +1287,32 @@ test('stok closing harian: format dari bot, berkurang dihitung dari stok awal/ke
   assert.match(ingat[0].text, /Stok closing hari ini belum diisi.*#stok/s);
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T23:30:00+07:00'))).length, 0);
 });
+
+test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan closing, minus poin untuk pelapor', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Andi`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  await store.append('Karyawan', { nama: 'Andi', nomor_wa: KARYAWAN });
+  const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
+  await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 20 pack\nbumbu garlic 10 pack', w('02', '08:00'));
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack\nbumbu garlic 8 pack', w('02', '22:00'));
+  // di grup tim ditolak (supaya dadakan), karyawan biasa ditolak
+  assert.match(await kirim(G_TIM, OWNER, '#sidak', w('03', '08:00')), /chat pribadi ke bot/);
+  assert.match(await kirim(G_KELUAR, KARYAWAN, '#sidak', w('03', '08:00')), /hanya oleh owner atau PIC/);
+  // restock pagi lalu sidak di grup pengeluaran oleh PIC
+  await kirim(G_TIM, KARYAWAN, '#restock mozzarella 5 pack', w('03', '07:00'));
+  const hasil = await kirim(G_KELUAR, OWNER, '#sidak\nmozzarella 17 pack\nbumbu garlic 8 pack', w('03', '08:30'));
+  assert.match(hasil, /❌ Mozzarella: sidak \*17 pack\*, laporan closing 2 Nov oleh Andi: 14 \+ restock 5 = 19 → selisih \*-2 pack\*/);
+  assert.match(hasil, /✅ Bumbu Garlic: sidak \*8 pack\* = sesuai/);
+  assert.match(hasil, /minus poin KPI untuk pelapor closing \(Andi\)/);
+  const minus = await kirim(G_KELUAR, OWNER, 'minus 5', w('03', '08:31'));
+  assert.match(minus, /-5 poin KPI\* untuk Andi.*Mozzarella -2 pack/s);
+  const p = (await store.all('Poin KPI')).pop();
+  assert.equal(p.nama, 'Andi'); assert.equal(p.poin, -5);
+  assert.equal((await store.all('Sidak Stok')).length, 2);
+  const jumlah = (await store.all('Poin KPI')).length;
+  await kirim(G_KELUAR, OWNER, 'minus 5', w('03', '08:32'));
+  assert.equal((await store.all('Poin KPI')).length, jumlah); // sudah selesai, tidak dobel
+});

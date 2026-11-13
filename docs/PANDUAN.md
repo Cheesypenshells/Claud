@@ -486,3 +486,10 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Boleh dikirim sebagian; kirim ulang di hari yang sama = koreksi. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
 - Hanya jumlah, **tanpa harga**. Tersimpan di tab **Stok Harian**. Di hari terakhir, sisa tetap dicatat owner/PIC sebagai `#sisa` di grup pengeluaran.
 
+
+### Sidak stok dadakan (PIC / owner)
+
+- Lewat **chat pribadi ke bot** (`#sidak` atau `#sidak SMR26-11`) atau di **grup pengeluaran**. Di grup tim ditolak supaya tetap dadakan.
+- `#sidak` saja: bot mengirim format. Isi hitungan stok saat itu, lalu kirim. Bot membandingkan dengan **laporan closing terakhir + restock setelahnya**, menandai ✅ sesuai / ❌ selisih per bahan.
+- Kalau ada selisih, bot bertanya minus poin untuk pelapor closing: balas `minus 5` (untuk pelapor), `minus 5 Bima` (orang tertentu), atau `tidak`. Poin masuk **Poin KPI**; hasil sidak tersimpan di tab **Sidak Stok**. Tim tidak diberi tahu.
+- Paling tepat dilakukan **sebelum booth buka** atau **setelah tim melapor stok closing** (saat jualan, stok memang sedang berkurang).
