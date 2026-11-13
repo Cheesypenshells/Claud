@@ -49,3 +49,28 @@ test('halaman pelanggan GitHub Pages sinkron dengan apps-script/Code.gs', async 
   const api = isi.match(/var API="([^"]+)"/)[1];
   assert.equal(isi, buatHalaman(api), 'jalankan: node scripts/halaman-pelanggan.mjs <url /exec>');
 });
+
+test('apps-script/Code.gs: semua halaman bisa dibuat dan semua fungsi yang dipanggil ada', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  const keluaran = { setTitle() { return this; }, addMetaTag() { return this; }, setMimeType() { return this; } };
+  const c = {
+    HtmlService: { createHtmlOutput: (h) => ({ ...keluaran, html: h }) },
+    ContentService: { createTextOutput: (t) => ({ ...keluaran, html: t }), MimeType: { JSON: 'json' } },
+  };
+  vm.createContext(c);
+  vm.runInContext(src, c);
+  for (const nama of ['KOLOM_ANTRIAN', 'KOLOM_KOMPLAIN', 'KATEGORI_KOMPLAIN', 'STATUS', 'GAYA', 'ASET', 'HTML_KASIR', 'HTML_PESANAN', 'HTML_KOMPLAIN', 'MULAI_PASANG', 'doGet', 'pasang']) {
+    assert.ok(c[nama] !== undefined, `${nama} hilang dari Code.gs`);
+  }
+  const dipanggil = new Set([...src.matchAll(/\b([a-zA-Z]\w*_)\(/g)].map((m) => m[1]));
+  for (const f of dipanggil) assert.equal(typeof c[f], 'function', `fungsi ${f} dipanggil tapi tidak ada`);
+  const kasir = c.doGet({ parameter: { p: 'kasir', k: '1234', e: 'SMR26-11' } }).html;
+  assert.match(kasir, /KUNCI="1234",EVLINK="SMR26-11"/);
+  const kom = c.doGet({ parameter: { p: 'komplain', e: 'SMR26-11' } }).html;
+  assert.match(kom, /Oyster tidak fresh/);
+  const pes = c.doGet({ parameter: { p: 'pesanan', t: 'abc' } }).html;
+  assert.match(pes, /var TOKEN="abc"/);
+  for (const h of [kasir, kom, pes]) assert.ok(!h.includes('__ASET__') && h.includes(c.ASET + 'logo-putih.png'));
+});
