@@ -32,6 +32,22 @@ var KATEGORI_KOMPLAIN = [
 ];
 var STATUS = { MENUNGGU: 'MENUNGGU', DIBAKAR: 'DIBAKAR', SIAP: 'SIAP', DIAMBIL: 'DIAMBIL', BATAL: 'BATAL' };
 
+// ---------------------------------------------------------------- pemasangan
+
+// Jalankan SEKALI dari editor (tombol ▶ Jalankan) setelah menempel kode ini lewat
+// sheet pembukuan > Ekstensi > Apps Script. Menghubungkan sheet, membuat tab Antrian/Komplain & folder foto,
+// sekaligus meminta izin akses Google.
+function MULAI_PASANG() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  tab_('Antrian', KOLOM_ANTRIAN);
+  tab_('Komplain', KOLOM_KOMPLAIN);
+  folder_();
+  var t = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd');
+  Logger.log('✅ Siap. Sheet: ' + ss_().getName() + ' · PIN kasir: ' + (pinKasir_() ? 'ada' : 'BELUM (isi pin_kasir di tab Pengaturan)') + ' · ' + t);
+  Logger.log('Lanjut: Terapkan > Deployment baru > Aplikasi web (Jalankan sebagai: Saya, Akses: Siapa saja).');
+}
+
 // ---------------------------------------------------------------- dasar
 
 // Nilai dari Script Properties, atau dari file Konfig.gs (KONFIG_CPS = { SPREADSHEET_ID: '...', KASIR_PIN: '...' })
@@ -41,7 +57,31 @@ function prop_(k) {
   if (v) return v;
   return (typeof KONFIG_CPS !== 'undefined' && KONFIG_CPS[k]) ? String(KONFIG_CPS[k]) : '';
 }
-function ss_() { return SpreadsheetApp.openById(prop_('SPREADSHEET_ID')); }
+function ss_() {
+  var id = prop_('SPREADSHEET_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  // Script dibuat dari menu Ekstensi > Apps Script di sheet pembukuan: pakai sheet itu dan ingat ID-nya.
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Sheet pembukuan belum terhubung. Jalankan MULAI_PASANG dari editor.');
+  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  return ss;
+}
+
+// PIN kasir: Script Property / Konfig.gs, atau baris "pin_kasir" di tab Pengaturan (diisi bot / owner).
+function pinKasir_() {
+  var v = prop_('KASIR_PIN');
+  if (v) return v;
+  var c = CacheService.getScriptCache(), simpan = c.get('pin_kasir');
+  if (simpan) return simpan;
+  var sh = ss_().getSheetByName('Pengaturan');
+  if (!sh || sh.getLastRow() < 2) return '';
+  var nilai = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  for (var i = 0; i < nilai.length; i++) {
+    if (String(nilai[i][0]).trim() === 'pin_kasir') { v = String(nilai[i][1]).trim(); break; }
+  }
+  if (v) c.put('pin_kasir', v, 300);
+  return v || '';
+}
 function sekarang_() { return Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss'); }
 function hariIni_() { return Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd'); }
 function tglStr_(v) { return v instanceof Date ? Utilities.formatDate(v, 'Asia/Jakarta', 'yyyy-MM-dd') : String(v || '').slice(0, 10); }
@@ -86,7 +126,8 @@ function ubah_(t, baris, o) {
 }
 
 function cekPin_(pin) {
-  if (!prop_('KASIR_PIN') || String(pin) !== prop_('KASIR_PIN')) throw new Error('PIN kasir salah');
+  var benar = pinKasir_();
+  if (!benar || String(pin) !== benar) throw new Error('PIN kasir salah');
 }
 
 function url_() { return ScriptApp.getService().getUrl(); }
