@@ -11,41 +11,24 @@
 //
 // Data: Google Sheet pembukuan (Script Property SPREADSHEET_ID), tab "Antrian" & "Komplain".
 // Foto: folder Drive "CPS ANTRIAN (foto struk & pesanan)", dibagikan "siapa saja yang punya link: lihat".
-// PIN kasir: Script Property KASIR_PIN.
-// Dipasang sekali oleh owner; tidak ada data rahasia di file ini.
-
-var KOLOM_ANTRIAN = [
-  ['id', 'ID'], ['token', 'Token'], ['kode_event', 'Kode Event'], ['tanggal', 'Tanggal'], ['nomor', 'No. Antrian'],
-  ['status', 'Status'], ['menu', 'Menu (dari struk)'], ['foto_struk', 'Foto Struk'], ['foto_bakar', 'Foto Dibakar'],
-  ['teks_struk', 'Teks Struk'], ['dibuat', 'Dibuat'], ['dibakar', 'Mulai Dibakar'], ['dipanggil', 'Dipanggil'],
-  ['panggil_ke', 'Dipanggil Ke'], ['diambil', 'Diambil'],
-];
-var KOLOM_KOMPLAIN = [
-  ['id', 'ID'], ['waktu', 'Waktu'], ['kode_event', 'Kode Event'], ['lokasi', 'Lokasi'], ['kategori', 'Kategori'],
-  ['detail', 'Detail'], ['nama', 'Nama (opsional)'], ['kontak', 'Kontak (opsional)'], ['status', 'Status'],
-  ['diteruskan', 'Diteruskan ke Owner'],
-];
-var KATEGORI_KOMPLAIN = [
-  'Pelayanan tidak ramah', 'Oyster tidak fresh', 'Penyajian tidak sesuai', 'Orderan tidak sesuai',
-  'Menunggu terlalu lama', 'Harga / pembayaran', 'Kebersihan', 'Lainnya',
-];
-var STATUS = { MENUNGGU: 'MENUNGGU', DIBAKAR: 'DIBAKAR', SIAP: 'SIAP', DIAMBIL: 'DIAMBIL', BATAL: 'BATAL' };
-
-// ---------------------------------------------------------------- pemasangan
-
-// Jalankan SEKALI dari editor (tombol ▶ Jalankan) setelah menempel kode ini lewat
-// sheet pembukuan > Ekstensi > Apps Script. Menghubungkan sheet, membuat tab Antrian/Komplain & folder foto,
-// sekaligus meminta izin akses Google.
-function MULAI_PASANG() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss) PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
-  tab_('Antrian', KOLOM_ANTRIAN);
-  tab_('Komplain', KOLOM_KOMPLAIN);
-  folder_();
-  var t = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd');
-  Logger.log('✅ Siap. Sheet: ' + ss_().getName() + ' · PIN kasir: ' + (pinKasir_() ? 'ada' : 'BELUM (isi pin_kasir di tab Pengaturan)') + ' · ' + t);
-  Logger.log('Lanjut: Terapkan > Deployment baru > Aplikasi web (Jalankan sebagai: Saya, Akses: Siapa saja).');
+// Nilai tab Pengaturan (kolom A kunci, kolom B nilai), disimpan sementara 5 menit.
+function atur_(kunci) {
+  var c = CacheService.getScriptCache(), simpan = c.get('atur:' + kunci);
+  if (simpan !== null) return simpan;
+  var v = '';
+  var sh = ss_().getSheetByName('Pengaturan');
+  if (sh && sh.getLastRow() >= 2) {
+    var nilai = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+    for (var i = 0; i < nilai.length; i++) {
+      if (String(nilai[i][0]).trim() === kunci) { v = String(nilai[i][1]).trim(); break; }
+    }
+  }
+  c.put('atur:' + kunci, v, 300);
+  return v;
 }
+
+// PIN kasir: Script Property / Konfig.gs, atau baris "pin_kasir" di tab Pengaturan (diisi bot / owner).
+function pinKasir_() { return prop_('KASIR_PIN') || atur_('pin_kasir'); }
 
 // ---------------------------------------------------------------- dasar
 
@@ -234,7 +217,7 @@ function ringkas_(o, denganToken) {
     id: o.id, token: denganToken ? o.token : undefined, nomor: Number(o.nomor), status: o.status, menu: String(o.menu || ''),
     fotoStruk: linkFoto_(o.foto_struk), fotoBakar: linkFoto_(o.foto_bakar), dibuat: String(o.dibuat || '').slice(11, 16),
     dipanggil: String(o.dipanggil || ''), panggilKe: Number(o.panggil_ke || 0), kodeEvent: o.kode_event,
-    link: denganToken ? url_() + '?p=pesanan&t=' + o.token : undefined,
+    link: denganToken ? (atur_('url_pelanggan') ? atur_('url_pelanggan') + '?t=' : url_() + '?p=pesanan&t=') + o.token : undefined,
   };
 }
 
@@ -348,6 +331,11 @@ function kirimKomplain(f) {
 function doGet(e) {
   var p = (e && e.parameter && e.parameter.p) || 'komplain';
   var html;
+  if (p === 'api') {
+    // Status pesanan JSON untuk halaman pelanggan di luar Apps Script (GitHub Pages, supaya HP bisa bergetar).
+    var hasil = statusPesanan(String(e.parameter.t || '').replace(/[^a-z0-9]/gi, ''));
+    return ContentService.createTextOutput(JSON.stringify(hasil)).setMimeType(ContentService.MimeType.JSON);
+  }
   if (p === 'kasir') html = HTML_KASIR.replace('__K__', String(e.parameter.k || '').replace(/[^0-9A-Za-z]/g, '')).replace('__E__', String(e.parameter.e || '').replace(/[^A-Za-z0-9-]/g, ''));
   else if (p === 'pesanan') html = HTML_PESANAN.replace('__TOKEN__', String(e.parameter.t || '').replace(/[^a-z0-9]/gi, ''));
   else html = HTML_KOMPLAIN.replace('__KODE__', String((e && e.parameter && e.parameter.e) || '').replace(/[^A-Za-z0-9-]/g, ''))
@@ -422,23 +410,27 @@ var HTML_KASIR = '<header>🦪 Kasir Antrian <span id="ev" class="redup" style="
   'if(PIN){el("pin").value=PIN;masuk()}' +
   '</script>';
 
-var HTML_PESANAN = '<header>🦪 Cheesy Pen Shells</header><main>' +
-  '<div class="kartu" id="bunyi"><button class="biru" onclick="aktifkan()">🔔 Aktifkan bunyi panggilan</button><p class="redup">Biarkan halaman ini terbuka. HP akan berbunyi & bergetar saat pesanan Anda siap.</p></div>' +
-  '<div id="isi" class="kartu"><p class="redup">Memuat pesanan...</p></div></main><div id="siap"></div><script>' +
-  'var TOKEN="__TOKEN__",ctx=null,terakhirPanggil=-1,alarm=null;' +
+// Halaman pelanggan: badan HTML & skrip dipakai juga untuk halaman GitHub Pages (docs/antrian, lihat scripts/halaman-pelanggan.mjs).
+var BADAN_PESANAN = '<header>🦪 Cheesy Pen Shells</header><main><div class="kartu" id="bunyi"><button class="biru" onclick="aktifkan()">🔔 Ketuk untuk aktifkan bunyi & getar panggilan</button><p class="redup">Wajib diketuk sekali. Biarkan halaman ini terbuka: saat pesanan siap, HP berbunyi seperti panggilan di bioskop dan bergetar.</p></div><div id="isi" class="kartu"><p class="redup">Memuat pesanan...</p></div></main><div id="siap"></div>';
+var JS_PESANAN =
+  'var ctx=null,aktif=false,terakhirPanggil=-1,alarm=null,ulang=0,kunciLayar=null,suaraId=null;' +
   'function el(i){return document.getElementById(i)}' +
-  'function aktifkan(){try{ctx=new (window.AudioContext||window.webkitAudioContext)();bip()}catch(e){}el("bunyi").innerHTML="<p>🔔 Bunyi panggilan aktif.</p>"}' +
-  'function bip(){if(!ctx)return;[0,0.35,0.7].forEach(function(t){var o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(0.35,ctx.currentTime+t);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.25)})}' +
-  'function panggil(d){if(navigator.vibrate)navigator.vibrate([400,200,400,200,800]);bip();clearInterval(alarm);alarm=setInterval(function(){bip();if(navigator.vibrate)navigator.vibrate([400,200,400])},4000);el("siap").innerHTML="<div class=siap-besar onclick=\\"berhenti()\\"><div style=\\"font-size:28px;font-weight:800\\">PESANAN ANDA SIAP!</div><div class=nomor>#"+d.nomor+"</div><div style=\\"font-size:20px\\">Silakan ambil di kasir 🦪</div><p>(ketuk layar untuk mematikan bunyi)</p></div>"}' +
-  'function berhenti(){clearInterval(alarm);el("siap").innerHTML=""}' +
-  'function aman(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}' +
-  'function tampil(d){if(!d.ada){el("isi").innerHTML="<p>Pesanan tidak ditemukan. Mohon scan ulang QR dari kasir.</p>";return}' +
-  'var urut=["MENUNGGU","DIBAKAR","SIAP","DIAMBIL"],i=urut.indexOf(d.status),nama={MENUNGGU:"⏳ Menunggu",DIBAKAR:"🔥 Sedang dibakar",SIAP:"✅ Siap diambil",DIAMBIL:"🙏 Sudah diambil",BATAL:"Dibatalkan"};' +
-  'el("isi").innerHTML="<div class=redup style=\\"text-align:center\\">"+aman(d.lokasi)+"</div><div class=redup style=\\"text-align:center;margin-top:8px\\">Nomor antrian Anda</div><div class=nomor>#"+d.nomor+"</div><p style=\\"text-align:center\\"><span class=\\"lencana "+d.status+"\\">"+(nama[d.status]||d.status)+"</span></p>' +
-  '<div class=langkah>"+["Menunggu","Dibakar","Siap"].map(function(n,k){return "<div class=\\""+(k<=i?"aktif":"")+"\\">"+(k<=i?"●":"○")+" "+n+"</div>"}).join("")+"</div>' +
-  '<p style=\\"text-align:center\\">Nomor yang sedang dipanggil: <b>"+(d.nomorDipanggil?"#"+d.nomorDipanggil:"–")+"</b>"+(d.antrianDidepan?"<br>Antrian di depan Anda: <b>"+d.antrianDidepan+"</b>":"")+"</p>' +
-  '"+(d.fotoBakar?"<h3>🔥 Pesanan Anda sedang dibakar</h3><img class=foto src=\\""+d.fotoBakar+"\\">":"")+"<h3>🧾 Pesanan</h3><div style=\\"white-space:pre-line;font-size:18px\\">"+(aman(d.menu)||"<span class=redup>lihat struk di bawah</span>")+"</div><h3>Bukti pembayaran</h3><img class=foto src=\\""+d.fotoStruk+"\\"><p class=redup style=\\"margin-top:16px\\">Ada keluhan? <a href=\\""+d.komplain+"\\" target=_top>Sampaikan di sini</a></p>";' +
-  'if(d.status==="SIAP"&&d.panggilKe!==terakhirPanggil){panggil(d)}if(d.status!=="SIAP")berhenti();terakhirPanggil=d.status==="SIAP"?d.panggilKe:terakhirPanggil;if(d.status==="DIAMBIL"){clearInterval(timer)}}' +
+  'function pilihSuara(){if(!window.speechSynthesis)return;var v=speechSynthesis.getVoices();suaraId=v.filter(function(x){return /^id|^in/i.test(x.lang)})[0]||null}' +
+  'if(window.speechSynthesis){pilihSuara();speechSynthesis.onvoiceschanged=pilihSuara}' +
+  'function bicara(teks){if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(teks);u.lang="id-ID";if(suaraId)u.voice=suaraId;u.rate=0.92;u.pitch=1;u.volume=1;speechSynthesis.speak(u)}' +
+  'function getar(pola){try{if(navigator.vibrate)navigator.vibrate(pola)}catch(e){}}' +
+  'function jagaLayar(){try{if(navigator.wakeLock&&document.visibilityState==="visible")navigator.wakeLock.request("screen").then(function(k){kunciLayar=k}).catch(function(){})}catch(e){}}' +
+  'document.addEventListener("visibilitychange",function(){if(aktif&&document.visibilityState==="visible")jagaLayar()});' +
+  'function lonceng(f,t,dur,vol){var n=ctx.currentTime+t;[[1,1],[2.76,0.35],[5.4,0.12]].forEach(function(h){var o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f*h[0];g.gain.setValueAtTime(0.0001,n);g.gain.exponentialRampToValueAtTime(vol*h[1],n+0.02);g.gain.exponentialRampToValueAtTime(0.0001,n+dur);o.connect(g);g.connect(ctx.destination);o.start(n);o.stop(n+dur+0.05)})}' +
+  'function nada(){if(!ctx)return;if(ctx.state==="suspended")ctx.resume();lonceng(523.25,0,1.6,0.5);lonceng(659.25,0.45,1.6,0.5);lonceng(783.99,0.9,1.6,0.5);lonceng(1046.5,1.35,2.4,0.45)}' +
+  'function aktifkan(){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}aktif=true;nada();getar(200);jagaLayar();setTimeout(function(){bicara("Bunyi panggilan aktif")},1600);el("bunyi").innerHTML="<p>🔔 <b>Bunyi panggilan aktif.</b> Biarkan halaman ini terbuka, layar akan tetap menyala.</p>"}' +
+  'function umumkan(d){nada();getar([700,250,700,250,1200]);setTimeout(function(){if(window.speechSynthesis)speechSynthesis.cancel();bicara("Nomor antrian "+d.nomor+". Oyster kamu sudah siap. Silakan diambil di kasir.")},2300)}' +
+  'function panggil(d){ulang=0;umumkan(d);clearInterval(alarm);alarm=setInterval(function(){ulang++;if(ulang>12){clearInterval(alarm);return}umumkan(d)},12000);el("siap").innerHTML="<div class=siap-besar onclick=\\"berhenti()\\"><div style=\\"font-size:28px;font-weight:800\\">OYSTER KAMU SUDAH SIAP!</div><div class=nomor>#"+d.nomor+"</div><div style=\\"font-size:20px\\">Silakan ambil di kasir 🦪</div><p>(ketuk layar untuk mematikan bunyi)</p></div>"}' +
+  'function berhenti(){if(!alarm&&!el("siap").innerHTML)return;clearInterval(alarm);alarm=null;if(window.speechSynthesis)speechSynthesis.cancel();getar(0);el("siap").innerHTML=""}' +
+  '' +
+  'function aman(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}function tampil(d){if(!d.ada){el("isi").innerHTML="<p>Pesanan tidak ditemukan. Mohon scan ulang QR dari kasir.</p>";return}var urut=["MENUNGGU","DIBAKAR","SIAP","DIAMBIL"],i=urut.indexOf(d.status),nama={MENUNGGU:"⏳ Menunggu",DIBAKAR:"🔥 Sedang dibakar",SIAP:"✅ Siap diambil",DIAMBIL:"🙏 Sudah diambil",BATAL:"Dibatalkan"};el("isi").innerHTML="<div class=redup style=\\"text-align:center\\">"+aman(d.lokasi)+"</div><div class=redup style=\\"text-align:center;margin-top:8px\\">Nomor antrian Anda</div><div class=nomor>#"+d.nomor+"</div><p style=\\"text-align:center\\"><span class=\\"lencana "+d.status+"\\">"+(nama[d.status]||d.status)+"</span></p><div class=langkah>"+["Menunggu","Dibakar","Siap"].map(function(n,k){return "<div class=\\""+(k<=i?"aktif":"")+"\\">"+(k<=i?"●":"○")+" "+n+"</div>"}).join("")+"</div><p style=\\"text-align:center\\">Nomor yang sedang dipanggil: <b>"+(d.nomorDipanggil?"#"+d.nomorDipanggil:"–")+"</b>"+(d.antrianDidepan?"<br>Antrian di depan Anda: <b>"+d.antrianDidepan+"</b>":"")+"</p>"+(d.fotoBakar?"<h3>🔥 Pesanan Anda sedang dibakar</h3><img class=foto src=\\""+d.fotoBakar+"\\">":"")+"<h3>🧾 Pesanan</h3><div style=\\"white-space:pre-line;font-size:18px\\">"+(aman(d.menu)||"<span class=redup>lihat struk di bawah</span>")+"</div><h3>Bukti pembayaran</h3><img class=foto src=\\""+d.fotoStruk+"\\"><p class=redup style=\\"margin-top:16px\\">Ada keluhan? <a href=\\""+d.komplain+"\\" target=_top>Sampaikan di sini</a></p>";if(d.status==="SIAP"&&d.panggilKe!==terakhirPanggil){panggil(d)}if(d.status!=="SIAP")berhenti();terakhirPanggil=d.status==="SIAP"?d.panggilKe:terakhirPanggil;if(d.status==="DIAMBIL"){clearInterval(timer)}}' +
+  '';
+var HTML_PESANAN = BADAN_PESANAN + '<script>var TOKEN="__TOKEN__";' + JS_PESANAN +
   'function muat(){google.script.run.withSuccessHandler(tampil).statusPesanan(TOKEN)}var timer=setInterval(muat,5000);muat();' +
   '</script>';
 

@@ -41,3 +41,11 @@ test('#kasir hanya owner/PIC', async () => {
   assert.match((await perintahKasir(ctx, tabel.Event[0], { bolehLihat: false }))[0].text, /hanya bisa/);
   assert.match((await perintahKasir(ctx, tabel.Event[0], { bolehLihat: true }))[0].text, /p=kasir&k=1234/);
 });
+
+test('halaman pelanggan GitHub Pages sinkron dengan apps-script/Code.gs', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { buatHalaman } = await import('../scripts/halaman-pelanggan.mjs');
+  const isi = readFileSync(new URL('../docs/antrian/index.html', import.meta.url), 'utf8');
+  const api = isi.match(/var API="([^"]+)"/)[1];
+  assert.equal(isi, buatHalaman(api), 'jalankan: node scripts/halaman-pelanggan.mjs <url /exec>');
+});
