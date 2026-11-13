@@ -261,3 +261,10 @@ test('nominal dengan satuan: 126925k = 126.925.000; satuan berlebih hanya untuk 
   assert.equal(parseMoney('125055000jt'), 125055000);
   assert.equal(parseMoney('12500k'), 12500000);
 });
+
+test('uang siapa: nama toko bukan pemilik uang; beberapa "uang ..." -> yang terakhir', async () => {
+  const { ambilUangSiapa } = await import('../src/parsers.js');
+  assert.equal(ambilUangSiapa('belanja uang hyper mart uang melia').siapa, 'Melia');
+  assert.equal(ambilUangSiapa('uang hyper mart').siapa, null);
+  assert.equal(ambilUangSiapa('bensin uang valen').siapa, 'Valen');
+});

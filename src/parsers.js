@@ -570,7 +570,7 @@ export function parseGratis(teks, daftarMenu, cocokkan) {
 const RE_UANG = /\(?\s*(?:pakai|pake|pk|dari|dibayar(?:in)?(?:\s+(?:pakai|pake))?|talangan)?\s*uang(?:nya)?\s+([a-z][a-z.]*)\s*\)?/i;
 
 // "uang transport", "uang makan", "uang muka" adalah jenis pengeluaran, bukan pemilik uang.
-const BUKAN_PEMILIK = ['semua', 'semuanya', 'smua', 'all', 'nya', 'salah', 'itu', 'ini', 'siapa', 'tadi', 'yang', 'yg', 'sudah', 'udah', 'belum', 'kok', 'jadi', 'juga', 'muka', 'saku', 'harian', 'jajan', 'rokok', 'tip', 'ongkos', 'cash', 'tunai', 'kembalian', 'lebih', 'kurang', 'tambahan', 'bulanan', 'mingguan', 'lembur'];
+const BUKAN_PEMILIK = ['hyper', 'hypermart', 'mart', 'indomaret', 'alfamart', 'alfa', 'alfamidi', 'superindo', 'transmart', 'giant', 'lotte', 'toko', 'warung', 'belanja', 'shopee', 'tokopedia', 'lazada', 'grab', 'gojek', 'transfer', 'trf', 'tf', 'semua', 'semuanya', 'smua', 'all', 'nya', 'salah', 'itu', 'ini', 'siapa', 'tadi', 'yang', 'yg', 'sudah', 'udah', 'belum', 'kok', 'jadi', 'juga', 'muka', 'saku', 'harian', 'jajan', 'rokok', 'tip', 'ongkos', 'cash', 'tunai', 'kembalian', 'lebih', 'kurang', 'tambahan', 'bulanan', 'mingguan', 'lembur'];
 
 export function petaUangSiapa(kata) {
   const k = String(kata || '').toLowerCase().replace(/\.$/, '');
@@ -583,11 +583,14 @@ export function petaUangSiapa(kata) {
 }
 
 export function ambilUangSiapa(baris) {
+  // Beberapa "uang ..." dalam satu baris: yang terakhir yang dipakai ("hyper mart ... uang melia").
   const re = new RegExp(RE_UANG.source, 'gi');
   let m;
+  let pilih = null;
   while ((m = re.exec(String(baris))) !== null) {
     const siapa = petaUangSiapa(m[1]);
-    if (siapa) return { siapa, sisa: bersihkan(String(baris).replace(m[0], ' ')) };
+    if (siapa) pilih = { siapa, teks: m[0] };
   }
+  if (pilih) return { siapa: pilih.siapa, sisa: bersihkan(String(baris).replace(pilih.teks, ' ')) };
   return { siapa: null, sisa: baris };
 }
