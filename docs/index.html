@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cheesy Pen Shells</title>
+<meta name="description" content="Cheesy Pen Shells: oyster bakar keju, garlic, dan seafood mix yang dibakar langsung di atas bara, keliling bazaar kuliner Indonesia.">
+<meta name="theme-color" content="#22348C">
+<meta property="og:title" content="Cheesy Pen Shells">
+<meta property="og:description" content="Oyster bakar keliling bazaar kuliner Indonesia. Follow @cheesypenshells.">
+<meta property="og:image" content="img/suasana.jpg">
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Caveat:wght@700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Tata letak: seperti aplikasi di HP (sapaan, banner geser, kategori bulat, kartu menu, banner promo, navigasi bawah);
+   di layar lebar kontennya melebar menjadi beberapa kolom. Satu tema terang yang disengaja (warna merek). */
+:root{
+  --navy:#22348C;--navy-tua:#16226A;--kuning:#F6B800;--kuning-muda:#FFF4CC;--kertas:#FAF8F3;--putih:#FFFFFF;
+  --teks:#1A2050;--redup:#5F6690;--garis:#E4E3EC;--hijau:#0B8043;
+  --judul:"Barlow Condensed","Arial Narrow",Impact,sans-serif;--isi:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--skrip:"Caveat","Comic Sans MS",cursive;
+  --kuas:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' preserveAspectRatio='none'%3E%3Cpath fill='%23F6B800' d='M8 16C62 5 140 11 212 6 C282 2 350 9 394 12 L386 21 L398 29 L384 40 C330 52 252 47 182 54 C120 59 62 52 10 49 L19 39 L2 31 L15 23Z'/%3E%3C/svg%3E");
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--kertas);color:var(--teks);font-family:var(--isi);font-size:16px;line-height:1.55}
+img{max-width:100%;display:block}
+a{color:inherit}
+.bungkus{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+:focus-visible{outline:3px solid var(--kuning);outline-offset:3px;border-radius:8px}
+
+/* kepala */
+.kepala{display:flex;align-items:center;gap:12px;padding-block:18px 10px}
+.kepala img{width:58px;height:58px;flex:none}
+.sapa{min-width:0;line-height:1.15}
+.sapa small{display:block;color:var(--redup);font-weight:700;font-size:14px}
+.sapa b{display:block;font-family:var(--judul);font-weight:800;font-size:28px;letter-spacing:.03em;color:var(--navy)}
+.sapa i{font-family:var(--skrip);font-style:normal;font-size:19px;color:var(--navy)}
+.tombol-bulat{margin-left:auto;flex:none;width:48px;height:48px;border-radius:16px;background:var(--putih);display:grid;place-items:center;box-shadow:0 4px 14px rgba(34,52,140,.12);color:var(--navy)}
+.tombol-bulat svg{width:24px;height:24px}
+
+/* banner geser */
+.banner{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-top:8px;border-radius:24px}
+.banner::-webkit-scrollbar{display:none}
+.slide{flex:0 0 100%;scroll-snap-align:start;position:relative;border-radius:24px;overflow:hidden;min-height:250px;background:var(--navy);color:var(--putih);display:flex}
+.slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slide::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(22,34,106,.95) 0%,rgba(22,34,106,.75) 45%,rgba(22,34,106,.05) 80%)}
+.slide .teks{position:relative;z-index:1;padding:24px;display:flex;flex-direction:column;gap:8px;justify-content:center;max-width:62%}
+.slide .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--kuning)}
+.slide h1,.slide h2{font-family:var(--judul);font-weight:800;font-size:clamp(34px,7vw,56px);line-height:.95;margin:0;text-transform:uppercase;text-wrap:balance}
+.slide p{margin:0;font-weight:600;font-size:15px;opacity:.92}
+.cta{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;background:var(--kuning);color:var(--navy-tua);font-weight:800;text-decoration:none;border-radius:999px;padding:10px 10px 10px 18px;margin-top:6px}
+.cta span{width:28px;height:28px;border-radius:50%;background:var(--navy);color:var(--putih);display:grid;place-items:center;font-size:15px}
+.titik{display:flex;justify-content:center;gap:8px;margin-top:10px}
+.titik button{width:9px;height:9px;padding:0;border:0;border-radius:999px;background:#C9CBDB;cursor:pointer;transition:width .2s}
+.titik button[aria-current="true"]{width:26px;background:var(--navy)}
+
+/* kategori */
+.kategori{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:22px;text-align:center}
+.kategori a{text-decoration:none;font-weight:700;font-size:13px;color:var(--teks);display:flex;flex-direction:column;align-items:center;gap:6px}
+.kategori .bulat{width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--putih);box-shadow:0 4px 14px rgba(34,52,140,.12);display:grid;place-items:center;border:3px solid var(--putih)}
+.kategori a:first-child .bulat{border-color:var(--navy)}
+.kategori .bulat img{width:100%;height:100%;object-fit:cover}
+.kategori .bulat.ikon{background:var(--navy);color:var(--kuning)}.kategori .bulat.ikon svg{width:28px;height:28px}
+.kategori .bulat.kuning{background:var(--kuning)}.kategori .bulat.kuning img{width:78%;height:78%;object-fit:contain}
+
+/* bagian */
+section{margin-top:38px}
+.judul-bagian{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+h2.judul{font-family:var(--judul);font-weight:800;font-size:30px;line-height:1.05;margin:0;text-transform:uppercase;color:var(--navy)}
+h2.judul span{display:inline-block;padding:3px 16px 5px;background:var(--kuas) center/100% 100% no-repeat}
+.judul-bagian a{color:var(--navy);font-weight:800;text-decoration:none;font-size:15px;white-space:nowrap}
+.pengantar{margin:-4px 0 16px;color:var(--redup);max-width:62ch}
+.skrip{font-family:var(--skrip);font-size:24px;color:var(--navy);font-weight:700}
+
+/* kartu menu */
+.rak{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:thin}
+@media(min-width:900px){.rak{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}}
+.menu{scroll-snap-align:start;background:var(--putih);border-radius:22px;padding:12px 12px 14px;box-shadow:0 6px 20px rgba(34,52,140,.08);display:flex;flex-direction:column;gap:6px;min-width:0}
+.menu .foto{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;background:var(--kuning-muda)}
+.menu .foto img{width:100%;height:100%;object-fit:cover}
+.lencana{position:absolute;top:10px;left:10px;background:var(--navy);color:var(--putih);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.lencana.kuning{background:var(--kuning);color:var(--navy-tua)}
+.menu h3{margin:6px 0 0;font-size:18px;font-weight:800;line-height:1.25}
+.menu p{margin:0;color:var(--redup);font-size:14px}
+.menu .harga{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:6px}
+.menu .harga b{font-family:var(--judul);font-size:30px;color:var(--navy);line-height:1}
+.menu .harga small{font-weight:700;color:var(--redup)}
+.paket{margin:12px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:700;color:var(--redup);font-size:14px}
+.paket span{background:var(--navy);color:var(--putih);border-radius:10px;padding:4px 12px;font-family:var(--judul);font-size:18px}
+
+/* promo */
+.promo{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:center;gap:12px;background:var(--kuning-muda);border-radius:24px;overflow:hidden;padding:20px 0 20px 22px}
+.promo .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--navy)}
+.promo h3{font-family:var(--judul);font-weight:800;font-size:32px;line-height:1;margin:6px 0;text-transform:uppercase;color:var(--navy)}
+.promo p{margin:0 0 10px;color:var(--teks);font-size:15px}
+.promo .cta{background:var(--navy);color:var(--putih)}.promo .cta span{background:var(--kuning);color:var(--navy-tua)}
+.promo img{height:100%;max-height:220px;width:100%;object-fit:cover;border-radius:18px 0 0 18px}
+.langkah-tepok{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.langkah-tepok span{background:var(--putih);border-radius:999px;padding:4px 12px;font-weight:800;font-size:13px;color:var(--navy)}
+
+/* kesehatan */
+.gizi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(min-width:900px){.gizi{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.gizi>div{background:var(--putih);border-radius:20px;padding:16px;box-shadow:0 6px 20px rgba(34,52,140,.06)}
+.gizi .zat{font-family:var(--judul);font-weight:800;font-size:26px;color:var(--navy);line-height:1}
+.gizi .zat small{display:block;font-family:var(--isi);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--redup);margin-top:4px}
+.gizi p{margin:8px 0 0;font-size:14px}
+.sehat-atas{display:grid;gap:16px;align-items:center;margin-bottom:16px}
+@media(min-width:900px){.sehat-atas{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.sehat-atas img{border-radius:22px;aspect-ratio:16/10;object-fit:cover;width:100%;max-height:300px}
+.catatan{margin-top:14px;background:var(--putih);border:2px dashed var(--garis);border-radius:16px;padding:12px 14px;font-size:14px;color:var(--redup)}
+
+/* perjalanan */
+.lini{list-style:none;margin:0;padding:0 0 0 22px;border-left:3px dashed #C9CBDB;display:flex;flex-direction:column;gap:14px}
+.lini li{position:relative;background:var(--putih);border-radius:18px;padding:12px 16px;box-shadow:0 6px 20px rgba(34,52,140,.06);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.lini li::before{content:"";position:absolute;left:-33px;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:var(--navy);border:4px solid var(--kertas)}
+.lini li.kini{border:3px solid var(--kuning)}.lini li.kini::before{background:var(--kuning)}
+.lini b{font-family:var(--judul);font-size:26px;color:var(--navy);text-transform:uppercase;line-height:1}
+.lini small{display:block;color:var(--redup);font-weight:700;font-size:14px}
+.status{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 10px;background:#EEEFF5;color:var(--redup)}
+.kini .status{background:var(--kuning);color:var(--navy-tua)}
+@media(min-width:900px){.dua-kolom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}.dua-kolom section{margin-top:38px}}
+
+/* project */
+.proyek{display:grid;gap:12px}
+.proyek article{background:var(--putih);border-radius:20px;padding:16px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;align-items:start;box-shadow:0 6px 20px rgba(34,52,140,.06)}
+.proyek .ik{width:52px;height:52px;border-radius:16px;background:var(--kuning);display:grid;place-items:center;font-size:24px}
+.proyek h3{margin:0;font-size:17px;font-weight:800}
+.proyek p{margin:4px 0 0;font-size:14px;color:var(--redup)}
+
+/* sosmed */
+.ig{display:flex;align-items:center;gap:14px;background:var(--navy);color:var(--putih);border-radius:24px;padding:18px;text-decoration:none;box-shadow:0 6px 0 var(--navy-tua)}
+.ig svg{width:48px;height:48px;flex:none;color:var(--kuning)}
+.ig span{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.ig small{font-weight:700;opacity:.85}
+.ig b{font-family:var(--judul);font-size:clamp(24px,6vw,32px);letter-spacing:.02em}
+.ig em{margin-left:auto;flex:none;font-style:normal;background:var(--kuning);color:var(--navy-tua);border-radius:999px;padding:9px 16px;font-weight:800;font-size:14px}
+.tagar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tagar span{background:var(--putih);border:2px solid var(--garis);border-radius:999px;padding:4px 12px;font-weight:700;color:var(--navy);font-size:14px}
+
+footer{margin-top:42px;padding-block:24px 120px;text-align:center;color:var(--redup);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+footer img{width:72px}
+
+/* navigasi bawah */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:0 max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+.nav div{pointer-events:auto;max-width:560px;margin:0 auto;background:var(--putih);border-radius:24px;box-shadow:0 8px 30px rgba(22,34,106,.18);display:grid;grid-template-columns:repeat(5,1fr);align-items:end;padding:8px 6px}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;font-size:11px;font-weight:800;color:var(--redup);padding:4px 0}
+.nav a svg{width:24px;height:24px}
+.nav a.aktif{color:var(--navy)}
+.nav a.tengah{margin-top:-30px;color:var(--navy)}
+.nav a.tengah i{width:62px;height:62px;border-radius:50%;background:var(--kuning);display:grid;place-items:center;box-shadow:0 6px 16px rgba(246,184,0,.45);border:4px solid var(--putih)}
+.nav a.tengah img{width:40px;height:40px}
+</style>
+</head>
+<body>
+<div class="bungkus">
+
+  <header class="kepala" id="beranda">
+    <img src="img/logo.png" alt="Logo Cheesy Pen Shells">
+    <div class="sapa">
+      <small>Halo, Oyster Lover! 👋</small>
+      <b>CHEESY PEN SHELLS</b>
+      <i>dibakar di atas bara, disajikan penuh keju</i>
+    </div>
+    <a class="tombol-bulat" href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener" aria-label="Buka Instagram Cheesy Pen Shells">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+    </a>
+  </header>
+
+  <div class="banner" id="banner" aria-roledescription="carousel">
+    <div class="slide" id="slide-1">
+      <img src="img/suasana.jpg" alt="Oyster bakar mozzarella ditarik dengan sumpit di atas bara bazaar">
+      <div class="teks">
+        <span class="eyebrow">Oyster bakar khas bazaar</span>
+        <h1>Cheesy. Smoky. Fresh.</h1>
+        <p>Oyster segar dibakar langsung di depan kamu.</p>
+        <a class="cta" href="#menu">Lihat menu <span>→</span></a>
+      </div>
+    </div>
+    <div class="slide" id="slide-2">
+      <img src="img/potong-seafood.jpg" alt="Oyster bakar seafood mix dengan udang dan cumi">
+      <div class="teks">
+        <span class="eyebrow">Sekarang di Semarang</span>
+        <h2>Kepo Market 14–22 Nov</h2>
+        <p>Datang ke booth kami dan rasakan oyster bakar langsung dari bara.</p>
+        <a class="cta" href="#perjalanan">Jadwal kami <span>→</span></a>
+      </div>
+    </div>
+    <div class="slide" id="slide-3">
+      <img src="img/oyster-es.jpg" alt="Oyster segar di atas es">
+      <div class="teks">
+        <span class="eyebrow">Kecil tapi kaya gizi</span>
+        <h2>Kenapa oyster?</h2>
+        <p>Zinc, vitamin B12, dan protein dalam satu cangkang.</p>
+        <a class="cta" href="#sehat">Baca selengkapnya <span>→</span></a>
+      </div>
+    </div>
+  </div>
+  <div class="titik" id="titik" aria-label="Pilih banner"></div>
+
+  <nav class="kategori" aria-label="Bagian halaman">
+    <a href="#menu"><span class="bulat"><img src="img/potong-mozzarella.jpg" alt=""></span>Menu</a>
+    <a href="#sehat"><span class="bulat"><img src="img/oyster-segar.jpg" alt=""></span>Sehat</a>
+    <a href="#perjalanan"><span class="bulat"><img src="img/suasana.jpg" alt=""></span>Perjalanan</a>
+    <a href="#project"><span class="bulat kuning"><img src="img/logo.png" alt=""></span>Project</a>
+    <a href="#sosmed"><span class="bulat ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>Sosmed</a>
+  </nav>
+
+  <section id="menu">
+    <div class="judul-bagian"><h2 class="judul"><span>Menu andalan</span></h2></div>
+    <div class="rak">
+      <article class="menu">
+        <div class="foto"><img src="img/potong-garlic.jpg" alt="Oyster bakar garlic" loading="lazy"><span class="lencana">Buttery garlic</span></div>
+        <h3>Oyster Bakar Garlic</h3>
+        <p>Bawang putih, mentega, dan peterseli di atas oyster bakar.</p>
+        <div class="harga"><b>15K</b><small>/ pcs</small></div>
+      </article>
+      <article class="menu">
+        <div class="foto"><img src="img/potong-mozzarella.jpg" alt="Oyster bakar mozzarella" loading="lazy"><span class="lencana kuning">Keju leleh</span></div>
+        <h3>Oyster Bakar Mozzarella</h3>
+        <p>Mozzarella meleleh dengan saus keju, dibakar sampai kecokelatan.</p>
+        <div class="harga"><b>20K</b><small>/ pcs</small></div>
+      </article>
+      <article class="menu">
+        <div class="foto"><img src="img/potong-seafood.jpg" alt="Oyster bakar seafood mix" loading="lazy"><span class="lencana">Paling lengkap</span></div>
+        <h3>Oyster Bakar Seafood Mix</h3>
+        <p>Udang dan cumi di atas oyster dengan keju mozzarella.</p>
+        <div class="harga"><b>25K</b><small>/ pcs</small></div>
+      </article>
+      <article class="menu">
+        <div class="foto"><img src="img/potong-fresh.jpg" alt="Fresh oyster dengan irisan lemon" loading="lazy"><span class="lencana kuning">Segar</span></div>
+        <h3>Fresh Oyster</h3>
+        <p>Oyster segar disajikan dingin dengan perasan lemon.</p>
+        <div class="harga"><b>Booth</b><small>tanya harga di booth</small></div>
+      </article>
+    </div>
+    <p class="paket">Pilihan isi: <span>4</span><span>6</span><span>10</span><span>20</span> pcs</p>
+  </section>
+
+  <section aria-label="Promo booth">
+    <div class="promo">
+      <div>
+        <span class="eyebrow">Khusus di booth</span>
+        <h3>Tepok 3x, kami besarin apinya!</h3>
+        <div class="langkah-tepok"><span>1 · Siap rekam</span><span>2 · Tepok 3x</span><span>3 · Api dibesarin</span></div>
+        <p>Mau bikin konten? Tepuk tangan 3 kali di depan booth.</p>
+        <a class="cta" href="#sosmed">Tag kami <span>→</span></a>
+      </div>
+      <img src="img/potong-mozzarella.jpg" alt="Oyster bakar mozzarella" loading="lazy">
+    </div>
+  </section>
+
+  <section id="sehat">
+    <div class="judul-bagian"><h2 class="judul"><span>Oyster &amp; kesehatan</span></h2></div>
+    <div class="sehat-atas">
+      <p class="pengantar" style="margin:0">Oyster termasuk makanan laut paling padat gizi. Satu porsi kecil sudah membawa banyak mineral dan vitamin yang dibutuhkan tubuh setiap hari.</p>
+      <img src="img/oyster-segar.jpg" alt="Oyster segar terbuka" loading="lazy">
+    </div>
+    <div class="gizi">
+      <div><div class="zat">Zinc<small>mineral</small></div><p>Salah satu sumber zinc alami tertinggi. Zinc mendukung daya tahan tubuh dan penyembuhan luka.</p></div>
+      <div><div class="zat">Vitamin B12<small>vitamin</small></div><p>Membantu pembentukan sel darah merah dan menjaga fungsi saraf.</p></div>
+      <div><div class="zat">Protein<small>makronutrien</small></div><p>Tinggi protein dan relatif rendah kalori, membuat kenyang lebih lama.</p></div>
+      <div><div class="zat">Omega-3<small>&amp; selenium, zat besi</small></div><p>Lemak baik dan mineral yang mendukung kesehatan jantung dan energi.</p></div>
+    </div>
+    <p class="catatan">Oyster bakar kami dimasak matang di atas bara. Punya alergi makanan laut, sedang hamil, atau punya kondisi kesehatan khusus? Tanyakan dulu ke tim kami di booth sebelum memesan.</p>
+  </section>
+
+  <div class="dua-kolom">
+    <section id="perjalanan">
+      <div class="judul-bagian"><h2 class="judul"><span>Perjalanan kami</span></h2></div>
+      <p class="pengantar">Dari satu kota ke kota lain, kami membawa bara dan oyster segar ke bazaar kuliner di seluruh Indonesia.</p>
+      <ol class="lini" reversed>
+        <li class="kini"><div><b>Semarang</b><small>Kepo Market · 14–22 Nov 2026</small></div><span class="status">Sedang berlangsung</span></li>
+        <li><div><b>Lampung</b><small>28 Okt – 8 Nov 2026</small></div><span class="status">Selesai</span></li>
+        <li><div><b>Pekalongan</b><small>9–18 Okt 2026</small></div><span class="status">Selesai</span></li>
+        <li><div><b>Lombok</b><small>24 Sep – 11 Okt 2026</small></div><span class="status">Selesai</span></li>
+        <li><div><b>Bali</b><small>23 Sep – 4 Okt 2026</small></div><span class="status">Selesai</span></li>
+        <li><div><b>Banyuwangi</b><small>15–20 Sep 2026</small></div><span class="status">Selesai</span></li>
+        <li><div><b>Kediri</b><small>3–13 Sep 2026</small></div><span class="status">Selesai</span></li>
+      </ol>
+    </section>
+
+    <section id="project">
+      <div class="judul-bagian"><h2 class="judul"><span>Sedang kami kerjakan</span></h2></div>
+      <div class="proyek">
+        <article><span class="ik" aria-hidden="true">🔔</span><div><h3>Antrian pintar di booth</h3><p>Setelah bayar, scan QR dari kasir. HP kamu berbunyi dan bergetar saat oyster kamu siap, jadi tidak perlu berdiri menunggu.</p></div></article>
+        <article><span class="ik" aria-hidden="true">📍</span><div><h3>Kota berikutnya</h3><p>Tur bazaar kami terus berjalan. Jadwal kota selanjutnya kami umumkan lebih dulu di Instagram.</p></div></article>
+        <article><span class="ik" aria-hidden="true">💬</span><div><h3>Suara pelanggan</h3><p>Setiap keluhan dari QR di booth langsung sampai ke pemilik, supaya pelayanan kami makin baik di setiap kota.</p></div></article>
+      </div>
+    </section>
+  </div>
+
+  <section id="sosmed">
+    <div class="judul-bagian"><h2 class="judul"><span>Ikuti kami</span></h2></div>
+    <a class="ig" href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+      <span><small>Follow kami di Instagram</small><b>@cheesypenshells</b></span><em>Buka</em>
+    </a>
+    <div class="tagar"><span>#cheesypenshellslovers</span><span>#cheesypenshellscode</span></div>
+  </section>
+
+  <footer>
+    <img src="img/logo.png" alt="">
+    <span class="skrip">Cheesy Pen Shells</span>
+    <span>© 2026 Cheesy Pen Shells · Oyster bakar keliling Indonesia</span>
+  </footer>
+</div>
+
+<nav class="nav" aria-label="Navigasi">
+  <div>
+    <a href="#beranda" class="aktif"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z"/></svg>Beranda</a>
+    <a href="#sehat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Sehat</a>
+    <a href="#menu" class="tengah"><i><img src="img/logo.png" alt=""></i>Menu</a>
+    <a href="#perjalanan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Perjalanan</a>
+    <a href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg>Instagram</a>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var banner = document.getElementById('banner'), titik = document.getElementById('titik');
+  var slides = banner.querySelectorAll('.slide'), kini = 0, jeda = false;
+  slides.forEach(function (s, i) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('aria-label', 'Banner ' + (i + 1));
+    b.addEventListener('click', function () { ke(i); });
+    titik.appendChild(b);
+  });
+  function tandai() { titik.querySelectorAll('button').forEach(function (b, i) { b.setAttribute('aria-current', i === kini ? 'true' : 'false'); }); }
+  function ke(i) { kini = (i + slides.length) % slides.length; banner.scrollTo({ left: slides[kini].offsetLeft - banner.offsetLeft, behavior: 'smooth' }); tandai(); }
+  banner.addEventListener('scroll', function () { var i = Math.round(banner.scrollLeft / banner.clientWidth); if (i !== kini) { kini = i; tandai(); } }, { passive: true });
+  banner.addEventListener('pointerdown', function () { jeda = true; });
+  tandai();
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(function () { if (!jeda && !document.hidden) ke(kini + 1); }, 5000);
+
+  // Tandai menu navigasi bawah sesuai bagian yang sedang terlihat.
+  var tautan = document.querySelectorAll('.nav a[href^="#"]');
+  var bagian = Array.prototype.map.call(tautan, function (a) { return document.querySelector(a.getAttribute('href')); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        tautan.forEach(function (a, i) { a.classList.toggle('aktif', bagian[i] === e.target); });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    bagian.forEach(function (b) { if (b) io.observe(b); });
+  }
+})();
+</script>
+</body>
+</html>
