@@ -123,6 +123,26 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Antrian pesanan (ditulis halaman kasir Google Apps Script). Label kolom harus sama dengan apps-script/Code.gs.
+  Antrian: {
+    warna: '#E8710A',
+    kolom: [
+      k('id', 'ID', 140), k('token', 'Token', 140, { sembunyi: true }), k('kode_event', 'Kode Event', 110), k('tanggal', 'Tanggal', 105),
+      k('nomor', 'No. Antrian', 90, { format: 'angka' }), k('status', 'Status', 100), k('menu', 'Menu (dari struk)', 220),
+      k('foto_struk', 'Foto Struk', 160), k('foto_bakar', 'Foto Dibakar', 160), k('teks_struk', 'Teks Struk', 200, { sembunyi: true }),
+      k('dibuat', 'Dibuat', 140), k('dibakar', 'Mulai Dibakar', 140), k('dipanggil', 'Dipanggil', 140), k('panggil_ke', 'Dipanggil Ke', 90, { format: 'angka' }),
+      k('diambil', 'Diambil', 140),
+    ],
+  },
+  // Komplain pelanggan dari QR di depan booth (halaman Google Apps Script). Status: BARU / DITERUSKAN / BATAL.
+  Komplain: {
+    warna: '#D93025',
+    kolom: [
+      k('id', 'ID', 140), k('waktu', 'Waktu', 140), k('kode_event', 'Kode Event', 110), k('lokasi', 'Lokasi', 180), k('kategori', 'Kategori', 160),
+      k('detail', 'Detail', 320), k('nama', 'Nama (opsional)', 130), k('kontak', 'Kontak (opsional)', 130),
+      k('status', 'Status', 100, { catatan: 'BARU = belum diteruskan bot · DITERUSKAN · BATAL = tidak valid (tidak mengurangi KPI)' }), k('diteruskan', 'Diteruskan ke Owner', 140),
+    ],
+  },
   // Buku kontak per kota/lokasi event (tukang es batu, katering, gas, supplier, dll.).
   'Kontak Lokasi': {
     warna: '#00897B',

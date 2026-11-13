@@ -1,6 +1,7 @@
 // Perintah KPI: #nilai (penilaian PIC per event), #poin (poin plus/minus), #kpi (skor & peringkat, owner).
 // Penilaian bisa di grup pengeluaran atau chat pribadi dengan bot (bot memulai chat ke PIC setelah event selesai).
 
+import { komplainAktif } from './komplain.js';
 import { ikutGajian, gajiMulai } from './gajian.js';
 import { STATUS } from './schema.js';
 import { hitungEvent } from './laporan.js';
@@ -66,7 +67,7 @@ export async function jawabPenilaian(ctx, pesan) {
     await simpanNilai(ctx, pesan, sesi.kode, 'TIM', { tim: n });
     ctx.sesi.hapus(k);
     const d = await dataEvent(ctx, sesi.kode);
-    const skor = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI') });
+    const skor = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI'), komplain: await komplainAktif(ctx.store) });
     return balas([
       `✅ *Penilaian ${sesi.kode} selesai.* Terima kasih!`,
       ...skor.map((s) => `• ${s.nama}: individu ${fmt(s.individu)}/60 + kelompok ${fmt(s.kelompok)}/40 = *${fmt(s.total)}*`),
@@ -113,7 +114,7 @@ export async function perintahNilai(ctx, pesan, { event, argumen, isOwner }) {
   const nilai = bacaNilai(sisa.slice(angkaAwal).join(' '));
   if (angkaAwal < 0 || !nilai) return balas('Format: *#nilai Dena 5 4 4 3* (absen, kinerja, attitude, karir; skala 1–5)');
   await simpanNilai(ctx, pesan, kode, orang.nama, nilai);
-  const s = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI') }).find((x) => sama(x.nama, orang.nama));
+  const s = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI'), komplain: await komplainAktif(ctx.store) }).find((x) => sama(x.nama, orang.nama));
   return balas(`✅ Nilai ${orang.nama} (${kode}): individu *${fmt(s.individu)}/60*${s.tim === null ? '\n_Kinerja tim belum dinilai: *#nilai tim 4*_' : `, total ${fmt(s.total)}`}`);
 }
 
@@ -158,7 +159,7 @@ export async function perintahKpi(ctx, pesan, { argumen, isOwner }) {
   // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
   const hasil = data.events.filter((e) => ikutGajian(e, data.atur)).map((e) => hitungEvent(e, data));
   const poin = (await ctx.store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(data.atur));
-  const rekap = rekapBulanKPI(hasil, { nilai: await ctx.store.all('Nilai KPI'), poin });
+  const rekap = rekapBulanKPI(hasil, { nilai: await ctx.store.all('Nilai KPI'), poin, komplain: await komplainAktif(ctx.store) });
   if (!rekap.length) return balas('Belum ada data KPI. Mulai dengan *#nilai* di grup pengeluaran event.');
   const bulanArg = argumen.find((a) => /^\d{4}-\d{2}$/.test(a));
   const nama = argumen.filter((a) => a !== bulanArg).join(' ');

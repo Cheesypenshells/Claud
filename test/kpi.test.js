@@ -112,3 +112,24 @@ test('tabel file KPI KARYAWAN', async () => {
   assert.match(andi[17], /Kinerja tim belum dinilai/);
   assert.ok(skorEvent(hasil[0], {}).length === 3 && rekapBulanKPI(hasil, {}).length === 3);
 });
+
+test('komplain dari QR booth: diteruskan ke owner sekali, mengurangi KPI kelompok (BATAL tidak dihitung)', async () => {
+  const { MemoryStore } = await import('../src/store/memory.js');
+  const { tugasKomplain, komplainAktif } = await import('../src/komplain.js');
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set(['6281111111111']) };
+  await store.append('Komplain', { id: 'C1', waktu: '2026-11-15 19:00:00', kode_event: 'SMR26-11', lokasi: 'Semarang – Kepo market', kategori: 'Oyster tidak fresh', detail: 'oyster bau', nama: '', kontak: '', status: 'BARU', diteruskan: '' });
+  await store.append('Komplain', { id: 'C2', waktu: '2026-11-15 19:10:00', kode_event: 'SMR26-11', lokasi: '', kategori: 'Lainnya', detail: 'iseng', status: 'BATAL', diteruskan: '' });
+  const t = await tugasKomplain(ctx, new Date('2026-11-15T12:01:00Z'));
+  assert.equal(t.length, 1);
+  assert.equal(t[0].nomor, '6281111111111');
+  assert.match(t[0].text, /Komplain pelanggan SMR26-11.*Oyster tidak fresh.*oyster bau.*anonim/s);
+  assert.equal((await tugasKomplain(ctx)).length, 0); // tidak dikirim dua kali
+  assert.equal((await store.all('Komplain'))[0].status, 'DITERUSKAN');
+  const aktif = await komplainAktif(store);
+  assert.deepEqual(aktif.map((k) => k.id), ['C1']);
+  const { skorEvent } = await import('../src/kpi.js');
+  const r = { event: { kode: 'SMR26-11', target_omzet: '' }, omzetBersih: 0, barisTim: [{ nama: 'Adit', peran: 'Tetap', hari: 9, bonus: 0 }] };
+  assert.equal(skorEvent(r, { komplain: aktif })[0].komplain, 8);
+  assert.equal(skorEvent(r, { komplain: aktif })[0].jumlahKomplain, 1);
+});

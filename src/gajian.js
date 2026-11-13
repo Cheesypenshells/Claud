@@ -12,6 +12,7 @@ import { bacaData } from './main.js';
 import { hitungEvent, ATURAN } from './laporan.js';
 import { skorEvent } from './kpi.js';
 import { PERAN } from './parsers.js';
+import { komplainAktif } from './komplain.js';
 
 export const GAJI_MULAI_BAWAAN = '2026-11-14';
 const balas = (text) => [{ text }];
@@ -29,7 +30,7 @@ export async function rincianGajian(ctx, event) {
   const ev = data.events.find((e) => e.kode === event.kode) || event;
   const r = hitungEvent(ev, data);
   const nilai = await ctx.store.all('Nilai KPI');
-  const skor = skorEvent(r, { nilai });
+  const skor = skorEvent(r, { nilai, komplain: await komplainAktif(ctx.store) });
   const karyawan = data.karyawan || [];
   const rek = (nama) => {
     const k = karyawan.find((x) => sama(x.nama, nama));

@@ -1,6 +1,7 @@
 // File 1 (PEMBUKUAN): tab "Rekap Event" & "Gaji per Event".
 // File 2 (folder EVENT): satu spreadsheet per event, memakai file cadangan "(kosong)" yang dibuat owner.
 
+import { komplainAktif } from './komplain.js';
 import { ikutGajian, gajiMulai } from './gajian.js';
 import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './laporan.js';
 import { bacaData } from './main.js';
@@ -250,13 +251,13 @@ const CARA_HITUNG_KPI = [
   ['Peringkat', 'Diurutkan dari skor akhir tertinggi per bulan. Karyawan yang eventnya belum dinilai PIC belum punya skor.'],
 ];
 
-export function tabelKpi(hasil, { nilai, poin }) {
-  const rekap = rekapBulanKPI(hasil, { nilai, poin });
+export function tabelKpi(hasil, { nilai, poin, komplain = [] }) {
+  const rekap = rekapBulanKPI(hasil, { nilai, poin, komplain });
   const evIndex = new Map(hasil.map((r) => [r.event.kode, r.event]));
   const bulan = rekap.map((h) => [namaBulan(h.bulan), h.peringkat || '', h.nama, h.peran, h.jumlahEvent, h.hari,
     h.individu ?? '', h.kelompok ?? '', h.plus, h.minus, h.skor ?? '', h.bonusMaks, h.bonusDiterima ?? '',
     h.belumDinilai ? `${h.belumDinilai} event belum dinilai PIC` : '']);
-  const perEvent = hasil.flatMap((r) => skorEvent(r, { nilai }).map((s) => {
+  const perEvent = hasil.flatMap((r) => skorEvent(r, { nilai, komplain }).map((s) => {
     const e = evIndex.get(s.kode);
     return [s.kode, e.kota, `${e.mulai} s/d ${e.selesai}`, s.nama, s.peran, s.hari, s.absen ?? '', s.kinerja ?? '', s.attitude ?? '', s.karir ?? '',
       s.individu ?? '', s.omzet, s.stok, s.komplain, s.tim ?? '', s.kelompok, s.total ?? '',
@@ -349,7 +350,7 @@ export async function perbaruiPembukuan(store) {
   // File KPI KARYAWAN (tab Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung).
   if (atur.file_kpi) {
     // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
-    const tabel = tabelKpi(hasil.filter((r) => ikutGajian(r.event, atur)), { nilai: await store.all('Nilai KPI'), poin: (await store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(atur)) });
+    const tabel = tabelKpi(hasil.filter((r) => ikutGajian(r.event, atur)), { nilai: await store.all('Nilai KPI'), poin: (await store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(atur)), komplain: await komplainAktif(store) });
     const isiKpi = JSON.stringify(tabel);
     if (terakhirDitulis.get('KPI') !== isiKpi) {
       await store.tulisBanyakTabel(atur.file_kpi, tabel, { hapus: ['Sheet1'], mulaiIndex: 0 });

@@ -25,6 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
+import { perintahQr } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
 import { tanganiKontak, cariKontak, simpanKontak, bacaKontak } from './kontak.js';
@@ -994,6 +995,7 @@ async function handlePribadi(ctx, pesan) {
     const ev = kode ? semua.find((e) => e.kode.toLowerCase() === kode.toLowerCase()) : aktifEv[0];
     return perintahGajian(ctx, pesan, ev, { isOwner });
   }
+  if (['qr', 'antrian'].includes(cmd.perintah)) return perintahQr(ctx, null, { isOwner });
   if (['kontak', 'kontaklokasi'].includes(cmd.perintah)) {
     const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
     const kotaKenal = [...new Set((await ctx.store.all('Event')).map((e) => e.kota).filter(Boolean))];
@@ -1324,6 +1326,9 @@ export async function handlePesan(ctx, pesan) {
       case 'rek':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rekening hanya diurus di grup pengeluaran (owner + PIC).');
         return perintahRekening(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { isOwner });
+      case 'qr':
+      case 'antrian':
+        return perintahQr(ctx, event, { isOwner });
       case 'kontak':
       case 'kontaklokasi': {
         const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
