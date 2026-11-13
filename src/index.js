@@ -15,7 +15,7 @@ import { tugasPenilaian } from './handlersKpi.js';
 import { tugasAbsensi } from './absensi.js';
 import { tugasLaporan } from './laporanFoto.js';
 import { tugasRekening } from './rekening.js';
-import { tugasJobdesk } from './jobdesk.js';
+import { tugasJobdesk, tugasIngatJobdesk } from './jobdesk.js';
 import { ikutGajian } from './gajian.js';
 import { tanggalLokal } from './util.js';
 
@@ -90,6 +90,8 @@ async function main() {
     for (const p of await tugasLaporan(ctx)) await wa.kirim(p.groupId, p.text);
     // Jobdesk loading in: H-2 sebelum event mulai, jam 10.00, di grup tim.
     for (const p of await tugasJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
+    // Pengingat foto laporan jobdesk tiap 2 jam selama hari loading in.
+    for (const p of await tugasIngatJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
   }), 60_000);
 
   // Isian manual di Sheets (INPUT EVENT LAMA, koreksi owner) ikut terbaca setiap 5 menit.

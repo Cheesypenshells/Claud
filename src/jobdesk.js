@@ -167,3 +167,41 @@ export async function tugasJobdesk(ctx, sekarang = new Date(), { tanggalLokal })
   }
   return keluar;
 }
+
+// ---------- Pengingat laporan jobdesk ----------
+// Hari loading in (H-1 sebelum event mulai, dan hari pertama sampai booth buka): jam 10, 12, 14, 16, 18, 20 WIB,
+// bot menyebut penanggung jawab yang belum mengirim foto dengan kode laporannya. Berhenti kalau semua sudah lapor.
+const JAM_INGAT = [10, 12, 14, 16, 18, 20];
+
+export async function tugasIngatJobdesk(ctx, sekarang = new Date(), { tanggalLokal }) {
+  const keluar = [];
+  if (!ctx.sesi) return keluar;
+  const jam = Number(String(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })).slice(0, 2));
+  const slot = [...JAM_INGAT].reverse().find((j) => jam >= j);
+  if (slot === undefined) return keluar;
+  const hariIni = tanggalLokal(sekarang);
+  const [events, grup, laporan] = await Promise.all([ctx.store.all('Event'), ctx.store.all('Grup'), ctx.store.all('Laporan Foto')]);
+  for (const e of events.filter((x) => x.status !== 'BATAL' && x.status !== 'SELESAI' && x.mulai)) {
+    const hariLoading = hariIni === tambahHariStr(e.mulai, -1) || hariIni === e.mulai;
+    if (!hariLoading) continue;
+    // Hari pertama: hanya sebelum booth buka.
+    if (hariIni === e.mulai && e.jam_buka && jam >= Number(String(e.jam_buka).split(/[.:]/)[0])) continue;
+    const kunci = `ingatjob:${e.kode}:${hariIni}:${slot}`;
+    if (ctx.sesi.get(kunci)) continue;
+    ctx.sesi.set(kunci, { kirim: true });
+    const peta = await pjPerTag(ctx, e.kode);
+    if (!Object.keys(peta).length) continue;
+    const sudah = new Set(laporan.filter((r) => r.kode_event === e.kode && r.status !== STATUS.BATAL && r.tahap === 'Loading in').map((r) => r.tag));
+    const belum = TUGAS_LOADING_IN.filter((t) => peta[t.tag]?.length && !sudah.has(t.tag));
+    if (!belum.length) continue;
+    const teks = [
+      `⏰ *Update loading in ${e.kode}* (jam ${slot}.00)`,
+      'Belum ada foto laporan:',
+      ...belum.map((t) => `• *${peta[t.tag].join(', ')}* – ${t.label.split(':')[0]} → kirim foto caption *#${t.tag}*`),
+      '',
+      `_Sudah lapor: ${TUGAS_LOADING_IN.filter((t) => sudah.has(t.tag)).map((t) => `#${t.tag}`).join(', ') || '-'}. Foto progres juga boleh dikirim dengan kode yang sama._`,
+    ].join('\n');
+    for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teks });
+  }
+  return keluar;
+}

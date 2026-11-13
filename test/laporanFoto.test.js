@@ -173,3 +173,28 @@ test('jobdesk: PJ cek barang tiba membantu rakit booth; pembantu ikut tercantum 
   await raw('dm', PIC, 'sesuai 9', pada('05', '09:00'));
   assert.deepEqual((await store.all('Poin KPI')).map((p) => p.nama), ['Adit', 'Veri', 'Alam']);
 });
+
+test('pengingat laporan jobdesk tiap 2 jam di hari loading in, menyebut yang belum lapor', async () => {
+  const { tugasIngatJobdesk } = await import('../src/jobdesk.js');
+  const { tanggalLokal } = await import('../src/util.js');
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const raw = (groupId, senderId, text, waktu, extra = {}) => handlePesan(ctx, {
+    id: `i${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  });
+  await raw(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 0\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar', pada('01', '09:00'));
+  await raw(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
+  await raw(G_TIM, DENA, 'saya Dena', pada('01', '09:02'));
+  await raw(G_TIM, OWNER, '#jobdesk', pada('03', '10:00'));
+  const opsi = { tanggalLokal };
+  assert.equal((await tugasIngatJobdesk(ctx, pada('03', '12:00'), opsi)).length, 0); // H-2: bukan hari loading in
+  const a = await tugasIngatJobdesk(ctx, pada('04', '12:05'), opsi); // H-1 jam 12
+  assert.match(a[0].text, /Update loading in JMB26-11.*jam 12.00.*Dena.*#booth.*Tiar.*#gudang/s);
+  assert.equal((await tugasIngatJobdesk(ctx, pada('04', '13:00'), opsi)).length, 0); // slot jam 12 sudah
+  await raw(G_TIM, DENA, '#booth', pada('04', '13:30'), { adaFoto: true, ambilFoto: async () => Buffer.from('b') });
+  const b = await tugasIngatJobdesk(ctx, pada('04', '14:00'), opsi);
+  assert.doesNotMatch(b[0].text, /#booth →/);
+  assert.match(b[0].text, /Sudah lapor: #booth/);
+  assert.equal((await tugasIngatJobdesk(ctx, pada('05', '11:30'), opsi)).length, 0); // hari pertama setelah buka: berhenti
+});
