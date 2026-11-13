@@ -109,7 +109,7 @@ test('tabel file KPI KARYAWAN', async () => {
   assert.deepEqual(t.map((x) => x.tab), ['Peringkat & Bonus', 'Nilai per Event', 'Riwayat Poin', 'Cara Hitung']);
   const andi = t[1].baris.find((b) => b[3] === 'Andi');
   assert.equal(andi[10], 60);
-  assert.match(andi[17], /Kinerja tim belum dinilai/);
+  assert.match(andi[18], /Kinerja tim belum dinilai/); // kolom Laporan Terlewat ada sebelum TOTAL
   assert.ok(skorEvent(hasil[0], {}).length === 3 && rekapBulanKPI(hasil, {}).length === 3);
 });
 
@@ -132,4 +132,36 @@ test('komplain dari QR booth: diteruskan ke owner sekali, mengurangi KPI kelompo
   const r = { event: { kode: 'SMR26-11', target_omzet: '' }, omzetBersih: 0, barisTim: [{ nama: 'Adit', peran: 'Tetap', hari: 9, bonus: 0 }] };
   assert.equal(skorEvent(r, { komplain: aktif })[0].komplain, 8);
   assert.equal(skorEvent(r, { komplain: aktif })[0].jumlahKomplain, 1);
+});
+
+test('KPI otomatis: absen (−2 telat, −6 tidak hadir tanpa izin), bintang kasir jadi kinerja, laporan terlewat −2', async () => {
+  const { teksOtomatis } = await import('../src/kpi.js');
+  const r = {
+    event: { kode: 'SMR', mulai: '2026-11-14', selesai: '2026-11-16', target_omzet: '' }, omzetBersih: 0,
+    barisTim: [{ nama: 'Tiara', peran: 'Tetap', hari: 3 }, { nama: 'Bima', peran: 'Tetap', hari: 3 }, { nama: 'Joko', peran: 'DW', hari: 3 }],
+  };
+  const ab = (tanggal, nama, telat = 0) => ({ kode_event: 'SMR', tanggal, nama, telat_menit: telat, status: 'OK' });
+  const absensi = [ab('2026-11-14', 'Tiara', 5), ab('2026-11-14', 'Bima'), ab('2026-11-14', 'Joko', 12),
+    ab('2026-11-15', 'Tiara'), ab('2026-11-15', 'Joko'), ab('2026-11-16', 'Bima'), ab('2026-11-16', 'Joko')];
+  const izin = [{ kode_event: 'SMR', tanggal: '2026-11-16', nama: 'Tiara', jenis: 'IZIN', status: 'OK' }];
+  const q = (kasir, rating) => ({ kode_event: 'SMR', kasir, rating });
+  const antrian = [5, 5, 4, 5, 5].map((b) => q('tiara', b)).concat([q('Bima', 3), q('Bima', 4)]);
+  const jobdesk = [{ kode_event: 'SMR', tag: 'booth', nama: 'Tiara' }, { kode_event: 'SMR', tag: 'gudang', nama: 'Bima' }];
+  const lap = (tag, nama, tanggal) => ({ kode_event: 'SMR', tag, nama, tanggal, status: 'OK' });
+  const laporan = [lap('booth', 'Tiara', '2026-11-13'), lap('pulang', 'Tiara', '2026-11-14'), lap('pulang', 'Bima', '2026-11-14'), lap('pulang', 'Bima', '2026-11-16')];
+  const nilai = [{ kode_event: 'SMR', nama: 'Tiara', absen: 1, kinerja: 1, attitude: 5, karir: 5 }];
+  const s = Object.fromEntries(skorEvent(r, { nilai, absensi, izin, antrian, laporan, jobdesk, hariIni: '2026-11-17' }).map((x) => [x.nama, x]));
+  assert.equal(s.Tiara.absen, 10);              // telat 1× (tgl 16 izin: tidak dipotong)
+  assert.equal(s.Bima.absen, 6);               // tidak hadir tgl 15 tanpa izin
+  assert.equal(s.Joko.absen, 10);              // DW: hanya telat yang dihitung
+  assert.equal(s.Tiara.kinerja, 23.04);        // ⭐ 4,8 / 5 × 24 (angka PIC 1 tidak dipakai)
+  assert.equal(s.Bima.kinerja, null);          // baru 2 penilaian
+  assert.deepEqual(s.Tiara.laporanTerlewat, ['#pulang 11-15']);
+  assert.deepEqual(s.Bima.laporanTerlewat, ['#gudang']);
+  assert.equal(s.Joko.laporanMinus, 6);
+  assert.equal(s.Tiara.total, 90.04);          // 10 + 23,04 + 12 + 12 + kelompok 35 − 2
+  assert.match(teksOtomatis(s.Tiara), /absen otomatis 10\/12.*telat 1×.*⭐ 4,8 dari 5 penilaian → kinerja 23.04\/24.*laporan terlewat #pulang 11-15 \(−2\)/);
+  // event tanpa data absensi: absen tetap dari nilai PIC
+  const lama = skorEvent(r, { nilai, hariIni: '2026-11-17' }).find((x) => x.nama === 'Tiara');
+  assert.equal(lama.absen, 2.4);
 });

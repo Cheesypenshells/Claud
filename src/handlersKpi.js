@@ -6,7 +6,7 @@ import { ikutGajian, gajiMulai } from './gajian.js';
 import { STATUS } from './schema.js';
 import { hitungEvent } from './laporan.js';
 import { bacaData } from './main.js';
-import { skorEvent, rekapBulanKPI, yangDinilai, bacaNilai, poinDari, BOBOT, NAMA_ASPEK } from './kpi.js';
+import { skorEvent, bahanKpi, teksOtomatis, rekapBulanKPI, yangDinilai, bacaNilai, poinDari, BOBOT, NAMA_ASPEK } from './kpi.js';
 import { tanggalLokal, waktuLokal, rupiah, namaBulan } from './util.js';
 
 const balas = (text) => [{ text }];
@@ -32,6 +32,7 @@ function tanyaOrang(sesi) {
   return [
     `📝 *Penilaian KPI ${sesi.kode}* (${sesi.i + 1}/${sesi.daftar.length})`,
     `*${o.nama}* (${o.peran}, ${o.hari} hari)`,
+    ...(o.otomatis ? [`_Otomatis: ${o.otomatis}. Angka PIC untuk bagian itu tidak dipakai._`] : []),
     'Balas *4 angka* skala 1–5:',
     `① ${NAMA_ASPEK.absen} (20%) ② ${NAMA_ASPEK.kinerja} (40%) ③ ${NAMA_ASPEK.attitude} (20%) ④ ${NAMA_ASPEK.karir} (20%)`,
     'Contoh: *5 4 4 3* · boleh tambah catatan: *5 4 4 3 rajin tapi sering hp-an* · *lewati* · *batal*',
@@ -44,7 +45,12 @@ const TANYA_TIM = (kode) => `👥 *Terakhir: kinerja tim ${kode}* secara keselur
 export async function mulaiPenilaian(ctx, pesan, kode) {
   const d = await dataEvent(ctx, kode);
   if (!d) return balas(`⚠️ Event ${kode} tidak ditemukan.`);
-  const daftar = yangDinilai(d.r).map((o) => ({ nama: o.nama, peran: o.peran, hari: o.hari }));
+  const skorOto = skorEvent(d.r, await bahanKpi(ctx.store));
+  const daftar = yangDinilai(d.r).map((o) => {
+    const x = skorOto.find((y) => sama(y.nama, o.nama));
+    const bagian = [x?.otomatis?.absen ? `absen ${x.absen}/12` : '', x?.otomatis?.bintang && !x.otomatis.bintang.kurang ? `kinerja ${x.kinerja}/24 dari ⭐ pelanggan` : ''].filter(Boolean);
+    return { nama: o.nama, peran: o.peran, hari: o.hari, otomatis: bagian.join(', ') };
+  });
   if (!daftar.length) return balas(`⚠️ Tim event ${kode} belum ada (selain PIC). Isi tim dulu lewat #tim.`);
   const sesi = { kode: d.event.kode, daftar, i: 0, waktu: Date.now() };
   ctx.sesi.set(kunciNilai(pesan), sesi);
@@ -67,10 +73,10 @@ export async function jawabPenilaian(ctx, pesan) {
     await simpanNilai(ctx, pesan, sesi.kode, 'TIM', { tim: n });
     ctx.sesi.hapus(k);
     const d = await dataEvent(ctx, sesi.kode);
-    const skor = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI'), komplain: await komplainAktif(ctx.store) });
+    const skor = skorEvent(d.r, await bahanKpi(ctx.store));
     return balas([
       `✅ *Penilaian ${sesi.kode} selesai.* Terima kasih!`,
-      ...skor.map((s) => `• ${s.nama}: individu ${fmt(s.individu)}/60 + kelompok ${fmt(s.kelompok)}/40 = *${fmt(s.total)}*`),
+      ...skor.map((s) => `• ${s.nama}: individu ${fmt(s.individu)}/60 + kelompok ${fmt(s.kelompok)}/40${s.laporanMinus ? ` − laporan ${s.laporanMinus}` : ''} = *${fmt(s.total)}*${teksOtomatis(s) ? `\n   _${teksOtomatis(s)}_` : ''}`),
       '_Skor bulan juga memperhitungkan poin plus/minus. Ringkasan lengkap ada di file KPI KARYAWAN._',
     ].join('\n'));
   }
@@ -114,8 +120,8 @@ export async function perintahNilai(ctx, pesan, { event, argumen, isOwner }) {
   const nilai = bacaNilai(sisa.slice(angkaAwal).join(' '));
   if (angkaAwal < 0 || !nilai) return balas('Format: *#nilai Dena 5 4 4 3* (absen, kinerja, attitude, karir; skala 1–5)');
   await simpanNilai(ctx, pesan, kode, orang.nama, nilai);
-  const s = skorEvent(d.r, { nilai: await ctx.store.all('Nilai KPI'), komplain: await komplainAktif(ctx.store) }).find((x) => sama(x.nama, orang.nama));
-  return balas(`✅ Nilai ${orang.nama} (${kode}): individu *${fmt(s.individu)}/60*${s.tim === null ? '\n_Kinerja tim belum dinilai: *#nilai tim 4*_' : `, total ${fmt(s.total)}`}`);
+  const s = skorEvent(d.r, await bahanKpi(ctx.store)).find((x) => sama(x.nama, orang.nama));
+  return balas(`✅ Nilai ${orang.nama} (${kode}): individu *${fmt(s.individu)}/60*${s.tim === null ? '\n_Kinerja tim belum dinilai: *#nilai tim 4*_' : `, total ${fmt(s.total)}`}${teksOtomatis(s) ? `\n_${teksOtomatis(s)}_` : ''}`);
 }
 
 async function adalahPic(ctx, pesan, kode) {
@@ -159,7 +165,7 @@ export async function perintahKpi(ctx, pesan, { argumen, isOwner }) {
   // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
   const hasil = data.events.filter((e) => ikutGajian(e, data.atur)).map((e) => hitungEvent(e, data));
   const poin = (await ctx.store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(data.atur));
-  const rekap = rekapBulanKPI(hasil, { nilai: await ctx.store.all('Nilai KPI'), poin, komplain: await komplainAktif(ctx.store) });
+  const rekap = rekapBulanKPI(hasil, { ...(await bahanKpi(ctx.store)), poin });
   if (!rekap.length) return balas('Belum ada data KPI. Mulai dengan *#nilai* di grup pengeluaran event.');
   const bulanArg = argumen.find((a) => /^\d{4}-\d{2}$/.test(a));
   const nama = argumen.filter((a) => a !== bulanArg).join(' ');

@@ -262,6 +262,12 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 
 ## KPI karyawan
 
+**Nilai otomatis (mulai event Semarang):**
+- **Absen (12)**: dihitung dari absensi foto. Mulai 12 per event, **−2 setiap telat**, **−6 setiap tidak hadir tanpa izin** (karyawan tetap). Izin/dispensasi dari owner (`#izin`) **tidak dipotong**. Kalau event belum punya data absensi, nilai PIC yang dipakai.
+- **Kinerja kasir (24)**: untuk yang pegang kasir antrian, **rata-rata bintang pelanggan ÷ 5 × 24** (minimal 5 penilaian; kalau kurang, nilai PIC yang dipakai).
+- **Laporan foto terlewat: −2 per laporan** untuk penanggung jawabnya: pekerjaan jobdesk loading in yang tidak ada fotonya, dan `#pulang` yang tidak dikirim di hari ia hadir.
+- PIC tetap menilai 4 angka seperti biasa; bot memberi tahu bagian mana yang sudah otomatis. Rinciannya tampil di `#nilai`, `#kpi`, dan kolom *Nilai Otomatis* di file KPI KARYAWAN.
+
 **Skor maksimal 100 poin per bulan** = 60 individu + 40 kelompok, lalu + poin plus − poin minus (dibatasi 0–100). Poin = persen klaim bonus (skor 80 → 80% bonus maksimal).
 
 | Bagian | Poin | Sumber |

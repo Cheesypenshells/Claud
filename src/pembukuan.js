@@ -7,7 +7,7 @@ import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './la
 import { bacaData } from './main.js';
 import { JENIS, STATUS } from './schema.js';
 import { eventWajibStruk } from './struk.js';
-import { rekapBulanKPI, skorEvent } from './kpi.js';
+import { rekapBulanKPI, skorEvent, bahanKpi, teksOtomatis } from './kpi.js';
 import { namaBulan } from './util.js';
 import { PERAN, KATEGORI } from './parsers.js';
 
@@ -233,8 +233,9 @@ const KOLOM_KPI_EVENT = [
   { label: 'INDIVIDU (60)', lebar: 105, format: 'poin' },
   { label: 'Omzet vs Target (15)', lebar: 130, format: 'poin' }, { label: 'Stok (10)', lebar: 80, format: 'poin' },
   { label: 'Kebersihan & Komplain (10)', lebar: 160, format: 'poin' }, { label: 'Kinerja Tim (5)', lebar: 110, format: 'poin' },
-  { label: 'KELOMPOK (40)', lebar: 110, format: 'poin' }, { label: 'TOTAL (100)', lebar: 100, format: 'poin' },
-  { label: 'Status', lebar: 170 },
+  { label: 'KELOMPOK (40)', lebar: 110, format: 'poin' }, { label: 'Laporan Terlewat (−)', lebar: 130, format: 'poin' },
+  { label: 'TOTAL (100)', lebar: 100, format: 'poin' },
+  { label: 'Status', lebar: 170 }, { label: 'Nilai Otomatis', lebar: 360 },
 ];
 const KOLOM_KPI_POIN = [
   { label: 'Tanggal', lebar: 100 }, { label: 'No.', lebar: 70 }, { label: 'Nama', lebar: 140 }, { label: 'Poin', lebar: 70, format: 'angka' },
@@ -244,6 +245,7 @@ const KOLOM_KPI_CARA = [{ label: 'Bagian', lebar: 220 }, { label: 'Penjelasan', 
 const CARA_HITUNG_KPI = [
   ['Skor maksimal', '100 poin per bulan: 60 individu + 40 kelompok, lalu + poin plus − poin minus (dibatasi 0–100).'],
   ['Individu (60)', 'Dinilai PIC setelah event (skala 1–5): Absen 20% (12) · Performa kinerja 40% (24) · Attitude 20% (12) · Karir 20% (12). Bot menanyakan ke PIC lewat chat pribadi sehari setelah event selesai, atau ketik #nilai di grup pengeluaran.'],
+  ['Otomatis', 'Absen: 12 − 2 per telat − 6 per tidak hadir tanpa izin (karyawan tetap); izin/dispensasi dari owner tidak dipotong. Kasir: kinerja = rata-rata bintang pelanggan ÷ 5 × 24 (minimal 5 penilaian). Laporan foto wajib yang terlewat −2 per laporan (jobdesk loading in milik penanggung jawab, absen pulang tiap hari). Nilai PIC untuk bagian ini dipakai kalau datanya belum ada.'],
   ['Kelompok (40)', 'Sama untuk satu tim event: Omzet vs target (15) · Ketepatan stok (10, deteksi stok menyusul) · Kebersihan & komplain pelanggan (10, −2 per komplain) · Kinerja tim dari PIC (5).'],
   ['Skor bulan', 'Rata-rata skor semua event di bulan itu (ditimbang hari kerja), ditambah poin plus dan dikurangi poin minus.'],
   ['Poin plus / minus', 'Dicatat owner: #poin Dena +20 bantu masak bumbu · #poin Dena -10 SOP tidak dikerjakan · batalkan: #poinbatal K0001.'],
@@ -251,17 +253,17 @@ const CARA_HITUNG_KPI = [
   ['Peringkat', 'Diurutkan dari skor akhir tertinggi per bulan. Karyawan yang eventnya belum dinilai PIC belum punya skor.'],
 ];
 
-export function tabelKpi(hasil, { nilai, poin, komplain = [] }) {
-  const rekap = rekapBulanKPI(hasil, { nilai, poin, komplain });
+export function tabelKpi(hasil, { poin, ...bahan }) {
+  const rekap = rekapBulanKPI(hasil, { ...bahan, poin });
   const evIndex = new Map(hasil.map((r) => [r.event.kode, r.event]));
   const bulan = rekap.map((h) => [namaBulan(h.bulan), h.peringkat || '', h.nama, h.peran, h.jumlahEvent, h.hari,
     h.individu ?? '', h.kelompok ?? '', h.plus, h.minus, h.skor ?? '', h.bonusMaks, h.bonusDiterima ?? '',
     h.belumDinilai ? `${h.belumDinilai} event belum dinilai PIC` : '']);
-  const perEvent = hasil.flatMap((r) => skorEvent(r, { nilai, komplain }).map((s) => {
+  const perEvent = hasil.flatMap((r) => skorEvent(r, bahan).map((s) => {
     const e = evIndex.get(s.kode);
     return [s.kode, e.kota, `${e.mulai} s/d ${e.selesai}`, s.nama, s.peran, s.hari, s.absen ?? '', s.kinerja ?? '', s.attitude ?? '', s.karir ?? '',
-      s.individu ?? '', s.omzet, s.stok, s.komplain, s.tim ?? '', s.kelompok, s.total ?? '',
-      s.lengkap ? '✅ Lengkap' : (s.individu === null ? '⏳ Belum dinilai PIC' : '⏳ Kinerja tim belum dinilai')];
+      s.individu ?? '', s.omzet, s.stok, s.komplain, s.tim ?? '', s.kelompok, s.laporanMinus ? -s.laporanMinus : '', s.total ?? '',
+      s.lengkap ? '✅ Lengkap' : (s.total === null ? '⏳ Belum dinilai PIC' : '⏳ Kinerja tim belum dinilai'), teksOtomatis(s)];
   }));
   const riwayat = poin.filter((p) => p.status !== 'BATAL').map((p) => [p.tanggal, p.id, p.nama, Number(p.poin) || 0, p.alasan, p.kode_event, p.dicatat_oleh]);
   return [
@@ -350,7 +352,7 @@ export async function perbaruiPembukuan(store) {
   // File KPI KARYAWAN (tab Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung).
   if (atur.file_kpi) {
     // Event sebelum batas penggajian (sudah dibayar owner) tidak ikut KPI & bonus.
-    const tabel = tabelKpi(hasil.filter((r) => ikutGajian(r.event, atur)), { nilai: await store.all('Nilai KPI'), poin: (await store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(atur)), komplain: await komplainAktif(store) });
+    const tabel = tabelKpi(hasil.filter((r) => ikutGajian(r.event, atur)), { ...(await bahanKpi(store)), poin: (await store.all('Poin KPI')).filter((p) => String(p.tanggal || '') >= gajiMulai(atur)) });
     const isiKpi = JSON.stringify(tabel);
     if (terakhirDitulis.get('KPI') !== isiKpi) {
       await store.tulisBanyakTabel(atur.file_kpi, tabel, { hapus: ['Sheet1'], mulaiIndex: 0 });
