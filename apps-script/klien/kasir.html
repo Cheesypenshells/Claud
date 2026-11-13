@@ -1,5 +1,164 @@
-<header><img src="__ASET__logo-putih.png" alt="Cheesy Pen Shells"><div class="merek"><b>KASIR ANTRIAN</b><small>Cheesy Pen Shells</small></div><span id="ev" class="kanan"></span></header><main><div id="masuk" class="kartu"><label>PIN kasir</label><input id="pin" type="password" inputmode="numeric"><br><br><button onclick="masuk()">Masuk</button><p id="salah" style="color:var(--merah)"></p></div><div id="isi" style="display:none"><div class="kartu"><label>Event</label><select id="event" onchange="muat()"></select><br><br><label class="tombol kuning" style="text-align:center">📷 Pesanan baru – foto struk<input id="struk" type="file" accept="image/*" capture="environment" style="display:none" onchange="pesananBaru(this)"></label><p id="proses" class="redup"></p><p id="sinkron" class="redup" style="margin:0"></p></div><div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div></div></main><div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none"><script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<header><img src="__ASET__logo-putih.png" alt="Cheesy Pen Shells"><div class="merek"><b>KASIR ANTRIAN</b><small>Cheesy Pen Shells</small></div><span id="ev" class="kanan"></span></header>
+<main>
+<div id="masuk" class="kartu"><label for="pin">PIN kasir</label><input id="pin" type="password" inputmode="numeric"><br><br><button onclick="masuk()">Masuk</button><p id="salah" style="color:var(--merah)"></p></div>
+<div id="isi" style="display:none">
+<div class="kartu">
+<label for="event">Event</label><select id="event" onchange="gantiEvent()"></select>
+<div id="sesiBox"></div>
+<p id="proses" class="redup"></p><p id="sinkron" class="redup" style="margin:0"></p>
+</div>
+<div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>
+</div>
+</main>
+<div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
-var KUNCI="__K__",EVLINK="__E__";var PIN=KUNCI||localStorage.getItem("cps_pin")||"";var data=[];if(EVLINK)localStorage.setItem("cps_ev",EVLINK);
-function el(i){return document.getElementById(i)}function kecilkan(file,cb){var r=new FileReader();r.onload=function(){var g=new Image();g.onload=function(){var m=1280,s=Math.min(1,m/Math.max(g.width,g.height));var c=document.createElement("canvas");c.width=g.width*s;c.height=g.height*s;c.getContext("2d").drawImage(g,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",0.72))};g.src=r.result};r.readAsDataURL(file)}function masuk(){var p=el("pin").value||PIN;google.script.run.withSuccessHandler(function(r){PIN=p;localStorage.setItem("cps_pin",p);el("masuk").style.display="none";el("isi").style.display="";var s=el("event");s.innerHTML=r.events.map(function(e){return "<option value=\""+e.kode+"\">"+e.kode+" – "+e.kota+"</option>"}).join("");var ingat=localStorage.getItem("cps_ev");if(ingat)s.value=ingat;muat();setInterval(muat,4000)}).withFailureHandler(function(e){el("salah").textContent=e.message;localStorage.removeItem("cps_pin")}).kasirMasuk(p)}function kode(){var k=el("event").value;localStorage.setItem("cps_ev",k);el("ev").textContent=k;return k}function muat(){google.script.run.withSuccessHandler(tampil).daftarAntrian(PIN,kode())}function aman(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]})}function tampil(d){data=d;var j=new Date();el("sinkron").textContent="🔄 Tersinkron "+("0"+j.getHours()).slice(-2)+":"+("0"+j.getMinutes()).slice(-2)+":"+("0"+j.getSeconds()).slice(-2)+" · boleh dibuka di beberapa HP sekaligus";["MENUNGGU","DIBAKAR","SIAP"].forEach(function(st){el("k-"+st).innerHTML=d.filter(function(o){return o.status===st}).map(kartu).join("")||"<p class=redup>–</p>"})}function kartu(o){var a="";if(o.status==="MENUNGGU")a="<button class=\"kecil\" onclick=\"bakar('"+o.id+"')\">📷 Foto & mulai bakar</button><button class=\"kecil abu\" onclick=\"status('"+o.id+"','DIBAKAR')\">Bakar tanpa foto</button>";if(o.status==="DIBAKAR")a="<button class=\"kecil hijau\" onclick=\"status('"+o.id+"','SIAP')\">🔔 Panggil</button>";if(o.status==="SIAP")a="<button class=\"kecil biru\" onclick=\"status('"+o.id+"','SIAP')\">🔔 Panggil ulang ("+o.panggilKe+"x)</button><button class=\"kecil hijau\" onclick=\"status('"+o.id+"','DIAMBIL')\">✓ Sudah diambil</button>";return "<div class=\"pesanan "+o.status+"\"><img src=\""+(o.fotoBakar||o.fotoStruk)+"\" onclick=\"lihat('"+o.id+"')\"><div class=no>#"+o.nomor+"</div><div class=redup>"+o.dibuat+"</div><div style=\"white-space:pre-line\">"+(aman(o.menu)||"<i class=redup>menu: lihat struk</i>")+"</div><div class=aksi>"+a+"<button class=\"kecil abu\" onclick=\"lihat('"+o.id+"')\">QR / detail</button></div></div>"}function cari(id){return data.filter(function(o){return o.id===id})[0]}function pesananBaru(inp){var f=inp.files[0];inp.value="";if(!f)return;el("proses").textContent="Menyimpan struk & membuat nomor antrian...";kecilkan(f,function(u){google.script.run.withSuccessHandler(function(o){el("proses").textContent="";data.push(o);lihat(o.id,o);muat()}).withFailureHandler(function(e){el("proses").textContent="Gagal: "+e.message}).buatPesanan(PIN,kode(),u)})}function lihat(id,o){o=o||cari(id);if(!o)return;el("modal").innerHTML="<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#"+o.nomor+"</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>"+aman(o.menu)+"</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('"+o.id+"')\">Simpan menu</button> <button class=\"kecil merah\" onclick=\"if(confirm('Batalkan pesanan #"+o.nomor+"?'))status('"+o.id+"','BATAL')\">Batalkan</button><br><br><img class=foto src=\""+o.fotoStruk+"\">"+(o.fotoBakar?"<br><img class=foto src=\""+o.fotoBakar+"\">":"")+"<br><button onclick=\"tutup()\">Tutup</button></div></div>";var q=qrcode(0,"L");q.addData(o.link);q.make();el("qr").innerHTML=q.createSvgTag({cellSize:5,margin:4,scalable:true}).replace("<svg ","<svg style=\"width:min(86vw,380px);height:auto;background:#fff\" ")}function tutup(){el("modal").innerHTML=""}function simpanMenu(id){google.script.run.withSuccessHandler(function(){tutup();muat()}).ubahMenu(PIN,id,el("menuEdit").value)}function status(id,st,foto){google.script.run.withSuccessHandler(function(){tutup();muat()}).withFailureHandler(function(e){tutup();el("proses").textContent="⚠️ "+e.message;setTimeout(function(){el("proses").textContent=""},6000);muat()}).ubahStatus(PIN,id,st,foto||"")}function bakar(id){var i=el("fotoBakar");i.onchange=function(){var f=i.files[0];i.value="";if(!f)return;el("proses").textContent="Menyimpan foto pesanan...";kecilkan(f,function(u){el("proses").textContent="";status(id,"DIBAKAR",u)})};i.click()}if(PIN){el("pin").value=PIN;masuk()}
+var KUNCI = "__K__", EVLINK = "__E__";
+// Penyimpanan browser bisa ditolak (mode samaran, dsb.): halaman tetap jalan tanpa mengingat PIN/event.
+function ambil(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function simpan(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+function hapus(k) { try { localStorage.removeItem(k); } catch (e) { } }
+var PIN = KUNCI || ambil("cps_pin") || "";
+var data = [], sesi = null, saranKasir = {}, tandaSesi = "", events = [];
+if (EVLINK) simpan("cps_ev", EVLINK);
+
+function el(i) { return document.getElementById(i); }
+function aman(s) { return String(s || "").replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+function jamDari(waktu) { return String(waktu || "").slice(11, 16); }
+function pesan(t) { el("proses").textContent = t; if (t) setTimeout(function () { if (el("proses").textContent === t) el("proses").textContent = ""; }, 7000); }
+
+function kecilkan(file, cb) {
+  var r = new FileReader();
+  r.onload = function () {
+    var g = new Image();
+    g.onload = function () {
+      var m = 1280, s = Math.min(1, m / Math.max(g.width, g.height));
+      var c = document.createElement("canvas"); c.width = g.width * s; c.height = g.height * s;
+      c.getContext("2d").drawImage(g, 0, 0, c.width, c.height);
+      cb(c.toDataURL("image/jpeg", 0.72));
+    };
+    g.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function masuk() {
+  var p = el("pin").value || PIN;
+  google.script.run.withSuccessHandler(function (r) {
+    PIN = p; simpan("cps_pin", p);
+    el("masuk").style.display = "none"; el("isi").style.display = "";
+    events = r.events;
+    r.events.forEach(function (e) { saranKasir[e.kode] = e.kasir || ""; });
+    var s = el("event");
+    s.innerHTML = r.events.map(function (e) { return "<option value=\"" + e.kode + "\">" + e.kode + " – " + e.kota + "</option>"; }).join("");
+    var ingat = ambil("cps_ev") || EVLINK; if (ingat) s.value = ingat;
+    muat(); setInterval(muat, 4000);
+  }).withFailureHandler(function (e) { el("salah").textContent = e.message; hapus("cps_pin"); }).kasirMasuk(p);
+}
+function kode() { var k = el("event").value; simpan("cps_ev", k); el("ev").textContent = k; return k; }
+function gantiEvent() { tandaSesi = ""; muat(); }
+function muat() { google.script.run.withSuccessHandler(tampil).daftarAntrian(PIN, kode()); }
+
+// ---- sesi kasir: mulai / ganti kasir / tutup ----
+function gambarSesi() {
+  var tanda = sesi ? sesi.id + "|" + sesi.kasir : "tutup|" + kode();
+  if (tanda !== tandaSesi) {
+    tandaSesi = tanda;
+    el("sesiBox").innerHTML = sesi
+      ? "<div class=\"sesi buka\"><div><span class=lampu></span><b>Kasir buka</b> sejak " + jamDari(sesi.dibuka) + " · kasir <b>" + aman(sesi.kasir) + "</b></div>" +
+        "<div class=redup id=statSesi></div>" +
+        "<label class=\"tombol kuning\" style=\"text-align:center;margin-top:12px\">📷 Pesanan baru – foto struk<input id=struk type=file accept=\"image/*\" capture=environment style=\"display:none\" onchange=\"pesananBaru(this)\"></label>" +
+        "<div class=aksi><button class=\"kecil abu\" onclick=\"gantiKasirUI()\">👤 Ganti kasir</button><button class=\"kecil merah\" onclick=\"tutupKasirUI()\">⏹ Tutup kasir</button></div></div>"
+      : "<div class=\"sesi tutup\"><b>Kasir belum dibuka</b><p class=redup style=\"margin:4px 0 0\">Tekan <b>Mulai kasir</b> sebelum melayani pelanggan pertama. Nomor antrian berlanjut selama event dan mulai dari 1 lagi di event berikutnya.</p>" +
+        "<label for=namaKasir>Nama kasir</label><input id=namaKasir value=\"" + aman(saranKasir[kode()] || "") + "\" placeholder=\"Contoh: Tiara\">" +
+        "<button class=kuning style=\"margin-top:12px\" onclick=\"mulaiKasir()\">▶ Mulai kasir</button></div>";
+  }
+  if (sesi && el("statSesi")) {
+    var n = function (st) { return data.filter(function (o) { return o.status === st; }).length; };
+    el("statSesi").textContent = sesi.jumlah + " struk dilayani · " + n("MENUNGGU") + " menunggu · " + n("DIBAKAR") + " dibakar · " + n("SIAP") + " dipanggil";
+  }
+}
+function mulaiKasir() {
+  var nama = el("namaKasir").value.trim();
+  if (!nama) { pesan("Isi nama kasir dulu."); return; }
+  pesan("Membuka kasir...");
+  google.script.run.withSuccessHandler(function () { pesan(""); muat(); }).withFailureHandler(function (e) { pesan("⚠️ " + e.message); }).mulaiKasir(PIN, kode(), nama);
+}
+function gantiKasirUI() {
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h3>Ganti kasir</h3><p class=redup>Pesanan berikutnya tercatat atas nama kasir baru (untuk penilaian bintang).</p><label for=kasirBaru>Nama kasir baru</label><input id=kasirBaru><br><br><button class=kuning onclick=\"gantiKasir()\">Simpan</button><br><button class=abu onclick=\"tutup()\">Batal</button></div></div>";
+  el("kasirBaru").focus();
+}
+function gantiKasir() {
+  var nama = el("kasirBaru").value.trim(); if (!nama) return;
+  google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); }).gantiKasir(PIN, kode(), nama);
+}
+function tutupKasirUI() {
+  var belum = data.length;
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h3>Tutup kasir?</h3>" +
+    (belum ? "<p>⚠️ Masih ada <b>" + belum + " pesanan</b> yang belum diambil. Pesanan itu tetap tampil dan bisa diselesaikan setelah kasir ditutup.</p>" : "<p>Semua pesanan sudah selesai.</p>") +
+    "<p class=redup>Ringkasan sesi ini ditampilkan dan dikirim ke WhatsApp owner.</p><button class=merah onclick=\"tutupKasir()\">⏹ Ya, tutup kasir</button><br><button class=abu onclick=\"tutup()\">Batal</button></div></div>";
+}
+function tutupKasir() {
+  el("modal").innerHTML = "<div class=modal><div class=kartu><p>Menutup kasir & menghitung ringkasan...</p></div></div>";
+  google.script.run.withSuccessHandler(function (r) { tampilRingkasan(r); muat(); }).withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); muat(); }).tutupKasir(PIN, kode());
+}
+function tampilRingkasan(r) {
+  var bintang = r.jumlah_rating ? "⭐ " + String(r.rating_rata).replace(".", ",") + " dari " + r.jumlah_rating + " penilaian" : "Belum ada penilaian bintang";
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h2 class=judul><span>Kasir ditutup</span></h2>" +
+    "<p class=redup>" + aman(r.kode_event) + " · " + jamDari(r.dibuka) + "–" + jamDari(r.ditutup) + " · kasir " + aman(r.kasir) + "</p>" +
+    "<div class=ringkas><div><b>" + r.jumlah_struk + "</b><small>struk dilayani</small></div><div><b>" + r.diambil + "</b><small>sudah diambil</small></div><div><b>" + r.batal + "</b><small>batal</small></div><div><b>" + (r.rata_tunggu_menit || "–") + "</b><small>menit rata-rata tunggu</small></div></div>" +
+    "<p><b>" + bintang + "</b>" + (r.rating_kasir ? "<br><span class=redup>" + aman(r.rating_kasir) + "</span>" : "") + "</p>" +
+    (r.belum ? "<p>⚠️ " + r.belum + " pesanan belum diambil saat ditutup.</p>" : "") +
+    (r.ulasan_buruk ? "<p class=redup>Ulasan bintang rendah:<br>" + aman(r.ulasan_buruk).replace(/\n/g, "<br>") + "</p>" : "") +
+    "<button onclick=\"tutup()\">Selesai</button></div></div>";
+}
+
+// ---- daftar pesanan ----
+function tampil(d) {
+  data = d.pesanan || []; sesi = d.sesi || null;
+  var j = new Date();
+  el("sinkron").textContent = "🔄 Tersinkron " + ("0" + j.getHours()).slice(-2) + ":" + ("0" + j.getMinutes()).slice(-2) + ":" + ("0" + j.getSeconds()).slice(-2) + " · boleh dibuka di beberapa HP sekaligus";
+  gambarSesi();
+  ["MENUNGGU", "DIBAKAR", "SIAP"].forEach(function (st) {
+    el("k-" + st).innerHTML = data.filter(function (o) { return o.status === st; }).map(kartu).join("") || "<p class=redup>–</p>";
+  });
+}
+function kartu(o) {
+  var a = "";
+  if (o.status === "MENUNGGU") a = "<button class=\"kecil\" onclick=\"bakar('" + o.id + "')\">📷 Foto & mulai bakar</button><button class=\"kecil abu\" onclick=\"status('" + o.id + "','DIBAKAR')\">Bakar tanpa foto</button>";
+  if (o.status === "DIBAKAR") a = "<button class=\"kecil hijau\" onclick=\"status('" + o.id + "','SIAP')\">🔔 Panggil</button>";
+  if (o.status === "SIAP") a = "<button class=\"kecil biru\" onclick=\"status('" + o.id + "','SIAP')\">🔔 Panggil ulang (" + o.panggilKe + "x)</button><button class=\"kecil hijau\" onclick=\"status('" + o.id + "','DIAMBIL')\">✓ Sudah diambil</button>";
+  return "<div class=\"pesanan " + o.status + "\"><img src=\"" + (o.fotoBakar || o.fotoStruk) + "\" onclick=\"lihat('" + o.id + "')\" alt=\"\"><div class=no>#" + o.nomor + "</div><div class=redup>" + o.dibuat + "</div><div style=\"white-space:pre-line\">" + (aman(o.menu) || "<i class=redup>menu: lihat struk</i>") + "</div><div class=aksi>" + a + "<button class=\"kecil abu\" onclick=\"lihat('" + o.id + "')\">QR / detail</button></div></div>";
+}
+function cari(id) { return data.filter(function (o) { return o.id === id; })[0]; }
+function pesananBaru(inp) {
+  var f = inp.files[0]; inp.value = ""; if (!f) return;
+  el("proses").textContent = "Menyimpan struk & membuat nomor antrian...";
+  kecilkan(f, function (u) {
+    google.script.run.withSuccessHandler(function (o) { el("proses").textContent = ""; data.push(o); lihat(o.id, o); muat(); })
+      .withFailureHandler(function (e) { pesan("Gagal: " + e.message); muat(); }).buatPesanan(PIN, kode(), u);
+  });
+}
+function lihat(id, o) {
+  o = o || cari(id); if (!o) return;
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#" + o.nomor + "</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>" + aman(o.menu) + "</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('" + o.id + "')\">Simpan menu</button> <button class=\"kecil merah\" onclick=\"if(confirm('Batalkan pesanan #" + o.nomor + "?'))status('" + o.id + "','BATAL')\">Batalkan</button><br><br><img class=foto src=\"" + o.fotoStruk + "\" alt=\"Struk\">" + (o.fotoBakar ? "<br><img class=foto src=\"" + o.fotoBakar + "\" alt=\"Foto dibakar\">" : "") + "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
+  var q = qrcode(0, "L"); q.addData(o.link); q.make();
+  el("qr").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace("<svg ", "<svg style=\"width:min(86vw,380px);height:auto;background:#fff\" ");
+}
+function tutup() { el("modal").innerHTML = ""; }
+function simpanMenu(id) { google.script.run.withSuccessHandler(function () { tutup(); muat(); }).ubahMenu(PIN, id, el("menuEdit").value); }
+function status(id, st, foto) {
+  google.script.run.withSuccessHandler(function () { tutup(); muat(); })
+    .withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); muat(); }).ubahStatus(PIN, id, st, foto || "");
+}
+function bakar(id) {
+  var i = el("fotoBakar");
+  i.onchange = function () {
+    var f = i.files[0]; i.value = ""; if (!f) return;
+    el("proses").textContent = "Menyimpan foto pesanan...";
+    kecilkan(f, function (u) { el("proses").textContent = ""; status(id, "DIBAKAR", u); });
+  };
+  i.click();
+}
+if (PIN) { el("pin").value = PIN; masuk(); }
 </script>

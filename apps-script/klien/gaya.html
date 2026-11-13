@@ -86,4 +86,86 @@ details{margin-top:12px}summary{cursor:pointer;font-weight:800;color:var(--navy)
 .cara li::before{content:counter(c);width:36px;height:36px;border-radius:50%;background:var(--kuning);color:var(--navy-tua);font:800 20px var(--judul);display:grid;place-items:center}
 .cara b{color:var(--navy)}
 .tepok .poster{border-width:2px}
+
+/* ---- sesi kasir ---- */
+.sesi{margin-top:14px;border-radius:16px;padding:14px;border:2px dashed var(--garis)}
+.sesi.buka{border:2px solid var(--hijau);background:#EFF8F2}
+.sesi.tutup{background:var(--kuning-muda);border-color:var(--kuning)}
+.lampu{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--hijau);margin-right:6px;box-shadow:0 0 0 0 rgba(11,128,67,.5);animation:lampu 1.6s infinite}
+@keyframes lampu{70%{box-shadow:0 0 0 8px rgba(11,128,67,0)}100%{box-shadow:0 0 0 0 rgba(11,128,67,0)}}
+.ringkas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.ringkas div{background:var(--kuning-muda);border-radius:14px;padding:10px;text-align:center}
+.ringkas b{display:block;font-family:var(--judul);font-size:34px;color:var(--navy);line-height:1}
+.ringkas small{font-weight:700;color:var(--redup)}
+/* ---- penilaian bintang ---- */
+.nilai{text-align:center}
+.baris-bintang{display:flex;justify-content:center;gap:6px;margin:8px 0 2px}
+.bintang{width:52px;height:52px;padding:0;border-radius:50%;font-size:34px;line-height:1;background:#EEEFF5;color:#C9CBDB;box-shadow:none}
+.bintang.nyala{background:var(--kuning-muda);color:var(--kuning)}
+.label-bintang{font-weight:800;color:var(--navy);margin:4px 0 8px}
+.bintang-teks{color:var(--kuning);font-size:22px;letter-spacing:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+/* ---- panggung animasi di kiri & kanan nomor ---- */
+.panggung{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:4px}
+.panggung .sisi{display:flex;justify-content:center;min-width:0}
+.adegan{width:100%;max-width:110px;height:auto;overflow:visible}
+.adegan.a-laut{overflow:hidden;border-radius:0 0 12px 12px}
+.tiket .nomor.panjang{font-size:92px}
+.cerita{font-size:14px;font-weight:700;color:var(--redup);margin:6px 0 10px}
+.siap-besar .panggung{width:100%;max-width:460px;background:var(--putih);border-radius:22px;padding:10px 8px;box-shadow:0 6px 0 rgba(22,34,106,.18)}
+.siap-besar .adegan{max-width:130px}
+/* uap di atas nomor: bergoyang seperti asap */
+.uap path{animation:uap 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.uap .u2{animation-delay:-.8s}.uap .u3{animation-delay:-1.6s}
+@keyframes uap{0%,100%{transform:translateY(0) skewX(0);opacity:1}25%{transform:translateY(-2px) skewX(8deg)}50%{transform:translateY(-4px) skewX(-6deg);opacity:.75}75%{transform:translateY(-2px) skewX(5deg)}}
+/* bagian tubuh */
+.adegan .kepala,.adegan .lengan-kiri,.adegan .lengan-kanan,.adegan .koki,.adegan g{transform-box:view-box}
+/* menunggu: membungkuk terima kasih, perahu & ombak, tiram terbang ke dapur */
+.a-terimakasih .koki{transform-origin:40px 104px;animation:bungkuk 2.2s ease-in-out infinite}
+@keyframes bungkuk{0%,55%,100%{transform:rotate(0)}20%,40%{transform:rotate(14deg)}}
+.a-terimakasih .gelembung{animation:muncul 2.2s ease-in-out infinite}
+@keyframes muncul{0%,10%{opacity:0;transform:translateY(4px)}25%,85%{opacity:1;transform:none}100%{opacity:0}}
+.a-laut .ombak{animation:ombak 2.4s linear infinite}
+@keyframes ombak{to{transform:translateX(40px)}}
+.a-laut .perahu{animation:goyang 2.4s ease-in-out infinite;transform-origin:30px 96px}
+@keyframes goyang{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(4deg) translateY(2px)}}
+.a-laut .tiram-terbang{animation:tiram 4s ease-in-out infinite}
+@keyframes tiram{0%{transform:translate(38px,100px) scale(.6);opacity:0}15%{opacity:1}35%{transform:translate(38px,60px) scale(.8)}75%{transform:translate(64px,22px) scale(.7);opacity:1}85%,100%{transform:translate(66px,24px) scale(.3);opacity:0}}
+.a-laut .asap-dapur{animation:uap 2s ease-in-out infinite}
+/* dibakar: joget keren, keju jatuh, api menari, asap */
+.a-joget .penari{transform-origin:40px 106px;animation:joget .8s ease-in-out infinite alternate}
+@keyframes joget{0%{transform:rotate(-8deg) translateY(0)}50%{transform:rotate(0) translateY(-4px)}100%{transform:rotate(8deg) translateY(0)}}
+.a-joget .lengan-kiri{animation:ayun .4s ease-in-out infinite alternate}
+@keyframes ayun{from{transform:rotate(-15deg)}to{transform:rotate(20deg)}}
+.a-joget .lengan-kanan{animation:tabur .6s ease-in-out infinite alternate}
+@keyframes tabur{from{transform:rotate(0)}to{transform:rotate(-18deg)}}
+.a-joget .keju{animation:jatuh 1.2s linear infinite;opacity:0}
+.a-joget .k1{animation-delay:.2s}.a-joget .k2{animation-delay:.4s}.a-joget .k3{animation-delay:.6s}.a-joget .k4{animation-delay:.8s}.a-joget .k5{animation-delay:1s}
+@keyframes jatuh{0%{transform:translateY(0);opacity:0}10%{opacity:1}100%{transform:translateY(48px);opacity:0}}
+.a-joget .not{animation:muncul 1.6s ease-in-out infinite}
+.a-panggang .f{transform-origin:50% 100%;transform-box:fill-box;animation:api .5s ease-in-out infinite alternate}
+.a-panggang .f2{animation-duration:.4s}.a-panggang .f3{animation-duration:.6s}
+@keyframes api{from{transform:scaleY(.8) skewX(-4deg)}to{transform:scaleY(1.12) skewX(4deg)}}
+.a-panggang .asap-panggang path{animation:uap 2s ease-in-out infinite}
+/* siap: koki memeluk makanan, cemas; anjing mengejar */
+.a-jaga .penjaga{animation:waspada 1.8s ease-in-out infinite;transform-origin:40px 110px}
+@keyframes waspada{0%,100%{transform:translate(0,8px) rotate(0)}30%{transform:translate(-3px,8px) rotate(-5deg)}60%{transform:translate(2px,8px) rotate(4deg)}}
+.a-jaga .keringat{animation:keringat 1.2s ease-in infinite}
+@keyframes keringat{0%{transform:translateY(0);opacity:1}100%{transform:translateY(8px);opacity:0}}
+.a-jaga .pikir{animation:muncul 3s ease-in-out infinite}
+.a-anjing .anjing{animation:lompat .35s ease-in-out infinite alternate}
+.a-anjing .a2{animation-delay:.12s}.a-anjing .a3{animation-delay:.24s}
+@keyframes lompat{from{translate:0 0}to{translate:0 -4px}}
+.a-anjing .lari{animation:kejar 1.6s ease-in-out infinite alternate}
+@keyframes kejar{from{transform:translateX(6px)}to{transform:translateX(-8px)}}
+.a-anjing .ka{animation:langkah .2s linear infinite alternate}.a-anjing .kb{animation:langkah .2s linear infinite alternate-reverse}
+@keyframes langkah{from{transform:translateX(-1.5px)}to{transform:translateX(1.5px)}}
+.a-anjing .ekor{animation:ayun .15s linear infinite alternate;transform-box:fill-box;transform-origin:0 100%}
+.a-anjing .guk{animation:muncul 1s ease-in-out infinite}
+.a-anjing .debu circle{animation:debu 1s ease-out infinite}
+@keyframes debu{from{opacity:.9;transform:translateX(0)}to{opacity:0;transform:translateX(10px)}}
+.a-hati text{animation:naik 2.4s ease-in infinite;opacity:0}
+.a-hati .h2{animation-delay:.8s}.a-hati .h3{animation-delay:1.6s}
+@keyframes naik{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.adegan *,.uap path,.lampu{animation:none!important}}
 </style>

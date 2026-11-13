@@ -24,7 +24,7 @@ export function blokTampilan() {
     `var HTML_KASIR =\n${literal(baca('kasir.html'))};`,
     '// Halaman pelanggan: dipakai juga untuk GitHub Pages (docs/antrian, lihat scripts/halaman-pelanggan.mjs).',
     `var BADAN_PESANAN =\n${literal(baca('pesanan.html'))};`,
-    `var JS_PESANAN =\n${literal(baca('pesanan.js'))};`,
+    `var JS_PESANAN =\n${literal(`${baca('animasi.js')}\n${baca('pesanan.js')}`)};`,
     "var HTML_PESANAN = BADAN_PESANAN + '<script>var TOKEN=\"__TOKEN__\";' + JS_PESANAN +",
     "  'function muat(){google.script.run.withSuccessHandler(tampil).statusPesanan(TOKEN)}' +",
     "  'function kirimNilai(b,u,ok,gagal){google.script.run.withSuccessHandler(ok).withFailureHandler(gagal).nilaiPesanan(TOKEN,b,u)}' +",

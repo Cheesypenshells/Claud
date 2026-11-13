@@ -11,7 +11,7 @@ export function buatHalaman(api) {
   const c = {};
   vm.createContext(c);
   vm.runInContext(readFileSync(`${akar}apps-script/Code.gs`, 'utf8'), c);
-  const isi = `${c.GAYA}</head><body>${c.BADAN_PESANAN}<script>var API=${JSON.stringify(api)};var TOKEN=(new URLSearchParams(location.search).get("t")||"").replace(/[^a-z0-9]/gi,"");${c.JS_PESANAN}function muat(){fetch(API+"?p=api&t="+TOKEN).then(function(r){return r.json()}).then(tampil).catch(function(){})}var timer=setInterval(muat,5000);muat();</script></body></html>\n`;
+  const isi = `${c.GAYA}</head><body>${c.BADAN_PESANAN}<script>var API=${JSON.stringify(api)};var TOKEN=(new URLSearchParams(location.search).get("t")||"").replace(/[^a-z0-9]/gi,"");${c.JS_PESANAN}function muat(){fetch(API+"?p=api&t="+TOKEN).then(function(r){return r.json()}).then(tampil).catch(function(){})}function kirimNilai(b,u,ok,gagal){fetch(API+"?p=nilai&t="+TOKEN+"&b="+b+"&u="+encodeURIComponent(u||"")).then(function(r){return r.json()}).then(function(j){j.ok?ok():gagal(j.pesan)}).catch(function(e){gagal(e.message)})}var timer=setInterval(muat,5000);muat();</script></body></html>\n`;
   return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#22348C"><title>Pesanan – Cheesy Pen Shells</title><link rel="icon" href="../img/logo.png">` + isi.replace(/__ASET__/g, "../img/");
 }
 

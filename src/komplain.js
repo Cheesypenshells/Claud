@@ -31,6 +31,29 @@ export async function tugasKomplain(ctx, sekarang = new Date()) {
   return keluar;
 }
 
+// Ringkasan tutup kasir (tab "Sesi Kasir", status TUTUP dari halaman kasir) -> WhatsApp owner, lalu DITERUSKAN.
+export async function tugasSesiKasir(ctx, sekarang = new Date()) {
+  const keluar = [];
+  let rows;
+  try { rows = await ctx.store.all('Sesi Kasir'); } catch { return keluar; }
+  const owner = [...(ctx.ownerIds || [])];
+  for (const r of rows.filter((x) => String(x.status).toUpperCase() === 'TUTUP')) {
+    const jam = (w) => String(w || '').slice(11, 16);
+    const bintang = Number(r.jumlah_rating) ? `⭐ ${String(r.rating_rata).replace('.', ',')} dari ${r.jumlah_rating} penilaian${r.rating_kasir ? `\n   ${r.rating_kasir}` : ''}` : '⭐ Belum ada penilaian bintang';
+    const teks = [
+      `🧾 *Kasir ${r.kode_event} ditutup* (${r.tanggal}, ${jam(r.dibuka)}–${jam(r.ditutup)})`,
+      `👤 Kasir: ${r.kasir || '-'}`,
+      `🧾 *${r.jumlah_struk || 0} struk dilayani* · ${r.diambil || 0} diambil · ${r.batal || 0} batal${Number(r.belum) ? ` · ⚠️ ${r.belum} belum diambil` : ''}`,
+      r.rata_tunggu_menit !== '' && r.rata_tunggu_menit !== undefined ? `⏱️ Rata-rata tunggu sampai dipanggil: ${r.rata_tunggu_menit} menit` : '',
+      bintang,
+      r.ulasan_buruk ? `\n*Ulasan bintang rendah:*\n${r.ulasan_buruk}` : '',
+    ].filter(Boolean).join('\n');
+    for (const n of owner) keluar.push({ nomor: n, text: teks });
+    await ctx.store.updateWhere('Sesi Kasir', (x) => x.id === r.id && String(x.status).toUpperCase() === 'TUTUP', { status: 'DITERUSKAN', diteruskan: waktuLokal(sekarang) });
+  }
+  return keluar;
+}
+
 // Baris komplain yang dihitung KPI (bukan BATAL).
 export async function komplainAktif(store) {
   try { return (await store.all('Komplain')).filter((r) => String(r.status).toUpperCase() !== 'BATAL'); } catch { return []; }

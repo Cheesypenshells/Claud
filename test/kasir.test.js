@@ -84,7 +84,7 @@ test('apps-script/Code.gs: semua halaman bisa dibuat dan semua fungsi yang dipan
   const dipanggil = new Set([...src.matchAll(/\b([a-zA-Z]\w*_)\(/g)].map((m) => m[1]));
   for (const f of dipanggil) assert.equal(typeof c[f], 'function', `fungsi ${f} dipanggil tapi tidak ada`);
   const kasir = c.doGet({ parameter: { p: 'kasir', k: '1234', e: 'SMR26-11' } }).html;
-  assert.match(kasir, /KUNCI="1234",EVLINK="SMR26-11"/);
+  assert.match(kasir, /KUNCI = "1234", EVLINK = "SMR26-11"/);
   const kom = c.doGet({ parameter: { p: 'komplain', e: 'SMR26-11' } }).html;
   assert.match(kom, /Oyster tidak fresh/);
   const pes = c.doGet({ parameter: { p: 'pesanan', t: 'abc' } }).html;
@@ -128,4 +128,72 @@ test('apps-script/Code.gs sinkron dengan apps-script/klien/ (jalankan: node scri
   const { susunCodeGs } = await import('../scripts/bangun-apps-script.mjs');
   const src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
   assert.equal(src, susunCodeGs(src));
+});
+
+test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & bintang pelanggan', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = {};
+  let jam = '2026-11-14 08:00:00';
+  Object.assign(c, {
+    cekPin_: () => {}, sekarang_: () => jam, hariIni_: () => jam.slice(0, 10), url_: () => 'https://u/exec', atur_: () => '',
+    tab_: (nama) => (tabel[nama] = tabel[nama] || { nama, rows: [] }),
+    baca_: (t) => t.rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    tulisBaris_: (t, o) => t.rows.push({ ...o }),
+    ubah_: (t, b, isi) => Object.assign(t.rows[b - 2], isi),
+    simpanFoto_: () => ({ id: 'F', blob: null }), ocr_: () => '', bacaMenu_: () => '', linkFoto_: (id) => id,
+    daftarEvent: () => [{ kode: 'SMR26-11', kota: 'Semarang', io: 'Kepo' }],
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+    Utilities: { formatDate: () => '261114080000', getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
+  });
+  assert.throws(() => c.buatPesanan('1', 'SMR26-11', 'data:'), /Kasir belum dibuka/);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi, null);
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  c.mulaiKasir('1', 'SMR26-11', 'Orang lain'); // HP kedua: sesi yang sama dipakai
+  assert.equal(tabel['Sesi Kasir'].rows.length, 1);
+  const p1 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  const p2 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.deepEqual([p1.nomor, p2.nomor], [1, 2]);
+  c.gantiKasir('1', 'SMR26-11', 'Bima');
+  jam = '2026-11-15 00:30:00'; // lewat tengah malam: nomor tetap berlanjut
+  const p3 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p3.nomor, 3);
+  assert.equal(tabel.Antrian.rows[2].kasir, 'Bima');
+  const tok = (n) => tabel.Antrian.rows[n].token;
+  assert.throws(() => c.nilaiPesanan(tok(0), 5, ''), /setelah pesanan siap/);
+  tabel.Antrian.rows[0].dipanggil = '2026-11-14 08:12:00';
+  c.ubahStatus('1', p1.id, 'SIAP'); tabel.Antrian.rows[0].dipanggil = '2026-11-14 08:12:00';
+  c.ubahStatus('1', p1.id, 'DIAMBIL');
+  c.nilaiPesanan(tok(0), 5, 'ramah');
+  c.ubahStatus('1', p3.id, 'SIAP');
+  c.nilaiPesanan(tok(2), 2, 'lama');
+  c.ubahStatus('1', p2.id, 'BATAL');
+  const r = c.tutupKasir('1', 'SMR26-11');
+  assert.equal(r.jumlah_struk, 2);
+  assert.equal(r.diambil, 1);
+  assert.equal(r.batal, 1);
+  assert.equal(r.belum, 1);
+  assert.equal(r.rata_tunggu_menit, 6); // (12 + 0) / 2
+  assert.equal(r.rating_rata, 3.5);
+  assert.match(r.rating_kasir, /Tiara 5 \(1\).*Bima 2 \(1\)/);
+  assert.match(r.ulasan_buruk, /#3 2★ \(Bima\) lama/);
+  assert.equal(tabel['Sesi Kasir'].rows[0].status, 'TUTUP');
+  assert.throws(() => c.buatPesanan('1', 'SMR26-11', 'data:'), /Kasir belum dibuka/);
+  assert.throws(() => c.tutupKasir('1', 'SMR26-11'), /sudah ditutup/);
+  // event berikutnya mulai dari 1 lagi
+  c.mulaiKasir('1', 'PKL26-12', 'Tiara');
+  assert.equal(c.buatPesanan('1', 'PKL26-12', 'data:').nomor, 1);
+});
+
+test('ringkasan tutup kasir diteruskan bot ke WhatsApp owner sekali', async () => {
+  const { tugasSesiKasir } = await import('../src/komplain.js');
+  const rows = [{ id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara, Bima', dibuka: '2026-11-14 08:05:00', ditutup: '2026-11-14 22:10:00', jumlah_struk: 126, diambil: 121, batal: 3, belum: 2, rata_tunggu_menit: 11, rating_rata: 4.8, jumlah_rating: 58, rating_kasir: 'Tiara 4,9 (40) · Bima 4,6 (18)', ulasan_buruk: '#88 2★ (Bima) nunggu lama', status: 'TUTUP' }];
+  const ctx = { ownerIds: new Set(['62811']), store: { all: async () => rows, updateWhere: async (t, f, v) => { for (const r of rows) if (f(r)) Object.assign(r, v); } } };
+  const k = await tugasSesiKasir(ctx);
+  assert.equal(k[0].nomor, '62811');
+  assert.match(k[0].text, /Kasir SMR26-11 ditutup.*08:05–22:10.*126 struk dilayani.*121 diambil.*2 belum diambil.*11 menit.*4,8 dari 58.*Tiara 4,9.*#88 2★/s);
+  assert.equal((await tugasSesiKasir(ctx)).length, 0);
 });

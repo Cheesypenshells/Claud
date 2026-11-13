@@ -132,7 +132,20 @@ export const KOLOM = {
       k('nomor', 'No. Antrian', 90, { format: 'angka' }), k('status', 'Status', 100), k('menu', 'Menu (dari struk)', 220),
       k('foto_struk', 'Foto Struk', 160), k('foto_bakar', 'Foto Dibakar', 160), k('teks_struk', 'Teks Struk', 200, { sembunyi: true }),
       k('dibuat', 'Dibuat', 140), k('dibakar', 'Mulai Dibakar', 140), k('dipanggil', 'Dipanggil', 140), k('panggil_ke', 'Dipanggil Ke', 90, { format: 'angka' }),
-      k('diambil', 'Diambil', 140),
+      k('diambil', 'Diambil', 140), k('kasir', 'Kasir', 110), k('sesi', 'Sesi Kasir', 120, { sembunyi: true }),
+      k('rating', 'Bintang', 80, { format: 'angka' }), k('ulasan', 'Ulasan', 220), k('dinilai', 'Dinilai', 140),
+    ],
+  },
+  // Sesi kasir antrian (▶ Mulai kasir / ⏹ Tutup kasir di halaman kasir). Status: BUKA / TUTUP / DITERUSKAN.
+  'Sesi Kasir': {
+    warna: '#0B8043',
+    kolom: [
+      k('id', 'ID', 140), k('kode_event', 'Kode Event', 110), k('tanggal', 'Tanggal', 105), k('kasir', 'Kasir', 140),
+      k('dibuka', 'Dibuka', 140), k('ditutup', 'Ditutup', 140), k('jumlah_struk', 'Struk Dilayani', 100, { format: 'angka' }),
+      k('diambil', 'Diambil', 90, { format: 'angka' }), k('batal', 'Batal', 80, { format: 'angka' }), k('belum', 'Belum Selesai', 100, { format: 'angka' }),
+      k('rata_tunggu_menit', 'Rata-rata Tunggu (menit)', 120, { format: 'angka' }), k('rating_rata', 'Bintang Rata-rata', 110),
+      k('jumlah_rating', 'Jumlah Penilaian', 110, { format: 'angka' }), k('rating_kasir', 'Bintang per Kasir', 220),
+      k('ulasan_buruk', 'Ulasan Bintang Rendah', 280), k('status', 'Status', 100), k('diteruskan', 'Diteruskan ke Owner', 140),
     ],
   },
   // Komplain pelanggan dari QR di depan booth (halaman Google Apps Script). Status: BARU / DITERUSKAN / BATAL.
