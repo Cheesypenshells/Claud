@@ -30,6 +30,7 @@ export const KOLOM = {
       k('owner_hadir', 'Kehadiran Owner', 130, { catatan: 'tidak / 1 hari / setengah / penuh. Menentukan fee PIC: 25% / 20% / 15% / 10% dari laba bersih. Diubah lewat #owner di grup' }),
       k('file_event', 'ID File Event', 200, { catatan: 'Diisi otomatis oleh bot: spreadsheet event di folder EVENT', sembunyi: true }),
       k('fee_pic_persen', 'Fee PIC Khusus (%)', 120, { catatan: 'Kosong = menurut kehadiran owner (25/20/15/10%). Diisi lewat #feepic 20 di grup pengeluaran' }),
+      k('kasir_antrian', 'Kasir Antrian', 120, { catatan: 'Nama orang yang memegang halaman kasir antrian (boleh lebih dari satu, pisahkan koma). Tidak mengubah peran/gaji. Diisi lewat #kasirnya Tiara' }),
       k('loading_in', 'Loading In (waktu)', 140, { catatan: 'YYYY-MM-DD HH:MM. Ditanyakan bot di grup tim, atau #loading 13 nov 22.00' }),
       k('lokasi_loading', 'Lokasi / Pintu Loading In', 220),
     ],

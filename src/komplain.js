@@ -53,6 +53,35 @@ export async function perintahQr(ctx, event, { isOwner }) {
 }
 
 // ---------- Link kasir (langsung masuk, PIN ikut di link) ----------
+const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
+
+// Pemegang halaman kasir sebuah event: kolom Event "Kasir Antrian" (nama, pisah koma) + anggota tim berperan Kasir.
+export function namaKasir(event, tim = []) {
+  const ditunjuk = String(event?.kasir_antrian || '').split(/[,/&]|\bdan\b/i).map((x) => x.trim()).filter(Boolean);
+  const berperan = tim.filter((o) => o.kode_event === event?.kode && o.peran === 'Kasir' && o.status !== 'BATAL').map((o) => o.nama);
+  return [...ditunjuk, ...berperan];
+}
+
+// Event yang sedang/akan berjalan di mana nomor ini kasir antrian atau PIC (untuk #kasir dari chat pribadi / grup).
+export async function eventKasirUntuk(ctx, nomor, tanggal) {
+  const [events, tim, karyawan] = await Promise.all([ctx.store.all('Event'), ctx.store.all('Tim Event'), ctx.store.all('Karyawan')]);
+  const namaSaya = karyawan.filter((k) => nomor62(k.nomor_wa) === String(nomor)).map((k) => k.nama);
+  if (!namaSaya.length) return [];
+  return events.filter((e) => e.status !== 'BATAL' && e.status !== 'SELESAI' && (!tanggal || String(e.selesai || e.mulai) >= tanggal))
+    .filter((e) => namaKasir(e, tim).some((n) => namaSaya.some((s) => sama(s, n)))
+      || tim.some((o) => o.kode_event === e.kode && o.peran === 'PIC' && namaSaya.some((s) => sama(s, o.nama))));
+}
+
+// #kasirnya Tiara (owner, grup pengeluaran/tim event): tunjuk pemegang halaman kasir untuk event ini.
+export async function perintahKasirnya(ctx, event, isi, { isOwner }) {
+  if (!isOwner) return balas('⚠️ Penunjukan kasir antrian hanya oleh owner.');
+  if (!event) return balas('⚠️ Ketik di grup event, contoh: *#kasirnya Tiara*');
+  const nama = String(isi || '').trim();
+  if (!nama) return balas(`🧾 Kasir antrian ${event.kode}: *${event.kasir_antrian || '(belum ditunjuk)'}*\nUbah: *#kasirnya Tiara*`);
+  await ctx.store.updateWhere('Event', (e) => e.kode === event.kode, { kasir_antrian: nama });
+  return balas(`✅ Kasir antrian ${event.kode}: *${nama}*\nDi hari pertama event, 2 jam sebelum buka, link kasir dikirim ke chat pribadinya. Ia juga bisa meminta lagi dengan *#kasir* lewat chat pribadi ke bot.`);
+}
 // Pengaturan: url_antrian (link /exec web app) dan pin_kasir (sama dengan KASIR_PIN di Apps Script).
 export function linkKasir(atur, kode = '') {
   if (!atur.url_antrian) return '';
@@ -89,10 +118,7 @@ export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal 
     if (ctx.sesi.get(tanda)) continue;
     ctx.sesi.set(tanda, { kirim: true });
     const teks = teksKasir(e, linkKasir(atur, e.kode));
-    const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
-    const kasir = tim.filter((o) => o.kode_event === e.kode && o.peran === 'Kasir' && o.status !== 'BATAL')
-      .map((o) => karyawan.find((k) => String(k.nama).toLowerCase() === String(o.nama).toLowerCase() && k.nomor_wa))
-      .filter(Boolean);
+    const kasir = [...new Set(namaKasir(e, tim).map((n) => karyawan.find((k) => sama(k.nama, n) && k.nomor_wa)).filter(Boolean))];
     if (kasir.length) for (const k of kasir) keluar.push({ nomor: nomor62(k.nomor_wa), text: teks });
     else for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teks });
   }

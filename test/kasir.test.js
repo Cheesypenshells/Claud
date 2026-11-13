@@ -74,3 +74,20 @@ test('apps-script/Code.gs: semua halaman bisa dibuat dan semua fungsi yang dipan
   assert.match(pes, /var TOKEN="abc"/);
   for (const h of [kasir, kom, pes]) assert.ok(!h.includes('__ASET__') && h.includes(c.ASET + 'logo-putih.png'));
 });
+
+test('kasir antrian ditunjuk lewat kolom Event (tanpa ubah peran): dapat link otomatis & boleh #kasir', async () => {
+  const { namaKasir, eventKasirUntuk } = await import('../src/komplain.js');
+  const t = {
+    ...tabel,
+    Event: [{ ...tabel.Event[0], kasir_antrian: 'Tiara' }],
+    'Tim Event': [{ kode_event: 'SMR26-11', nama: 'TiarA', peran: 'Tetap' }, { kode_event: 'SMR26-11', nama: 'George', peran: 'PIC' }],
+    Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }, { nama: 'George', nomor_wa: '0822222' }, { nama: 'Bima', nomor_wa: '0833333' }],
+  };
+  assert.deepEqual(namaKasir(t.Event[0], t['Tim Event']), ['Tiara']);
+  const ctx = buatCtx(t);
+  const k = await tugasLinkKasir(ctx, new Date('2026-11-14T01:05:00Z'), { tanggalLokal });
+  assert.deepEqual(k.map((x) => x.nomor), ['62811111']);
+  assert.equal((await eventKasirUntuk(ctx, '62811111', '2026-11-14')).length, 1);
+  assert.equal((await eventKasirUntuk(ctx, '62822222', '2026-11-14')).length, 1); // PIC
+  assert.equal((await eventKasirUntuk(ctx, '62833333', '2026-11-14')).length, 0);
+});

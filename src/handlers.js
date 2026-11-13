@@ -25,7 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
-import { perintahQr, perintahKasir } from './komplain.js';
+import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
 import { tanganiKontak, cariKontak, simpanKontak, bacaKontak } from './kontak.js';
@@ -996,7 +996,17 @@ async function handlePribadi(ctx, pesan) {
     return perintahGajian(ctx, pesan, ev, { isOwner });
   }
   if (['qr', 'antrian'].includes(cmd.perintah)) return perintahQr(ctx, null, { isOwner });
-  if (cmd.perintah === 'kasir' && isOwner) return perintahKasir(ctx, null, { bolehLihat: true });
+  if (cmd.perintah === 'kasir') {
+    // Kasir antrian / PIC lewat chat pribadi: link untuk event yang sedang/akan berjalan.
+    const evs = await eventKasirUntuk(ctx, pesan.senderId, tanggalLokal(new Date()));
+    if (evs.length) {
+      const hasil = [];
+      for (const e of evs) hasil.push(...(await perintahKasir(ctx, e, { bolehLihat: true })));
+      return hasil;
+    }
+    if (isOwner) return perintahKasir(ctx, null, { bolehLihat: true });
+    return balas('⚠️ Kamu belum ditunjuk sebagai kasir antrian di event mana pun. Minta owner mengetik *#kasirnya <nama kamu>* di grup event.');
+  }
   if (['kontak', 'kontaklokasi'].includes(cmd.perintah)) {
     const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
     const kotaKenal = [...new Set((await ctx.store.all('Event')).map((e) => e.kota).filter(Boolean))];
@@ -1331,11 +1341,12 @@ export async function handlePesan(ctx, pesan) {
       case 'antrian':
         return perintahQr(ctx, event, { isOwner });
       case 'kasir': {
-        const karyawanK = await ctx.store.all('Karyawan');
-        const picK = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
-          && karyawanK.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
-        return perintahKasir(ctx, event, { bolehLihat: isOwner || picK });
+        const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
+        return perintahKasir(ctx, event, { bolehLihat: isOwner || milikSaya.some((e) => e.kode === event?.kode) });
       }
+      case 'kasirnya':
+      case 'kasirantrian':
+        return perintahKasirnya(ctx, event, (cmd.sisaBaris || cmd.argumen.join(' ')).trim(), { isOwner });
       case 'kontak':
       case 'kontaklokasi': {
         const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
