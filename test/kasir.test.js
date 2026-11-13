@@ -197,3 +197,9 @@ test('ringkasan tutup kasir diteruskan bot ke WhatsApp owner sekali', async () =
   assert.match(k[0].text, /Kasir SMR26-11 ditutup.*08:05–22:10.*126 struk dilayani.*121 diambil.*2 belum diambil.*11 menit.*4,8 dari 58.*Tiara 4,9.*#88 2★/s);
   assert.equal((await tugasSesiKasir(ctx)).length, 0);
 });
+
+test('animasi: atribut SVG sebelum "/>" selalu berkutip (tanpa kutip, bentuk berikutnya tidak tergambar)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../apps-script/klien/animasi.js', import.meta.url), 'utf8');
+  assert.deepEqual(src.match(/=[^'"\s>]+\/>/g), null);
+});

@@ -766,6 +766,63 @@ var GAYA =
   ".a-anjing .a2{animation-delay:-.12s}.a-anjing .a3{animation-delay:-.24s}\n" +
   "/* selamat makan: lompat-lompat gembira */\n" +
   "@media (prefers-reduced-motion:reduce){.adegan .tubuh,.adegan .bayangan,.adegan .kepala,.adegan .kaki-kiri,.adegan .kaki-kanan,.a-anjing .anjing{animation:none!important}}\n" +
+  "\n" +
+  "/* ---- panggung bercerita: lapis belakang | angka | lapis depan ---- */\n" +
+  ".panggung2{position:relative;width:100%;max-width:460px;margin:2px auto 0;aspect-ratio:320/150}\n" +
+  ".panggung2 .lapis{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;filter:drop-shadow(0 3px 2px rgba(22,34,106,.25))}\n" +
+  ".panggung2 .belakang{z-index:0}.panggung2 .depan{z-index:2;pointer-events:none}\n" +
+  ".panggung2 .nomor{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:min(118px,30vw);line-height:1;padding-bottom:7%;text-shadow:0 4px 0 rgba(22,34,106,.15)}\n" +
+  ".panggung2 .nomor.panjang{font-size:min(92px,23vw)}\n" +
+  ".panggung2 g{transform-box:view-box}\n" +
+  ".panggung2 .tubuh{transform-origin:40px 107px;animation:napas 1.1s ease-in-out infinite}\n" +
+  ".panggung2 .bayangan{transform-origin:40px 107px}\n" +
+  ".panggung2 .laut{animation:ombak 2.4s linear infinite}\n" +
+  ".panggung2 .f{transform-origin:50% 100%;transform-box:fill-box;animation:api .45s ease-in-out infinite alternate}\n" +
+  ".panggung2 .f2{animation-duration:.35s}.panggung2 .f3{animation-duration:.55s}\n" +
+  ".seru{display:inline-block;margin:6px auto 0;background:var(--merah);color:#fff;font-weight:800;border-radius:999px;padding:6px 14px;animation:seru .8s ease-in-out infinite alternate}\n" +
+  "@keyframes seru{from{transform:scale(1) rotate(-1.5deg)}to{transform:scale(1.07) rotate(1.5deg)}}\n" +
+  ".siap-besar .papan{width:100%;max-width:480px;background:var(--putih);border-radius:22px;padding:6px;box-shadow:0 6px 0 rgba(22,34,106,.18)}\n" +
+  ".siap-besar .panggung2 .nomor{color:var(--navy)}\n" +
+  "/* menunggu */\n" +
+  ".m-bungkuk .tubuh{animation:bow 1.2s ease-in-out infinite}\n" +
+  "@keyframes bow{0%,100%{transform:rotate(0)}35%,70%{transform:rotate(20deg) scale(1.03,.97)}}\n" +
+  ".m-lari .kaki-kiri,.s-lari .kaki-kiri,.b-bawa .kaki-kiri{animation:tendang-kiri .16s linear infinite alternate}\n" +
+  ".m-lari .kaki-kanan,.s-lari .kaki-kanan,.b-bawa .kaki-kanan{animation:tendang-kanan .16s linear infinite alternate}\n" +
+  ".m-lari .tubuh,.s-lari .tubuh,.b-bawa .tubuh{animation:lari-mantul .32s ease-in-out infinite}\n" +
+  "@keyframes lari-mantul{0%,100%{transform:translateY(0) scale(1.05,.95)}50%{transform:translateY(-6px) scale(.96,1.05)}}\n" +
+  ".m-ambil .tubuh{animation:membungkuk 1.4s ease-in-out infinite}\n" +
+  "@keyframes membungkuk{0%,100%{transform:rotate(18deg)}50%{transform:rotate(32deg)}}\n" +
+  ".bintang-pusing{transform-origin:0 -94px;animation:putar 1s linear infinite}\n" +
+  "@keyframes putar{to{transform:rotate(360deg)}}\n" +
+  ".m-bangga .tubuh{animation:bangga .9s ease-in-out infinite}\n" +
+  "@keyframes bangga{0%,100%{transform:scale(1,1)}50%{transform:translateY(-3px) scale(.98,1.03)}}\n" +
+  "/* dibakar */\n" +
+  ".b-bumbu .botol{transform-origin:52px 66px;animation:kocok .18s ease-in-out infinite alternate}\n" +
+  "@keyframes kocok{from{transform:rotate(-30deg)}to{transform:rotate(30deg)}}\n" +
+  ".b-keju .parut{transform-origin:52px 60px;animation:kocok .22s ease-in-out infinite alternate}\n" +
+  ".putar-gaya{transform-origin:0 0;animation:gaya-putar 1.4s ease-in-out infinite}\n" +
+  "@keyframes gaya-putar{0%,100%{transform:scaleX(1)}45%,55%{transform:scaleX(-1)}}\n" +
+  ".b-bumbu .tubuh,.b-keju .tubuh,.b-torch .tubuh{animation:joget-lompat .62s cubic-bezier(.45,0,.55,1) infinite}\n" +
+  ".b-torch .kepala,.b-bumbu .kepala{transform-origin:40px 44px;animation:mendongak .62s ease-in-out infinite}\n" +
+  ".b-torch .kaki-kiri{animation:tendang-kiri .31s ease-in-out infinite alternate}.b-torch .kaki-kanan{animation:tendang-kanan .31s ease-in-out infinite alternate}\n" +
+  ".butir{animation:jatuh-butir .9s linear infinite}\n" +
+  ".butir.j1{animation-delay:.22s}.butir.j2{animation-delay:.45s}.butir.j3{animation-delay:.67s}\n" +
+  "@keyframes jatuh-butir{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(22px);opacity:0}}\n" +
+  ".torch-putar{transform-origin:0 0;animation:torch-dansa 1.2s ease-in-out infinite}\n" +
+  "@keyframes torch-dansa{0%{transform:rotate(0) translateY(0)}25%{transform:rotate(90deg) translateY(-3px)}50%{transform:rotate(180deg)}75%{transform:rotate(270deg) translateY(3px)}100%{transform:rotate(360deg)}}\n" +
+  ".api-torch{transform-origin:50% 100%;transform-box:fill-box;animation:api .12s linear infinite alternate}\n" +
+  ".not-musik{animation:muncul 1.4s ease-in-out infinite}\n" +
+  "/* siap */\n" +
+  ".s-buka .tubuh{animation:bangga .8s ease-in-out infinite}\n" +
+  ".anjing-lari>g{transform-origin:14px 21px;animation:galop2 .3s ease-in-out infinite}\n" +
+  "@keyframes galop2{0%,100%{transform:translate(-14px,-21px) scale(1.05,.93)}50%{transform:translate(-14px,-26px) scale(.95,1.06)}}\n" +
+  ".anjing-lari .ka{animation:langkah .15s linear infinite alternate}.anjing-lari .kb{animation:langkah .15s linear infinite alternate-reverse}\n" +
+  ".anjing-lari .ekor{transform-box:fill-box;transform-origin:0 100%;animation:ayun .12s linear infinite alternate}\n" +
+  "/* diambil */\n" +
+  ".lompat-senang .tubuh{animation:joget-lompat .62s cubic-bezier(.45,0,.55,1) infinite}\n" +
+  ".hati-naik text{animation:naik 2.4s ease-in infinite;opacity:0}\n" +
+  ".hati-naik text:nth-child(2){animation-delay:.8s}.hati-naik text:nth-child(3){animation-delay:1.6s}\n" +
+  "@media (prefers-reduced-motion:reduce){.panggung2 *{animation:none!important}.panggung2 .pose{opacity:0}.panggung2 .pose:first-child{opacity:1}}\n" +
   "</style>";
 var HTML_KASIR =
   "<header><img src=\"__ASET__logo-putih.png\" alt=\"Cheesy Pen Shells\"><div class=\"merek\"><b>KASIR ANTRIAN</b><small>Cheesy Pen Shells</small></div><span id=\"ev\" class=\"kanan\"></span></header>\n" +
@@ -1000,65 +1057,183 @@ var JS_PESANAN =
   "}\n" +
   "function svg(kelas, isi) { return \"<svg class='adegan \" + kelas + \"' viewBox='0 0 80 120' aria-hidden='true'>\" + DEFS + isi + \"</svg>\"; }\n" +
   "\n" +
-  "// ---------- adegan per status ----------\n" +
-  "var ADEGAN = {\n" +
+  "// ---------- panggung bercerita (lapis belakang | nomor | lapis depan) ----------\n" +
+  "// Koordinat panggung 320 x 150; kaki karakter di titik (x, y). Lapis belakang ada di balik angka, lapis depan di atasnya,\n" +
+  "// jadi koki bisa berlari mengelilingi angka (lewat depan & belakang).\n" +
+  "function taruh(isi, s) { return \"<g transform='scale(\" + s + \") translate(-40 -107)'>\" + isi + \"</g>\"; }\n" +
+  "function pose(nama, isi) { return \"<g class='pose \" + nama + \"'>\" + isi + \"</g>\"; }\n" +
+  "function bintang(x, y, s) { return \"<text x=\" + x + \" y=\" + y + \" font-size=\" + s + \" fill='#F6B800' stroke='#16226A' stroke-width=.6>★</text>\"; }\n" +
+  "function teksGelembung(x, y, w, teks, kelas) {\n" +
+  "  return \"<g class='\" + (kelas || \"\") + \"'><rect x=\" + x + \" y=\" + y + \" width=\" + w + \" height=16 rx=8 fill='#fff' stroke='#22348C' stroke-width='1.5'/>\" +\n" +
+  "    \"<path d='M\" + (x + 14) + \" \" + (y + 15) + \" l3 6 l4 -6z' fill='#fff' stroke='#22348C' stroke-width='1.2'/>\" +\n" +
+  "    \"<text x=\" + (x + w / 2) + \" y=\" + (y + 11.5) + \" text-anchor=middle font-size=8.5 font-weight=800 fill='#22348C' font-family='Nunito,sans-serif'>\" + teks + \"</text></g>\";\n" +
+  "}\n" +
+  "function kantong() {\n" +
+  "  return \"<g transform='translate(52 76)'><path d='M-8 0 h16 l3 16 q-11 6 -22 0z' fill='#C9A46A' stroke='#7A5A2B' stroke-width='1'/><path d='M-6 0 q6 -6 12 0' stroke='#7A5A2B' stroke-width=1.5 fill='none'/>\" +\n" +
+  "    \"<ellipse cx=-3 cy=6 rx=4 ry=2 fill='url(#cps-cangkang)'/><ellipse cx=3 cy=9 rx=4 ry=2 fill='url(#cps-cangkang)'/><text x=0 y=15 text-anchor=middle font-size=4 font-weight=800 fill='#22348C'>CPS</text></g>\";\n" +
+  "}\n" +
+  "function tiramBuka(kelasTutup) {\n" +
+  "  return \"<g transform='translate(40 72)'><ellipse cx=0 cy=0 rx=10 ry=4.5 fill='url(#cps-cangkang)'/><ellipse cx=0 cy=-1 rx=7.5 ry=3 fill='#FFD66B'/>\" +\n" +
+  "    \"<g class='\" + (kelasTutup || \"\") + \"' style='transform-origin:-10px 0px'><ellipse cx=0 cy=-2 rx=10 ry=4 fill='url(#cps-cangkang)'/></g></g>\";\n" +
+  "}\n" +
+  "function anjingG(kelas) {\n" +
+  "  return \"<g class='\" + kelas + \"'><g transform='translate(-14 -21)'><ellipse cx=14 cy=22 rx=12 ry=2 fill='#000' opacity='.15'/>\" +\n" +
+  "    \"<ellipse cx=14 cy=10 rx=12 ry=6 fill='url(#cps-anjing)'/><circle cx=2 cy=4 r=6 fill='url(#cps-anjing)'/><path d='M-1 0 l-3 -6 l6 3z' fill='#6B4523'/><circle cx=0 cy=3 r=1 fill='#111'/><circle cx=-4 cy=5 r=1.3 fill='#111'/>\" +\n" +
+  "    \"<path class=ekor d='M25 7 q6 -6 4 -10' stroke='#A0703F' stroke-width=3 fill='none' stroke-linecap='round'/>\" +\n" +
+  "    \"<rect class=ka x=5 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=11 y=14 width=3 height=7 fill='#6B4523'/><rect class=ka x=18 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=23 y=14 width=3 height=7 fill='#6B4523'/></g></g>\";\n" +
+  "}\n" +
+  "\n" +
+  "// Gerak & kemunculan dibuat sebagai @keyframes sekali saat halaman dimuat.\n" +
+  "function jendela(nama, rentang) {\n" +
+  "  // opacity 1 hanya di dalam rentang [a,b] (persen)\n" +
+  "  var k = [\"0%{opacity:0}\"];\n" +
+  "  rentang.forEach(function (r) { k.push((r[0] ? (r[0] - 0.01) + \"%{opacity:0}\" : \"\") + r[0] + \"%{opacity:1}\" + r[1] + \"%{opacity:1}\" + (r[1] < 100 ? (r[1] + 0.01) + \"%{opacity:0}\" : \"\")); });\n" +
+  "  if (rentang[rentang.length - 1][1] < 100) k.push(\"100%{opacity:0}\");\n" +
+  "  return \"@keyframes \" + nama + \"{\" + k.join(\"\") + \"}\";\n" +
+  "}\n" +
+  "var ELIPS = { cx: 160, cy: 124, rx: 142, ry: 18 };\n" +
+  "function titikElips(t) { return { x: ELIPS.cx + ELIPS.rx * Math.cos(t), y: ELIPS.cy + ELIPS.ry * Math.sin(t), depan: Math.sin(t) >= -0.05 }; }\n" +
+  "// Lari mengelilingi angka dari persen a sampai 100, putaran kali; lapis: \"depan\" / \"belakang\".\n" +
+  "function kelilingKf(nama, lapis, mulaiDiam, a, putaran, tunda, skala, kanan) {\n" +
+  "  var k = [];\n" +
+  "  var kf = function (p, x, y, s, hadap, op) { k.push(p.toFixed(2) + \"%{transform:translate(\" + x.toFixed(1) + \"px,\" + y.toFixed(1) + \"px) scale(\" + (s * hadap).toFixed(3) + \",\" + s.toFixed(3) + \");opacity:\" + op + \"}\"); };\n" +
+  "  var dalam = function (d) { return lapis === \"depan\" ? (d ? 1 : 0) : (d ? 0 : 1); };\n" +
+  "  mulaiDiam.forEach(function (m) { kf(m.p, m.x, m.y, skala, m.hadap || 1, lapis === \"depan\" ? 1 : 0); });\n" +
+  "  var N = 70;\n" +
+  "  for (var i = 0; i <= N; i++) {\n" +
+  "    var p = a + (100 - a) * i / N;\n" +
+  "    var t = Math.PI + putaran * 2 * Math.PI * i / N - tunda;\n" +
+  "    var q = titikElips(t), arahX = -Math.sin(t);\n" +
+  "    var s = skala * (0.72 + 0.28 * (Math.sin(t) + 1) / 2);\n" +
+  "    kf(p, q.x, q.y, s, kanan ? (arahX > 0 ? 1 : -1) : (arahX > 0 ? -1 : 1), dalam(q.depan));\n" +
+  "  }\n" +
+  "  return \"@keyframes \" + nama + \"{\" + k.join(\"\") + \"}\";\n" +
+  "}\n" +
+  "function cssAnimasi() {\n" +
+  "  var css = [];\n" +
+  "  // 1) MENUNGGU — terima kasih, lari ke laut, ambil tiram, terhempas ombak, berdiri bangga dengan sekantong tiram (10 detik)\n" +
+  "  css.push(\"@keyframes m-jalan{0%,11%{transform:translate(48px,128px) rotate(0)}33%{transform:translate(246px,128px) rotate(0)}37%,46%{transform:translate(266px,134px) rotate(0)}50%{transform:translate(262px,128px) rotate(0)}55%{transform:translate(196px,46px) rotate(-200deg)}61%{transform:translate(84px,128px) rotate(-360deg)}62%,100%{transform:translate(84px,128px) rotate(-360deg)}}\");\n" +
+  "  css.push(jendela(\"m-bungkuk\", [[0, 11.9]]), jendela(\"m-lari\", [[12, 36.9], [49, 61.9]]), jendela(\"m-ambil\", [[37, 48.9]]), jendela(\"m-pusing\", [[62, 74.9]]), jendela(\"m-bangga\", [[75, 100]]));\n" +
+  "  css.push(jendela(\"m-makasih\", [[0, 11.9]]), jendela(\"m-dapat\", [[77, 100]]), jendela(\"m-cipratan\", [[50, 60]]));\n" +
+  "  css.push(\"@keyframes m-tiram{0%,44%{opacity:1}45%,100%{opacity:0}}\");\n" +
+  "  css.push(\"@keyframes m-ombak{0%,42%{transform:scaleY(.05);opacity:0}48%{transform:scaleY(1);opacity:1}54%{transform:translateX(-30px) scaleY(.95);opacity:1}60%,100%{transform:translateX(-70px) scaleY(.15);opacity:0}}\");\n" +
+  "  // 2) DIBAKAR — bumbu spesial, tabur keju bergaya, bawa ke pemanggang, torch berputar seperti dansa (10 detik)\n" +
+  "  css.push(\"@keyframes b-jalan{0%,40%{transform:translate(250px,128px)}44%{transform:translate(200px,112px)}48%{transform:translate(140px,128px)}52%,100%{transform:translate(78px,128px)}}\");\n" +
+  "  css.push(jendela(\"b-bumbu\", [[0, 27.9]]), jendela(\"b-keju\", [[28, 41.9]]), jendela(\"b-bawa\", [[42, 51.9]]), jendela(\"b-torch\", [[52, 100]]));\n" +
+  "  css.push(jendela(\"b-nampan\", [[0, 41.9]]), jendela(\"b-butir-bumbu\", [[3, 27]]), jendela(\"b-butir-keju\", [[29, 41]]), jendela(\"b-tiram-panggang\", [[50, 100]]));\n" +
+  "  css.push(\"@keyframes b-matang{0%,55%{opacity:0}100%{opacity:1}}\");\n" +
+  "  // 3) SIAP — buka oyster, baunya tercium anjing, lari mengelilingi angka sambil dikejar (9 detik)\n" +
+  "  var mulai = 30, putar = 2;\n" +
+  "  var diamKoki = [{ p: 0, x: 22, y: 126 }, { p: mulai, x: 22, y: 126 }];\n" +
+  "  css.push(kelilingKf(\"s-koki-depan\", \"depan\", diamKoki, mulai, putar, 0, 0.82, false), kelilingKf(\"s-koki-belakang\", \"belakang\", diamKoki, mulai, putar, 0, 0.82, false));\n" +
+  "  [[0.6, 282, 122], [1.0, 302, 132], [1.4, 262, 134]].forEach(function (d, i) {\n" +
+  "    var t0 = Math.PI - d[0], q = titikElips(t0);\n" +
+  "    var diam = [{ p: 0, x: d[1], y: d[2] }, { p: 22, x: d[1], y: d[2] }, { p: mulai, x: q.x, y: q.y }];\n" +
+  "    css.push(kelilingKf(\"s-anjing\" + i + \"-depan\", \"depan\", diam, mulai, putar, d[0], 1.35, true), kelilingKf(\"s-anjing\" + i + \"-belakang\", \"belakang\", diam, mulai, putar, d[0], 1.35, true));\n" +
+  "  });\n" +
+  "  css.push(jendela(\"s-buka\", [[0, 29.9]]), jendela(\"s-lari\", [[30, 100]]), jendela(\"s-bau\", [[8, 30]]), jendela(\"s-kaget\", [[22, 32]]));\n" +
+  "  css.push(\"@keyframes s-tutup{0%,6%{transform:rotate(0)}14%,100%{transform:rotate(-70deg)}}\");\n" +
+  "  css.push(\"@keyframes s-bau-geser{0%,8%{transform:translateX(0)}30%,100%{transform:translateX(200px)}}\");\n" +
+  "  // Ikatan kelas -> animasi (durasi cerita: menunggu 10 dtk, dibakar 10 dtk, siap 9 dtk)\n" +
+  "  var ikat = function (adegan, kelas, nama, dur, gaya) { css.push(\".s-\" + adegan + \" .\" + kelas + \"{animation:\" + nama + \" \" + dur + \"s \" + (gaya || \"linear\") + \" infinite}\"); };\n" +
+  "  [\"m-jalan\", \"m-bungkuk\", \"m-lari\", \"m-ambil\", \"m-pusing\", \"m-bangga\", \"m-makasih\", \"m-dapat\", \"m-cipratan\"].forEach(function (k) { ikat(\"MENUNGGU\", k, k, 10); });\n" +
+  "  ikat(\"MENUNGGU\", \"m-tiram-laut\", \"m-tiram\", 10); ikat(\"MENUNGGU\", \"m-ombak-besar\", \"m-ombak\", 10, \"ease-in-out\");\n" +
+  "  [\"b-jalan\", \"b-bumbu\", \"b-keju\", \"b-bawa\", \"b-torch\", \"b-nampan\", \"b-butir-bumbu\", \"b-butir-keju\", \"b-tiram-panggang\", \"b-matang\"].forEach(function (k) { ikat(\"DIBAKAR\", k, k, 10); });\n" +
+  "  ikat(\"DIBAKAR\", \"b-torch-pos\", \"b-torch\", 10);\n" +
+  "  [\"s-koki-depan\", \"s-koki-belakang\", \"s-anjing0-depan\", \"s-anjing0-belakang\", \"s-anjing1-depan\", \"s-anjing1-belakang\", \"s-anjing2-depan\", \"s-anjing2-belakang\", \"s-buka\", \"s-lari\", \"s-bau\", \"s-kaget\", \"s-bau-geser\"].forEach(function (k) { ikat(\"SIAP\", k, k, 9); });\n" +
+  "  ikat(\"SIAP\", \"s-tutup-tiram\", \"s-tutup\", 9, \"ease-out\");\n" +
+  "  return css.join(\"\\n\");\n" +
+  "}\n" +
+  "(function () {\n" +
+  "  if (typeof document === \"undefined\" || document.getElementById(\"cps-anim\")) return;\n" +
+  "  var st = document.createElement(\"style\"); st.id = \"cps-anim\"; st.textContent = cssAnimasi(); document.head.appendChild(st);\n" +
+  "})();\n" +
+  "\n" +
+  "var PANGGUNG = {\n" +
   "  MENUNGGU: function () {\n" +
-  "    return [\n" +
-  "      // kiri: koki membungkuk berterima kasih\n" +
-  "      svg(\"a-terimakasih\", \"<g class=gelembung><rect x=2 y=0 width=46 height=15 rx=7 fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.5'/><path d='M30 14 l4 5 l1 -5z' fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.2'/><text x=25 y=10.5 text-anchor=middle font-size=8 font-weight=800 fill='\" + WARNA.navy + \"' font-family='Nunito,sans-serif'>Makasih!</text></g>\" +\n" +
-  "        \"<g transform='translate(0 8)'>\" + koki(\"senyum\", { rotKiri: 35, rotKanan: -35 }) + \"</g>\"),\n" +
-  "      // kanan: koki di perahu menangkap tiram, lalu dibawa ke dapur\n" +
-  "      svg(\"a-laut\", \"<g class=dapur><rect x=56 y=12 width=20 height=16 fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.5'/><path d='M53 13 l13 -9 l13 9z' fill='\" + WARNA.kuning + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.5'/><rect x=63 y=19 width=6 height=9 fill='\" + WARNA.navy + \"'/><path class=asap-dapur d='M72 4 q-3 -3 0 -6' stroke='#9AA0C3' stroke-width=1.5 fill='none'/></g>\" +\n" +
-  "        \"<g class=tiram-terbang>\" + oyster(0, 0) + \"</g>\" +\n" +
-  "        \"<g class=perahu><g transform='translate(-8 22) scale(.62)'>\" + koki(\"senyum\", { rotKiri: 10, rotKanan: -60, tanganKanan: \"<path d='M52 75 L74 30' stroke='#7A4B2A' stroke-width='2.5'/><path class=tali d='M74 30 L74 92' stroke='#555' stroke-width=1 stroke-dasharray='2 2'/>\" }) + \"</g>\" +\n" +
-  "        \"<path d='M8 92 h44 l-6 10 h-32z' fill='#B5642D'/><rect x=8 y=89 width=44 height=4 fill='\" + WARNA.kuning + \"'/></g>\" +\n" +
-  "        \"<g class=ombak><path d='M-40 100 q10 -6 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 v20 h-140z' fill='\" + WARNA.laut + \"'/><path d='M-40 106 q10 -5 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 v20 h-140z' fill='\" + WARNA.lautTua + \"'/></g>\")\n" +
-  "    ];\n" +
+  "    var koki9 = function (gaya, isi) { return taruh(koki(gaya, isi), 0.9); };\n" +
+  "    return {\n" +
+  "      belakang:\n" +
+  "        // kios Cheesy Pen Shells kecil di kiri, pasir, laut di kanan\n" +
+  "        \"<g><rect x=4 y=96 width=30 height=30 fill='#fff' stroke='#22348C' stroke-width='1.5'/><path d='M0 98 h38 l-4 -10 h-30z' fill='#F6B800' stroke='#22348C' stroke-width='1.5'/><path d='M7 88 v10 M15 88 v10 M23 88 v10 M31 88 v10' stroke='#22348C' stroke-width='2'/><text x=19 y=114 text-anchor=middle font-size=6 font-weight=800 fill='#22348C'>CPS</text></g>\" +\n" +
+  "        \"<path d='M0 126 h232 q14 -4 28 0 v24 h-260z' fill='#F3DFAE'/><path d='M0 126 h232' stroke='#E2C98A' stroke-width='1.5'/>\" +\n" +
+  "        \"<g class=laut><path d='M214 122 q10 -6 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 v40 h-160z' fill='#5DA9E9'/><path d='M214 130 q10 -5 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 v40 h-160z' fill='#2F6FB2'/></g>\" +\n" +
+  "        \"<g class=m-tiram-laut>\" + oyster(286, 131) + \"</g>\",\n" +
+  "      depan:\n" +
+  "        teksGelembung(8, 44, 72, \"Makasih! 🙏\", \"m-makasih\") +\n" +
+  "        \"<g class=m-jalan>\" +\n" +
+  "          pose(\"m-bungkuk\", koki9(\"senyum\", { rotKiri: 35, rotKanan: -35 })) +\n" +
+  "          pose(\"m-lari\", koki9(\"senyum\", { rotKiri: -45, rotKanan: 45 })) +\n" +
+  "          pose(\"m-ambil\", koki9(\"senyum\", { rotKiri: 20, rotKanan: -20, tanganKanan: \"<g transform='translate(52 80)'><ellipse cx=0 cy=0 rx=6 ry=3 fill='url(#cps-cangkang)'/></g>\" })) +\n" +
+  "          pose(\"m-pusing\", koki9(\"cemas\", { rotKiri: 60, rotKanan: -60 }) + \"<g class=bintang-pusing>\" + bintang(-14, -96, 10) + bintang(4, -102, 9) + bintang(-4, -90, 8) + \"</g>\") +\n" +
+  "          pose(\"m-bangga\", koki9(\"senyum\", { rotKiri: 150, rotKanan: -20, tanganKanan: kantong() })) +\n" +
+  "        \"</g>\" +\n" +
+  "        \"<g class=m-ombak-besar><path d='M232 150 q-8 -60 34 -96 q36 -24 54 0 q-26 -6 -32 18 q22 -6 24 16 q-20 -10 -30 8 q-6 20 6 54z' fill='#5DA9E9' stroke='#2F6FB2' stroke-width='2'/><path d='M262 64 q16 -14 34 -6' stroke='#fff' stroke-width=3 fill='none' stroke-linecap='round'/></g>\" +\n" +
+  "        \"<g class=m-cipratan><circle cx=240 cy=96 r=3 fill='#9CD3F7'/><circle cx=226 cy=84 r=2 fill='#9CD3F7'/><circle cx=252 cy=80 r=2.5 fill='#9CD3F7'/></g>\" +\n" +
+  "        teksGelembung(58, 24, 70, \"Dapat 1 kantong!\", \"m-dapat\")\n" +
+  "    };\n" +
   "  },\n" +
   "  DIBAKAR: function () {\n" +
-  "    var keju = \"\";\n" +
-  "    for (var i = 0; i < 6; i++) keju += \"<rect class='keju k\" + i + \"' x=\" + (54 + i * 3) + \" y=58 width=2.4 height=2.4 fill='\" + WARNA.kuning + \"'/>\";\n" +
-  "    return [\n" +
-  "      // kiri: koki berkacamata joget sambil menabur keju\n" +
-  "      svg(\"a-joget\", \"<g class=not><text x=6 y=16 font-size=12 fill='\" + WARNA.navy + \"'>♪</text><text x=62 y=10 font-size=10 fill='\" + WARNA.kuning + \"'>♫</text></g>\" +\n" +
-  "        \"<g class=penari>\" + koki(\"kacamata\", { rotKiri: 140, rotKanan: -100, tanganKanan: \"<rect x=47 y=74 width=9 height=12 rx=2 fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.2'/><rect x=47 y=74 width=9 height=4 rx=1 fill='\" + WARNA.kuning + \"'/>\" }) + \"</g>\" + keju + oyster(62, 112, true)),\n" +
-  "      // kanan: oyster di pemanggang, api menari, asap naik\n" +
-  "      svg(\"a-panggang\", \"<g class=asap-panggang><path d='M28 40 q-6 -8 0 -16 q6 -8 0 -16' stroke='#B9BDD6' stroke-width=3 fill=none stroke-linecap='round'/><path d='M50 44 q-6 -8 0 -16 q6 -8 0 -16' stroke='#B9BDD6' stroke-width=3 fill=none stroke-linecap='round'/></g>\" +\n" +
-  "        oyster(26, 70, true) + oyster(52, 70, true) +\n" +
-  "        \"<rect x=8 y=74 width=64 height=4 rx=2 fill='#555'/><rect x=8 y=74 width=64 height=1.5 fill='#999'/>\" +\n" +
-  "        \"<g class=api><path class='f f1' d='M16 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='url(#cps-api)'/><path class='f f2' d='M38 104 q-6 -16 4 -28 q2 10 8 12 q2 -8 0 -14 q12 12 6 30z' fill='url(#cps-api)'/><path class='f f3' d='M58 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='url(#cps-api)'/></g>\" +\n" +
-  "        \"<rect x=4 y=104 width=72 height=12 rx=3 fill='url(#cps-besi)'/><rect x=6 y=105 width=68 height=3 rx=1.5 fill='url(#cps-kilap)'/><rect x=10 y=116 width=5 height=4 fill='\" + WARNA.navyTua + \"'/><rect x=65 y=116 width=5 height=4 fill='\" + WARNA.navyTua + \"'/>\")\n" +
-  "    ];\n" +
+  "    var koki9 = function (gaya, isi) { return taruh(koki(gaya, isi), 0.9); };\n" +
+  "    var botol = \"<g class=botol transform='translate(52 70)'><rect x=-3 y=-10 width=6 height=11 rx=1.5 fill='#C0392B'/><rect x=-3.5 y=-12 width=7 height=3 rx=1 fill='#7A1F15'/><text x=0 y=-2 text-anchor=middle font-size=3.2 fill='#fff' font-weight=800>CPS</text></g>\";\n" +
+  "    var parutan = \"<g class=parut transform='translate(52 66)'><rect x=-4 y=-10 width=8 height=12 rx=1.5 fill='#C9CBDB' stroke='#5F6690' stroke-width='.6'/><rect x=-3 y=-6 width=6 height=6 fill='#F6B800'/></g>\";\n" +
+  "    var torch = \"<g class=torch-putar><g transform='translate(10 0) rotate(35)'><rect x=-3 y=-3 width=6 height=14 rx=2 fill='#C0392B'/><rect x=-2 y=-7 width=4 height=5 fill='#999'/>\" +\n" +
+  "      \"<path class=api-torch d='M0 -7 q-4 -8 0 -16 q4 8 0 16z' fill='#4FA3FF'/><path class=api-torch d='M0 -9 q-2.5 -5 0 -10 q2.5 5 0 10z' fill='#BFE3FF'/></g></g>\";\n" +
+  "    var butir = function (kelas, warna, x0) { var r = \"<g class=\" + kelas + \">\"; for (var i = 0; i < 7; i++) r += \"<rect class='butir j\" + (i % 4) + \"' x=\" + (x0 + i * 3) + \" y=84 width=2.2 height=2.2 fill='\" + warna + \"'/>\"; return r + \"</g>\"; };\n" +
+  "    return {\n" +
+  "      belakang:\n" +
+  "        // meja persiapan di kanan dengan nampan oyster\n" +
+  "        \"<rect x=262 y=112 width=54 height=6 rx=2 fill='#B5642D'/><rect x=266 y=118 width=4 height=20 fill='#7A4B2A'/><rect x=308 y=118 width=4 height=20 fill='#7A4B2A'/>\" +\n" +
+  "        \"<g class=b-nampan><rect x=268 y=106 width=42 height=6 rx=2 fill='#C9CBDB'/>\" + oyster(279, 106) + oyster(299, 106) + \"</g>\" +\n" +
+  "        butir(\"b-butir-bumbu\", \"#C0392B\", 280) + butir(\"b-butir-keju\", \"#F6B800\", 278) +\n" +
+  "        \"<g class=not-musik><text x=170 y=20 font-size=12 fill='#22348C'>♪</text><text x=140 y=14 font-size=10 fill='#F6B800'>♫</text></g>\",\n" +
+  "      depan:\n" +
+  "        \"<g class=b-jalan>\" +\n" +
+  "          pose(\"b-bumbu\", koki9(\"kacamata\", { rotKiri: 30, rotKanan: -150, tanganKanan: botol })) +\n" +
+  "          pose(\"b-keju\", \"<g class=putar-gaya>\" + koki9(\"kacamata\", { rotKiri: 150, rotKanan: -160, tanganKanan: parutan }) + \"</g>\") +\n" +
+  "          pose(\"b-bawa\", koki9(\"senyum\", { rotKiri: -70, rotKanan: 70, depan: \"<rect x=26 y=66 width=28 height=4 rx=2 fill='#C9CBDB'/>\" + oyster(34, 66) + oyster(46, 66) })) +\n" +
+  "          pose(\"b-torch\", koki9(\"kacamata\", { rotKiri: 150, rotKanan: -80 })) +\n" +
+  "        \"</g>\" +\n" +
+  "        // pemanggang di kiri (di depan kaki koki)\n" +
+  "        \"<g class=b-panggang><g class=api-kecil><path class='f f1' d='M22 116 q-5 -12 3 -20 q2 7 6 9 q1 -6 0 -10 q10 8 5 21z' fill='url(#cps-api)'/><path class='f f2' d='M50 116 q-5 -14 3 -22 q2 7 6 9 q1 -6 0 -10 q10 9 5 23z' fill='url(#cps-api)'/><path class='f f3' d='M78 116 q-5 -12 3 -20 q2 7 6 9 q1 -6 0 -10 q10 8 5 21z' fill='url(#cps-api)'/></g>\" +\n" +
+  "          \"<rect x=12 y=104 width=88 height=4 rx=2 fill='#555'/><rect x=12 y=104 width=88 height=1.5 fill='#aaa'/>\" +\n" +
+  "          \"<g class=b-tiram-panggang>\" + oyster(36, 102, true) + oyster(60, 102, true) + oyster(84, 102, true) + \"<g class=b-matang><ellipse cx=60 cy=100 rx=34 ry=6 fill='#FFB347' opacity='.35'/></g></g>\" +\n" +
+  "          \"<rect x=8 y=116 width=96 height=14 rx=3 fill='url(#cps-besi)'/><rect x=10 y=117 width=92 height=3 rx=1.5 fill='url(#cps-kilap)'/><rect x=16 y=130 width=6 height=6 fill='#121C58'/><rect x=90 y=130 width=6 height=6 fill='#121C58'/></g>\" +\n" +
+  "        \"<g class=b-torch-pos><g transform='translate(60 84)'>\" + torch + \"</g></g>\"\n" +
+  "    };\n" +
   "  },\n" +
   "  SIAP: function () {\n" +
-  "    var anjing = function (x, y, s, k) {\n" +
-  "      return \"<g class='anjing \" + k + \"' transform='translate(\" + x + \" \" + y + \") scale(\" + s + \")'>\" +\n" +
-  "        \"<ellipse class=bayang-anjing cx=14 cy=22 rx=12 ry=2 fill='#000' opacity='.15'/><ellipse cx=14 cy=10 rx=12 ry=6 fill='url(#cps-anjing)'/><circle cx=2 cy=4 r=6 fill='url(#cps-anjing)'/><ellipse cx=0 cy=1.5 rx=2.2 ry=1.2 fill='#fff' opacity='.35'/><path d='M-1 0 l-3 -6 l6 3z' fill='#6B4523'/><circle cx=0 cy=3 r=1 fill='#111'/><circle cx=-4 cy=5 r=1.3 fill='#111'/>\" +\n" +
-  "        \"<path class=ekor d='M25 7 q6 -6 4 -10' stroke='#A0703F' stroke-width=3 fill=none stroke-linecap='round'/>\" +\n" +
-  "        \"<g class=kaki-anjing><rect class=ka x=5 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=11 y=14 width=3 height=7 fill='#6B4523'/><rect class=ka x=18 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=23 y=14 width=3 height=7 fill='#6B4523'/></g></g>\";\n" +
+  "    var koki8 = function (gaya, isi) { return taruh(koki(gaya, isi), 1); };\n" +
+  "    var lariKoki = koki8(\"cemas\", { rotKiri: -50, rotKanan: -150, tanganKanan: \"<g transform='translate(52 74)'><ellipse cx=0 cy=0 rx=7 ry=3 fill='url(#cps-cangkang)'/><ellipse cx=0 cy=-1 rx=5 ry=2 fill='#FFD66B'/></g>\" });\n" +
+  "    var buka = koki8(\"senyum\", { rotKiri: -40, rotKanan: 40, depan: tiramBuka(\"s-tutup-tiram\") });\n" +
+  "    var kokiLapis = function (lapis) {\n" +
+  "      return \"<g class='s-koki-\" + lapis + \"'>\" + (lapis === \"depan\" ? pose(\"s-buka\", buka) : \"\") + pose(\"s-lari\", lariKoki) + \"</g>\";\n" +
   "    };\n" +
-  "    var kotak = \"<g class=kotak-makanan><rect x=27 y=58 width=26 height=16 rx=3 fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.5'/><rect x=27 y=58 width=26 height=5 rx=2 fill='\" + WARNA.kuning + \"'/><path d='M36 68 c-2 -1.6 -2.4 -3 -1.2 -3.5 c.6 -.2 1 .1 1.2 .5 c.2 -.4 .7 -.7 1.2 -.5 c1.2 .5 .8 1.9 -1.2 3.5z' fill='\" + WARNA.navy + \"'/></g>\";\n" +
-  "    return [\n" +
-  "      // kiri: koki memeluk erat makananmu sambil termenung menunggu\n" +
-  "      svg(\"a-jaga\", \"<g class=pikir><circle cx=60 cy=16 r=2 fill='#C9CBDB'/><circle cx=66 cy=10 r=3 fill='#C9CBDB'/><rect x=46 y=-2 width=32 height=12 rx=6 fill='#EEEFF5'/><text x=62 y=6.5 text-anchor=middle font-size=7 font-weight=800 fill='\" + WARNA.navy + \"' font-family='Nunito,sans-serif'>kamu mana?</text></g>\" +\n" +
-  "        \"<g class=penjaga transform='translate(0 8)'>\" + koki(\"cemas\", { rotKiri: -55, rotKanan: 55, depan: kotak }) + \"</g>\"),\n" +
-  "      // kanan: anjing-anjing mengejar\n" +
-  "      svg(\"a-anjing\", \"<g class=guk><text x=6 y=40 font-size=8 font-weight=800 fill='\" + WARNA.navy + \"' font-family='Nunito,sans-serif'>Guk!</text><text x=46 y=66 font-size=8 font-weight=800 fill='\" + WARNA.navy + \"' font-family='Nunito,sans-serif'>Guk!</text></g>\" +\n" +
-  "        \"<g class=lari>\" + anjing(14, 46, 1.1, \"a1\") + anjing(40, 74, .9, \"a2\") + anjing(8, 96, 1, \"a3\") + \"</g>\" +\n" +
-  "        \"<g class=debu><circle cx=70 cy=64 r=3 fill='#E4DCD0'/><circle cx=64 cy=112 r=4 fill='#E4DCD0'/><circle cx=76 cy=88 r=2.5 fill='#E4DCD0'/></g>\")\n" +
-  "    ];\n" +
+  "    var anjingLapis = function (lapis) { var r = \"\"; for (var i = 0; i < 3; i++) r += \"<g class='s-anjing\" + i + \"-\" + lapis + \"'>\" + anjingG(\"anjing-lari\") + \"</g>\"; return r; };\n" +
+  "    return {\n" +
+  "      belakang: anjingLapis(\"belakang\") + kokiLapis(\"belakang\"),\n" +
+  "      depan:\n" +
+  "        \"<g class=s-bau><g class=s-bau-geser><path d='M44 92 q6 -6 0 -12 q-6 -6 0 -12' stroke='#8BC34A' stroke-width=2.5 fill='none' stroke-linecap='round'/><path d='M56 96 q6 -6 0 -12 q-6 -6 0 -12' stroke='#8BC34A' stroke-width=2.5 fill='none' stroke-linecap='round'/></g></g>\" +\n" +
+  "        \"<g class=s-kaget><text x=270 y=96 font-size=16 font-weight=900 fill='#D93025'>!</text><text x=294 y=104 font-size=14 font-weight=900 fill='#D93025'>!</text></g>\" +\n" +
+  "        anjingLapis(\"depan\") + kokiLapis(\"depan\")\n" +
+  "    };\n" +
   "  },\n" +
   "  DIAMBIL: function () {\n" +
-  "    return [\n" +
-  "      svg(\"a-terimakasih\", \"<g class=gelembung><rect x=0 y=0 width=56 height=15 rx=7 fill='\" + WARNA.putih + \"' stroke='\" + WARNA.navy + \"' stroke-width='1.5'/><text x=28 y=10.5 text-anchor=middle font-size=7.5 font-weight=800 fill='\" + WARNA.navy + \"' font-family='Nunito,sans-serif'>Selamat makan!</text></g><g transform='translate(0 8)'>\" + koki(\"senyum\", { rotKiri: 150, rotKanan: -150 }) + \"</g>\"),\n" +
-  "      svg(\"a-hati\", \"<g class=hati-hati><text class=h1 x=20 y=90 font-size=18>💛</text><text class=h2 x=44 y=100 font-size=14>💙</text><text class=h3 x=30 y=110 font-size=12>💛</text></g>\")\n" +
-  "    ];\n" +
+  "    return {\n" +
+  "      belakang: \"<g class=hati-naik><text x=230 y=120 font-size=18>💛</text><text x=262 y=130 font-size=14>💙</text><text x=246 y=140 font-size=12>💛</text></g>\",\n" +
+  "      depan: teksGelembung(18, 30, 80, \"Selamat menikmati!\", \"\") + \"<g transform='translate(60 128)'><g class=lompat-senang>\" + taruh(koki(\"senyum\", { rotKiri: 150, rotKanan: -150 }), 0.9) + \"</g></g>\"\n" +
+  "    };\n" +
   "  }\n" +
   "};\n" +
-  "function adegan(status) { var f = ADEGAN[status]; return f ? f() : [\"\", \"\"]; }\n" +
+  "function panggung(status, nomor) {\n" +
+  "  var a = PANGGUNG[status] ? PANGGUNG[status]() : { belakang: \"\", depan: \"\" };\n" +
+  "  var lapis = function (k, isi) { return \"<svg class='lapis \" + k + \"' viewBox='0 0 320 150' preserveAspectRatio='xMidYMid meet' aria-hidden='true'>\" + DEFS + isi + \"</svg>\"; };\n" +
+  "  return \"<div class='panggung2 s-\" + status + \"'>\" + lapis(\"belakang\", a.belakang) +\n" +
+  "    \"<div class='nomor\" + (String(nomor).length > 2 ? \" panjang\" : \"\") + \"'>\" + nomor + \"</div>\" + lapis(\"depan\", a.depan) + \"</div>\";\n" +
+  "}\n" +
   "\n" +
   "// Halaman pelanggan (dibuka dari QR di layar kasir). Butuh dari halaman induk: TOKEN, muat(), kirimNilai(b,u,ok,gagal).\n" +
-  "// animasi.js dimuat sebelum file ini (fungsi adegan(status)).\n" +
+  "// animasi.js dimuat sebelum file ini (fungsi panggung(status, nomor)).\n" +
   "var UAP = \"<svg viewBox='0 0 120 50' aria-hidden='true'><g fill='none' stroke='currentColor' stroke-width='7' stroke-linecap='round'><path class=u1 d='M24 46c-12-9 10-15 0-24S16 8 26 3'/><path class=u2 d='M60 46c-12-9 10-15 0-24S52 8 62 3'/><path class=u3 d='M96 46c-12-9 10-15 0-24S88 8 98 3'/></g></svg>\";\n" +
   "var ctx = null, aktif = false, terakhirPanggil = -1, alarm = null, ulang = 0, kunciLayar = null, suaraId = null;\n" +
   "var tandaTiket = \"\", tandaIsi = \"\", tandaNilai = \"\", pilihBintang = 0;\n" +
@@ -1096,9 +1271,8 @@ var JS_PESANAN =
   "function panggil(d) {\n" +
   "  ulang = 0; umumkan(d); clearInterval(alarm);\n" +
   "  alarm = setInterval(function () { ulang++; umumkan(d); }, 11000);\n" +
-  "  var a = adegan(\"SIAP\");\n" +
   "  el(\"siap\").innerHTML = \"<div class=siap-besar onclick=\\\"berhenti()\\\"><div class=uap>\" + UAP + \"</div><div class=judul-siap>Oyster kamu sudah siap!</div>\" +\n" +
-  "    \"<div class=panggung><div class=sisi>\" + a[0] + \"</div><div class=nomor>\" + d.nomor + \"</div><div class=sisi>\" + a[1] + \"</div></div>\" +\n" +
+  "    \"<div class=seru>📱 Kamu di mana? Ayo ambil!</div><div class=papan>\" + panggung(\"SIAP\", d.nomor) + \"</div>\" +\n" +
   "    \"<p>Silakan datang ke kasir untuk mengambil pesanan kamu 🦪</p><small>Ketuk layar untuk mematikan bunyi</small></div>\";\n" +
   "}\n" +
   "function berhenti() { if (!alarm && !el(\"siap\").innerHTML) return; clearInterval(alarm); alarm = null; if (window.speechSynthesis) speechSynthesis.cancel(); getar(0); el(\"siap\").innerHTML = \"\"; }\n" +
@@ -1106,9 +1280,9 @@ var JS_PESANAN =
   "// ---------- tampilan ----------\n" +
   "var NAMA = { MENUNGGU: \"⏳ Menunggu dibakar\", DIBAKAR: \"🔥 Sedang dibakar\", SIAP: \"🔔 Siap diambil!\", DIAMBIL: \"🙏 Sudah diambil, selamat menikmati!\", BATAL: \"Pesanan dibatalkan\" };\n" +
   "var CERITA = {\n" +
-  "  MENUNGGU: \"Koki kami berterima kasih dan langsung menyiapkan tiram segar dari laut ke dapur.\",\n" +
-  "  DIBAKAR: \"Oyster kamu ditaburi keju dan dibakar di atas bara, sambil joget!\",\n" +
-  "  SIAP: \"Koki kami menjaga makananmu erat-erat dari kejaran anjing. Cepat ke kasir ya!\",\n" +
+  "  MENUNGGU: \"Koki kami berterima kasih, lalu lari ke laut mengambil tiram segar untukmu!\",\n" +
+  "  DIBAKAR: \"Koki profesional kami membumbui, menabur keju, dan membakar oyster kamu dengan torch!\",\n" +
+  "  SIAP: \"Wangi oyster kamu tercium anjing! Koki kami lari dikejar. Cepat ambil di kasir ya!\",\n" +
   "  DIAMBIL: \"Terima kasih sudah jajan di Cheesy Pen Shells!\"\n" +
   "};\n" +
   "\n" +
@@ -1117,9 +1291,8 @@ var JS_PESANAN =
   "  var langkah = [[\"⏳\", \"Menunggu\"], [\"🔥\", \"Dibakar\"], [\"🔔\", \"Siap\"]].map(function (x, k) {\n" +
   "    return \"<li class=\\\"\" + (k < i || i === 3 ? \"lewat\" : k === i ? \"kini\" : \"\") + \"\\\"><span>\" + x[0] + \"</span>\" + x[1] + \"</li>\";\n" +
   "  }).join(\"\");\n" +
-  "  var a = adegan(d.status);\n" +
   "  return \"<section class=tiket><div class=uap>\" + UAP + \"</div><div class=label>Nomor antrian kamu</div>\" +\n" +
-  "    \"<div class=panggung><div class=sisi>\" + a[0] + \"</div><div class=\\\"nomor\" + (String(d.nomor).length > 2 ? \" panjang\" : \"\") + \"\\\">\" + d.nomor + \"</div><div class=sisi>\" + a[1] + \"</div></div>\" +\n" +
+  "    (d.status === \"SIAP\" ? \"<div class=seru>📱 Kamu di mana? Ayo ambil!</div>\" : \"\") + panggung(d.status, d.nomor) +\n" +
   "    \"<p class=cerita>\" + (CERITA[d.status] || \"\") + \"</p>\" +\n" +
   "    \"<span class=\\\"lencana \" + d.status + \"\\\">\" + (NAMA[d.status] || d.status) + \"</span><ol class=langkah>\" + langkah + \"</ol>\" +\n" +
   "    \"<div class=info><div><small>Sedang dipanggil</small><b id=dipanggil>–</b></div><div><small>Antrian di depan kamu</small><b id=didepan>–</b></div></div>\" +\n" +

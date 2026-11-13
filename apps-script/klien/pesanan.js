@@ -1,5 +1,5 @@
 // Halaman pelanggan (dibuka dari QR di layar kasir). Butuh dari halaman induk: TOKEN, muat(), kirimNilai(b,u,ok,gagal).
-// animasi.js dimuat sebelum file ini (fungsi adegan(status)).
+// animasi.js dimuat sebelum file ini (fungsi panggung(status, nomor)).
 var UAP = "<svg viewBox='0 0 120 50' aria-hidden='true'><g fill='none' stroke='currentColor' stroke-width='7' stroke-linecap='round'><path class=u1 d='M24 46c-12-9 10-15 0-24S16 8 26 3'/><path class=u2 d='M60 46c-12-9 10-15 0-24S52 8 62 3'/><path class=u3 d='M96 46c-12-9 10-15 0-24S88 8 98 3'/></g></svg>";
 var ctx = null, aktif = false, terakhirPanggil = -1, alarm = null, ulang = 0, kunciLayar = null, suaraId = null;
 var tandaTiket = "", tandaIsi = "", tandaNilai = "", pilihBintang = 0;
@@ -37,9 +37,8 @@ function umumkan(d) {
 function panggil(d) {
   ulang = 0; umumkan(d); clearInterval(alarm);
   alarm = setInterval(function () { ulang++; umumkan(d); }, 11000);
-  var a = adegan("SIAP");
   el("siap").innerHTML = "<div class=siap-besar onclick=\"berhenti()\"><div class=uap>" + UAP + "</div><div class=judul-siap>Oyster kamu sudah siap!</div>" +
-    "<div class=panggung><div class=sisi>" + a[0] + "</div><div class=nomor>" + d.nomor + "</div><div class=sisi>" + a[1] + "</div></div>" +
+    "<div class=seru>📱 Kamu di mana? Ayo ambil!</div><div class=papan>" + panggung("SIAP", d.nomor) + "</div>" +
     "<p>Silakan datang ke kasir untuk mengambil pesanan kamu 🦪</p><small>Ketuk layar untuk mematikan bunyi</small></div>";
 }
 function berhenti() { if (!alarm && !el("siap").innerHTML) return; clearInterval(alarm); alarm = null; if (window.speechSynthesis) speechSynthesis.cancel(); getar(0); el("siap").innerHTML = ""; }
@@ -47,9 +46,9 @@ function berhenti() { if (!alarm && !el("siap").innerHTML) return; clearInterval
 // ---------- tampilan ----------
 var NAMA = { MENUNGGU: "⏳ Menunggu dibakar", DIBAKAR: "🔥 Sedang dibakar", SIAP: "🔔 Siap diambil!", DIAMBIL: "🙏 Sudah diambil, selamat menikmati!", BATAL: "Pesanan dibatalkan" };
 var CERITA = {
-  MENUNGGU: "Koki kami berterima kasih dan langsung menyiapkan tiram segar dari laut ke dapur.",
-  DIBAKAR: "Oyster kamu ditaburi keju dan dibakar di atas bara, sambil joget!",
-  SIAP: "Koki kami menjaga makananmu erat-erat dari kejaran anjing. Cepat ke kasir ya!",
+  MENUNGGU: "Koki kami berterima kasih, lalu lari ke laut mengambil tiram segar untukmu!",
+  DIBAKAR: "Koki profesional kami membumbui, menabur keju, dan membakar oyster kamu dengan torch!",
+  SIAP: "Wangi oyster kamu tercium anjing! Koki kami lari dikejar. Cepat ambil di kasir ya!",
   DIAMBIL: "Terima kasih sudah jajan di Cheesy Pen Shells!"
 };
 
@@ -58,9 +57,8 @@ function tiket(d) {
   var langkah = [["⏳", "Menunggu"], ["🔥", "Dibakar"], ["🔔", "Siap"]].map(function (x, k) {
     return "<li class=\"" + (k < i || i === 3 ? "lewat" : k === i ? "kini" : "") + "\"><span>" + x[0] + "</span>" + x[1] + "</li>";
   }).join("");
-  var a = adegan(d.status);
   return "<section class=tiket><div class=uap>" + UAP + "</div><div class=label>Nomor antrian kamu</div>" +
-    "<div class=panggung><div class=sisi>" + a[0] + "</div><div class=\"nomor" + (String(d.nomor).length > 2 ? " panjang" : "") + "\">" + d.nomor + "</div><div class=sisi>" + a[1] + "</div></div>" +
+    (d.status === "SIAP" ? "<div class=seru>📱 Kamu di mana? Ayo ambil!</div>" : "") + panggung(d.status, d.nomor) +
     "<p class=cerita>" + (CERITA[d.status] || "") + "</p>" +
     "<span class=\"lencana " + d.status + "\">" + (NAMA[d.status] || d.status) + "</span><ol class=langkah>" + langkah + "</ol>" +
     "<div class=info><div><small>Sedang dipanggil</small><b id=dipanggil>–</b></div><div><small>Antrian di depan kamu</small><b id=didepan>–</b></div></div>" +
