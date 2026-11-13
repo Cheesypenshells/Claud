@@ -122,3 +122,10 @@ test('apps-script: 2 HP kasir — tombol dari tampilan lama ditolak (tidak meman
   assert.throws(() => c.ubahStatus('1', 'Q1', 'SIAP'), /#7 sudah diubah dari HP lain \(sekarang: sudah diambil\)/); // HP B: panggil ulang
   assert.equal(baris.status, 'DIAMBIL');
 });
+
+test('apps-script/Code.gs sinkron dengan apps-script/klien/ (jalankan: node scripts/bangun-apps-script.mjs)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { susunCodeGs } = await import('../scripts/bangun-apps-script.mjs');
+  const src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  assert.equal(src, susunCodeGs(src));
+});
