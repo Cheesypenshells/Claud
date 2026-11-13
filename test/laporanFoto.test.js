@@ -190,11 +190,61 @@ test('pengingat laporan jobdesk tiap 2 jam di hari loading in, menyebut yang bel
   const opsi = { tanggalLokal };
   assert.equal((await tugasIngatJobdesk(ctx, pada('03', '12:00'), opsi)).length, 0); // H-2: bukan hari loading in
   const a = await tugasIngatJobdesk(ctx, pada('04', '12:05'), opsi); // H-1 jam 12
-  assert.match(a[0].text, /Update loading in JMB26-11.*jam 12.00.*Dena.*#booth.*Tiar.*#gudang/s);
+  assert.match(a[0].text, /Update loading in JMB26-11.*jam 12:05.*Dena.*#booth.*Tiar.*#gudang/s);
   assert.equal((await tugasIngatJobdesk(ctx, pada('04', '13:00'), opsi)).length, 0); // slot jam 12 sudah
   await raw(G_TIM, DENA, '#booth', pada('04', '13:30'), { adaFoto: true, ambilFoto: async () => Buffer.from('b') });
   const b = await tugasIngatJobdesk(ctx, pada('04', '14:00'), opsi);
   assert.doesNotMatch(b[0].text, /#booth →/);
   assert.match(b[0].text, /Sudah lapor: #booth/);
   assert.equal((await tugasIngatJobdesk(ctx, pada('05', '11:30'), opsi)).length, 0); // hari pertama setelah buka: berhenti
+});
+
+test('info loading in: ditanya bersama jobdesk, dijawab tim, pertanyaan "loading jam berapa?" dijawab; pengingat ikut jam loading', async () => {
+  const { tugasJobdesk, tugasIngatJobdesk } = await import('../src/jobdesk.js');
+  const { bacaWaktuLoading } = await import('../src/loadingInfo.js');
+  const { tanggalLokal } = await import('../src/util.js');
+  assert.equal(bacaWaktuLoading('malam ini jam 10', pada('04', '15:00')), '2026-11-04 22:00');
+  assert.equal(bacaWaktuLoading('loading in 4 nov jam 22.00', pada('03', '15:00')), '2026-11-04 22:00');
+  assert.equal(bacaWaktuLoading('besok jam 6 pagi', pada('04', '15:00')), '2026-11-05 06:00');
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (groupId, senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `q${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  })).map((r) => r.text).join('\n');
+  await kirim(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 0\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar', pada('01', '09:00'));
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
+  const j = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
+  assert.match(j.map((x) => x.text).join('\n'), /JOBDESK LOADING IN.*Info loading in JMB26-11.*kapan & jam berapa.*lokasi pintu/s);
+  assert.equal((await tugasJobdesk(ctx, pada('03', '11:00'), { tanggalLokal })).length, 0); // sudah diumumkan
+  assert.match(await kirim(G_TIM, DENA, 'loading in 4 nov jam 22.00', pada('03', '12:00')), /Waktu: \*Rabu 2026-11-04 jam 22:00\*.*lokasi pintu/s);
+  assert.match(await kirim(G_TIM, DENA, 'lewat pintu 3 belakang hall B dekat parkir motor', pada('03', '12:05')), /Lokasi\/pintu: \*(lewat )?pintu 3 belakang hall B dekat parkir motor\*/);
+  assert.match(await kirim(G_TIM, '6289999999999', 'loading in jam berapa ya?', pada('04', '18:00')), /jam 22:00.*pintu 3 belakang/s);
+  const ev = (await store.all('Event'))[0];
+  assert.equal(ev.loading_in, '2026-11-04 22:00');
+  // pengingat mulai 2 jam setelah loading in (00.00), tiap 2 jam, sampai booth buka
+  await kirim(G_TIM, OWNER, '#jobdesk', pada('04', '18:01'));
+  assert.equal((await tugasIngatJobdesk(ctx, pada('04', '23:00'), { tanggalLokal })).length, 0);
+  assert.match((await tugasIngatJobdesk(ctx, new Date('2026-11-05T00:05:00+07:00'), { tanggalLokal }))[0].text, /Update loading in/);
+  assert.equal((await tugasIngatJobdesk(ctx, new Date('2026-11-05T01:00:00+07:00'), { tanggalLokal })).length, 0);
+  assert.match((await tugasIngatJobdesk(ctx, new Date('2026-11-05T02:10:00+07:00'), { tanggalLokal }))[0].text, /Update loading in/);
+});
+
+test('kontak lokasi: simpan nomor es batu/katering per kota (bukan pengeluaran), cari lagi', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (groupId, senderId, text, extra = {}) => (await handlePesan(ctx, {
+    id: `k${++n}`, groupId, groupName: groupId, senderId, senderName: 'George', text, adaFoto: false, waktu: pada('03', '10:00'), pribadi: groupId === 'dm', ...extra,
+  })).map((r) => r.text).join('\n');
+  await kirim(G_KELUAR, OWNER, '#event\nKode: SMR26-11\nKota: Semarang\nIO: Kepo market\nTanggal: 14-22 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 30%\nAdmin: 0\nPIC: Budi');
+  assert.match(await kirim(G_KELUAR, OWNER, 'simpan nomor tukang es batu Pak Joko 0812-3456-7890'), /Kontak disimpan – \*Semarang\*.*Es batu: \*Pak Joko\* 081234567890/s);
+  assert.match(await kirim(G_KELUAR, OWNER, '#kontak katering Bu Sri 081311112222'), /Katering: \*Bu Sri\* 081311112222/);
+  assert.equal((await store.all('Transaksi')).length, 0);
+  assert.match(await kirim(G_KELUAR, OWNER, 'nomor es batu semarang?'), /Kontak Semarang.*Es batu: \*Pak Joko\*/s);
+  assert.match(await kirim(G_KELUAR, OWNER, '#kontak'), /Es batu.*Katering/s);
+  assert.match(await kirim('dm', OWNER, '#kontak semarang'), /Kontak Semarang/);
+  assert.match(await kirim(G_KELUAR, OWNER, '#kontak bali'), /Belum ada kontak/);
+  // pengeluaran biasa tetap jalan
+  assert.match(await kirim(G_KELUAR, OWNER, 'es batu 50rb'), /T0001 es batu/);
 });

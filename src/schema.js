@@ -30,6 +30,8 @@ export const KOLOM = {
       k('owner_hadir', 'Kehadiran Owner', 130, { catatan: 'tidak / 1 hari / setengah / penuh. Menentukan fee PIC: 25% / 20% / 15% / 10% dari laba bersih. Diubah lewat #owner di grup' }),
       k('file_event', 'ID File Event', 200, { catatan: 'Diisi otomatis oleh bot: spreadsheet event di folder EVENT', sembunyi: true }),
       k('fee_pic_persen', 'Fee PIC Khusus (%)', 120, { catatan: 'Kosong = menurut kehadiran owner (25/20/15/10%). Diisi lewat #feepic 20 di grup pengeluaran' }),
+      k('loading_in', 'Loading In (waktu)', 140, { catatan: 'YYYY-MM-DD HH:MM. Ditanyakan bot di grup tim, atau #loading 13 nov 22.00' }),
+      k('lokasi_loading', 'Lokasi / Pintu Loading In', 220),
     ],
   },
   Transaksi: {
@@ -117,6 +119,21 @@ export const KOLOM = {
       k('koli_baku', 'Koli Bahan Baku', 120, { format: 'angka' }),
       k('rincian', 'Isi Bahan Baku', 320),
       k('pengirim', 'Dicatat Oleh', 190),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Buku kontak per kota/lokasi event (tukang es batu, katering, gas, supplier, dll.).
+  'Kontak Lokasi': {
+    warna: '#00897B',
+    kolom: [
+      k('kota', 'Kota', 110),
+      k('lokasi', 'Lokasi / Event', 180),
+      k('jenis', 'Jenis', 140, { catatan: 'Es batu, Katering, Gas, Galon / air, Supplier oyster, Tukang listrik, dll.' }),
+      k('nama', 'Nama', 160),
+      k('nomor', 'Nomor', 140),
+      k('catatan', 'Catatan', 200),
+      k('dicatat_oleh', 'Dicatat Oleh', 150),
       k('status', 'Status', 85),
       k('dicatat', 'Waktu Dicatat', 140),
     ],

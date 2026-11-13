@@ -26,6 +26,8 @@ import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawab
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
+import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
+import { tanganiKontak, cariKontak, simpanKontak, bacaKontak } from './kontak.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, batalGajiTetap, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -992,6 +994,12 @@ async function handlePribadi(ctx, pesan) {
     const ev = kode ? semua.find((e) => e.kode.toLowerCase() === kode.toLowerCase()) : aktifEv[0];
     return perintahGajian(ctx, pesan, ev, { isOwner });
   }
+  if (['kontak', 'kontaklokasi'].includes(cmd.perintah)) {
+    const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
+    const kotaKenal = [...new Set((await ctx.store.all('Event')).map((e) => e.kota).filter(Boolean))];
+    const k = isOwner ? bacaKontak(`kontak ${isi}`, kotaKenal) : null;
+    return k ? simpanKontak(ctx, pesan, null, k) : cariKontak(ctx, `${isi} semua`.trim(), null);
+  }
   if (isOwner && cmd.perintah === 'poin') return perintahPoin(ctx, pesan, opsi);
   if (isOwner && cmd.perintah === 'poinbatal') return perintahPoinBatal(ctx, pesan, opsi);
   return [];
@@ -1071,6 +1079,14 @@ export async function handlePesan(ctx, pesan) {
   if (!cmd && event && grup.jenis === 'event') {
     const absen = await tanganiAbsen(ctx, pesan, event, { isOwner });
     if (absen) return balas(absen);
+  }
+  // Buku kontak lokasi (simpan nomor tukang es batu, katering, dll. / tanya nomornya) dan info loading in.
+  // Sebelum pencatatan uang: nomor HP jangan sampai terbaca sebagai nominal.
+  if (!cmd && event && (grup.jenis === 'event' || grup.jenis === 'pengeluaran')) {
+    const kontak = await tanganiKontak(ctx, pesan, event);
+    if (kontak) return kontak;
+    const info = await tanganiInfoLoading(ctx, pesan, event);
+    if (info) return info;
   }
   // Laporan foto SOP (loading in, harian, loading out) dan status checklist-nya, di grup tim.
   if (event && grup.jenis === 'event') {
@@ -1308,6 +1324,20 @@ export async function handlePesan(ctx, pesan) {
       case 'rek':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rekening hanya diurus di grup pengeluaran (owner + PIC).');
         return perintahRekening(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { isOwner });
+      case 'kontak':
+      case 'kontaklokasi': {
+        const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
+        const kotaKenal = [...new Set((await ctx.store.all('Event')).map((e) => e.kota).filter(Boolean))];
+        const k = bacaKontak(`kontak ${isi}`, kotaKenal);
+        return k ? simpanKontak(ctx, pesan, event, k) : cariKontak(ctx, isi, event);
+      }
+      case 'loading':
+      case 'infoloading': {
+        const karyawanL = await ctx.store.all('Karyawan');
+        const picL = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
+          && karyawanL.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
+        return perintahLoading(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { bolehUbah: isOwner || picL });
+      }
       case 'jobdesk':
       case 'tugas':
       case 'pembagian': {

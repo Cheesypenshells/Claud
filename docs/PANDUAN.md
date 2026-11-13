@@ -357,6 +357,19 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - `#jobdesk` = lihat pembagian · `#jobdesk ulang` (owner/PIC) = bagi ulang. Tersimpan di tab **Jobdesk**.
 - **Penilaian oleh PIC**: setiap ada foto laporan pekerjaan jobdesk, bot bertanya ke PIC lewat **chat pribadi** (kalau nomornya belum dikenal: di grup pengeluaran): setelah dicek di lokasi, sesuai atau tidak dan poinnya berapa. PIC membalas `sesuai 10` / `kurang 6 kabel berantakan` / `tidak 0 booth belum dirakit`. Poin masuk **Poin KPI** setiap penanggung jawab pekerjaan itu (dan kolom *Penilaian PIC* di tab Laporan Foto). Satu pekerjaan dinilai sekali; kalau beberapa menunggu, ditanyakan bergiliran. Salah: `#poinbatal K....`.
 
+## Info loading in
+
+- Bersama jobdesk (H-2), kalau belum diisi bot bertanya di grup tim: **kapan & jam berapa** loading in dan **lokasi pintu/area loading in**. Siapa pun boleh menjawab, contoh `loading in 13 nov jam 22.00` lalu `pintu 3 belakang hall B`.
+- Pertanyaan di grup seperti *"loading in jam berapa?"* / *"pintu loading di mana?"* dijawab bot dari data tersimpan.
+- `#loading` = lihat info · `#loading 13 nov 22.00 pintu 3 belakang` (owner/PIC) = isi/ubah. Tersimpan di tab Event (kolom Loading In & Lokasi).
+- Kalau jam loading in diketahui, pengingat foto jobdesk dikirim **tiap 2 jam setelah loading in mulai** sampai booth buka.
+
+## Buku kontak lokasi
+
+- Simpan nomor vendor per kota: `simpan nomor tukang es batu Pak Joko 0812-3456-7890` atau `#kontak katering Bu Sri 0813...` (kota = kota event grup itu; bisa ditulis `di bali`). Tidak dicatat sebagai pengeluaran.
+- Jenis dikenali: es batu, katering, gas, galon/air, supplier oyster/seafood, tukang listrik, laundry, sewa freezer/alat, transport/truk, penginapan, percetakan, pasar/bahan, IO/pengelola.
+- Cari: `#kontak` (kota event ini) · `#kontak bali` · `#kontak es batu` · atau tanya *"nomor es batu semarang?"*. Di chat pribadi: `#kontak` menampilkan semua kota. Tersimpan di tab **Kontak Lokasi**.
+
 ## Laporan foto: loading in, harian, loading out (grup tim)
 
 Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat biasa ("booth sudah siap", "barang sudah tiba"). Beberapa foto sekaligus dihitung satu laporan: foto tanpa caption dari orang yang sama dalam 5 menit ikut masuk. Bot membalas siapa, jam berapa, dan apa yang **belum**. Semua tercatat di tab **Laporan Foto**.

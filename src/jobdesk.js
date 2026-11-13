@@ -10,6 +10,7 @@
 
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
+import { teksInfoLoading, mulaiTanyaLoading } from './loadingInfo.js';
 
 export const TUGAS_LOADING_IN = [
   { tag: 'tiba', tim: 'awal', label: 'Hitung & cek koli barang tiba (bahan baku + bahan kering) sesuai kiriman Jakarta, foto & lapor', jam: '±30 menit', bantuKe: 'booth' },
@@ -161,9 +162,20 @@ export async function tugasJobdesk(ctx, sekarang = new Date(), { tanggalLokal })
     if (!(hariIni >= tambahHariStr(e.mulai, -2) && hariIni < e.mulai)) continue;
     const grupTim = grup.filter((g) => g.kode_event === e.kode && g.jenis === 'event').map((g) => g.group_id);
     if (!grupTim.length) continue;
-    if ((await jobdeskEvent(ctx, e.kode)).length) continue; // sudah dibagi (otomatis atau #jobdesk)
-    const teks = await buatJobdesk(ctx, e, { waktu: sekarang });
-    for (const g of grupTim) keluar.push({ groupId: g, text: teks });
+    // Sekali per pembagian: tanda "jobdesk_diumumkan" berisi waktu pembagian yang sudah diumumkan.
+    const ada = await jobdeskEvent(ctx, e.kode);
+    const tanda = `jobdesk_diumumkan:${e.kode}`;
+    const versi = ada[0]?.dicatat || '';
+    if (ada.length && ctx.sesi?.get(tanda)?.versi === versi) continue;
+    let teks = ada.length ? await teksJobdeskAda(ctx, e) : await buatJobdesk(ctx, e, { waktu: sekarang });
+    const versiBaru = (await jobdeskEvent(ctx, e.kode))[0]?.dicatat || versi;
+    ctx.sesi?.set(tanda, { versi: versiBaru });
+    if (e.loading_in || e.lokasi_loading) teks = `${teksInfoLoading(e)}\n\n${teks}`;
+    for (const g of grupTim) {
+      keluar.push({ groupId: g, text: teks });
+      const tanya = mulaiTanyaLoading(ctx, g, e);
+      if (tanya) keluar.push({ groupId: g, text: tanya });
+    }
   }
   return keluar;
 }
@@ -178,15 +190,25 @@ export async function tugasIngatJobdesk(ctx, sekarang = new Date(), { tanggalLok
   if (!ctx.sesi) return keluar;
   const jam = Number(String(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })).slice(0, 2));
   const slot = [...JAM_INGAT].reverse().find((j) => jam >= j);
-  if (slot === undefined) return keluar;
   const hariIni = tanggalLokal(sekarang);
   const [events, grup, laporan] = await Promise.all([ctx.store.all('Event'), ctx.store.all('Grup'), ctx.store.all('Laporan Foto')]);
   for (const e of events.filter((x) => x.status !== 'BATAL' && x.status !== 'SELESAI' && x.mulai)) {
-    const hariLoading = hariIni === tambahHariStr(e.mulai, -1) || hariIni === e.mulai;
-    if (!hariLoading) continue;
-    // Hari pertama: hanya sebelum booth buka.
-    if (hariIni === e.mulai && e.jam_buka && jam >= Number(String(e.jam_buka).split(/[.:]/)[0])) continue;
-    const kunci = `ingatjob:${e.kode}:${hariIni}:${slot}`;
+    // Batas: booth buka di hari pertama.
+    const bukaJam = e.jam_buka ? Number(String(e.jam_buka).split(/[.:]/)[0]) : 24;
+    const sesudahBuka = hariIni > e.mulai || (hariIni === e.mulai && jam >= bukaJam);
+    if (sesudahBuka) continue;
+    let kunci;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(e.loading_in || ''))) {
+      // Jadwal loading in diketahui: setiap 2 jam setelah loading in dimulai.
+      const mulaiLoading = new Date(`${String(e.loading_in).replace(' ', 'T')}:00+07:00`);
+      const ke = Math.floor((sekarang - mulaiLoading) / (2 * 3600000));
+      if (ke < 1) continue;
+      kunci = `ingatjob:${e.kode}:L${ke}`;
+    } else {
+      const hariLoading = hariIni === tambahHariStr(e.mulai, -1) || hariIni === e.mulai;
+      if (!hariLoading || slot === undefined) continue;
+      kunci = `ingatjob:${e.kode}:${hariIni}:${slot}`;
+    }
     if (ctx.sesi.get(kunci)) continue;
     ctx.sesi.set(kunci, { kirim: true });
     const peta = await pjPerTag(ctx, e.kode);
@@ -195,7 +217,7 @@ export async function tugasIngatJobdesk(ctx, sekarang = new Date(), { tanggalLok
     const belum = TUGAS_LOADING_IN.filter((t) => peta[t.tag]?.length && !sudah.has(t.tag));
     if (!belum.length) continue;
     const teks = [
-      `⏰ *Update loading in ${e.kode}* (jam ${slot}.00)`,
+      `⏰ *Update loading in ${e.kode}* (jam ${String(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }))})`,
       'Belum ada foto laporan:',
       ...belum.map((t) => `• *${peta[t.tag].join(', ')}* – ${t.label.split(':')[0]} → kirim foto caption *#${t.tag}*`),
       '',
