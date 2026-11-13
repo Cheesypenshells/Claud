@@ -1316,3 +1316,24 @@ test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan
   await kirim(G_KELUAR, OWNER, 'minus 5', w('03', '08:32'));
   assert.equal((await store.all('Poin KPI')).length, jumlah); // sudah selesai, tidak dobel
 });
+
+test('stok closing nampan freezer: 3 jenis, total dibanding minimal 7, ikut sidak', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  const { pisahNampan } = await import('../src/stokHarian.js');
+  assert.deepEqual(pisahNampan('Nampan Garlic = 3 nampan\nnampan garlic mozza 2\nNampan Garlic Mozza Topping = 1 nampan\nbumbu garlic 8 pack').nampan.map((n) => [n.bahan, n.jumlah]),
+    [['Nampan Garlic', 3], ['Nampan Garlic Mozza', 2], ['Nampan Garlic Mozza Topping', 1]]);
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
+  assert.match(await kirim(G_TIM, KARYAWAN, '#stok', w('02', '22:00')), /minimal 7.*Nampan Garlic = \.\.\. nampan\nNampan Garlic Mozza = \.\.\. nampan\nNampan Garlic Mozza Topping = \.\.\. nampan/s);
+  const kurang = await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 3 nampan\nNampan Garlic Mozza = 2 nampan\nNampan Garlic Mozza Topping = 1 nampan', w('02', '22:05'));
+  assert.match(kurang, /Nampan siap bakar.*Nampan Garlic: \*3\*.*Total nampan di freezer: \*6\* ⚠️ \*kurang 1 dari minimal 7\*/s);
+  assert.doesNotMatch(kurang, /Bumbu Garlic: \*3/); // nampan tidak tertukar dengan bahan baku
+  // koreksi sebagian: total ikut nampan yang sudah dilapor hari ini
+  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 4 nampan', w('02', '22:10')), /Total nampan di freezer: \*7\* ✅/);
+  // sidak besok pagi: nampan dibandingkan dengan closing
+  assert.match(await kirim(G_KELUAR, OWNER, '#sidak\nNampan Garlic = 2 nampan\nNampan Garlic Mozza = 2 nampan', w('03', '08:00')),
+    /❌ Nampan Garlic: sidak \*2 nampan\*, laporan closing 2 Nov.*: 4 = 4 → selisih \*-2 nampan\*.*✅ Nampan Garlic Mozza/s);
+});

@@ -484,6 +484,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
   ```
 - Bot menghitung **berkurang berapa**: stok closing kemarin (hari pertama: stok awal `#keluar`) + restock hari itu − stok closing sekarang. Kalau stok malah naik, bot memberi peringatan (mungkin restock belum dicatat atau salah hitung).
 - Boleh dikirim sebagian; kirim ulang di hari yang sama = koreksi. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
+- **Nampan siap bakar di freezer** (hasil tim plating) ikut dihitung, 3 jenis: **Nampan Garlic** (oyster + bumbu garlic), **Nampan Garlic Mozza** (garlic + keju mozzarella), **Nampan Garlic Mozza Topping** (garlic + mozzarella + topping). Bot menjumlahkan semua jenis dan memberi peringatan kalau **kurang dari 7 nampan** (ubah di Pengaturan kunci `min_nampan`). Nampan juga ikut `#sidak`.
 - Hanya jumlah, **tanpa harga**. Tersimpan di tab **Stok Harian**. Di hari terakhir, sisa tetap dicatat owner/PIC sebagai `#sisa` di grup pengeluaran.
 
 
