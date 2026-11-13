@@ -454,7 +454,7 @@ Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–6 untuk menguba
 
 Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke tab **Antrian** dan **Komplain**.
 
-- **Link kasir otomatis:** di hari pertama event, 2 jam sebelum booth buka, bot mengirim link kasir lewat chat pribadi ke anggota tim berperan **Kasir** (kalau nomornya belum ada, link dikirim ke grup tim). PIN sudah ada di dalam link, jadi kasir cukup membuka link-nya.
+- **Kasir antrian (sekali per event):** hari pertama, 2 jam sebelum booth buka, bot menulis di grup tim. Kalau kasir sudah ditunjuk, bot menyebut namanya dan memintanya mengirim `#kasir` lewat chat pribadi ke bot. Kalau belum, bot bertanya "Siapa yang pegang kasir antrian?", dan yang membalas **saya** dicatat lalu diminta mengirim `#kasir` lewat chat pribadi. Link yang dibalas bot sudah berisi PIN dan berlaku selama event (tersimpan di browser HP kasir). Kalau kasir ganti, orang baru cukup membalas pesan bot itu dengan **saya**, atau owner/PIC mengetik `#tanyakasir`.
 - `#kasir`: minta link kasir lagi. Boleh owner, PIC, atau kasir antrian yang ditunjuk (di grup event atau chat pribadi ke bot).
 - `#kasirnya Tiara` (owner, di grup event): tunjuk pemegang halaman kasir event itu tanpa mengubah peran/gajinya. Link otomatis dikirim ke chat pribadinya di hari pertama, 2 jam sebelum buka.
 - `#qr` (owner): link kasir & link komplain (cetak jadi QR di depan booth).

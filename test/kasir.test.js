@@ -20,20 +20,30 @@ test('link kasir berisi PIN dan kode event', () => {
   assert.equal(linkKasir({}, 'X'), '');
 });
 
-test('link kasir dikirim sekali ke kasir di hari pertama, 2 jam sebelum buka', async () => {
+test('hari pertama 2 jam sebelum buka: kasir sudah ada -> diminta #kasir di grup; sekali per event', async () => {
   const ctx = buatCtx();
   assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T00:30:00Z'), { tanggalLokal })).length, 0); // 07.30 WIB
   const k = await tugasLinkKasir(ctx, new Date('2026-11-14T01:05:00Z'), { tanggalLokal }); // 08.05 WIB
-  assert.equal(k.length, 1);
-  assert.equal(k[0].nomor, '628123');
-  assert.match(k[0].text, /k=1234&e=SMR26-11/);
+  assert.deepEqual(k.map((x) => x.groupId), ['g@tim']);
+  assert.match(k[0].text, /Sari.*#kasir.*chat pribadi/s);
+  assert.ok(!k[0].text.includes('k=1234'), 'PIN tidak dikirim ke grup');
   assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T02:00:00Z'), { tanggalLokal })).length, 0);
 });
 
-test('tanpa kasir bernomor, link ke grup tim', async () => {
-  const ctx = buatCtx({ ...tabel, Karyawan: [] });
+test('belum ada kasir: bot bertanya di grup, yang membalas "saya" dicatat & diminta #kasir', async () => {
+  const { tanganiJawabKasir } = await import('../src/komplain.js');
+  const t = { ...tabel, 'Tim Event': [], Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }] };
+  const diubah = [];
+  const ctx = buatCtx(t);
+  ctx.store.updateWhere = async (tab, f, nilai) => { diubah.push([tab, nilai]); };
   const k = await tugasLinkKasir(ctx, new Date('2026-11-14T02:00:00Z'), { tanggalLokal });
-  assert.deepEqual(k.map((x) => x.groupId), ['g@tim']);
+  assert.match(k[0].text, /Siapa yang pegang kasir antrian/);
+  const ev = t.Event[0];
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'lain', text: 'saya', senderId: '62811111' }, ev), null);
+  const r = await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya kak', senderId: '62811111' }, ev);
+  assert.match(r[0].text, /TiarA.*#kasir/s);
+  assert.deepEqual(diubah, [['Event', { kasir_antrian: 'TiarA' }]]);
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya sudah sampai di lokasi bongkar barang sekarang ya', senderId: '62811111' }, ev), null);
 });
 
 test('#kasir hanya owner/PIC', async () => {
@@ -85,8 +95,6 @@ test('kasir antrian ditunjuk lewat kolom Event (tanpa ubah peran): dapat link ot
   };
   assert.deepEqual(namaKasir(t.Event[0], t['Tim Event']), ['Tiara']);
   const ctx = buatCtx(t);
-  const k = await tugasLinkKasir(ctx, new Date('2026-11-14T01:05:00Z'), { tanggalLokal });
-  assert.deepEqual(k.map((x) => x.nomor), ['62811111']);
   assert.equal((await eventKasirUntuk(ctx, '62811111', '2026-11-14')).length, 1);
   assert.equal((await eventKasirUntuk(ctx, '62822222', '2026-11-14')).length, 1); // PIC
   assert.equal((await eventKasirUntuk(ctx, '62833333', '2026-11-14')).length, 0);

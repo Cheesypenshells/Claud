@@ -67,9 +67,9 @@ export function namaKasir(event, tim = []) {
 export async function eventKasirUntuk(ctx, nomor, tanggal) {
   const [events, tim, karyawan] = await Promise.all([ctx.store.all('Event'), ctx.store.all('Tim Event'), ctx.store.all('Karyawan')]);
   const namaSaya = karyawan.filter((k) => nomor62(k.nomor_wa) === String(nomor)).map((k) => k.nama);
-  if (!namaSaya.length) return [];
+  const cocok = (n) => namaSaya.some((x) => sama(x, n)) || (String(n).match(/\((\d+)\)/)?.[1] === String(nomor));
   return events.filter((e) => e.status !== 'BATAL' && e.status !== 'SELESAI' && (!tanggal || String(e.selesai || e.mulai) >= tanggal))
-    .filter((e) => namaKasir(e, tim).some((n) => namaSaya.some((s) => sama(s, n)))
+    .filter((e) => namaKasir(e, tim).some(cocok)
       || tim.some((o) => o.kode_event === e.kode && o.peran === 'PIC' && namaSaya.some((s) => sama(s, o.nama))));
 }
 
@@ -80,7 +80,7 @@ export async function perintahKasirnya(ctx, event, isi, { isOwner }) {
   const nama = String(isi || '').trim();
   if (!nama) return balas(`🧾 Kasir antrian ${event.kode}: *${event.kasir_antrian || '(belum ditunjuk)'}*\nUbah: *#kasirnya Tiara*`);
   await ctx.store.updateWhere('Event', (e) => e.kode === event.kode, { kasir_antrian: nama });
-  return balas(`✅ Kasir antrian ${event.kode}: *${nama}*\nDi hari pertama event, 2 jam sebelum buka, link kasir dikirim ke chat pribadinya. Ia juga bisa meminta lagi dengan *#kasir* lewat chat pribadi ke bot.`);
+  return balas(teksMintaKasir(event, nama));
 }
 // Pengaturan: url_antrian (link /exec web app) dan pin_kasir (sama dengan KASIR_PIN di Apps Script).
 export function linkKasir(atur, kode = '') {
@@ -99,13 +99,20 @@ export async function perintahKasir(ctx, event, { bolehLihat }) {
   return balas(event ? teksKasir(event, link) : `🧾 *Link kasir antrian*\n${link}`);
 }
 
-// Hari pertama event, 2 jam sebelum buka (atau jam 08.00 kalau jam buka kosong), sekali per event:
-// chat pribadi ke anggota tim berperan Kasir; kalau tidak ada kasir bernomor, ke grup tim.
+// Hari pertama event, 2 jam sebelum buka (jam buka kosong = 10.00), sekali per event, di grup tim:
+// - kasir antrian sudah ditunjuk -> sebut namanya & minta ia mengirim #kasir lewat chat pribadi ke bot (link ber-PIN);
+// - belum -> tanya "siapa yang pegang kasir?"; yang membalas "saya" dicatat (tanganiJawabKasir).
+// Bot tidak mengirim chat pribadi duluan; kasir yang memulai chat pribadi dengan #kasir.
+const TANYA_KASIR = '🧾 *Siapa yang pegang kasir antrian di event ini?*';
+const kunciTanya = (groupId) => `tanyakasir:${groupId}`;
+const teksTanyaKasir = (e) => `${TANYA_KASIR} (${e.kode})\nYang pegang kasir, *balas (reply) pesan ini dengan "saya"*.\nNanti bot kasih tahu cara dapat link halaman kasirnya.`;
+const teksMintaKasir = (e, nama) => `🧾 Kasir antrian ${e.kode}: *${nama}*\n${nama}, kirim *#kasir* lewat *chat pribadi* ke nomor bot ini untuk dapat link halaman kasir. PIN sudah ada di dalam link-nya, cukup dibuka saja.\n_Link berlaku selama event. Kalau kasirnya ganti, balas pesan ini dengan "saya"._`;
+
 export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal }) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
-  const [pengaturan, events, tim, karyawan, grup] = await Promise.all([
-    ctx.store.all('Pengaturan'), ctx.store.all('Event'), ctx.store.all('Tim Event'), ctx.store.all('Karyawan'), ctx.store.all('Grup'),
+  const [pengaturan, events, tim, grup] = await Promise.all([
+    ctx.store.all('Pengaturan'), ctx.store.all('Event'), ctx.store.all('Tim Event'), ctx.store.all('Grup'),
   ]);
   const atur = Object.fromEntries(pengaturan.map((p) => [p.kunci, p.nilai]));
   if (!atur.url_antrian) return keluar;
@@ -117,10 +124,42 @@ export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal 
     const tanda = `linkkasir:${e.kode}`;
     if (ctx.sesi.get(tanda)) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    const teks = teksKasir(e, linkKasir(atur, e.kode));
-    const kasir = [...new Set(namaKasir(e, tim).map((n) => karyawan.find((k) => sama(k.nama, n) && k.nomor_wa)).filter(Boolean))];
-    if (kasir.length) for (const k of kasir) keluar.push({ nomor: nomor62(k.nomor_wa), text: teks });
-    else for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teks });
+    const nama = namaKasir(e, tim).map((n) => n.replace(/\s*\(\d+\)\s*$/, ''));
+    for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) {
+      if (nama.length) keluar.push({ groupId: g.group_id, text: teksMintaKasir(e, nama.join(', ')) });
+      else {
+        ctx.sesi.set(kunciTanya(g.group_id), { kode: e.kode, waktu: Date.now() });
+        keluar.push({ groupId: g.group_id, text: teksTanyaKasir(e) });
+      }
+    }
   }
   return keluar;
+}
+
+// #tanyakasir (owner/PIC, grup event): tanyakan lagi siapa yang pegang kasir (misalnya kasir ganti).
+export function perintahTanyaKasir(ctx, pesan, event, { boleh }) {
+  if (!boleh) return balas('⚠️ Hanya owner atau PIC.');
+  if (!event) return balas('⚠️ Ketik di grup event.');
+  ctx.sesi?.set(kunciTanya(pesan.groupId), { kode: event.kode, waktu: Date.now() });
+  return balas(teksTanyaKasir(event));
+}
+
+// Jawaban "saya" (reply ke pertanyaan kasir, atau dalam 12 jam setelah ditanya) di grup tim: catat sebagai kasir antrian.
+export async function tanganiJawabKasir(ctx, pesan, event) {
+  if (!ctx.sesi || !event || pesan.adaFoto) return null;
+  const t = String(pesan.text || '').trim();
+  if (!t || t.startsWith('#') || t.split(/\s+/).length > 6) return null;
+  if (!/\b(saya|aku|aq|sy|ak|gue|gw|gua)\b/i.test(t)) return null;
+  const s = ctx.sesi.get(kunciTanya(pesan.groupId));
+  const aktif = s && s.kode === event.kode && Date.now() - s.waktu < 12 * 3600e3;
+  const balasTanya = /kasir antrian/i.test(pesan.kutipan?.teks || '');
+  if (!aktif && !balasTanya) return null;
+  const karyawan = await ctx.store.all('Karyawan');
+  const k = karyawan.find((x) => nomor62(x.nomor_wa) === String(pesan.senderId));
+  const nama = k?.nama || String(pesan.senderName || '').trim() || pesan.senderId;
+  const entri = k ? k.nama : `${nama} (${pesan.senderId})`;
+  const lama = String(event.kasir_antrian || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const daftar = balasTanya && !aktif ? [entri] : [...lama.filter((x) => !sama(x, entri)), entri];
+  await ctx.store.updateWhere('Event', (e) => e.kode === event.kode, { kasir_antrian: daftar.join(', ') });
+  return balas(`✅ Siap, *${nama}* jadi kasir antrian ${event.kode}.\nSekarang kirim *#kasir* lewat *chat pribadi* ke nomor bot ini untuk dapat link halaman kasir (PIN sudah ada di link-nya).`);
 }

@@ -25,7 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
-import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya } from './komplain.js';
+import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya, perintahTanyaKasir, tanganiJawabKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
 import { tanganiKontak, cariKontak, simpanKontak, bacaKontak } from './kontak.js';
@@ -1098,6 +1098,8 @@ export async function handlePesan(ctx, pesan) {
   if (!cmd && event && (grup.jenis === 'event' || grup.jenis === 'pengeluaran')) {
     const kontak = await tanganiKontak(ctx, pesan, event);
     if (kontak) return kontak;
+    const jawabKasir = await tanganiJawabKasir(ctx, pesan, event);
+    if (jawabKasir) return jawabKasir;
     const info = await tanganiInfoLoading(ctx, pesan, event);
     if (info) return info;
   }
@@ -1343,6 +1345,10 @@ export async function handlePesan(ctx, pesan) {
       case 'kasir': {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahKasir(ctx, event, { bolehLihat: isOwner || milikSaya.some((e) => e.kode === event?.kode) });
+      }
+      case 'tanyakasir': {
+        const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
+        return perintahTanyaKasir(ctx, pesan, event, { boleh: isOwner || milikSaya.some((e) => e.kode === event?.kode) });
       }
       case 'kasirnya':
       case 'kasirantrian':
