@@ -20,30 +20,37 @@ test('link kasir berisi PIN dan kode event', () => {
   assert.equal(linkKasir({}, 'X'), '');
 });
 
-test('hari pertama 2 jam sebelum buka: kasir sudah ada -> diminta #kasir di grup; sekali per event', async () => {
+test('setiap hari event, 2 jam sebelum buka: bot tanya kasir hari ini di grup (sekali per hari, tanpa PIN)', async () => {
   const ctx = buatCtx();
   assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T00:30:00Z'), { tanggalLokal })).length, 0); // 07.30 WIB
   const k = await tugasLinkKasir(ctx, new Date('2026-11-14T01:05:00Z'), { tanggalLokal }); // 08.05 WIB
   assert.deepEqual(k.map((x) => x.groupId), ['g@tim']);
-  assert.match(k[0].text, /Sari.*#kasir.*chat pribadi/s);
-  assert.ok(!k[0].text.includes('k=1234'), 'PIN tidak dikirim ke grup');
-  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T02:00:00Z'), { tanggalLokal })).length, 0);
+  assert.match(k[0].text, /Siapa yang pegang kasir antrian hari ini\?.*14 Nov.*Sebelumnya: Sari/s);
+  assert.ok(!k[0].text.includes('1234'), 'PIN tidak dikirim ke grup');
+  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T05:00:00Z'), { tanggalLokal })).length, 0); // sekali per hari
+  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-15T01:05:00Z'), { tanggalLokal })).length, 1); // besoknya tanya lagi
 });
 
-test('belum ada kasir: bot bertanya di grup, yang membalas "saya" dicatat & diminta #kasir', async () => {
+test('jawaban "saya": pertama tiap hari menggantikan kasir kemarin, berikutnya ditambah (ganti setengah hari)', async () => {
   const { tanganiJawabKasir } = await import('../src/komplain.js');
-  const t = { ...tabel, 'Tim Event': [], Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }] };
-  const diubah = [];
+  const ev = { ...tabel.Event[0], kasir_antrian: 'Sari' };
+  const t = { ...tabel, Event: [ev], 'Tim Event': [], Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }, { nama: 'Bima', nomor_wa: '0833333' }] };
   const ctx = buatCtx(t);
-  ctx.store.updateWhere = async (tab, f, nilai) => { diubah.push([tab, nilai]); };
-  const k = await tugasLinkKasir(ctx, new Date('2026-11-14T02:00:00Z'), { tanggalLokal });
-  assert.match(k[0].text, /Siapa yang pegang kasir antrian/);
-  const ev = t.Event[0];
-  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'lain', text: 'saya', senderId: '62811111' }, ev), null);
-  const r = await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya kak', senderId: '62811111' }, ev);
-  assert.match(r[0].text, /TiarA.*#kasir/s);
-  assert.deepEqual(diubah, [['Event', { kasir_antrian: 'TiarA' }]]);
-  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya sudah sampai di lokasi bongkar barang sekarang ya', senderId: '62811111' }, ev), null);
+  ctx.store.updateWhere = async (tab, f, nilai) => { Object.assign(ev, nilai); };
+  const w = new Date('2026-11-14T02:00:00Z');
+  await tugasLinkKasir(ctx, w, { tanggalLokal });
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'lain', text: 'saya', senderId: '62811111', waktu: w }, ev), null);
+  const r = await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya kak', senderId: '62811111', waktu: w }, ev);
+  assert.match(r[0].text, /TiarA.*hari ini.*#kasir/s);
+  assert.equal(ev.kasir_antrian, 'TiarA');
+  await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'aku gantiin', senderId: '62833333', waktu: new Date('2026-11-14T08:00:00Z') }, ev);
+  assert.equal(ev.kasir_antrian, 'TiarA, Bima');
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya sudah sampai di lokasi bongkar barang sekarang ya', senderId: '62811111', waktu: w }, ev), null);
+  // besoknya: pertanyaan baru, jawaban pertama menggantikan
+  const w2 = new Date('2026-11-15T02:00:00Z');
+  await tugasLinkKasir(ctx, w2, { tanggalLokal });
+  await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya', senderId: '62833333', waktu: w2 }, ev);
+  assert.equal(ev.kasir_antrian, 'Bima');
 });
 
 test('#kasir hanya owner/PIC', async () => {
@@ -98,4 +105,20 @@ test('kasir antrian ditunjuk lewat kolom Event (tanpa ubah peran): dapat link ot
   assert.equal((await eventKasirUntuk(ctx, '62811111', '2026-11-14')).length, 1);
   assert.equal((await eventKasirUntuk(ctx, '62822222', '2026-11-14')).length, 1); // PIC
   assert.equal((await eventKasirUntuk(ctx, '62833333', '2026-11-14')).length, 0);
+});
+
+test('apps-script: 2 HP kasir — tombol dari tampilan lama ditolak (tidak memanggil ulang pesanan yang sudah diambil)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const baris = { _baris: 2, id: 'Q1', nomor: 7, status: 'SIAP', kode_event: 'SMR26-11', panggil_ke: 1 };
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: () => ({}), baca_: () => [baris], ubah_: (t, b, isi) => Object.assign(baris, isi), sekarang_: () => 'x',
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+  });
+  assert.equal(c.ubahStatus('1', 'Q1', 'DIAMBIL'), true);   // HP A: sudah diambil
+  assert.throws(() => c.ubahStatus('1', 'Q1', 'SIAP'), /#7 sudah diubah dari HP lain \(sekarang: sudah diambil\)/); // HP B: panggil ulang
+  assert.equal(baris.status, 'DIAMBIL');
 });

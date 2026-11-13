@@ -310,11 +310,28 @@ function ubahMenu(pin, id, menu) {
 }
 
 // status: DIBAKAR (boleh dengan foto), SIAP (panggil / panggil ulang), DIAMBIL, BATAL
+// Perpindahan status yang sah. Kasir bisa membuka halaman di beberapa HP sekaligus; tombol dari tampilan yang
+// belum diperbarui (misalnya "Panggil ulang" setelah HP lain menandai "Sudah diambil") ditolak.
+var STATUS_BOLEH = {
+  MENUNGGU: ['DIBAKAR', 'SIAP', 'BATAL'], DIBAKAR: ['SIAP', 'BATAL'], SIAP: ['SIAP', 'DIAMBIL', 'BATAL'], DIAMBIL: [], BATAL: [],
+};
+var NAMA_STATUS = { MENUNGGU: 'menunggu', DIBAKAR: 'sedang dibakar', SIAP: 'dipanggil', DIAMBIL: 'sudah diambil', BATAL: 'dibatalkan' };
+
 function ubahStatus(pin, id, status, dataUrl) {
   cekPin_(pin);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try { return ubahStatusTerkunci_(id, status, dataUrl); } finally { lock.releaseLock(); }
+}
+
+function ubahStatusTerkunci_(id, status, dataUrl) {
   var t = tab_('Antrian', KOLOM_ANTRIAN);
   var o = baca_(t).filter(function (x) { return x.id === id; })[0];
   if (!o) throw new Error('Pesanan tidak ditemukan');
+  var boleh = STATUS_BOLEH[o.status];
+  if (boleh && boleh.indexOf(status) < 0) {
+    throw new Error('Pesanan #' + o.nomor + ' sudah diubah dari HP lain (sekarang: ' + (NAMA_STATUS[o.status] || o.status) + '). Tampilan diperbarui.');
+  }
   var isi = { status: status };
   if (status === STATUS.DIBAKAR) {
     isi.dibakar = sekarang_();
@@ -484,7 +501,7 @@ var HTML_KASIR = '<header><img src="__ASET__logo-putih.png" alt="Cheesy Pen Shel
   '<div id="isi" style="display:none">' +
   '<div class="kartu"><label>Event</label><select id="event" onchange="muat()"></select><br><br>' +
   '<label class="tombol kuning" style="text-align:center">📷 Pesanan baru – foto struk<input id="struk" type="file" accept="image/*" capture="environment" style="display:none" onchange="pesananBaru(this)"></label>' +
-  '<p id="proses" class="redup"></p></div>' +
+  '<p id="proses" class="redup"></p><p id="sinkron" class="redup" style="margin:0"></p></div>' +
   '<div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>' +
   '</div></main><div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none">' +
   '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>' +
@@ -495,7 +512,7 @@ var HTML_KASIR = '<header><img src="__ASET__logo-putih.png" alt="Cheesy Pen Shel
   'function kode(){var k=el("event").value;localStorage.setItem("cps_ev",k);el("ev").textContent=k;return k}' +
   'function muat(){google.script.run.withSuccessHandler(tampil).daftarAntrian(PIN,kode())}' +
   'function aman(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}' +
-  'function tampil(d){data=d;["MENUNGGU","DIBAKAR","SIAP"].forEach(function(st){el("k-"+st).innerHTML=d.filter(function(o){return o.status===st}).map(kartu).join("")||"<p class=redup>–</p>"})}' +
+  'function tampil(d){data=d;var j=new Date();el("sinkron").textContent="🔄 Tersinkron "+("0"+j.getHours()).slice(-2)+":"+("0"+j.getMinutes()).slice(-2)+":"+("0"+j.getSeconds()).slice(-2)+" · boleh dibuka di beberapa HP sekaligus";["MENUNGGU","DIBAKAR","SIAP"].forEach(function(st){el("k-"+st).innerHTML=d.filter(function(o){return o.status===st}).map(kartu).join("")||"<p class=redup>–</p>"})}' +
   'function kartu(o){var a="";if(o.status==="MENUNGGU")a="<button class=\\"kecil\\" onclick=\\"bakar(\'"+o.id+"\')\\">📷 Foto & mulai bakar</button><button class=\\"kecil abu\\" onclick=\\"status(\'"+o.id+"\',\'DIBAKAR\')\\">Bakar tanpa foto</button>";' +
   'if(o.status==="DIBAKAR")a="<button class=\\"kecil hijau\\" onclick=\\"status(\'"+o.id+"\',\'SIAP\')\\">🔔 Panggil</button>";' +
   'if(o.status==="SIAP")a="<button class=\\"kecil biru\\" onclick=\\"status(\'"+o.id+"\',\'SIAP\')\\">🔔 Panggil ulang ("+o.panggilKe+"x)</button><button class=\\"kecil hijau\\" onclick=\\"status(\'"+o.id+"\',\'DIAMBIL\')\\">✓ Sudah diambil</button>";' +
@@ -505,7 +522,7 @@ var HTML_KASIR = '<header><img src="__ASET__logo-putih.png" alt="Cheesy Pen Shel
   'function lihat(id,o){o=o||cari(id);if(!o)return;el("modal").innerHTML="<div class=modal onclick=\\"if(event.target===this)tutup()\\"><div class=kartu><div class=redup style=\\"text-align:center\\">Nomor antrian</div><div class=nomor>#"+o.nomor+"</div><p style=\\"text-align:center\\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\\"display:flex;justify-content:center;margin:10px 0\\"></div><label>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>"+aman(o.menu)+"</textarea><br><br><button class=\\"kecil hijau\\" onclick=\\"simpanMenu(\'"+o.id+"\')\\">Simpan menu</button> <button class=\\"kecil merah\\" onclick=\\"if(confirm(\'Batalkan pesanan #"+o.nomor+"?\'))status(\'"+o.id+"\',\'BATAL\')\\">Batalkan</button><br><br><img class=foto src=\\""+o.fotoStruk+"\\">"+(o.fotoBakar?"<br><img class=foto src=\\""+o.fotoBakar+"\\">":"")+"<br><button onclick=\\"tutup()\\">Tutup</button></div></div>";var q=qrcode(0,"L");q.addData(o.link);q.make();el("qr").innerHTML=q.createSvgTag({cellSize:5,margin:4,scalable:true}).replace("<svg ","<svg style=\\"width:min(86vw,380px);height:auto;background:#fff\\" ")}' +
   'function tutup(){el("modal").innerHTML=""}' +
   'function simpanMenu(id){google.script.run.withSuccessHandler(function(){tutup();muat()}).ubahMenu(PIN,id,el("menuEdit").value)}' +
-  'function status(id,st,foto){google.script.run.withSuccessHandler(function(){tutup();muat()}).withFailureHandler(function(e){alert(e.message)}).ubahStatus(PIN,id,st,foto||"")}' +
+  'function status(id,st,foto){google.script.run.withSuccessHandler(function(){tutup();muat()}).withFailureHandler(function(e){tutup();el("proses").textContent="⚠️ "+e.message;setTimeout(function(){el("proses").textContent=""},6000);muat()}).ubahStatus(PIN,id,st,foto||"")}' +
   'function bakar(id){var i=el("fotoBakar");i.onchange=function(){var f=i.files[0];i.value="";if(!f)return;el("proses").textContent="Menyimpan foto pesanan...";kecilkan(f,function(u){el("proses").textContent="";status(id,"DIBAKAR",u)})};i.click()}' +
   'if(PIN){el("pin").value=PIN;masuk()}' +
   '</script>';

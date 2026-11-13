@@ -3,7 +3,8 @@
 // Komplain yang tidak dibatalkan owner (Status BATAL di tab) mengurangi nilai KPI kelompok event itu.
 // #qr (owner): link halaman kasir antrian & QR komplain (disimpan di Pengaturan: url_antrian).
 
-import { waktuLokal } from './util.js';
+import { waktuLokal, tanggalLokal } from './util.js';
+import { jadwalHari, aturanHari } from './absensi.js';
 
 const balas = (text) => [{ text }];
 
@@ -99,14 +100,19 @@ export async function perintahKasir(ctx, event, { bolehLihat }) {
   return balas(event ? teksKasir(event, link) : `🧾 *Link kasir antrian*\n${link}`);
 }
 
-// Hari pertama event, 2 jam sebelum buka (jam buka kosong = 10.00), sekali per event, di grup tim:
-// - kasir antrian sudah ditunjuk -> sebut namanya & minta ia mengirim #kasir lewat chat pribadi ke bot (link ber-PIN);
-// - belum -> tanya "siapa yang pegang kasir?"; yang membalas "saya" dicatat (tanganiJawabKasir).
-// Bot tidak mengirim chat pribadi duluan; kasir yang memulai chat pribadi dengan #kasir.
-const TANYA_KASIR = '🧾 *Siapa yang pegang kasir antrian di event ini?*';
+// Setiap hari event, 2 jam sebelum booth buka (ikut jadwal khusus hari itu; jam buka kosong = 10.00), sekali per hari:
+// bot bertanya di grup tim "siapa yang pegang kasir hari ini?". Jawaban pertama "saya" menggantikan kasir kemarin,
+// jawaban berikutnya (kasir pengganti setengah hari) ditambahkan. Kasir lalu mengirim #kasir lewat chat pribadi.
+// Bot tidak mengirim chat pribadi duluan dan PIN tidak pernah dikirim ke grup.
 const kunciTanya = (groupId) => `tanyakasir:${groupId}`;
-const teksTanyaKasir = (e) => `${TANYA_KASIR} (${e.kode})\nYang pegang kasir, *balas (reply) pesan ini dengan "saya"*.\nNanti bot kasih tahu cara dapat link halaman kasirnya.`;
-const teksMintaKasir = (e, nama) => `🧾 Kasir antrian ${e.kode}: *${nama}*\n${nama}, kirim *#kasir* lewat *chat pribadi* ke nomor bot ini untuk dapat link halaman kasir. PIN sudah ada di dalam link-nya, cukup dibuka saja.\n_Link berlaku selama event. Kalau kasirnya ganti, balas pesan ini dengan "saya"._`;
+const tglPendek = (t) => { const [, b, h] = String(t).split('-'); return `${Number(h)} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][Number(b) - 1]}`; };
+const teksTanyaKasir = (e, tanggal, kemarin) => [
+  `🧾 *Siapa yang pegang kasir antrian hari ini?* (${e.kode}, ${tglPendek(tanggal)})`,
+  kemarin ? `Sebelumnya: ${kemarin}` : '',
+  'Yang pegang kasir hari ini, *balas (reply) pesan ini dengan "saya"*.',
+  'Kalau ganti kasir di tengah hari, kasir pengganti juga cukup balas "saya".',
+].filter(Boolean).join('\n');
+const teksMintaKasir = (e, nama) => `🧾 Kasir antrian ${e.kode}: *${nama}*\n${nama}, kirim *#kasir* lewat *chat pribadi* ke nomor bot ini untuk dapat link halaman kasir (PIN sudah ada di dalam link-nya). Kalau link-nya sudah tersimpan di HP, langsung buka saja.`;
 
 export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal }) {
   const keluar = [];
@@ -117,20 +123,16 @@ export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal 
   const atur = Object.fromEntries(pengaturan.map((p) => [p.kunci, p.nilai]));
   if (!atur.url_antrian) return keluar;
   const hariIni = tanggalLokal(sekarang);
-  const jam = Number(String(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })).slice(0, 2));
-  for (const e of events.filter((x) => x.mulai === hariIni && x.status !== 'BATAL' && x.status !== 'SELESAI')) {
-    const buka = e.jam_buka ? Number(String(e.jam_buka).split(/[.:]/)[0]) : 10;
-    if (jam < Math.max(0, buka - 2)) continue;
-    const tanda = `linkkasir:${e.kode}`;
+  for (const e of events.filter((x) => x.mulai && x.mulai <= hariIni && (!x.selesai || hariIni <= x.selesai) && x.status !== 'BATAL' && x.status !== 'SELESAI')) {
+    const tanda = `tanyakasirharian:${e.kode}:${hariIni}`;
     if (ctx.sesi.get(tanda)) continue;
+    const j = jadwalHari(e.jam_buka ? e : { ...e, jam_buka: '10:00' }, hariIni, await aturanHari(ctx, e.kode, hariIni));
+    if (!j || sekarang.getTime() < j.buka.getTime() - 2 * 3600e3) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    const nama = namaKasir(e, tim).map((n) => n.replace(/\s*\(\d+\)\s*$/, ''));
+    const kemarin = namaKasir(e, tim).map((n) => n.replace(/\s*\(\d+\)\s*$/, '')).join(', ');
     for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) {
-      if (nama.length) keluar.push({ groupId: g.group_id, text: teksMintaKasir(e, nama.join(', ')) });
-      else {
-        ctx.sesi.set(kunciTanya(g.group_id), { kode: e.kode, waktu: Date.now() });
-        keluar.push({ groupId: g.group_id, text: teksTanyaKasir(e) });
-      }
+      ctx.sesi.set(kunciTanya(g.group_id), { kode: e.kode, waktu: Date.now(), tanggal: hariIni, dijawab: false });
+      keluar.push({ groupId: g.group_id, text: teksTanyaKasir(e, hariIni, kemarin) });
     }
   }
   return keluar;
@@ -140,26 +142,30 @@ export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal 
 export function perintahTanyaKasir(ctx, pesan, event, { boleh }) {
   if (!boleh) return balas('⚠️ Hanya owner atau PIC.');
   if (!event) return balas('⚠️ Ketik di grup event.');
-  ctx.sesi?.set(kunciTanya(pesan.groupId), { kode: event.kode, waktu: Date.now() });
-  return balas(teksTanyaKasir(event));
+  const tgl = tanggalLokal(pesan.waktu || new Date());
+  ctx.sesi?.set(kunciTanya(pesan.groupId), { kode: event.kode, waktu: Date.now(), tanggal: tgl, dijawab: false });
+  return balas(teksTanyaKasir(event, tgl, String(event.kasir_antrian || '').replace(/\s*\(\d+\)/g, '')));
 }
 
-// Jawaban "saya" (reply ke pertanyaan kasir, atau dalam 12 jam setelah ditanya) di grup tim: catat sebagai kasir antrian.
+// Jawaban "saya" di grup tim (reply ke pesan kasir dari bot, atau di hari yang sama setelah ditanya): catat sebagai kasir antrian.
+// Jawaban pertama setelah pertanyaan harian menggantikan kasir sebelumnya; berikutnya ditambahkan (ganti kasir setengah hari).
 export async function tanganiJawabKasir(ctx, pesan, event) {
   if (!ctx.sesi || !event || pesan.adaFoto) return null;
   const t = String(pesan.text || '').trim();
   if (!t || t.startsWith('#') || t.split(/\s+/).length > 6) return null;
   if (!/\b(saya|aku|aq|sy|ak|gue|gw|gua)\b/i.test(t)) return null;
   const s = ctx.sesi.get(kunciTanya(pesan.groupId));
-  const aktif = s && s.kode === event.kode && Date.now() - s.waktu < 12 * 3600e3;
+  const aktif = s && s.kode === event.kode && s.tanggal === tanggalLokal(pesan.waktu || new Date());
   const balasTanya = /kasir antrian/i.test(pesan.kutipan?.teks || '');
   if (!aktif && !balasTanya) return null;
   const karyawan = await ctx.store.all('Karyawan');
   const k = karyawan.find((x) => nomor62(x.nomor_wa) === String(pesan.senderId));
   const nama = k?.nama || String(pesan.senderName || '').trim() || pesan.senderId;
   const entri = k ? k.nama : `${nama} (${pesan.senderId})`;
-  const lama = String(event.kasir_antrian || '').split(',').map((x) => x.trim()).filter(Boolean);
-  const daftar = balasTanya && !aktif ? [entri] : [...lama.filter((x) => !sama(x, entri)), entri];
+  const ganti = aktif && !s.dijawab;
+  const lama = ganti ? [] : String(event.kasir_antrian || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const daftar = [...lama.filter((x) => !sama(x, entri)), entri];
   await ctx.store.updateWhere('Event', (e) => e.kode === event.kode, { kasir_antrian: daftar.join(', ') });
-  return balas(`✅ Siap, *${nama}* jadi kasir antrian ${event.kode}.\nSekarang kirim *#kasir* lewat *chat pribadi* ke nomor bot ini untuk dapat link halaman kasir (PIN sudah ada di link-nya).`);
+  if (aktif) ctx.sesi.set(kunciTanya(pesan.groupId), { ...s, dijawab: true });
+  return balas(`✅ Siap, *${nama}* pegang kasir antrian hari ini (${event.kode}).\nKalau link kasir sudah tersimpan di HP-mu, langsung buka saja. Kalau belum, kirim *#kasir* lewat *chat pribadi* ke nomor bot ini (PIN sudah ada di link-nya).`);
 }
