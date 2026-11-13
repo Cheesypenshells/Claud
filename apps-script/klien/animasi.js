@@ -3,15 +3,29 @@
 // topi bergaris kuning-biru, kulit putih.
 var WARNA = { navy: "#22348C", navyTua: "#16226A", kuning: "#F6B800", kulit: "#FBE3D3", pipi: "#F4A7A0", putih: "#FFFFFF", sepatu: "#2B2B2B", laut: "#5DA9E9", lautTua: "#2F6FB2" };
 
+// Gradien & kilap untuk efek 3D (dipakai semua adegan; id sama di tiap SVG, isinya identik).
+var DEFS = "<defs>" +
+  "<radialGradient id='cps-kulit' cx='.35' cy='.3' r='.75'><stop offset='0' stop-color='#FFF4EC'/><stop offset='.6' stop-color='#FBE0CF'/><stop offset='1' stop-color='#E9BFA6'/></radialGradient>" +
+  "<linearGradient id='cps-baju' x1='0' x2='1'><stop offset='0' stop-color='#3550C2'/><stop offset='.45' stop-color='#22348C'/><stop offset='1' stop-color='#121C58'/></linearGradient>" +
+  "<linearGradient id='cps-lengan' x1='0' x2='1'><stop offset='0' stop-color='#3A56C8'/><stop offset='1' stop-color='#17246A'/></linearGradient>" +
+  "<linearGradient id='cps-celana' x1='0' x2='1'><stop offset='0' stop-color='#FFE07A'/><stop offset='.5' stop-color='#F6B800'/><stop offset='1' stop-color='#C98E00'/></linearGradient>" +
+  "<linearGradient id='cps-kilap' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#fff' stop-opacity='.55'/><stop offset='1' stop-color='#fff' stop-opacity='0'/></linearGradient>" +
+  "<radialGradient id='cps-cangkang' cx='.4' cy='.35' r='.8'><stop offset='0' stop-color='#B8A897'/><stop offset='1' stop-color='#6E5E4F'/></radialGradient>" +
+  "<radialGradient id='cps-anjing' cx='.35' cy='.3' r='.8'><stop offset='0' stop-color='#C99260'/><stop offset='1' stop-color='#7E5328'/></radialGradient>" +
+  "<linearGradient id='cps-api' x1='0' y1='1' x2='0' y2='0'><stop offset='0' stop-color='#E2470F'/><stop offset='.6' stop-color='#F6B800'/><stop offset='1' stop-color='#FFE9A0'/></linearGradient>" +
+  "<linearGradient id='cps-besi' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#3A4FB8'/><stop offset='1' stop-color='#121C58'/></linearGradient>" +
+  "</defs>";
+
 // Topi bergaris kuning-biru.
 function topiKoki() {
   return "<g class=topi><rect x=27 y=8 width=26 height=14 rx=7 fill='" + WARNA.kuning + "'/>" +
     "<rect x=31 y=8 width=4 height=14 fill='" + WARNA.navy + "'/><rect x=39 y=8 width=4 height=14 fill='" + WARNA.navy + "'/><rect x=47 y=8 width=4 height=14 fill='" + WARNA.navy + "'/>" +
+    "<rect x=27 y=8 width=26 height=7 rx=3.5 fill='url(#cps-kilap)'/>" +
     "<rect x=28 y=20 width=24 height=6 rx=2 fill='" + WARNA.navy + "'/><rect x=28 y=22 width=24 height=2 fill='" + WARNA.kuning + "'/></g>";
 }
 // Kepala; gaya: senyum | kacamata | cemas | bungkuk
 function kepalaKoki(gaya) {
-  var muka = "<circle cx=40 cy=34 r=10 fill='" + WARNA.kulit + "'/>" +
+  var muka = "<rect x=37 y=41 width=6 height=6 fill='#E2B39A'/><circle cx=40 cy=34 r=10 fill='url(#cps-kulit)'/><ellipse cx=36.5 cy=29.5 rx=3 ry=1.8 fill='#fff' opacity='.5'/>" +
     "<circle cx=35 cy=37 r=2 fill='" + WARNA.pipi + "' opacity='.7'/><circle cx=45 cy=37 r=2 fill='" + WARNA.pipi + "' opacity='.7'/>";
   if (gaya === "kacamata") muka += "<rect x=32 y=30 width=7 height=4 rx=1.5 fill='#111'/><rect x=41 y=30 width=7 height=4 rx=1.5 fill='#111'/><rect x=38.5 y=31 width=3 height=1 fill='#111'/><path d='M36 39 q4 3 8 0' stroke='#7A3B2E' stroke-width=1.5 fill=none stroke-linecap='round'/>";
   else if (gaya === "cemas") muka += "<circle cx=36 cy=32 r=1.3 fill='#222'/><circle cx=44 cy=32 r=1.3 fill='#222'/><path d='M33 29 l4 1 M47 29 l-4 1' stroke='#222' stroke-width=1.2 stroke-linecap='round'/><path d='M37 39 q3 -2 6 0' stroke='#7A3B2E' stroke-width=1.5 fill=none stroke-linecap='round'/><path class=keringat d='M51 28 q2 3 0 5 q-2 -2 0 -5z' fill='#7EC8F2'/>";
@@ -20,9 +34,10 @@ function kepalaKoki(gaya) {
 }
 // Badan: baju koki biru lengan panjang + logo di saku kiri (kanan gambar), celana kuning.
 function badanKoki() {
-  return "<g class=kaki><rect x=31 y=82 width=8 height=22 rx=3 fill='" + WARNA.kuning + "'/><rect x=41 y=82 width=8 height=22 rx=3 fill='" + WARNA.kuning + "'/>" +
-    "<rect x=29 y=102 width=11 height=5 rx=2.5 fill='" + WARNA.sepatu + "'/><rect x=40 y=102 width=11 height=5 rx=2.5 fill='" + WARNA.sepatu + "'/></g>" +
-    "<path d='M27 48 q13 -6 26 0 l2 36 h-30z' fill='" + WARNA.navy + "'/>" +
+  return "<g class=kaki-kiri style='transform-origin:35px 84px'><rect x=31 y=82 width=8 height=22 rx=3 fill='url(#cps-celana)'/><rect x=29 y=102 width=11 height=5 rx=2.5 fill='" + WARNA.sepatu + "'/><rect x=30 y=102.5 width=6 height=1.5 rx=.75 fill='#fff' opacity='.35'/></g>" +
+    "<g class=kaki-kanan style='transform-origin:45px 84px'><rect x=41 y=82 width=8 height=22 rx=3 fill='url(#cps-celana)'/><rect x=40 y=102 width=11 height=5 rx=2.5 fill='" + WARNA.sepatu + "'/><rect x=41 y=102.5 width=6 height=1.5 rx=.75 fill='#fff' opacity='.35'/></g>" +
+    "<path d='M27 48 q13 -6 26 0 l2 36 h-30z' fill='url(#cps-baju)'/>" +
+    "<path d='M29 50 q6 -3 11 -3 l-1 30 h-11z' fill='url(#cps-kilap)' opacity='.6'/>" +
     "<path d='M36 45 l4 6 l4 -6' fill='" + WARNA.putih + "'/>" +
     "<circle cx=37 cy=58 r=1.4 fill='" + WARNA.putih + "'/><circle cx=37 cy=66 r=1.4 fill='" + WARNA.putih + "'/><circle cx=37 cy=74 r=1.4 fill='" + WARNA.putih + "'/>" +
     "<rect x=43 y=55 width=9 height=8 rx=1.5 fill='" + WARNA.navyTua + "'/>" +
@@ -30,17 +45,17 @@ function badanKoki() {
 }
 function lengan(kelas, x, rot, tangan) {
   return "<g class='" + kelas + "' style='transform-origin:" + x + "px 52px'><g transform='rotate(" + rot + " " + x + " 52)'>" +
-    "<rect x=" + (x - 3.5) + " y=50 width=7 height=24 rx=3.5 fill='" + WARNA.navy + "'/><circle cx=" + x + " cy=75 r=3.6 fill='" + WARNA.kulit + "'/>" + (tangan || "") + "</g></g>";
+    "<rect x=" + (x - 3.5) + " y=50 width=7 height=24 rx=3.5 fill='url(#cps-lengan)'/><circle cx=" + x + " cy=75 r=3.6 fill='url(#cps-kulit)'/>" + (tangan || "") + "</g></g>";
 }
 function koki(gaya, isi) {
-  return "<g class=koki>" + badanKoki() + (isi && isi.belakang || "") + lengan("lengan-kiri", 28, isi && isi.rotKiri || 10, isi && isi.tanganKiri) +
-    lengan("lengan-kanan", 52, isi && isi.rotKanan || -10, isi && isi.tanganKanan) + kepalaKoki(gaya) + (isi && isi.depan || "") + "</g>";
+  return "<g class=koki><ellipse class=bayangan cx=40 cy=107 rx=15 ry=3 fill='#16226A' opacity='.22'/><g class=tubuh>" + badanKoki() + (isi && isi.belakang || "") + lengan("lengan-kiri", 28, isi && isi.rotKiri || 10, isi && isi.tanganKiri) +
+    lengan("lengan-kanan", 52, isi && isi.rotKanan || -10, isi && isi.tanganKanan) + kepalaKoki(gaya) + (isi && isi.depan || "") + "</g></g>";
 }
 function oyster(x, y, keju) {
-  return "<g transform='translate(" + x + " " + y + ")'><ellipse cx=0 cy=0 rx=11 ry=5 fill='#8C7B6B'/><ellipse cx=0 cy=-1 rx=8.5 ry=3.4 fill='" + (keju ? "#FFD66B" : "#EDE3D6") + "'/>" +
+  return "<g transform='translate(" + x + " " + y + ")'><ellipse cx=0 cy=1.5 rx=11 ry=4 fill='#000' opacity='.12'/><ellipse cx=0 cy=0 rx=11 ry=5 fill='url(#cps-cangkang)'/><ellipse cx=0 cy=-1 rx=8.5 ry=3.4 fill='" + (keju ? "#FFD66B" : "#EDE3D6") + "'/>" +
     (keju ? "<circle cx=-3 cy=-1.5 r=1.2 fill='#E8962E'/><circle cx=3 cy=-.5 r=1 fill='#E8962E'/>" : "") + "</g>";
 }
-function svg(kelas, isi) { return "<svg class='adegan " + kelas + "' viewBox='0 0 80 120' aria-hidden='true'>" + isi + "</svg>"; }
+function svg(kelas, isi) { return "<svg class='adegan " + kelas + "' viewBox='0 0 80 120' aria-hidden='true'>" + DEFS + isi + "</svg>"; }
 
 // ---------- adegan per status ----------
 var ADEGAN = {
@@ -68,14 +83,14 @@ var ADEGAN = {
       svg("a-panggang", "<g class=asap-panggang><path d='M28 40 q-6 -8 0 -16 q6 -8 0 -16' stroke='#B9BDD6' stroke-width=3 fill=none stroke-linecap='round'/><path d='M50 44 q-6 -8 0 -16 q6 -8 0 -16' stroke='#B9BDD6' stroke-width=3 fill=none stroke-linecap='round'/></g>" +
         oyster(26, 70, true) + oyster(52, 70, true) +
         "<rect x=8 y=74 width=64 height=4 rx=2 fill='#555'/><rect x=8 y=74 width=64 height=1.5 fill='#999'/>" +
-        "<g class=api><path class='f f1' d='M16 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='#F26B1D'/><path class='f f2' d='M38 104 q-6 -16 4 -28 q2 10 8 12 q2 -8 0 -14 q12 12 6 30z' fill='#F6B800'/><path class='f f3' d='M58 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='#F26B1D'/></g>" +
-        "<rect x=4 y=104 width=72 height=12 rx=3 fill='" + WARNA.navy + "'/><rect x=10 y=116 width=5 height=4 fill='" + WARNA.navyTua + "'/><rect x=65 y=116 width=5 height=4 fill='" + WARNA.navyTua + "'/>")
+        "<g class=api><path class='f f1' d='M16 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='url(#cps-api)'/><path class='f f2' d='M38 104 q-6 -16 4 -28 q2 10 8 12 q2 -8 0 -14 q12 12 6 30z' fill='url(#cps-api)'/><path class='f f3' d='M58 104 q-6 -14 4 -26 q2 10 8 12 q2 -8 0 -14 q12 10 6 28z' fill='url(#cps-api)'/></g>" +
+        "<rect x=4 y=104 width=72 height=12 rx=3 fill='url(#cps-besi)'/><rect x=6 y=105 width=68 height=3 rx=1.5 fill='url(#cps-kilap)'/><rect x=10 y=116 width=5 height=4 fill='" + WARNA.navyTua + "'/><rect x=65 y=116 width=5 height=4 fill='" + WARNA.navyTua + "'/>")
     ];
   },
   SIAP: function () {
     var anjing = function (x, y, s, k) {
       return "<g class='anjing " + k + "' transform='translate(" + x + " " + y + ") scale(" + s + ")'>" +
-        "<ellipse cx=14 cy=10 rx=12 ry=6 fill='#A0703F'/><circle cx=2 cy=4 r=6 fill='#A0703F'/><path d='M-1 0 l-3 -6 l6 3z' fill='#6B4523'/><circle cx=0 cy=3 r=1 fill='#111'/><circle cx=-4 cy=5 r=1.3 fill='#111'/>" +
+        "<ellipse class=bayang-anjing cx=14 cy=22 rx=12 ry=2 fill='#000' opacity='.15'/><ellipse cx=14 cy=10 rx=12 ry=6 fill='url(#cps-anjing)'/><circle cx=2 cy=4 r=6 fill='url(#cps-anjing)'/><ellipse cx=0 cy=1.5 rx=2.2 ry=1.2 fill='#fff' opacity='.35'/><path d='M-1 0 l-3 -6 l6 3z' fill='#6B4523'/><circle cx=0 cy=3 r=1 fill='#111'/><circle cx=-4 cy=5 r=1.3 fill='#111'/>" +
         "<path class=ekor d='M25 7 q6 -6 4 -10' stroke='#A0703F' stroke-width=3 fill=none stroke-linecap='round'/>" +
         "<g class=kaki-anjing><rect class=ka x=5 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=11 y=14 width=3 height=7 fill='#6B4523'/><rect class=ka x=18 y=14 width=3 height=7 fill='#6B4523'/><rect class=kb x=23 y=14 width=3 height=7 fill='#6B4523'/></g></g>";
     };
