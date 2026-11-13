@@ -25,7 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
-import { perintahQr } from './komplain.js';
+import { perintahQr, perintahKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
 import { tanganiKontak, cariKontak, simpanKontak, bacaKontak } from './kontak.js';
@@ -996,6 +996,7 @@ async function handlePribadi(ctx, pesan) {
     return perintahGajian(ctx, pesan, ev, { isOwner });
   }
   if (['qr', 'antrian'].includes(cmd.perintah)) return perintahQr(ctx, null, { isOwner });
+  if (cmd.perintah === 'kasir' && isOwner) return perintahKasir(ctx, null, { bolehLihat: true });
   if (['kontak', 'kontaklokasi'].includes(cmd.perintah)) {
     const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');
     const kotaKenal = [...new Set((await ctx.store.all('Event')).map((e) => e.kota).filter(Boolean))];
@@ -1329,6 +1330,12 @@ export async function handlePesan(ctx, pesan) {
       case 'qr':
       case 'antrian':
         return perintahQr(ctx, event, { isOwner });
+      case 'kasir': {
+        const karyawanK = await ctx.store.all('Karyawan');
+        const picK = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
+          && karyawanK.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
+        return perintahKasir(ctx, event, { bolehLihat: isOwner || picK });
+      }
       case 'kontak':
       case 'kontaklokasi': {
         const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ');

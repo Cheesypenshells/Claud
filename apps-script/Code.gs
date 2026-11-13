@@ -308,7 +308,7 @@ function kirimKomplain(f) {
 function doGet(e) {
   var p = (e && e.parameter && e.parameter.p) || 'komplain';
   var html;
-  if (p === 'kasir') html = HTML_KASIR;
+  if (p === 'kasir') html = HTML_KASIR.replace('__K__', String(e.parameter.k || '').replace(/[^0-9A-Za-z]/g, '')).replace('__E__', String(e.parameter.e || '').replace(/[^A-Za-z0-9-]/g, ''));
   else if (p === 'pesanan') html = HTML_PESANAN.replace('__TOKEN__', String(e.parameter.t || '').replace(/[^a-z0-9]/gi, ''));
   else html = HTML_KOMPLAIN.replace('__KODE__', String((e && e.parameter && e.parameter.e) || '').replace(/[^A-Za-z0-9-]/g, ''))
     .replace('__KATEGORI__', JSON.stringify(KATEGORI_KOMPLAIN));
@@ -360,7 +360,7 @@ var HTML_KASIR = '<header>🦪 Kasir Antrian <span id="ev" class="redup" style="
   '<div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>' +
   '</div></main><div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none">' +
   '<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><script>' +
-  'var PIN=localStorage.getItem("cps_pin")||"";var data=[];' +
+  'var KUNCI="__K__",EVLINK="__E__";var PIN=KUNCI||localStorage.getItem("cps_pin")||"";var data=[];if(EVLINK)localStorage.setItem("cps_ev",EVLINK);' +
   'function el(i){return document.getElementById(i)}' +
   'function kecilkan(file,cb){var r=new FileReader();r.onload=function(){var g=new Image();g.onload=function(){var m=1280,s=Math.min(1,m/Math.max(g.width,g.height));var c=document.createElement("canvas");c.width=g.width*s;c.height=g.height*s;c.getContext("2d").drawImage(g,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",0.72))};g.src=r.result};r.readAsDataURL(file)}' +
   'function masuk(){var p=el("pin").value||PIN;google.script.run.withSuccessHandler(function(r){PIN=p;localStorage.setItem("cps_pin",p);el("masuk").style.display="none";el("isi").style.display="";var s=el("event");s.innerHTML=r.events.map(function(e){return "<option value=\\""+e.kode+"\\">"+e.kode+" – "+e.kota+"</option>"}).join("");var ingat=localStorage.getItem("cps_ev");if(ingat)s.value=ingat;muat();setInterval(muat,4000)}).withFailureHandler(function(e){el("salah").textContent=e.message;localStorage.removeItem("cps_pin")}).kasirMasuk(p)}' +

@@ -51,3 +51,50 @@ export async function perintahQr(ctx, event, { isOwner }) {
     '_Pelanggan tidak perlu link antrian: QR khusus setiap pesanan muncul di layar kasir setelah struk difoto._',
   ].join('\n'));
 }
+
+// ---------- Link kasir (langsung masuk, PIN ikut di link) ----------
+// Pengaturan: url_antrian (link /exec web app) dan pin_kasir (sama dengan KASIR_PIN di Apps Script).
+export function linkKasir(atur, kode = '') {
+  if (!atur.url_antrian) return '';
+  return `${atur.url_antrian}?p=kasir${atur.pin_kasir ? `&k=${encodeURIComponent(atur.pin_kasir)}` : ''}${kode ? `&e=${encodeURIComponent(kode)}` : ''}`;
+}
+
+const teksKasir = (event, link) => `🧾 *Link kasir antrian ${event.kode}* (${event.kota})\n${link}\n\nBuka di HP/tablet kasir, langsung masuk (tanpa ketik PIN).\n1. *📷 Pesanan baru – foto struk* → nomor antrian & QR muncul, minta pelanggan scan QR-nya\n2. *📷 Foto & mulai bakar* saat pesanan dibakar\n3. *🔔 Panggil* saat siap → HP pelanggan berbunyi\n_Link ini khusus tim, jangan dibagikan ke pelanggan._`;
+
+// #kasir (owner/PIC): link kasir dibalas di grup tempat perintah diketik.
+export async function perintahKasir(ctx, event, { bolehLihat }) {
+  if (!bolehLihat) return balas('⚠️ Link kasir hanya bisa diminta owner atau PIC.');
+  const atur = Object.fromEntries((await ctx.store.all('Pengaturan')).map((p) => [p.kunci, p.nilai]));
+  const link = linkKasir(atur, event?.kode);
+  if (!link) return balas('⚠️ Halaman kasir antrian belum dipasang (Pengaturan: url_antrian kosong).');
+  return balas(event ? teksKasir(event, link) : `🧾 *Link kasir antrian*\n${link}`);
+}
+
+// Hari pertama event, 2 jam sebelum buka (atau jam 08.00 kalau jam buka kosong), sekali per event:
+// chat pribadi ke anggota tim berperan Kasir; kalau tidak ada kasir bernomor, ke grup tim.
+export async function tugasLinkKasir(ctx, sekarang = new Date(), { tanggalLokal }) {
+  const keluar = [];
+  if (!ctx.sesi) return keluar;
+  const [pengaturan, events, tim, karyawan, grup] = await Promise.all([
+    ctx.store.all('Pengaturan'), ctx.store.all('Event'), ctx.store.all('Tim Event'), ctx.store.all('Karyawan'), ctx.store.all('Grup'),
+  ]);
+  const atur = Object.fromEntries(pengaturan.map((p) => [p.kunci, p.nilai]));
+  if (!atur.url_antrian) return keluar;
+  const hariIni = tanggalLokal(sekarang);
+  const jam = Number(String(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })).slice(0, 2));
+  for (const e of events.filter((x) => x.mulai === hariIni && x.status !== 'BATAL' && x.status !== 'SELESAI')) {
+    const buka = e.jam_buka ? Number(String(e.jam_buka).split(/[.:]/)[0]) : 10;
+    if (jam < Math.max(0, buka - 2)) continue;
+    const tanda = `linkkasir:${e.kode}`;
+    if (ctx.sesi.get(tanda)) continue;
+    ctx.sesi.set(tanda, { kirim: true });
+    const teks = teksKasir(e, linkKasir(atur, e.kode));
+    const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
+    const kasir = tim.filter((o) => o.kode_event === e.kode && o.peran === 'Kasir' && o.status !== 'BATAL')
+      .map((o) => karyawan.find((k) => String(k.nama).toLowerCase() === String(o.nama).toLowerCase() && k.nomor_wa))
+      .filter(Boolean);
+    if (kasir.length) for (const k of kasir) keluar.push({ nomor: nomor62(k.nomor_wa), text: teks });
+    else for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teks });
+  }
+  return keluar;
+}

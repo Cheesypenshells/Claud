@@ -272,7 +272,7 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 | Karir (20%) | 12 | Nilai PIC 1–5 |
 | Omzet vs target | 15 | Omzet event ÷ target |
 | Ketepatan stok | 10 | (deteksi stok menyusul; sementara penuh) |
-| Kebersihan & komplain | 10 | −2 per komplain pelanggan (QR booth menyusul) |
+| Kebersihan & komplain | 10 | −2 per komplain pelanggan dari QR booth |
 | Kinerja tim | 5 | Nilai PIC 1–5 |
 
 - **Penilaian PIC:** sehari setelah event selesai (jam 10.00) bot chat pribadi ke PIC dan menanyakan tiap anggota tim satu per satu: balas 4 angka `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Syarat: nama & nomor WA PIC ada di tab **Karyawan** PEMBUKUAN. Kalau tidak ada, bot mengingatkan di grup pengeluaran: ketik `#nilai`.
@@ -449,3 +449,14 @@ Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–6 untuk menguba
 - Di grup tim hanya jumlah barang; **nilai rupiah dikirim ke grup pengeluaran** (owner + PIC).
 - Bahan yang belum ada di tab Harga Bahan (misalnya packaging) tetap dicatat di tab **Pengiriman**, tapi belum dihitung nilainya.
 - Akhir event: laporkan sisa (`sisa keju 2 balok`); sisa mengurangi biaya bahan baku.
+
+## Antrian pesanan & QR komplain
+
+Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke tab **Antrian** dan **Komplain**.
+
+- **Link kasir otomatis:** di hari pertama event, 2 jam sebelum booth buka, bot mengirim link kasir lewat chat pribadi ke anggota tim berperan **Kasir** (kalau nomornya belum ada, link dikirim ke grup tim). PIN sudah ada di dalam link, jadi kasir cukup membuka link-nya.
+- `#kasir` (owner/PIC, di grup event): minta link kasir lagi.
+- `#qr` (owner): link kasir & link komplain (cetak jadi QR di depan booth).
+- Di kasir: **foto struk** → nomor antrian & QR muncul, lalu pelanggan scan → **foto & mulai bakar** → **🔔 panggil** (HP pelanggan berbunyi/bergetar).
+- Komplain pelanggan diteruskan ke WhatsApp owner dan mengurangi KPI kelompok −2. Kalau tidak valid, ubah Status menjadi BATAL di tab Komplain.
+- Pengaturan: `url_antrian` (link web app) dan `pin_kasir` (sama dengan PIN di Apps Script).
