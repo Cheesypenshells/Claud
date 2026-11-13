@@ -214,6 +214,25 @@ function bacaMenu_(teks) {
 }
 
 // Event yang sedang berjalan (tanggal hari ini di antara mulai & selesai), lalu yang terdekat.
+// Jadwal untuk website (tanpa data keuangan): semua event kecuali BATAL & event tes. Disimpan sementara 10 menit.
+function jadwalPublik_() {
+  var c = CacheService.getScriptCache(), simpan = c.get('jadwal');
+  if (simpan) return JSON.parse(simpan);
+  var sh = ss_().getSheetByName('Event');
+  if (!sh) return [];
+  var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var j = v[0];
+  var i = function (label) { return j.indexOf(label); };
+  var hasil = v.slice(1).map(function (r) {
+    return { kode: String(r[i('Kode Event')] || ''), kota: String(r[i('Kota')] || ''), nama: String(r[i('Event Organizer (IO)')] || ''),
+      mulai: tglStr_(r[i('Tanggal Mulai')]), selesai: tglStr_(r[i('Tanggal Selesai')]), status: String(r[i('Status')] || '') };
+  }).filter(function (e) { return e.kode && e.mulai && e.status !== 'BATAL' && !/^TES/i.test(e.kode); })
+    .map(function (e) { return { kota: e.kota, nama: e.nama, mulai: e.mulai, selesai: e.selesai }; })
+    .sort(function (a, b) { return a.mulai.localeCompare(b.mulai); });
+  c.put('jadwal', JSON.stringify(hasil), 600);
+  return hasil;
+}
+
 function daftarEvent() {
   var sh = ss_().getSheetByName('Event');
   if (!sh) return [];
@@ -356,6 +375,9 @@ function doGet(e) {
     // Status pesanan JSON untuk halaman pelanggan di luar Apps Script (GitHub Pages, supaya HP bisa bergetar).
     var hasil = statusPesanan(String(e.parameter.t || '').replace(/[^a-z0-9]/gi, ''));
     return ContentService.createTextOutput(JSON.stringify(hasil)).setMimeType(ContentService.MimeType.JSON);
+  }
+  if (p === 'jadwal') {
+    return ContentService.createTextOutput(JSON.stringify(jadwalPublik_())).setMimeType(ContentService.MimeType.JSON);
   }
   if (p === 'kasir') html = HTML_KASIR.replace('__K__', String(e.parameter.k || '').replace(/[^0-9A-Za-z]/g, '')).replace('__E__', String(e.parameter.e || '').replace(/[^A-Za-z0-9-]/g, ''));
   else if (p === 'pesanan') html = HTML_PESANAN.replace('__TOKEN__', String(e.parameter.t || '').replace(/[^a-z0-9]/gi, ''));

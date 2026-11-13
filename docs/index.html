@@ -57,9 +57,9 @@ a{color:inherit}
 .titik button[aria-current="true"]{width:26px;background:var(--navy)}
 
 /* kategori */
-.kategori{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:22px;text-align:center}
-.kategori a{text-decoration:none;font-weight:700;font-size:13px;color:var(--teks);display:flex;flex-direction:column;align-items:center;gap:6px}
-.kategori .bulat{width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--putih);box-shadow:0 4px 14px rgba(34,52,140,.12);display:grid;place-items:center;border:3px solid var(--putih)}
+.kategori{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:22px;text-align:center}
+.kategori a{text-decoration:none;font-weight:700;font-size:12px;color:var(--teks);display:flex;flex-direction:column;align-items:center;gap:6px}
+.kategori .bulat{width:min(60px,14vw);height:min(60px,14vw);border-radius:50%;overflow:hidden;background:var(--putih);box-shadow:0 4px 14px rgba(34,52,140,.12);display:grid;place-items:center;border:3px solid var(--putih)}
 .kategori a:first-child .bulat{border-color:var(--navy)}
 .kategori .bulat img{width:100%;height:100%;object-fit:cover}
 .kategori .bulat.ikon{background:var(--navy);color:var(--kuning)}.kategori .bulat.ikon svg{width:28px;height:28px}
@@ -130,8 +130,20 @@ h2.judul span{display:inline-block;padding:3px 16px 5px;background:var(--kuas) c
 .lini small{display:block;color:var(--redup);font-weight:700;font-size:14px}
 .status{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 10px;background:#EEEFF5;color:var(--redup)}
 .kini .status{background:var(--kuning);color:var(--navy-tua)}
-@media(min-width:900px){.dua-kolom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}.dua-kolom section{margin-top:38px}}
+@media(min-width:900px){.dua-kolom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}}
 
+.cerita{display:grid;gap:16px;background:var(--putih);border-radius:24px;padding:16px;box-shadow:0 6px 20px rgba(34,52,140,.08)}
+@media(min-width:900px){.cerita{grid-template-columns:minmax(0,.9fr) minmax(0,1fr);align-items:center;padding:22px}}
+.cerita>img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:18px}
+.cerita p{margin:8px 0 0}
+.angka{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+.angka div{background:var(--kuning-muda);border-radius:16px;padding:10px;text-align:center}
+.angka b{display:block;font-family:var(--judul);font-size:38px;line-height:1;color:var(--navy)}
+.angka small{font-weight:700;font-size:13px;color:var(--redup)}
+h3.sub{font-family:var(--judul);font-size:22px;text-transform:uppercase;color:var(--navy);margin:0 0 12px}
+.lini.lewat li::before{background:#9AA0C3}
+.lini .kosong{color:var(--redup);font-weight:600}.lini .kosong::before{background:var(--kuning)}
+@media(max-width:899px){.dua-kolom>div+div{margin-top:24px}}
 /* project */
 .proyek{display:grid;gap:12px}
 .proyek article{background:var(--putih);border-radius:20px;padding:16px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;align-items:start;box-shadow:0 6px 20px rgba(34,52,140,.06)}
@@ -191,10 +203,10 @@ footer img{width:72px}
     <div class="slide" id="slide-2">
       <img src="img/fresh-oyster.jpg" alt="Fresh oyster dengan lemon di atas kertas Cheesy Pen Shells">
       <div class="teks">
-        <span class="eyebrow">Sekarang di Semarang</span>
-        <h2>Kepo Market 14–22 Nov</h2>
+        <span class="eyebrow" id="bannerJadwalAtas">Sekarang di Semarang</span>
+        <h2 id="bannerJadwal">Kepo Market 14–22 Nov</h2>
         <p>Datang ke booth kami dan rasakan oyster bakar langsung dari bara.</p>
-        <a class="cta" href="#perjalanan">Jadwal kami <span>→</span></a>
+        <a class="cta" href="#jadwal">Jadwal kami <span>→</span></a>
       </div>
     </div>
     <div class="slide" id="slide-3">
@@ -212,7 +224,8 @@ footer img{width:72px}
   <nav class="kategori" aria-label="Bagian halaman">
     <a href="#menu"><span class="bulat"><img src="img/fresh-oyster.jpg" alt=""></span>Menu</a>
     <a href="#sehat"><span class="bulat"><img src="img/oyster-segar.jpg" alt=""></span>Sehat</a>
-    <a href="#perjalanan"><span class="bulat"><img src="img/suasana.jpg" alt=""></span>Perjalanan</a>
+    <a href="#cerita"><span class="bulat"><img src="img/suasana.jpg" alt=""></span>Cerita</a>
+    <a href="#jadwal"><span class="bulat ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>Jadwal</a>
     <a href="#project"><span class="bulat kuning"><img src="img/logo.png" alt=""></span>Project</a>
     <a href="#sosmed"><span class="bulat ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></span>Sosmed</a>
   </nav>
@@ -262,22 +275,37 @@ footer img{width:72px}
     <p class="catatan">Oyster bakar kami dimasak matang di atas bara. Punya alergi makanan laut, sedang hamil, atau punya kondisi kesehatan khusus? Tanyakan dulu ke tim kami di booth sebelum memesan.</p>
   </section>
 
-  <div class="dua-kolom">
-    <section id="perjalanan">
-      <div class="judul-bagian"><h2 class="judul"><span>Perjalanan kami</span></h2></div>
-      <p class="pengantar">Dari satu kota ke kota lain, kami membawa bara dan oyster segar ke bazaar kuliner di seluruh Indonesia.</p>
-      <ol class="lini" reversed>
-        <li class="kini"><div><b>Semarang</b><small>Kepo Market · 14–22 Nov 2026</small></div><span class="status">Sedang berlangsung</span></li>
-        <li><div><b>Lampung</b><small>28 Okt – 8 Nov 2026</small></div><span class="status">Selesai</span></li>
-        <li><div><b>Pekalongan</b><small>9–18 Okt 2026</small></div><span class="status">Selesai</span></li>
-        <li><div><b>Lombok</b><small>24 Sep – 11 Okt 2026</small></div><span class="status">Selesai</span></li>
-        <li><div><b>Bali</b><small>23 Sep – 4 Okt 2026</small></div><span class="status">Selesai</span></li>
-        <li><div><b>Banyuwangi</b><small>15–20 Sep 2026</small></div><span class="status">Selesai</span></li>
-        <li><div><b>Kediri</b><small>3–13 Sep 2026</small></div><span class="status">Selesai</span></li>
-      </ol>
-    </section>
+  <section id="cerita">
+    <div class="judul-bagian"><h2 class="judul"><span>Cerita kami</span></h2></div>
+    <div class="cerita">
+      <img src="img/suasana.jpg" alt="Oyster bakar mozzarella di atas bara, suasana malam bazaar" loading="lazy">
+      <div>
+        <p class="skrip" style="margin:0">Dari bara ke bazaar</p>
+        <p>Cheesy Pen Shells adalah booth oyster bakar yang berkeliling dari satu bazaar kuliner ke bazaar lainnya. Setiap oyster kami bakar langsung di atas bara, di depan pelanggan, lalu disajikan hangat dengan keju, garlic, atau seafood.</p>
+        <div class="angka">
+          <div><b id="jumlahKota">7</b><small>kota bazaar</small></div>
+          <div><b id="jumlahEvent">7</b><small>event dijalani</small></div>
+          <div><b>2</b><small>tim bisa jalan bersamaan</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <section id="project">
+  <section id="jadwal">
+    <div class="judul-bagian"><h2 class="judul"><span>Jadwal kami</span></h2></div>
+    <div class="dua-kolom">
+      <div>
+        <h3 class="sub">📍 Akan datang</h3>
+        <ol class="lini" id="jadwalDatang"></ol>
+      </div>
+      <div>
+        <h3 class="sub">✓ Sudah lewat</h3>
+        <ol class="lini lewat" id="jadwalLewat"></ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="project">
       <div class="judul-bagian"><h2 class="judul"><span>Sedang kami kerjakan</span></h2></div>
       <div class="proyek">
         <article><span class="ik" aria-hidden="true">🔔</span><div><h3>Antrian pintar di booth</h3><p>Setelah bayar, scan QR dari kasir. HP kamu berbunyi dan bergetar saat oyster kamu siap, jadi tidak perlu berdiri menunggu.</p></div></article>
@@ -285,7 +313,6 @@ footer img{width:72px}
         <article><span class="ik" aria-hidden="true">💬</span><div><h3>Suara pelanggan</h3><p>Setiap keluhan dari QR di booth langsung sampai ke pemilik, supaya pelayanan kami makin baik di setiap kota.</p></div></article>
       </div>
     </section>
-  </div>
 
   <section id="sosmed">
     <div class="judul-bagian"><h2 class="judul"><span>Ikuti kami</span></h2></div>
@@ -308,7 +335,7 @@ footer img{width:72px}
     <a href="#beranda" class="aktif"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 3 10.5V21h6v-6h6v6h6V10.5z"/></svg>Beranda</a>
     <a href="#sehat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Sehat</a>
     <a href="#menu" class="tengah"><i><img src="img/logo.png" alt=""></i>Menu</a>
-    <a href="#perjalanan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Perjalanan</a>
+    <a href="#jadwal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>Jadwal</a>
     <a href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg>Instagram</a>
   </div>
 </nav>
@@ -342,6 +369,56 @@ footer img{width:72px}
     }, { rootMargin: '-45% 0px -50% 0px' });
     bagian.forEach(function (b) { if (b) io.observe(b); });
   }
+})();
+
+// Jadwal: data cadangan di bawah, lalu diperbarui otomatis dari tab Event (Google Apps Script ?p=jadwal).
+(function () {
+  var API = 'https://script.google.com/macros/s/AKfycbzShLEvpvRQ9sxlJXi9GhGgDbo3EkxVsLLRsU1YEPPBV6m44cL-nLLVDvp1wEYpekBDgA/exec';
+  var CADANGAN = [
+    { kota: 'Kediri', nama: 'Jangkrik Kuliner', mulai: '2026-09-03', selesai: '2026-09-13' },
+    { kota: 'Banyuwangi', nama: 'Jangkrik Kuliner', mulai: '2026-09-15', selesai: '2026-09-20' },
+    { kota: 'Bali', nama: 'Jangkrik Kuliner', mulai: '2026-09-23', selesai: '2026-10-04' },
+    { kota: 'Lombok', nama: 'Jangkrik Kuliner', mulai: '2026-09-24', selesai: '2026-10-11' },
+    { kota: 'Pekalongan', nama: 'Jangkrik Kuliner', mulai: '2026-10-09', selesai: '2026-10-18' },
+    { kota: 'Lampung', nama: 'Jangkrik Kuliner', mulai: '2026-10-28', selesai: '2026-11-08' },
+    { kota: 'Semarang', nama: 'Kepo Market', mulai: '2026-11-14', selesai: '2026-11-22' }
+  ];
+  var BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  function tgl(s) { var d = s.split('-'); return { h: +d[2], b: BULAN[+d[1] - 1], t: d[0] }; }
+  function rentang(e) {
+    var a = tgl(e.mulai), z = tgl(e.selesai || e.mulai);
+    if (a.b === z.b && a.t === z.t) return a.h + (a.h !== z.h ? '–' + z.h : '') + ' ' + a.b + ' ' + a.t;
+    return a.h + ' ' + a.b + ' – ' + z.h + ' ' + z.b + ' ' + z.t;
+  }
+  function judul(s) { return String(s || '').replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
+  function aman(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function hariIni() { var d = new Date(Date.now() + 7 * 3600e3); return d.toISOString().slice(0, 10); }
+  function baris(e, st) {
+    var label = { kini: 'Sedang berlangsung', datang: 'Akan datang', lewat: 'Selesai' }[st];
+    return '<li class="' + (st === 'kini' ? 'kini' : '') + '"><div><b>' + aman(judul(e.kota)) + '</b><small>' + aman(judul(e.nama)) + (e.nama ? ' · ' : '') + rentang(e) + '</small></div><span class="status">' + label + '</span></li>';
+  }
+  function tampil(daftar) {
+    var h = hariIni(), datang = [], lewat = [], kota = {};
+    daftar.forEach(function (e) {
+      kota[String(e.kota).toLowerCase()] = 1;
+      if ((e.selesai || e.mulai) < h) lewat.push(e); else datang.push(e);
+    });
+    datang.sort(function (a, b) { return a.mulai.localeCompare(b.mulai); });
+    lewat.sort(function (a, b) { return b.mulai.localeCompare(a.mulai); });
+    document.getElementById('jadwalDatang').innerHTML = datang.length
+      ? datang.map(function (e) { return baris(e, e.mulai <= h ? 'kini' : 'datang'); }).join('')
+      : '<li class="kosong">Jadwal berikutnya segera kami umumkan di Instagram @cheesypenshells.</li>';
+    document.getElementById('jadwalLewat').innerHTML = lewat.map(function (e) { return baris(e, 'lewat'); }).join('');
+    document.getElementById('jumlahKota').textContent = Object.keys(kota).length;
+    document.getElementById('jumlahEvent').textContent = daftar.length;
+    var sekarang = datang[0];
+    if (sekarang) {
+      document.getElementById('bannerJadwalAtas').textContent = (sekarang.mulai <= h ? 'Sekarang di ' : 'Segera di ') + judul(sekarang.kota);
+      document.getElementById('bannerJadwal').textContent = judul(sekarang.nama || sekarang.kota) + ' ' + rentang(sekarang).replace(/ 20\d\d/g, '');
+    }
+  }
+  tampil(CADANGAN);
+  fetch(API + '?p=jadwal').then(function (r) { return r.json(); }).then(function (d) { if (Array.isArray(d) && d.length) tampil(d); }).catch(function () {});
 })();
 </script>
 </body>
