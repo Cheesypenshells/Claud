@@ -350,6 +350,7 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - Pekerjaan: rakit booth (`#booth`), tata stok bahan baku & freezer (`#gudang`), terima & cek barang tiba (`#tiba`), pasang listrik & lampu (`#listrik`), tata display & alat masak (`#display`). Orang lebih banyak dari pekerjaan → pekerjaan berat (booth, gudang) dapat tambahan orang; lebih sedikit → satu orang pegang beberapa.
 - Setiap penanggung jawab **wajib kirim foto hasil kerjanya** dengan tag pekerjaannya. `#loadingin` menampilkan 👷 penanggung jawab tiap pekerjaan dan yang belum.
 - `#jobdesk` = lihat pembagian · `#jobdesk ulang` (owner/PIC) = bagi ulang. Tersimpan di tab **Jobdesk**.
+- **Penilaian oleh PIC**: setiap ada foto laporan pekerjaan jobdesk, bot bertanya ke PIC lewat **chat pribadi** (kalau nomornya belum dikenal: di grup pengeluaran): setelah dicek di lokasi, sesuai atau tidak dan poinnya berapa. PIC membalas `sesuai 10` / `kurang 6 kabel berantakan` / `tidak 0 booth belum dirakit`. Poin masuk **Poin KPI** setiap penanggung jawab pekerjaan itu (dan kolom *Penilaian PIC* di tab Laporan Foto). Satu pekerjaan dinilai sekali; kalau beberapa menunggu, ditanyakan bergiliran. Salah: `#poinbatal K....`.
 
 ## Laporan foto: loading in, harian, loading out (grup tim)
 

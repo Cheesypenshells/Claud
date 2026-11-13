@@ -61,7 +61,8 @@ async function main() {
       const balasan = await handlePesan(ctx, pesan);
       // Balasan bisa juga untuk grup lain (contoh: nilai bahan baku dikirim ke grup pengeluaran).
       for (const b of balasan) {
-        if (b.groupId && b.groupId !== pesan.groupId) await wa.kirim(b.groupId, b.text);
+        if (b.nomor) await wa.kirimPribadi(b.nomor, b.text); // chat pribadi (contoh: PIC menilai jobdesk)
+        else if (b.groupId && b.groupId !== pesan.groupId) await wa.kirim(b.groupId, b.text);
         else await balasKe(b.text);
       }
       if (balasan.length) perluPerbaruiMain = true;

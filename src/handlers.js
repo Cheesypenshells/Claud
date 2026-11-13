@@ -25,6 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
+import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, batalGajiTetap, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -965,7 +966,7 @@ async function handlePribadi(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
-  if (!cmd) return (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
+  if (!cmd) return (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
   const opsi = { event: null, argumen: cmd.argumen, isOwner };
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
@@ -1076,6 +1077,11 @@ export async function handlePesan(ctx, pesan) {
     const grupPengeluaran = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
     const lapor = await tanganiLaporan(ctx, pesan, event, { cmd, isOwner, grupPengeluaran });
     if (lapor) return lapor;
+  }
+  // Penilaian jobdesk oleh PIC/owner kalau ditanyakan di grup pengeluaran.
+  if (!cmd && event && grup.jenis === 'pengeluaran') {
+    const nj = await jawabNilaiJobdesk(ctx, pesan, { boleh: isOwner || /Cek jobdesk/i.test(pesan.kutipan?.teks || '') });
+    if (nj) return nj;
   }
   // Jawaban PIC atas pertanyaan nomor rekening ("BCA 1234567890 a.n. Melia").
   if (!cmd && event && grup.jenis === 'pengeluaran') {

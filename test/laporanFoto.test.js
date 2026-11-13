@@ -109,3 +109,38 @@ test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #l
   assert.match(await kirim(G_TIM, OWNER, '#loadingin', pada('05', '07:00')), /Booth selesai dirakit.*👷 Dena/s);
   assert.match(await kirim(G_TIM, TIAR, 'lampu sudah nyala semua', pada('05', '08:00'), foto('lampu')), /Listrik, kabel & lampu booth\* \(#listrik\)/);
 });
+
+test('penilaian jobdesk: foto laporan -> bot tanya PIC lewat chat pribadi, jawaban jadi Poin KPI penanggung jawab', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const raw = (groupId, senderId, text, waktu, extra = {}) => handlePesan(ctx, {
+    id: `n${++n}`, groupId, groupName: groupId, senderId, senderName: senderId === PIC ? 'Budi' : 'X', text, adaFoto: false, waktu, pribadi: groupId === 'dm', ...extra,
+  });
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  await raw(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar', pada('01', '09:00'));
+  await raw(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
+  await raw(G_TIM, PIC, 'saya Budi', pada('01', '09:02'));
+  await raw(G_TIM, DENA, 'saya Dena', pada('01', '09:03'));
+  await raw(G_TIM, OWNER, '#jobdesk', pada('03', '10:00'));
+  const pj = (await store.all('Jobdesk')).filter((j) => j.tag === 'booth').map((j) => j.nama);
+  // foto booth -> pertanyaan ke chat pribadi PIC
+  const r = await raw(G_TIM, DENA, '#booth', pada('05', '08:00'), foto('booth'));
+  const tanya = r.find((b) => b.nomor === PIC);
+  assert.match(tanya.text, new RegExp(`Cek jobdesk JMB26-11: Rakit booth.*Penanggung jawab: \\*${pj.join(', ')}\\*.*sesuai 10`, 's'));
+  assert.match(r[0].text, /PIC akan mengecek/);
+  // foto listrik juga -> antre
+  const r2 = await raw(G_TIM, DENA, '#listrik', pada('05', '08:10'), foto('listrik'));
+  assert.match(r2.find((b) => b.nomor === PIC).text, /masih ada 1 pekerjaan lain/);
+  // PIC menjawab di chat pribadi
+  const j = await raw('dm', PIC, 'kurang 7 banner miring', pada('05', '09:00'));
+  assert.match(j[0].text, /Rakit booth.*kurang sesuai, \*\+7 poin\* untuk .*banner miring.*Cek jobdesk JMB26-11: Pasang listrik/s);
+  const poin = await store.all('Poin KPI');
+  assert.deepEqual(poin.map((p) => [p.nama, p.poin]), pj.map((nm) => [nm, 7]));
+  assert.match(poin[0].alasan, /^Jobdesk #booth .*kurang sesuai – banner miring/);
+  assert.match((await store.all('Laporan Foto')).find((x) => x.tag === 'booth').penilaian, /kurang sesuai, 7 poin/);
+  assert.match((await raw('dm', PIC, 'sesuai 10', pada('05', '09:05')))[0].text, /Pasang listrik.*sesuai, \*\+10 poin\*/s);
+  // pekerjaan yang sudah dinilai tidak ditanya lagi
+  const r3 = await raw(G_TIM, DENA, '#booth', pada('05', '09:30'), foto('booth2'));
+  assert.ok(!r3.some((b) => b.nomor));
+});

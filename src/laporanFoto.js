@@ -11,6 +11,7 @@
 // lama yang dikirim ulang), dan angka followers di screenshot Instagram (dibaca dengan OCR).
 // Temuan (serpihan, busuk, alat rusak, komplain) langsung diteruskan ke grup pengeluaran (owner + PIC).
 
+import { mintaNilaiJobdesk } from './nilaiJobdesk.js';
 import { pjPerTag } from './jobdesk.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
@@ -271,7 +272,9 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
   }
   const sisa = b.opsional ? '' : `\n${await sisaTeks(ctx, event, tahap, tanggal)}`;
   const ket = pesan.adaFoto ? ' _(foto berikutnya dalam 5 menit ikut dihitung)_' : '';
-  return balas(`📷 *${b.label}* (#${tag}) dari *${nama}* jam ${jam} ${zona.nama} tercatat.${ket}${infoAngka}${sisa}`);
+  // Pekerjaan jobdesk: PIC diminta mengecek di lokasi dan memberi poin (chat pribadi / grup pengeluaran).
+  const minta = tahap === T.IN ? await mintaNilaiJobdesk(ctx, event, { lapId: id, tag, pengirim: nama, jam: `${jam} ${zona.nama}` }) : [];
+  return [{ text: `📷 *${b.label}* (#${tag}) dari *${nama}* jam ${jam} ${zona.nama} tercatat.${ket}${infoAngka}${sisa}${minta.length ? '\n_PIC akan mengecek hasilnya di lokasi._' : ''}` }, ...minta];
 }
 
 // Pengingat terjadwal: saat booth buka, sebut laporan sebelum-buka (dan loading in hari pertama) yang belum.

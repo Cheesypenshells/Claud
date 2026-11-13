@@ -152,6 +152,7 @@ export const KOLOM = {
       k('sidik', 'Sidik Foto', 160, { sembunyi: true }),
       k('status', 'Status', 85),
       k('dicatat', 'Waktu Dicatat', 140),
+      k('penilaian', 'Penilaian PIC', 220, { catatan: 'Jobdesk: sesuai / kurang / tidak + poin (dari PIC lewat bot)' }),
     ],
   },
   // Izin / dispensasi per orang & jadwal khusus per hari (diisi owner lewat #izin / #jadwal).
