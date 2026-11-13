@@ -252,3 +252,12 @@ test('awalan "iya untuk" / "ini harga untuk" dibuang dari keterangan', async () 
   assert.equal(p('Iya untuk hotel karyawan veri 600k').items[0].keterangan, 'hotel karyawan veri');
   assert.equal(p('Ini harga untuk sewa freezer 500 liter 900rb').items[0].keterangan, 'sewa freezer 500 liter');
 });
+
+test('nominal dengan satuan: 126925k = 126.925.000; satuan berlebih hanya untuk angka yang sudah jutaan', async () => {
+  const { parseMoney } = await import('../src/util.js');
+  assert.equal(parseMoney('126925k'), 126925000);
+  assert.equal(parseMoney('126925rb'), 126925000);
+  assert.equal(parseMoney('1500000rb'), 1500000);
+  assert.equal(parseMoney('125055000jt'), 125055000);
+  assert.equal(parseMoney('12500k'), 12500000);
+});

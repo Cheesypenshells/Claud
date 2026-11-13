@@ -37,7 +37,8 @@ export function findMoney(text) {
     }
     // Angka sudah lengkap tapi masih diberi satuan: "125055000jt" / "150000rb" = 125.055.000 / 150.000.
     if (satuan === 1e6 && /^\d{5,}$/.test(angka)) satuan = 1;
-    if (satuan === 1e3 && /^\d{6,}$/.test(angka)) satuan = 1;
+    // rb/k: hanya kalau angkanya sudah jutaan ("1500000rb"); "126925k" = 126.925.000.
+    if (satuan === 1e3 && /^\d{7,}$/.test(angka)) satuan = 1;
     nilai = Math.round(nilai * satuan);
     if (!Number.isFinite(nilai)) continue;
     if (!rp && !suf && nilai < 1000) continue;
