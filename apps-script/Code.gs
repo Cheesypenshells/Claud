@@ -1,19 +1,18 @@
-/**
- * Cheesy Pen Shells – Antrian pesanan & komplain pelanggan (Google Apps Script web app).
- *
- * Halaman (satu link web app, dibedakan parameter p):
- *   ?p=kasir                  -> halaman kasir (PIN): foto struk -> nomor antrian + QR pesanan,
- *                                kolom Menunggu / Dibakar / Siap, foto pesanan saat dibakar, tombol Panggil.
- *   ?p=pesanan&t=TOKEN        -> halaman pelanggan (dari QR di layar kasir): foto struk, menu (dibaca dari
- *                                struk), nomor antrian, nomor yang sedang dipanggil, status & foto saat dibakar,
- *                                bunyi + getar saat dipanggil.
- *   ?p=komplain[&e=KODE]      -> form komplain pelanggan (QR di depan booth). Bot WhatsApp meneruskan ke owner.
- *
- * Data: Google Sheet pembukuan (Script Property SPREADSHEET_ID), tab "Antrian" & "Komplain".
- * Foto: folder Drive "CPS ANTRIAN (foto struk & pesanan)", dibagikan "siapa saja yang punya link: lihat".
- * PIN kasir: Script Property KASIR_PIN.
- * Dipasang sekali oleh owner; tidak ada data rahasia di file ini.
- */
+//
+// Cheesy Pen Shells – Antrian pesanan & komplain pelanggan (Google Apps Script web app).
+//
+// Halaman (satu link web app, dibedakan parameter p):
+// ?p=kasir                  -> halaman kasir (PIN): foto struk -> nomor antrian + QR pesanan,
+// kolom Menunggu / Dibakar / Siap, foto pesanan saat dibakar, tombol Panggil.
+// ?p=pesanan&t=TOKEN        -> halaman pelanggan (dari QR di layar kasir): foto struk, menu (dibaca dari
+// struk), nomor antrian, nomor yang sedang dipanggil, status & foto saat dibakar,
+// bunyi + getar saat dipanggil.
+// ?p=komplain[&e=KODE]      -> form komplain pelanggan (QR di depan booth). Bot WhatsApp meneruskan ke owner.
+//
+// Data: Google Sheet pembukuan (Script Property SPREADSHEET_ID), tab "Antrian" & "Komplain".
+// Foto: folder Drive "CPS ANTRIAN (foto struk & pesanan)", dibagikan "siapa saja yang punya link: lihat".
+// PIN kasir: Script Property KASIR_PIN.
+// Dipasang sekali oleh owner; tidak ada data rahasia di file ini.
 
 var KOLOM_ANTRIAN = [
   ['id', 'ID'], ['token', 'Token'], ['kode_event', 'Kode Event'], ['tanggal', 'Tanggal'], ['nomor', 'No. Antrian'],
