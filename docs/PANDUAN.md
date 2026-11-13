@@ -360,7 +360,7 @@ sisa keju 2 balok, bumbu garlic 1 pack
 ## #bantu: membantu pekerjaan owner (poin tambahan)
 
 - Karyawan yang membantu pekerjaan owner di luar jobdesk-nya mengirim di grup tim: `#bantu angkat galon & beli es batu untuk pak george` (boleh dengan foto). Beberapa orang: `#bantu Adit dan Veri angkat freezer` — semua nama tim yang disebut ikut tercatat.
-- Bot bertanya ke **owner lewat chat pribadi**: *mau diberi poin berapa?* Owner membalas `sesuai 5` / `10 cepat & rapi`. Poin masuk **Poin KPI** semua yang membantu (alasan: *Bantu owner: ...*). Setiap bantuan ditanyakan (tidak dibatasi sekali).
+- **Poin sama untuk setiap bantuan** (bawaan 5, ubah di tab Pengaturan kunci `poin_bantu`), langsung masuk **Poin KPI** semua yang membantu (alasan: *Bantu owner: ...*). Bot hanya berterima kasih dan memberi tahu ada tambahan poin, **tanpa menyebut angkanya**. Owner tidak ditanya.
 
 ## Info loading in
 

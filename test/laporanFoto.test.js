@@ -249,27 +249,27 @@ test('kontak lokasi: simpan nomor es batu/katering per kota (bukan pengeluaran),
   assert.match(await kirim(G_KELUAR, OWNER, 'es batu 50rb'), /T0001 es batu/);
 });
 
-test('#bantu: karyawan membantu kerjaan owner -> owner ditanya lewat chat pribadi, poin ke yang membantu', async () => {
+test('#bantu: poin sama otomatis ke yang membantu, ucapan terima kasih tanpa angka poin', async () => {
   const store = new MemoryStore();
   const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
   let n = 0;
   const raw = (groupId, senderId, text, waktu, extra = {}) => handlePesan(ctx, {
-    id: `h${++n}`, groupId, groupName: groupId, senderId, senderName: senderId === OWNER ? 'George' : 'X', text, adaFoto: false, waktu, pribadi: groupId === 'dm', ...extra,
+    id: `h${++n}`, groupId, groupName: groupId, senderId, senderName: senderId === OWNER ? 'George' : 'X', text, adaFoto: false, waktu, ...extra,
   });
   await raw(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 2-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 0\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar\nDW: Joko', pada('01', '09:00'));
   await raw(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
   await raw(G_TIM, DENA, 'saya Dena', pada('01', '09:02'));
   assert.match((await raw(G_TIM, DENA, '#bantu', pada('03', '15:00')))[0].text, /Tulis juga \*bantu apa\*/);
   const r = await raw(G_TIM, DENA, '#bantu Joko dan saya angkat freezer ke mobil pak george', pada('03', '15:05'), { adaFoto: true, ambilFoto: async () => Buffer.from('f') });
-  assert.match(r[0].text, /Terima kasih \*Dena\*! Bantuan tercatat/);
-  const tanya = r.find((x) => x.nomor === OWNER);
-  assert.match(tanya.text, /Bantu owner: Joko dan saya angkat freezer.*Penanggung jawab: \*Dena, Joko\*.*Mau diberi poin berapa/s);
-  assert.match((await raw('dm', OWNER, 'sesuai 5', pada('03', '16:00')))[0].text, /\+5 poin\* untuk Dena, Joko/);
+  assert.equal(r.length, 1); // tidak ada pertanyaan ke owner
+  assert.match(r[0].text, /Terima kasih banyak \*Dena, Joko\*.*tambahan poin KPI/s);
+  assert.doesNotMatch(r[0].text, /\d+ poin|\+\d/);
   const p = await store.all('Poin KPI');
   assert.deepEqual(p.map((x) => [x.nama, x.poin]), [['Dena', 5], ['Joko', 5]]);
   assert.match(p[0].alasan, /^Bantu owner: Joko dan saya angkat freezer/);
-  // bantuan kedua di event yang sama tetap ditanya (tidak dibatasi sekali)
-  const r2 = await raw(G_TIM, DENA, '#bantu beli es batu', pada('03', '17:00'));
-  assert.ok(r2.some((x) => x.nomor === OWNER));
+  // poin bisa diatur owner di Pengaturan
+  await store.append('Pengaturan', { kunci: 'poin_bantu', nilai: 3 });
+  await raw(G_TIM, DENA, '#bantu beli es batu', pada('03', '17:00'));
+  assert.equal((await store.all('Poin KPI')).at(-1).poin, 3);
   assert.doesNotMatch((await raw(G_TIM, OWNER, '#harian', pada('03', '18:00')))[0].text, /Bantu kerjaan owner/);
 });

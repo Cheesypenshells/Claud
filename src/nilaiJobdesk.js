@@ -41,6 +41,28 @@ function teksTanya(item, sisa) {
   ].filter(Boolean).join('\n');
 }
 
+export const POIN_BANTU_BAWAAN = 5;
+
+// #bantu: poin tetap (Pengaturan "poin_bantu", bawaan 5) langsung ke pengirim + nama tim yang disebut.
+// Mengembalikan daftar nama yang mendapat poin.
+export async function catatPoinBantu(ctx, event, { lapId, pengirim, isi, waktu }) {
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== STATUS.BATAL);
+  const disebut = tim.filter((o) => new RegExp(`(^|[^a-z])${String(o.nama).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(` ${String(isi).toLowerCase()} `)).map((o) => o.nama);
+  const orang = [...new Set([pengirim, ...disebut])];
+  const atur = Object.fromEntries((await ctx.store.all('Pengaturan')).map((p) => [p.kunci, p.nilai]));
+  const poin = Number(atur.poin_bantu) || POIN_BANTU_BAWAAN;
+  let urut = (await ctx.store.all('Poin KPI')).length;
+  for (const nama of orang) {
+    urut += 1;
+    await ctx.store.append('Poin KPI', {
+      id: `K${String(urut).padStart(4, '0')}`, tanggal: tanggalLokal(waktu), nama, poin, alasan: `Bantu owner: ${isi} (${lapId})`,
+      kode_event: event.kode, dicatat_oleh: 'Bot (#bantu)', status: STATUS.OK, dicatat: waktuLokal(waktu),
+    });
+  }
+  await ctx.store.updateWhere('Laporan Foto', (r) => r.id === lapId, { penilaian: `+${poin} poin otomatis (#bantu)` });
+  return orang;
+}
+
 // Owner (untuk #bantu: membantu pekerjaan owner): chat pribadi nomor owner pertama.
 function tujuanOwner(ctx) {
   const nomor = [...(ctx.ownerIds || [])][0];
