@@ -344,6 +344,13 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - Biaya bahan baku = (awal + restock) × harga tab − nilai sisa. Masuk ke `#rekap`, file event (tab Bahan Baku: baris awal+restock dan baris SISA bernilai minus), dan sheet Main (tabel ⑤: Awal, Restock, Sisa, Terpakai).
 - **Oyster dari supplier = pembelian di lokasi**: catat sebagai pengeluaran dengan harganya (`oyster 100 kg 3,9jt`). Kalau oyster ditulis di pengiriman pertama/restock, bot tidak menghitungnya sebagai bahan gudang dan mengingatkan. **Sisa oyster** tetap boleh dilaporkan (`sisa oyster 5 kg`); nilainya mengurangi biaya.
 
+## Jobdesk loading in
+
+- **H-2 sebelum event mulai (jam 10.00)** bot membagi pekerjaan loading in **rata** ke anggota tim (senior dulu, lalu DW/kasir; PIC tidak, PIC yang `#acc`) dan mengumumkannya di grup tim. Kalau grup tim baru didaftarkan H-1, dibagi H-1.
+- Pekerjaan: rakit booth (`#booth`), tata stok bahan baku & freezer (`#gudang`), terima & cek barang tiba (`#tiba`), pasang listrik & lampu (`#listrik`), tata display & alat masak (`#display`). Orang lebih banyak dari pekerjaan → pekerjaan berat (booth, gudang) dapat tambahan orang; lebih sedikit → satu orang pegang beberapa.
+- Setiap penanggung jawab **wajib kirim foto hasil kerjanya** dengan tag pekerjaannya. `#loadingin` menampilkan 👷 penanggung jawab tiap pekerjaan dan yang belum.
+- `#jobdesk` = lihat pembagian · `#jobdesk ulang` (owner/PIC) = bagi ulang. Tersimpan di tab **Jobdesk**.
+
 ## Laporan foto: loading in, harian, loading out (grup tim)
 
 Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat biasa ("booth sudah siap", "barang sudah tiba"). Beberapa foto sekaligus dihitung satu laporan: foto tanpa caption dari orang yang sama dalam 5 menit ikut masuk. Bot membalas siapa, jam berapa, dan apa yang **belum**. Semua tercatat di tab **Laporan Foto**.

@@ -121,6 +121,19 @@ export const KOLOM = {
       k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Jobdesk loading in: siapa mengerjakan apa (dibagi bot H-2 sebelum event).
+  Jobdesk: {
+    warna: '#5E35B1',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('tahap', 'Tahap', 110),
+      k('tag', 'Tag Laporan', 100, { catatan: 'Foto laporan dikirim dengan caption #tag ini' }),
+      k('tugas', 'Pekerjaan', 300),
+      k('nama', 'Penanggung Jawab', 150),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dibagi', 140),
+    ],
+  },
   // Laporan foto SOP: loading in, laporan harian, loading out (grup tim).
   'Laporan Foto': {
     warna: '#5E35B1',

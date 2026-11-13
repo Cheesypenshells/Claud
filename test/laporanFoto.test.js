@@ -38,7 +38,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   // ---- loading in (hari pertama, 2 Nov) ----
   assert.match(await kirim(G_TIM, DENA, '#loadingin', pada('02', '06:00')), /Loading in JMB26-11 – 2026-11-02.*❌ Barang tiba → \*#tiba\*.*❌ Data pengiriman.*#kirim.*❌ ACC PIC/s);
   assert.match(await kirim(G_TIM, TIAR, 'barang sudah tiba semua pak', pada('02', '06:10'), foto('tiba1')),
-    /Barang tiba\* \(#tiba\) dari \*Tiar\* jam 06:10 WIB tercatat.*Belum: #booth, #gudang, #kirim, #acc/s);
+    /Barang tiba\* \(#tiba\) dari \*Tiar\* jam 06:10 WIB tercatat.*Belum: #booth, #gudang, #listrik, #display, #kirim, #acc/s);
   assert.deepEqual(await kirimRaw(G_TIM, TIAR, '', pada('02', '06:11'), foto('tiba2')), []); // album: diam-diam
   await kirimRaw(G_TIM, TIAR, '', pada('02', '06:11'), foto('tiba3'));
   assert.equal((await store.all('Laporan Foto'))[0].jumlah_foto, 3);
@@ -47,7 +47,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   assert.match(await kirim(G_TIM, DENA, '#booth', pada('02', '08:02'), foto('tiba1')), /sama persis/);
   assert.match(await kirim(G_TIM, DENA, 'booth sudah siap', pada('02', '08:03'), foto('booth1')), /Booth selesai dirakit.*Dena/s);
   assert.match(await kirim(G_TIM, DENA, '#acc', pada('02', '09:00')), /hanya oleh PIC atau owner/);
-  assert.match(await kirim(G_TIM, PIC, '#acc semua aman', pada('02', '09:01')), /ACC PIC sebelum buka.*Budi.*Belum: #gudang, #kirim/s);
+  assert.match(await kirim(G_TIM, PIC, '#acc semua aman', pada('02', '09:01')), /ACC PIC sebelum buka.*Budi.*Belum: #gudang, #listrik, #display, #kirim/s);
 
   // ---- harian ----
   ocr = 'cheesypenshells\n312 12.500 401\nPostingan Pengikut Mengikuti';
@@ -74,4 +74,38 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   // ---- loading out (hari terakhir, 8 Nov) ----
   assert.match(await kirim(G_TIM, TIAR, 'koli sudah dilabel 12 koli', pada('08', '23:00'), foto('koli')), /Koli balik\* \(#koli\).*Belum: #stokakhir, #bongkar, #muat, #terima/s);
   assert.match(await kirim(G_TIM, TIAR, '#loadingout', pada('08', '23:05')), /Loading out JMB26-11 – 2026-11-08.*✅ Koli balik: Tiar 23:00 WIB, 1 foto/s);
+});
+
+test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #loadingin, #jobdesk', async () => {
+  const { bagiJobdesk, tugasJobdesk } = await import('../src/jobdesk.js');
+  // 6 orang, 5 pekerjaan: semua dapat; orang ke-6 ke pekerjaan berat (booth/gudang)
+  const b6 = bagiJobdesk(['A', 'B', 'C', 'D', 'E', 'F']);
+  assert.equal(b6.reduce((s, t) => s + t.nama.length, 0), 6);
+  assert.ok(b6.every((t) => t.nama.length >= 1));
+  assert.ok(['booth', 'gudang'].includes(b6.find((t) => t.nama.includes('F')).tag));
+  // 2 orang, 5 pekerjaan: bergiliran
+  const b2 = bagiJobdesk(['A', 'B']);
+  assert.deepEqual(b2.map((t) => t.nama[0]), ['A', 'B', 'A', 'B', 'A']);
+
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (groupId, senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `j${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  })).map((r) => r.text).join('\n');
+  await kirim(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar\nDW: Joko, Tono', pada('01', '09:00'));
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  const { tanggalLokal } = await import('../src/util.js');
+  assert.equal((await tugasJobdesk(ctx, pada('02', '12:00'), { tanggalLokal })).length, 0); // H-3: belum
+  assert.equal((await tugasJobdesk(ctx, pada('03', '09:59'), { tanggalLokal })).length, 0); // H-2 sebelum jam 10
+  const j = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
+  assert.equal(j[0].groupId, G_TIM);
+  assert.match(j[0].text, /JOBDESK LOADING IN JMB26-11.*Rakit booth.*👷 Dena.*#booth.*Pasang listrik.*#listrik/s);
+  assert.doesNotMatch(j[0].text, /Budi/); // PIC tidak dibagi pekerjaan
+  assert.equal((await tugasJobdesk(ctx, pada('04', '10:00'), { tanggalLokal })).length, 0); // sekali saja
+  assert.match(await kirim(G_TIM, DENA, '#jobdesk', pada('04', '11:00')), /JOBDESK LOADING IN/);
+  assert.match(await kirim(G_TIM, DENA, '#jobdesk ulang', pada('04', '11:01')), /hanya oleh owner atau PIC/);
+  assert.match(await kirim(G_TIM, OWNER, '#loadingin', pada('05', '07:00')), /Booth selesai dirakit.*👷 Dena/s);
+  assert.match(await kirim(G_TIM, TIAR, 'lampu sudah nyala semua', pada('05', '08:00'), foto('lampu')), /Listrik, kabel & lampu booth\* \(#listrik\)/);
 });

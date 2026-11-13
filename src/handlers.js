@@ -24,6 +24,7 @@ import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './abs
 import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
+import { perintahJobdesk } from './jobdesk.js';
 import {
   tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, batalGajiTetap, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
@@ -1301,6 +1302,14 @@ export async function handlePesan(ctx, pesan) {
       case 'rek':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Rekening hanya diurus di grup pengeluaran (owner + PIC).');
         return perintahRekening(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { isOwner });
+      case 'jobdesk':
+      case 'tugas':
+      case 'pembagian': {
+        const karyawanSemua = await ctx.store.all('Karyawan');
+        const pic = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
+          && karyawanSemua.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
+        return perintahJobdesk(ctx, pesan, event, cmd.argumen, { bolehUbah: isOwner || pic });
+      }
       case 'gajian':
       case 'penggajian':
         if (grup.jenis !== 'pengeluaran') return balas('⚠️ Daftar gaji hanya bisa dilihat di grup pengeluaran atau chat pribadi dengan bot.');

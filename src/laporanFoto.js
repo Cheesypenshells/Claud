@@ -11,6 +11,7 @@
 // lama yang dikirim ulang), dan angka followers di screenshot Instagram (dibaca dengan OCR).
 // Temuan (serpihan, busuk, alat rusak, komplain) langsung diteruskan ke grup pengeluaran (owner + PIC).
 
+import { pjPerTag } from './jobdesk.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
@@ -24,6 +25,8 @@ export const BUTIR = [
   { tag: 'tiba', tahap: T.IN, label: 'Barang tiba', isi: 'armada, muatan, semua koli, kerusakan (jika ada)', foto: true, kata: /\b(barang|armada|truk|muatan|koli)\b.*\b(tiba|datang|sampai|sampe|nyampe)\b|\b(tiba|datang|sampai)\b.*\b(barang|armada|muatan)\b/i },
   { tag: 'booth', tahap: T.IN, label: 'Booth selesai dirakit', isi: 'booth keseluruhan, area grill, plating, lampu, etalase', foto: true, kata: /\bbooth\b.*\b(siap|jadi|selesai|beres|rakit|done)\b|\brakit\w*\b.*\bbooth\b/i },
   { tag: 'gudang', tahap: T.IN, label: 'Gudang belakang ditata', isi: 'freezer, label koli, stok awal, kondisi bahan', foto: true, kata: /\b(gudang|freezer)\b.*\b(siap|tata|rapi|beres|selesai)\b|\bfoto (gudang|freezer)\b/i },
+  { tag: 'listrik', tahap: T.IN, label: 'Listrik, kabel & lampu booth', isi: 'stop kontak, kabel rapi, lampu menyala', foto: true, kata: /\b(listrik|kabel|lampu|stop ?kontak)\b/i },
+  { tag: 'display', tahap: T.IN, label: 'Display, etalase & alat masak', isi: 'display oyster, etalase, alat masak tertata', foto: true, kata: /\b(display|etalase|dekor\w*)\b/i },
   { tag: 'kirim', tahap: T.IN, label: 'Data pengiriman & stok awal', isi: 'dijawab lewat pertanyaan #kirim', foto: false, otomatis: 'pengiriman' },
   { tag: 'acc', tahap: T.IN, label: 'ACC PIC sebelum buka', isi: 'PIC/owner ketik #acc setelah semua dicek', foto: false, khusus: 'pic' },
 
@@ -151,6 +154,14 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
   }
   const j = jadwalHari(event, tanggal, await aturanHari(ctx, event.kode, tanggal));
   const jamBuka = j ? ` · buka ${lokal(j.buka, zona).jam} ${zona.nama}` : '';
+  // Penanggung jawab dari jobdesk (loading in).
+  if (tahap === T.IN) {
+    const pj = await pjPerTag(ctx, event.kode);
+    for (let i = 0; i < baris.length; i++) {
+      const tag = (baris[i].match(/#(\w+)/) || [])[1] || BUTIR.filter((b) => b.tahap === T.IN)[i]?.tag;
+      if (pj[tag]?.length) baris[i] += ` 👷 ${pj[tag].join(', ')}`;
+    }
+  }
   return `📋 *${NAMA_TAHAP[tahap]} ${event.kode} – ${tanggal}*${jamBuka}\n${baris.join('\n')}`;
 }
 
