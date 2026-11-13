@@ -346,9 +346,12 @@ sisa keju 2 balok, bumbu garlic 1 pack
 
 ## Jobdesk loading in
 
-- **H-2 sebelum event mulai (jam 10.00)** bot membagi pekerjaan loading in **rata** ke anggota tim (senior dulu, lalu DW/kasir; PIC tidak, PIC yang `#acc`) dan mengumumkannya di grup tim. Kalau grup tim baru didaftarkan H-1, dibagi H-1.
-- Pekerjaan: rakit booth (`#booth`), tata stok bahan baku & freezer (`#gudang`), terima & cek barang tiba (`#tiba`), pasang listrik & lampu (`#listrik`), tata display & alat masak (`#display`). Orang lebih banyak dari pekerjaan → pekerjaan berat (booth, gudang) dapat tambahan orang; lebih sedikit → satu orang pegang beberapa.
-- Setiap penanggung jawab **wajib kirim foto hasil kerjanya** dengan tag pekerjaannya. `#loadingin` menampilkan 👷 penanggung jawab tiap pekerjaan dan yang belum.
+- **H-2 sebelum event mulai (jam 10.00)** bot membagi jobdesk di grup tim (kalau grup baru didaftarkan H-1: H-1). PIC & owner tidak dibagi; PIC mengecek & memberi poin.
+- Alur (dari owner):
+  1. Truk datang → **semua** turunkan barang (min. 4 orang, cepat karena truk gantian dengan tenant lain).
+  2. **1 orang hitung & cek koli** bahan baku + bahan kering sesuai kiriman Jakarta → foto `#tiba`. Setelah selesai membantu rakit booth.
+  3. Dibagi 2 tim: **60% tim booth** — bagian bawah `#booth` (etalase, meja, kompor, banner; 3–5 jam), bagian atas `#listrik` (lampu gantung, LED 120×60, bendera, hexos, jalur kabel; 2–3 jam), estetika `#display` (dekorasi, alat masak, cuci semua alat, siap jualan; 2–3 jam) — dan **40% tim barang** `#gudang` (masukkan & data bahan baku, oyster yang datang, freezer; 1–2 jam).
+- Senior disebar merata ke kedua tim dan tiap bagian booth (4 senior: booth 2, barang 2; 3 senior: booth 2). Penghitung koli = senior di tim barang.
 - **Pembantu**: penanggung jawab pekerjaan ringan (cek barang tiba) setelah selesai membantu **rakit booth**. Di jobdesk tertulis 🤝 *Dibantu: Bima*, dan pembantu ikut mendapat poin saat PIC menilai booth.
 - `#jobdesk` = lihat pembagian · `#jobdesk ulang` (owner/PIC) = bagi ulang. Tersimpan di tab **Jobdesk**.
 - **Penilaian oleh PIC**: setiap ada foto laporan pekerjaan jobdesk, bot bertanya ke PIC lewat **chat pribadi** (kalau nomornya belum dikenal: di grup pengeluaran): setelah dicek di lokasi, sesuai atau tidak dan poinnya berapa. PIC membalas `sesuai 10` / `kurang 6 kabel berantakan` / `tidak 0 booth belum dirakit`. Poin masuk **Poin KPI** setiap penanggung jawab pekerjaan itu (dan kolom *Penilaian PIC* di tab Laporan Foto). Satu pekerjaan dinilai sekali; kalau beberapa menunggu, ditanyakan bergiliran. Salah: `#poinbatal K....`.

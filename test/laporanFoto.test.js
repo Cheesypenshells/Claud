@@ -45,7 +45,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   assert.match(await kirim(G_TIM, DENA, '#booth', pada('02', '08:00')), /wajib pakai foto/);
   assert.match(await kirim(G_TIM, DENA, '#booth', pada('02', '08:01'), { ...foto('b'), diteruskan: true }), /terusan \(forward\) tidak diterima/);
   assert.match(await kirim(G_TIM, DENA, '#booth', pada('02', '08:02'), foto('tiba1')), /sama persis/);
-  assert.match(await kirim(G_TIM, DENA, 'booth sudah siap', pada('02', '08:03'), foto('booth1')), /Booth selesai dirakit.*Dena/s);
+  assert.match(await kirim(G_TIM, DENA, 'booth sudah siap', pada('02', '08:03'), foto('booth1')), /Booth bagian bawah.*Dena/s);
   assert.match(await kirim(G_TIM, DENA, '#acc', pada('02', '09:00')), /hanya oleh PIC atau owner/);
   assert.match(await kirim(G_TIM, PIC, '#acc semua aman', pada('02', '09:01')), /ACC PIC sebelum buka.*Budi.*Belum: #gudang, #listrik, #display, #kirim/s);
 
@@ -78,14 +78,16 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
 
 test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #loadingin, #jobdesk', async () => {
   const { bagiJobdesk, tugasJobdesk } = await import('../src/jobdesk.js');
-  // 6 orang, 5 pekerjaan: semua dapat; orang ke-6 ke pekerjaan berat (booth/gudang)
-  const b6 = bagiJobdesk(['A', 'B', 'C', 'D', 'E', 'F']);
-  assert.equal(b6.reduce((s, t) => s + t.nama.length, 0), 6);
-  assert.ok(b6.every((t) => t.nama.length >= 1));
-  assert.ok(['booth', 'gudang'].includes(b6.find((t) => t.nama.includes('F')).tag));
-  // 2 orang, 5 pekerjaan: bergiliran
-  const b2 = bagiJobdesk(['A', 'B']);
-  assert.deepEqual(b2.map((t) => t.nama[0]), ['A', 'B', 'A', 'B', 'A']);
+  // 6 orang: 4 tim booth (60%), 2 tim barang (40%); senior tersebar; penghitung koli dari tim barang
+  const b6 = Object.fromEntries(bagiJobdesk(['S1', 'S2', 'S3', 'S4', 'D1', 'D2']).map((t) => [t.tag, t.nama]));
+  assert.deepEqual(b6, { tiba: ['S2'], booth: ['S1', 'D2'], listrik: ['S3'], display: ['S4'], gudang: ['S2', 'D1'] });
+  // 4 senior: booth 2 senior, stok bahan baku 2 orang
+  const b4 = Object.fromEntries(bagiJobdesk(['S1', 'S2', 'S3', 'S4']).map((t) => [t.tag, t.nama]));
+  assert.deepEqual(b4.gudang, ['S2', 'S4']);
+  assert.deepEqual([...new Set([...b4.booth, ...b4.listrik, ...b4.display])], ['S1', 'S3']);
+  // 2 orang: 1 booth (semua bagian), 1 barang + hitung koli
+  const b2 = Object.fromEntries(bagiJobdesk(['A', 'B']).map((t) => [t.tag, t.nama]));
+  assert.deepEqual(b2, { tiba: ['B'], booth: ['A'], listrik: ['A'], display: ['A'], gudang: ['B'] });
 
   const store = new MemoryStore();
   const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
@@ -101,13 +103,13 @@ test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #l
   assert.equal((await tugasJobdesk(ctx, pada('03', '09:59'), { tanggalLokal })).length, 0); // H-2 sebelum jam 10
   const j = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
   assert.equal(j[0].groupId, G_TIM);
-  assert.match(j[0].text, /JOBDESK LOADING IN JMB26-11.*Rakit booth.*👷 Dena.*#booth.*Pasang listrik.*#listrik/s);
+  assert.match(j[0].text, /JOBDESK LOADING IN JMB26-11.*SEMUA turunkan barang.*Hitung & cek koli.*TIM BOOTH.*bagian BAWAH.*#booth.*bagian ATAS.*#listrik.*TIM BARANG.*#gudang/s);
   assert.doesNotMatch(j[0].text, /Budi/); // PIC tidak dibagi pekerjaan
   assert.equal((await tugasJobdesk(ctx, pada('04', '10:00'), { tanggalLokal })).length, 0); // sekali saja
   assert.match(await kirim(G_TIM, DENA, '#jobdesk', pada('04', '11:00')), /JOBDESK LOADING IN/);
   assert.match(await kirim(G_TIM, DENA, '#jobdesk ulang', pada('04', '11:01')), /hanya oleh owner atau PIC/);
-  assert.match(await kirim(G_TIM, OWNER, '#loadingin', pada('05', '07:00')), /Booth selesai dirakit.*👷 Dena/s);
-  assert.match(await kirim(G_TIM, TIAR, 'lampu sudah nyala semua', pada('05', '08:00'), foto('lampu')), /Listrik, kabel & lampu booth\* \(#listrik\)/);
+  assert.match(await kirim(G_TIM, OWNER, '#loadingin', pada('05', '07:00')), /Booth bagian bawah.*👷/s);
+  assert.match(await kirim(G_TIM, TIAR, 'lampu sudah nyala semua', pada('05', '08:00'), foto('lampu')), /Booth bagian atas.*\(#listrik\)/);
 });
 
 test('penilaian jobdesk: foto laporan -> bot tanya PIC lewat chat pribadi, jawaban jadi Poin KPI penanggung jawab', async () => {
@@ -123,23 +125,24 @@ test('penilaian jobdesk: foto laporan -> bot tanya PIC lewat chat pribadi, jawab
   await raw(G_TIM, PIC, 'saya Budi', pada('01', '09:02'));
   await raw(G_TIM, DENA, 'saya Dena', pada('01', '09:03'));
   await raw(G_TIM, OWNER, '#jobdesk', pada('03', '10:00'));
-  const pj = (await store.all('Jobdesk')).filter((j) => j.tag === 'booth').map((j) => j.nama);
+  const { pjPerTag } = await import('../src/jobdesk.js');
+  const pj = (await pjPerTag(ctx, 'JMB26-11', { denganBantu: true })).booth; // penanggung jawab + pembantu
   // foto booth -> pertanyaan ke chat pribadi PIC
   const r = await raw(G_TIM, DENA, '#booth', pada('05', '08:00'), foto('booth'));
   const tanya = r.find((b) => b.nomor === PIC);
-  assert.match(tanya.text, new RegExp(`Cek jobdesk JMB26-11: Rakit booth.*Penanggung jawab: \\*${pj.join(', ')}\\*.*sesuai 10`, 's'));
+  assert.match(tanya.text, new RegExp(`Cek jobdesk JMB26-11: Rakit booth bagian BAWAH.*Penanggung jawab: \\*${pj.join(', ')}\\*.*sesuai 10`, 's'));
   assert.match(r[0].text, /PIC akan mengecek/);
   // foto listrik juga -> antre
   const r2 = await raw(G_TIM, DENA, '#listrik', pada('05', '08:10'), foto('listrik'));
   assert.match(r2.find((b) => b.nomor === PIC).text, /masih ada 1 pekerjaan lain/);
   // PIC menjawab di chat pribadi
   const j = await raw('dm', PIC, 'kurang 7 banner miring', pada('05', '09:00'));
-  assert.match(j[0].text, /Rakit booth.*kurang sesuai, \*\+7 poin\* untuk .*banner miring.*Cek jobdesk JMB26-11: Pasang listrik/s);
+  assert.match(j[0].text, /Rakit booth bagian BAWAH.*kurang sesuai, \*\+7 poin\* untuk .*banner miring.*Cek jobdesk JMB26-11: Rakit booth bagian ATAS/s);
   const poin = await store.all('Poin KPI');
   assert.deepEqual(poin.map((p) => [p.nama, p.poin]), pj.map((nm) => [nm, 7]));
   assert.match(poin[0].alasan, /^Jobdesk #booth .*kurang sesuai – banner miring/);
   assert.match((await store.all('Laporan Foto')).find((x) => x.tag === 'booth').penilaian, /kurang sesuai, 7 poin/);
-  assert.match((await raw('dm', PIC, 'sesuai 10', pada('05', '09:05')))[0].text, /Pasang listrik.*sesuai, \*\+10 poin\*/s);
+  assert.match((await raw('dm', PIC, 'sesuai 10', pada('05', '09:05')))[0].text, /bagian ATAS.*sesuai, \*\+10 poin\*/s);
   // pekerjaan yang sudah dinilai tidak ditanya lagi
   const r3 = await raw(G_TIM, DENA, '#booth', pada('05', '09:30'), foto('booth2'));
   assert.ok(!r3.some((b) => b.nomor));
@@ -149,7 +152,8 @@ test('jobdesk: PJ cek barang tiba membantu rakit booth; pembantu ikut tercantum 
   const { bagiJobdesk, pembantuDari } = await import('../src/jobdesk.js');
   const b = bagiJobdesk(['Adit', 'Alam', 'Bima', 'Imam', 'TiarA', 'Veri']);
   assert.deepEqual(b.find((t) => t.tag === 'booth').nama, ['Adit', 'Veri']);
-  assert.deepEqual(pembantuDari(Object.fromEntries(b.map((t) => [t.tag, t.nama]))), { booth: ['Bima'] });
+  assert.deepEqual(b.find((t) => t.tag === 'tiba').nama, ['Alam']);
+  assert.deepEqual(pembantuDari(Object.fromEntries(b.map((t) => [t.tag, t.nama]))), { booth: ['Alam'] });
 
   const store = new MemoryStore();
   const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
@@ -161,11 +165,11 @@ test('jobdesk: PJ cek barang tiba membantu rakit booth; pembantu ikut tercantum 
   await raw(G_TIM, OWNER, '#daftar event SMR26-11', pada('01', '09:01'));
   await raw(G_TIM, PIC, 'saya Budi', pada('01', '09:02'));
   const j = (await raw(G_TIM, OWNER, '#jobdesk', pada('03', '10:00')))[0].text;
-  assert.match(j, /Rakit booth.*👷 Adit, Veri.*🤝 Dibantu: Bima \(setelah #tiba selesai\)/s);
-  assert.match(j, /cek barang tiba.*👷 Bima.*Setelah selesai, bantu \*Rakit booth\*/s);
-  assert.match((await raw(G_TIM, OWNER, '#loadingin', pada('05', '07:00'))).map((x) => x.text).join('\n'), /Booth selesai dirakit.*👷 Adit, Veri 🤝 Bima/s);
+  assert.match(j, /bagian BAWAH.*👷 Adit, Veri.*🤝 Dibantu: Alam \(setelah hitung koli selesai\)/s);
+  assert.match(j, /Hitung & cek koli.*👷 Alam.*Setelah selesai, bantu rakit booth/s);
+  assert.match((await raw(G_TIM, OWNER, '#loadingin', pada('05', '07:00'))).map((x) => x.text).join('\n'), /Booth bagian bawah.*👷 Adit, Veri 🤝 Alam/s);
   const r = await raw(G_TIM, PIC, '#booth', pada('05', '08:00'), { adaFoto: true, ambilFoto: async () => Buffer.from('b') });
-  assert.match(r.find((x) => x.nomor === PIC).text, /Penanggung jawab: \*Adit, Veri, Bima\*/);
+  assert.match(r.find((x) => x.nomor === PIC).text, /Penanggung jawab: \*Adit, Veri, Alam\*/);
   await raw('dm', PIC, 'sesuai 9', pada('05', '09:00'));
-  assert.deepEqual((await store.all('Poin KPI')).map((p) => p.nama), ['Adit', 'Veri', 'Bima']);
+  assert.deepEqual((await store.all('Poin KPI')).map((p) => p.nama), ['Adit', 'Veri', 'Alam']);
 });

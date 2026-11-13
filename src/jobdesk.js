@@ -1,39 +1,53 @@
-// Jobdesk loading in: H-2 (atau H-1 kalau grup baru didaftarkan) jam 10.00, bot membagi pekerjaan loading in
-// rata ke anggota tim (senior, DW, kasir; PIC & owner tidak, PIC yang ACC) dan mengumumkannya di grup tim.
-// Setiap penanggung jawab wajib mengirim foto laporan dengan tag pekerjaannya (#tiba, #gudang, #booth,
-// #listrik, #display). Checklist #loadingin menampilkan penanggung jawab tiap pekerjaan.
+// Jobdesk loading in (alur dari owner):
+//   1. Truk datang: SEMUA turunkan barang (minimal 4 orang, cepat: truk gantian dengan tenant lain).
+//   2. 1 orang hitung & cek koli (bahan baku + bahan kering) sesuai kiriman Jakarta -> foto #tiba.
+//   3. Dibagi 2 tim: 60% TIM BOOTH (bagian bawah #booth, bagian atas #listrik, estetika #display) dan
+//      40% TIM BARANG (#gudang: masukkan & data bahan baku, oyster yang datang, freezer).
+//   Penghitung koli (pekerjaan ringan) membantu rakit booth setelah selesai.
+// Senior disebar merata ke kedua tim dan ke tiap bagian booth. Dibagi H-2 (atau H-1) jam 10.00 di grup tim;
+// PIC & owner tidak dibagi (PIC yang mengecek & #acc). Setiap penanggung jawab wajib foto dengan tag-nya.
 // #jobdesk: lihat pembagian (kalau belum ada, dibuat sekarang). #jobdesk ulang (owner/PIC): bagi ulang.
 
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
 
 export const TUGAS_LOADING_IN = [
-  { tag: 'booth', label: 'Rakit booth (rangka, meja, banner)', berat: 2 },
-  { tag: 'gudang', label: 'Tata stok bahan baku & freezer di gudang belakang', berat: 2 },
-  // Pekerjaan ringan (pengecekan): setelah selesai, penanggung jawabnya membantu rakit booth.
-  { tag: 'tiba', label: 'Terima & cek barang tiba (hitung koli, cek kerusakan)', berat: 1, bantuKe: 'booth' },
-  { tag: 'listrik', label: 'Pasang listrik, kabel & lampu booth', berat: 1 },
-  { tag: 'display', label: 'Tata display oyster, etalase & alat masak', berat: 1 },
+  { tag: 'tiba', tim: 'awal', label: 'Hitung & cek koli barang tiba (bahan baku + bahan kering) sesuai kiriman Jakarta, foto & lapor', jam: '±30 menit', bantuKe: 'booth' },
+  { tag: 'booth', tim: 'booth', label: 'Rakit booth bagian BAWAH: etalase, meja, kompor, banner', jam: '3–5 jam' },
+  { tag: 'listrik', tim: 'booth', label: 'Rakit booth bagian ATAS: lampu gantung, LED 120×60, bendera, hexos, jalur kabel atas & bawah', jam: '2–3 jam' },
+  { tag: 'display', tim: 'booth', label: 'ESTETIKA: dekorasi, peralatan masak, cuci semua alat, pastikan siap jualan besok', jam: '2–3 jam' },
+  { tag: 'gudang', tim: 'barang', label: 'TIM BARANG: masukkan & data bahan baku, masukkan oyster yang datang, tata freezer', jam: '1–2 jam' },
 ];
+export const PORSI_TIM_BOOTH = 0.6;
 
 const balas = (text) => [{ text }];
 const tambahHariStr = (tgl, n) => { const d = new Date(`${tgl}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
-// Bagi rata: setiap pekerjaan minimal 1 orang; sisa orang ditambahkan ke pekerjaan yang lebih berat dulu.
-// Kalau orangnya lebih sedikit dari pekerjaan, satu orang memegang beberapa pekerjaan (bergiliran).
+// Bagi adil. orang = nama (senior dulu, lalu DW/kasir). 60% tim booth, 40% tim barang; tiap orang masuk ke tim
+// yang paling jauh dari targetnya, jadi senior tersebar di kedua tim. Tim booth dibagi bergiliran ke bagian
+// bawah / atas / estetika. Penghitung koli = orang pertama tim barang (kalau tidak ada: orang pertama tim booth).
 export function bagiJobdesk(orang, tugas = TUGAS_LOADING_IN) {
   const hasil = tugas.map((t) => ({ ...t, nama: [] }));
-  if (!orang.length) return hasil;
-  if (orang.length <= tugas.length) {
-    hasil.forEach((t, i) => t.nama.push(orang[i % orang.length]));
-    return hasil;
+  const ke = (tag) => hasil.find((t) => t.tag === tag);
+  const n = orang.length;
+  if (!n) return hasil;
+  const targetBooth = n === 1 ? 1 : Math.max(1, Math.round(n * PORSI_TIM_BOOTH));
+  const targetBarang = n - targetBooth;
+  const booth = [];
+  const barang = [];
+  for (const nama of orang) {
+    const isiBooth = booth.length / targetBooth;
+    const isiBarang = targetBarang ? barang.length / targetBarang : Infinity;
+    (isiBooth <= isiBarang ? booth : barang).push(nama);
   }
-  orang.forEach((n, i) => {
-    if (i < hasil.length) { hasil[i].nama.push(n); return; }
-    // orang berikutnya: ke pekerjaan dengan (jumlah orang / berat) paling kecil
-    const t = [...hasil].filter((x) => !x.bantuKe).sort((a, b) => a.nama.length / a.berat - b.nama.length / b.berat)[0];
-    t.nama.push(n);
-  });
+  const bagianBooth = hasil.filter((t) => t.tim === 'booth');
+  // Bergiliran ke bagian booth; kalau orangnya kurang dari 3 bagian, satu orang memegang beberapa bagian.
+  const putaran = Math.max(booth.length, bagianBooth.length);
+  for (let i = 0; i < putaran; i++) bagianBooth[i % bagianBooth.length].nama.push(booth[i % booth.length]);
+  for (const t of bagianBooth) t.nama = [...new Set(t.nama)];
+  const timBarang = barang.length ? barang : [booth[0]];
+  for (const t of hasil.filter((x) => x.tim === 'barang')) t.nama.push(...timBarang);
+  ke('tiba')?.nama.push(timBarang[0]);
   return hasil;
 }
 
@@ -74,18 +88,30 @@ export async function pembantuPerTag(ctx, kode) {
   return pembantuDari(await pjPerTag(ctx, kode));
 }
 
-function teksJobdesk(event, bagian) {
+function teksJobdesk(event, bagian, jumlahOrang) {
   const bantu = pembantuDari(Object.fromEntries(bagian.map((t) => [t.tag, t.nama])));
-  const asal = (nama) => bagian.find((t) => t.bantuKe && t.nama.includes(nama));
+  const baris = (t) => [
+    `• *${t.label}* _(${t.jam})_\n   👷 ${t.nama.join(', ') || '-'} → foto caption *#${t.tag}*`,
+    bantu[t.tag]?.length ? `   🤝 Dibantu: ${bantu[t.tag].join(', ')} (setelah hitung koli selesai)` : '',
+    t.bantuKe && t.nama.length ? '   ↪️ Setelah selesai, bantu rakit booth' : '',
+  ].filter(Boolean).join('\n');
+  const timBooth = [...new Set(bagian.filter((t) => t.tim === 'booth').flatMap((t) => t.nama))];
+  const timBarang = [...new Set(bagian.filter((t) => t.tim === 'barang').flatMap((t) => t.nama))];
   return [
     `📋 *JOBDESK LOADING IN ${event.kode}* (${event.kota}, mulai ${event.mulai})`,
-    ...bagian.map((t, i) => [
-      `${i + 1}. *${t.label}*\n   👷 ${t.nama.join(', ') || '-'} → kirim foto dengan caption *#${t.tag}*`,
-      bantu[t.tag]?.length ? `   🤝 Dibantu: ${bantu[t.tag].map((n) => `${n} (setelah #${asal(n)?.tag || '?'} selesai)`).join(', ')}` : '',
-      t.bantuKe && t.nama.length ? `   ↪️ Setelah selesai, bantu *${bagian.find((x) => x.tag === t.bantuKe)?.label.split(' (')[0] || t.bantuKe}*` : '',
-    ].filter(Boolean).join('\n')),
     '',
-    '_Setiap penanggung jawab wajib kirim *foto hasil kerjanya* di grup ini dengan tag di atas. Cek yang belum: *#loadingin*. PIC: *#acc* setelah semua dicek._',
+    `*1️⃣ Truk datang: SEMUA turunkan barang* (${jumlahOrang || 'semua'} orang, minimal 4). Cepat ya, truk gantian dengan tenant lain.`,
+    '',
+    '*2️⃣ Hitung & cek koli*',
+    ...bagian.filter((t) => t.tim === 'awal').map(baris),
+    '',
+    `*3️⃣ Bagi 2 tim*`,
+    `🏗️ *TIM BOOTH* (${timBooth.join(', ')})`,
+    ...bagian.filter((t) => t.tim === 'booth').map(baris),
+    `📦 *TIM BARANG* (${timBarang.join(', ')})`,
+    ...bagian.filter((t) => t.tim === 'barang').map(baris),
+    '',
+    '_Setiap penanggung jawab wajib kirim *foto hasil kerjanya* di grup ini dengan tag di atas. PIC mengecek di lokasi & memberi poin. Cek yang belum: *#loadingin*._',
   ].join('\n');
 }
 
@@ -102,14 +128,14 @@ export async function buatJobdesk(ctx, event, { waktu = new Date(), ulang = fals
       });
     }
   }
-  return teksJobdesk(event, bagian);
+  return teksJobdesk(event, bagian, orang.length);
 }
 
 export async function teksJobdeskAda(ctx, event) {
   const ada = await jobdeskEvent(ctx, event.kode);
   if (!ada.length) return null;
-  const bagian = TUGAS_LOADING_IN.map((t) => ({ ...t, nama: ada.filter((j) => j.tag === t.tag).map((j) => j.nama) })).filter((t) => t.nama.length);
-  return teksJobdesk(event, bagian);
+  const bagian = TUGAS_LOADING_IN.map((t) => ({ ...t, nama: ada.filter((j) => j.tag === t.tag).map((j) => j.nama) }));
+  return teksJobdesk(event, bagian, new Set(ada.map((j) => j.nama)).size);
 }
 
 // #jobdesk / #jobdesk ulang

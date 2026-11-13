@@ -24,10 +24,10 @@ const NAMA_TAHAP = { loadingin: 'Loading in', harian: 'Laporan harian', loadingo
 // foto: wajib foto · orang: tiap anggota tim (bukan satu untuk tim) · bagian: sebelum/selama/tutup
 export const BUTIR = [
   { tag: 'tiba', tahap: T.IN, label: 'Barang tiba', isi: 'armada, muatan, semua koli, kerusakan (jika ada)', foto: true, kata: /\b(barang|armada|truk|muatan|koli)\b.*\b(tiba|datang|sampai|sampe|nyampe)\b|\b(tiba|datang|sampai)\b.*\b(barang|armada|muatan)\b/i },
-  { tag: 'booth', tahap: T.IN, label: 'Booth selesai dirakit', isi: 'booth keseluruhan, area grill, plating, lampu, etalase', foto: true, kata: /\bbooth\b.*\b(siap|jadi|selesai|beres|rakit|done)\b|\brakit\w*\b.*\bbooth\b/i },
+  { tag: 'booth', tahap: T.IN, label: 'Booth bagian bawah (etalase, meja, kompor, banner)', isi: 'etalase, meja, kompor, banner terpasang', foto: true, kata: /\bbooth\b.*\b(siap|jadi|selesai|beres|rakit|done)\b|\brakit\w*\b.*\bbooth\b/i },
   { tag: 'gudang', tahap: T.IN, label: 'Gudang belakang ditata', isi: 'freezer, label koli, stok awal, kondisi bahan', foto: true, kata: /\b(gudang|freezer)\b.*\b(siap|tata|rapi|beres|selesai)\b|\bfoto (gudang|freezer)\b/i },
-  { tag: 'listrik', tahap: T.IN, label: 'Listrik, kabel & lampu booth', isi: 'stop kontak, kabel rapi, lampu menyala', foto: true, kata: /\b(listrik|kabel|lampu|stop ?kontak)\b/i },
-  { tag: 'display', tahap: T.IN, label: 'Display, etalase & alat masak', isi: 'display oyster, etalase, alat masak tertata', foto: true, kata: /\b(display|etalase|dekor\w*)\b/i },
+  { tag: 'listrik', tahap: T.IN, label: 'Booth bagian atas (lampu, LED, bendera, hexos, kabel)', isi: 'lampu gantung & LED menyala, bendera, hexos, jalur kabel rapi', foto: true, kata: /\b(listrik|kabel|lampu|led|bendera|hexos|stop ?kontak)\b/i },
+  { tag: 'display', tahap: T.IN, label: 'Estetika, dekorasi & alat masak bersih', isi: 'dekorasi, alat masak sudah dicuci & tertata, siap jualan', foto: true, kata: /\b(display|estetika|dekor\w*|cuci\w*|alat masak)\b/i },
   { tag: 'kirim', tahap: T.IN, label: 'Data pengiriman & stok awal', isi: 'dijawab lewat pertanyaan #kirim', foto: false, otomatis: 'pengiriman' },
   { tag: 'acc', tahap: T.IN, label: 'ACC PIC sebelum buka', isi: 'PIC/owner ketik #acc setelah semua dicek', foto: false, khusus: 'pic' },
 
