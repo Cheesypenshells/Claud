@@ -24,7 +24,7 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:16px}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
-body{margin:0;background:var(--kertas);color:var(--teks);font-family:var(--isi);font-size:16px;line-height:1.55}
+body{margin:0;background:var(--kertas) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27260%27 height=%27150%27%3E%3Cg fill=%27%2322348C%27 fill-opacity=%27.075%27 font-family=%27Arial,sans-serif%27 font-weight=%27900%27 font-size=%2712%27 transform=%27rotate%28-8 130 75%29%27%3E%3Ctext x=%270%27 y=%2720%27%3ECHEESY PEN SHELLS %C2%B7 oyster bakar %C2%B7%3C/text%3E%3Ctext x=%27-60%27 y=%2752%27%3Echeesy pen shells %C2%B7 CHEESY PEN SHELLS%3C/text%3E%3Ctext x=%2710%27 y=%2784%27%3Eoyster %C2%B7 CHEESY PEN SHELLS %C2%B7 bakar%3C/text%3E%3Ctext x=%27-40%27 y=%27116%27%3ECHEESY PEN SHELLS %C2%B7 cheesy pen shells%3C/text%3E%3Ctext x=%270%27 y=%27148%27%3Ebakar %C2%B7 CHEESY PEN SHELLS %C2%B7 oyster %C2%B7%3C/text%3E%3C/g%3E%3C/svg%3E") repeat;color:var(--teks);font-family:var(--isi);font-size:16px;line-height:1.55}
 img{max-width:100%;display:block}
 a{color:inherit}
 .bungkus{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -78,7 +78,7 @@ h2.judul span{display:inline-block;padding:3px 16px 5px;background:var(--kuas) c
 .rak{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;scrollbar-width:thin}
 @media(min-width:900px){.rak{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}}
 .menu{scroll-snap-align:start;background:var(--putih);border-radius:22px;padding:12px 12px 14px;box-shadow:0 6px 20px rgba(34,52,140,.08);display:flex;flex-direction:column;gap:6px;min-width:0}
-.menu .foto{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;background:var(--kuning-muda)}
+.poster-menu{width:100%;height:auto;border-radius:16px;background:var(--kuning-muda)}
 .menu .foto img{width:100%;height:100%;object-fit:cover}
 .lencana{position:absolute;top:10px;left:10px;background:var(--navy);color:var(--putih);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
 .lencana.kuning{background:var(--kuning);color:var(--navy-tua)}
@@ -100,6 +100,15 @@ h2.judul span{display:inline-block;padding:3px 16px 5px;background:var(--kuas) c
 .langkah-tepok{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
 .langkah-tepok span{background:var(--putih);border-radius:999px;padding:4px 12px;font-weight:800;font-size:13px;color:var(--navy)}
 
+.tepok{display:grid;gap:18px;background:var(--putih);border-radius:24px;padding:16px;box-shadow:0 6px 20px rgba(34,52,140,.08)}
+@media(min-width:900px){.tepok{grid-template-columns:minmax(0,.8fr) minmax(0,1fr);align-items:center;padding:22px}}
+.tepok>img{width:100%;height:auto;border-radius:18px}
+.tepok p{margin:8px 0 0}
+.cara{list-style:none;padding:0;margin:16px 0;display:grid;gap:10px;counter-reset:c}
+.cara li{counter-increment:c;display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center}
+.cara li::before{content:counter(c);width:36px;height:36px;border-radius:50%;background:var(--kuning);color:var(--navy-tua);font:800 20px var(--judul);display:grid;place-items:center}
+.cara b{color:var(--navy)}
+.cta.biru{background:var(--navy);color:var(--putih)}.cta.biru span{background:var(--kuning);color:var(--navy-tua)}
 /* kesehatan */
 .gizi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media(min-width:900px){.gizi{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -180,7 +189,7 @@ footer img{width:72px}
       </div>
     </div>
     <div class="slide" id="slide-2">
-      <img src="img/potong-seafood.jpg" alt="Oyster bakar seafood mix dengan udang dan cumi">
+      <img src="img/fresh-oyster.jpg" alt="Fresh oyster dengan lemon di atas kertas Cheesy Pen Shells">
       <div class="teks">
         <span class="eyebrow">Sekarang di Semarang</span>
         <h2>Kepo Market 14–22 Nov</h2>
@@ -201,7 +210,7 @@ footer img{width:72px}
   <div class="titik" id="titik" aria-label="Pilih banner"></div>
 
   <nav class="kategori" aria-label="Bagian halaman">
-    <a href="#menu"><span class="bulat"><img src="img/potong-mozzarella.jpg" alt=""></span>Menu</a>
+    <a href="#menu"><span class="bulat"><img src="img/fresh-oyster.jpg" alt=""></span>Menu</a>
     <a href="#sehat"><span class="bulat"><img src="img/oyster-segar.jpg" alt=""></span>Sehat</a>
     <a href="#perjalanan"><span class="bulat"><img src="img/suasana.jpg" alt=""></span>Perjalanan</a>
     <a href="#project"><span class="bulat kuning"><img src="img/logo.png" alt=""></span>Project</a>
@@ -211,44 +220,30 @@ footer img{width:72px}
   <section id="menu">
     <div class="judul-bagian"><h2 class="judul"><span>Menu andalan</span></h2></div>
     <div class="rak">
-      <article class="menu">
-        <div class="foto"><img src="img/potong-garlic.jpg" alt="Oyster bakar garlic" loading="lazy"><span class="lencana">Buttery garlic</span></div>
-        <h3>Oyster Bakar Garlic</h3>
-        <p>Bawang putih, mentega, dan peterseli di atas oyster bakar.</p>
-        <div class="harga"><b>15K</b><small>/ pcs</small></div>
-      </article>
-      <article class="menu">
-        <div class="foto"><img src="img/potong-mozzarella.jpg" alt="Oyster bakar mozzarella" loading="lazy"><span class="lencana kuning">Keju leleh</span></div>
-        <h3>Oyster Bakar Mozzarella</h3>
-        <p>Mozzarella meleleh dengan saus keju, dibakar sampai kecokelatan.</p>
-        <div class="harga"><b>20K</b><small>/ pcs</small></div>
-      </article>
-      <article class="menu">
-        <div class="foto"><img src="img/potong-seafood.jpg" alt="Oyster bakar seafood mix" loading="lazy"><span class="lencana">Paling lengkap</span></div>
-        <h3>Oyster Bakar Seafood Mix</h3>
-        <p>Udang dan cumi di atas oyster dengan keju mozzarella.</p>
-        <div class="harga"><b>25K</b><small>/ pcs</small></div>
-      </article>
-      <article class="menu">
-        <div class="foto"><img src="img/potong-fresh.jpg" alt="Fresh oyster dengan irisan lemon" loading="lazy"><span class="lencana kuning">Segar</span></div>
-        <h3>Fresh Oyster</h3>
-        <p>Oyster segar disajikan dingin dengan perasan lemon.</p>
-        <div class="harga"><b>Booth</b><small>tanya harga di booth</small></div>
-      </article>
+      <article class="menu"><img class="poster-menu" src="img/menu-garlic.jpg" alt="Poster Oyster Bakar Garlic, 15 ribu per pcs" loading="lazy"><h3>Oyster Bakar Garlic</h3><p>Bawang putih, mentega, dan peterseli di atas oyster bakar. 15K / pcs.</p></article>
+      <article class="menu"><img class="poster-menu" src="img/menu-mozzarella.jpg" alt="Poster Oyster Bakar Mozzarella, 20 ribu per pcs" loading="lazy"><h3>Oyster Bakar Mozzarella</h3><p>Mozzarella meleleh dengan saus keju, dibakar sampai kecokelatan. 20K / pcs.</p></article>
+      <article class="menu"><img class="poster-menu" src="img/menu-seafood.jpg" alt="Poster Oyster Bakar Seafood Mix, 25 ribu per pcs" loading="lazy"><h3>Oyster Bakar Seafood Mix</h3><p>Udang dan cumi di atas oyster dengan keju mozzarella. 25K / pcs.</p></article>
+      <article class="menu"><img class="poster-menu" src="img/fresh-oyster.jpg" alt="Fresh oyster dengan irisan lemon" loading="lazy"><h3>Fresh Oyster</h3><p>Oyster segar disajikan dingin dengan perasan lemon. Tanyakan harga di booth.</p></article>
     </div>
     <p class="paket">Pilihan isi: <span>4</span><span>6</span><span>10</span><span>20</span> pcs</p>
   </section>
 
-  <section aria-label="Promo booth">
-    <div class="promo">
+  <section id="tepok">
+    <div class="judul-bagian"><h2 class="judul"><span>Tepok 3x!</span></h2></div>
+    <div class="tepok">
+      <img src="img/tepok-3x.jpg" alt="Poster Tepok 3x, kami besarin apinya! Bikin konten seru di booth Cheesy Pen Shells" loading="lazy">
       <div>
-        <span class="eyebrow">Khusus di booth</span>
-        <h3>Tepok 3x, kami besarin apinya!</h3>
-        <div class="langkah-tepok"><span>1 · Siap rekam</span><span>2 · Tepok 3x</span><span>3 · Api dibesarin</span></div>
-        <p>Mau bikin konten? Tepuk tangan 3 kali di depan booth.</p>
-        <a class="cta" href="#sosmed">Tag kami <span>→</span></a>
+        <p class="skrip" style="margin:0">Cara seru ala Cheesy Pen Shells</p>
+        <p>Tepok 3x adalah ciri khas booth kami. Saat oyster kamu sedang dibakar, tepuk tangan 3 kali dan tim kami akan membesarkan apinya. Momen ini pas buat konten!</p>
+        <ol class="cara">
+          <li><span><b>Siapkan kamera</b> saat oyster kamu mulai dibakar.</span></li>
+          <li><span><b>Tepuk tangan 3 kali</b> di depan booth.</span></li>
+          <li><span><b>Apinya kami besarin!</b> Rekam momen apinya membesar.</span></li>
+          <li><span><b>Upload &amp; tag @cheesypenshells</b> di sosial media kamu.</span></li>
+          <li><span><b>Kami otomatis follow back</b> akun kamu.</span></li>
+        </ol>
+        <a class="cta biru" href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener">Follow @cheesypenshells <span>→</span></a>
       </div>
-      <img src="img/potong-mozzarella.jpg" alt="Oyster bakar mozzarella" loading="lazy">
     </div>
   </section>
 
