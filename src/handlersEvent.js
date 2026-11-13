@@ -251,26 +251,46 @@ export async function perintahGajiTetap(ctx, pesan, event, teks) {
   const tetap = disebut.filter((o) => o.peran === PERAN.TETAP);
   const bukan = disebut.filter((o) => o.peran !== PERAN.TETAP);
   const semuaTetap = /\b(semua|semuanya)\b/.test(t) && !tetap.length ? tim.filter((o) => o.peran === PERAN.TETAP) : tetap;
-  // Nominal per orang: yang sesudah "masing" / "per orang", kalau tidak ada: nominal pertama.
-  const potongan = t.split(/masing[\s-]*masing|masing2|per ?orang|tiap orang|setiap orang/);
-  const nominal = parseMoney(potongan.length > 1 ? potongan[1].split(/\bjadi\b|\btotal\b/)[0] : t) || findMoney(t)[0]?.nilai;
+  // Nominal per orang: tiap nama memakai nominal pertama yang disebut SESUDAH namanya
+  // ("veri, tiara, bima 2 juta masing masing, imam 500k" -> 2 jt, 2 jt, 2 jt, 500 rb). Nama sesudah nominal terakhir
+  // memakai nominal terakhir. Kalimat ringkasan sesudah "jadi / total" ("jadi 3 orang 6 jt") tidak dipakai.
+  const potong = t.search(/\b(jadi|total|totalnya)\b/);
+  const bagianNominal = potong > 0 ? t.slice(0, potong) : t;
+  const uang = findMoney(bagianNominal).filter((m) => m.nilai >= 10000);
+  const posisiNama = (o) => t.search(new RegExp(`[^a-z]${String(o.nama).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^a-z]`));
+  const nominalUntuk = (o) => {
+    const i = posisiNama(o);
+    return (uang.find((m) => m.index > i) || uang[uang.length - 1])?.nilai || 0;
+  };
+  const nominal = uang[0]?.nilai || 0;
   if (!semuaTetap.length || !nominal) {
     const daftar = tim.filter((o) => o.peran === PERAN.TETAP).map((o) => o.nama).join(', ') || '(belum ada karyawan tetap di tim)';
     return balas(`Format: *#gaji <nama, nama> <nominal per orang>*, contoh: *#gaji tiara, dena 2jt*\nKaryawan tetap di ${event.kode}: ${daftar}${bukan.length ? `\n_${bukan.map((o) => `${o.nama} (${o.peran})`).join(', ')} bukan karyawan tetap: upahnya dicatat sebagai pengeluaran biasa._` : ''}`);
   }
+  const gaji = new Map(semuaTetap.map((o) => [o.nama, /\b(semua|semuanya)\b/.test(t) && !tetap.length ? nominal : nominalUntuk(o)]));
   for (const o of semuaTetap) {
-    await ctx.store.updateWhere('Tim Event', (x) => x.kode_event === event.kode && x.nama === o.nama && x.status !== STATUS.BATAL, { gaji_event: nominal });
+    await ctx.store.updateWhere('Tim Event', (x) => x.kode_event === event.kode && x.nama === o.nama && x.status !== STATUS.BATAL, { gaji_event: gaji.get(o.nama) });
   }
-  const total = nominal * semuaTetap.length;
+  const total = [...gaji.values()].reduce((s, v) => s + v, 0);
   const lain = tim.filter((o) => o.peran === PERAN.TETAP && !semuaTetap.includes(o) && !Number(o.gaji_event));
   return balas([
     `✅ *Gaji khusus event ${event.kode}* (karyawan tetap)`,
-    ...semuaTetap.map((o) => `• ${o.nama}: *${rupiah(nominal)}*`),
+    ...semuaTetap.map((o) => `• ${o.nama}: *${rupiah(gaji.get(o.nama))}*`),
     `Total: *${rupiah(total)}*`,
-    '_Menggantikan estimasi gaji pokok ÷ 30 × hari kerja. Masuk #rekap dan file event._',
+    '_Menggantikan gaji pokok + bonus otomatis untuk event ini. Masuk #rekap dan file event. Salah? Reply pesan ini dengan *batal*._',
     bukan.length ? `_${bukan.map((o) => `${o.nama} (${o.peran})`).join(', ')} bukan karyawan tetap: tidak diubah._` : '',
     lain.length ? `_Karyawan tetap lain belum diisi: ${lain.map((o) => o.nama).join(', ')}._` : '',
   ].filter(Boolean).join('\n'));
+}
+
+// Reply "batal" ke pesan "Gaji khusus event": gaji khusus orang-orang di pesan itu dihapus (kembali ke aturan otomatis).
+export async function batalGajiTetap(ctx, event, teksKutipan) {
+  const nama = [...String(teksKutipan).matchAll(/•\s*([^:\n]+):/g)].map((m) => m[1].trim());
+  if (!event || !nama.length) return null;
+  for (const n of nama) {
+    await ctx.store.updateWhere('Tim Event', (x) => x.kode_event === event.kode && x.nama === n && x.status !== STATUS.BATAL, { gaji_event: '' });
+  }
+  return balas(`↩️ Gaji khusus ${event.kode} untuk *${nama.join(', ')}* dibatalkan (kembali ke aturan otomatis: gaji pokok + bonus).\nKirim ulang yang benar, contoh: *gaji veri, tiara 2 juta masing masing, imam 500k*`);
 }
 
 // ---------- Porsi gratis ----------

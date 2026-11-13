@@ -1239,3 +1239,16 @@ test('"laba bersih" / "pendapatan bersih" / "omset sudah dipotong" = omzet setel
   assert.match(await kirim(G_KELUAR, OWNER, 'omset sudah dipotong 5 nov 7.500.000'), /Omzet kotor: \*Rp 10.000.000\*/);
   assert.equal((await store.all('Transaksi')).length, 0);
 });
+
+test('gaji khusus: nominal berbeda per orang ("veri, tiara, bima 2 juta masing masing, imam 500k"); reply batal', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Bima, Veri, Tiara, Imam`);
+  const r = await kirim(G_KELUAR, OWNER, 'gaji veri, tiara, bima 2 juta masing masing, imam 500k saja ya');
+  assert.match(r, /Bima: \*Rp 2.000.000\*.*Veri: \*Rp 2.000.000\*.*Tiara: \*Rp 2.000.000\*.*Imam: \*Rp 500.000\*.*Total: \*Rp 6.500.000\*/s);
+  const gaji = Object.fromEntries((await store.all('Tim Event')).map((o) => [o.nama, o.gaji_event]));
+  assert.deepEqual([gaji.Bima, gaji.Veri, gaji.Tiara, gaji.Imam], [2000000, 2000000, 2000000, 500000]);
+  assert.match(await kirim(G_KELUAR, OWNER, 'batal', { kutipan: { teks: r, id: 'g' } }), /Gaji khusus JMB26-11 untuk \*Bima, Veri, Tiara, Imam\* dibatalkan/);
+  assert.ok((await store.all('Tim Event')).filter((o) => o.peran === 'Tetap').every((o) => o.gaji_event === ''));
+  // kalimat lama tetap: satu nominal untuk semua, ringkasan "jadi ... 6 jt" diabaikan
+  assert.match(await kirim(G_KELUAR, OWNER, 'gaji tiara, veri, bima masing masing 2 juta ya jadi buat 3 orang ini 6 jt'), /Total: \*Rp 6.000.000\*/);
+});

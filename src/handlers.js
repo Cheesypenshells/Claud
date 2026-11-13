@@ -25,7 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import {
-  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, perintahGratis, perintahOwner, PERINTAH_BAHAN,
+  tambahTim, daftarTim, perintahTim, perintahTambah, perintahBerhenti, perintahBahan, jawabNilaiSisa, revisiBahan, perintahGajiTetap, adalahPerintahGaji, batalGajiTetap, perintahGratis, perintahOwner, PERINTAH_BAHAN,
 } from './handlersEvent.js';
 
 const BANTUAN = {
@@ -1084,6 +1084,11 @@ export async function handlePesan(ctx, pesan) {
   // "bonus pic nya 20 persen" / "fee pic 20%" (owner, grup pengeluaran) = fee PIC khusus event ini.
   if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && /\b(fee|bonus|bagian|jatah)\s+(pic|melia|untuk pic)\b/i.test(teks) && /\d+(?:[.,]\d+)?\s*(%|persen)/i.test(teks)) {
     return perintahFeePic(ctx, event, teks);
+  }
+  // Reply "batal" ke pesan "Gaji khusus event" (owner).
+  if (!cmd && event && isOwner && /Gaji khusus event/i.test(pesan.kutipan?.teks || '') && /^(batal|hapus|salah|cancel)\b/i.test(teks)) {
+    const b = await batalGajiTetap(ctx, event, pesan.kutipan.teks);
+    if (b) return b;
   }
   // "gaji tiara, veri, dena masing masing 2 juta" (owner, grup pengeluaran) = gaji khusus event karyawan tetap.
   if (!cmd && event && grup.jenis === 'pengeluaran' && isOwner && adalahPerintahGaji(teks)) {
