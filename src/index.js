@@ -17,6 +17,7 @@ import { tugasLaporan } from './laporanFoto.js';
 import { tugasRekening } from './rekening.js';
 import { tugasJobdesk, tugasIngatJobdesk } from './jobdesk.js';
 import { tugasKomplain, tugasLinkKasir, tugasSesiKasir } from './komplain.js';
+import { tugasStokHarian } from './stokHarian.js';
 import { ikutGajian } from './gajian.js';
 import { tanggalLokal } from './util.js';
 
@@ -97,6 +98,8 @@ async function main() {
     for (const p of await tugasKomplain(ctx)) await wa.kirimPribadi(p.nomor, p.text);
     // Ringkasan tutup kasir antrian -> WhatsApp owner.
     for (const p of await tugasSesiKasir(ctx)) await wa.kirimPribadi(p.nomor, p.text);
+    // Format stok closing ke grup tim setelah kasir tutup (atau jam 23.00).
+    for (const p of await tugasStokHarian(ctx)) await wa.kirim(p.groupId, p.text);
     // Link kasir antrian di hari pertama event (chat pribadi kasir, atau grup tim).
     for (const p of await tugasLinkKasir(ctx, new Date(), { tanggalLokal })) {
       if (p.nomor) await wa.kirimPribadi(p.nomor, p.text); else await wa.kirim(p.groupId, p.text);

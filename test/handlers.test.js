@@ -1252,3 +1252,38 @@ test('gaji khusus: nominal berbeda per orang ("veri, tiara, bima 2 juta masing m
   // kalimat lama tetap: satu nominal untuk semua, ringkasan "jadi ... 6 jt" diabaikan
   assert.match(await kirim(G_KELUAR, OWNER, 'gaji tiara, veri, bima masing masing 2 juta ya jadi buat 3 orang ini 6 jt'), /Total: \*Rp 6.000.000\*/);
 });
+
+test('stok closing harian: format dari bot, berkurang dihitung dari stok awal/kemarin + restock, koreksi di hari yang sama', async () => {
+  const { store, kirim, ctx } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
+  await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 20 pack\nbumbu garlic 10 pack', w('02', '08:00'));
+  // format: bahan event + oyster
+  const format = await kirim(G_TIM, KARYAWAN, '#stok', w('02', '22:00'));
+  assert.match(format, /Stok closing JMB26-11.*2 Nov.*#stok\n.*Mozzarella = \.\.\. pack/s);
+  assert.doesNotMatch(format, /Rp/); // tanpa harga di grup tim
+  // closing hari 1 (lewat tengah malam = closing tgl 2)
+  const h1 = await kirim(G_TIM, KARYAWAN, '#stok\nMozzarella = 14 pack\nBumbu Garlic = 8 pack', w('03', '00:30'));
+  assert.match(h1, /2 Nov tercatat.*Mozzarella: \*14 pack\* \(stok awal 20\) → berkurang \*6 pack\*.*Bumbu Garlic: \*8 pack\* \(stok awal 10\) → berkurang \*2 pack\*/s);
+  // hari 2: restock 10, closing 15 -> berkurang 14 + 10 - 15 = 9
+  await kirim(G_TIM, KARYAWAN, '#restock mozzarella 10 pack', w('03', '15:00'));
+  const h2 = await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 15 pack', w('03', '22:10'));
+  assert.match(h2, /Mozzarella: \*15 pack\* \(kemarin 14 \+ restock 10\) → berkurang \*9 pack\*/);
+  assert.match(h2, /Belum diisi:.*Bumbu Garlic/);
+  // koreksi: kirim ulang hari yang sama menggantikan
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 16 pack', w('03', '22:20'));
+  const aktif = (await store.all('Stok Harian')).filter((r) => r.status !== 'BATAL' && r.bahan === 'Mozzarella' && r.tanggal === '2026-11-03');
+  assert.deepEqual(aktif.map((r) => [r.jumlah, r.terpakai]), [[16, 8]]);
+  // stok naik -> peringatan
+  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nbumbu garlic 9 pack', w('04', '22:00')), /naik 1/);
+  // pengingat otomatis jam 23.00 kalau belum diisi
+  const { tugasStokHarian } = await import('../src/stokHarian.js');
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T22:00:00+07:00'))).length, 0);
+  const ingat = await tugasStokHarian(ctx, new Date('2026-11-05T23:01:00+07:00'));
+  assert.equal(ingat[0].groupId, G_TIM);
+  assert.match(ingat[0].text, /Stok closing hari ini belum diisi.*#stok/s);
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T23:30:00+07:00'))).length, 0);
+});

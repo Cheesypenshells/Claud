@@ -472,3 +472,17 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Di kasir: **foto struk** → nomor antrian & QR muncul, lalu pelanggan scan → **foto & mulai bakar** → **🔔 panggil** (HP pelanggan berbunyi/bergetar).
 - Komplain pelanggan diteruskan ke WhatsApp owner dan mengurangi KPI kelompok −2. Kalau tidak valid, ubah Status menjadi BATAL di tab Komplain.
 - Pengaturan: `url_antrian` (link web app) dan `pin_kasir` (sama dengan PIN di Apps Script).
+
+## Stok bahan baku closing (setiap hari)
+
+- Setelah **⏹ Tutup kasir** (atau jam 23.00 kalau belum ada yang mengisi), bot mengirim **format stok closing** ke grup tim berisi bahan event itu.
+- Tim menyalin format, mengganti titik-titik dengan jumlahnya, lalu mengirim:
+  ```
+  #stok
+  Mozzarella = 14 pack
+  Bumbu Garlic = 8 pack
+  ```
+- Bot menghitung **berkurang berapa**: stok closing kemarin (hari pertama: stok awal `#keluar`) + restock hari itu − stok closing sekarang. Kalau stok malah naik, bot memberi peringatan (mungkin restock belum dicatat atau salah hitung).
+- Boleh dikirim sebagian; kirim ulang di hari yang sama = koreksi. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
+- Hanya jumlah, **tanpa harga**. Tersimpan di tab **Stok Harian**. Di hari terakhir, sisa tetap dicatat owner/PIC sebagai `#sisa` di grup pengeluaran.
+

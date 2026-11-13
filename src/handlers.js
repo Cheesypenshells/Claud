@@ -25,6 +25,7 @@ import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
+import { perintahStok } from './stokHarian.js';
 import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya, perintahTanyaKasir, tanganiJawabKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
@@ -1346,6 +1347,10 @@ export async function handlePesan(ctx, pesan) {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahKasir(ctx, event, { bolehLihat: isOwner || milikSaya.some((e) => e.kode === event?.kode) });
       }
+      case 'stok':
+      case 'stock':
+      case 'stokclosing':
+        return perintahStok(ctx, pesan, event, cmd);
       case 'tanyakasir': {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahTanyaKasir(ctx, pesan, event, { boleh: isOwner || milikSaya.some((e) => e.kode === event?.kode) });

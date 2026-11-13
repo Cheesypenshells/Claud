@@ -136,6 +136,17 @@ export const KOLOM = {
       k('rating', 'Bintang', 80, { format: 'angka' }), k('ulasan', 'Ulasan', 220), k('dinilai', 'Dinilai', 140),
     ],
   },
+  // Stok bahan baku saat closing setiap hari (#stok di grup tim). Hanya jumlah, tanpa harga.
+  'Stok Harian': {
+    warna: '#6D4C41',
+    kolom: [
+      k('tanggal', 'Tanggal Closing', 110), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('jumlah', 'Stok Closing', 100, { format: 'angka' }), k('satuan', 'Satuan', 80),
+      k('sebelumnya', 'Stok Sebelumnya', 115, { format: 'angka', catatan: 'Closing kemarin, atau stok awal di hari pertama' }),
+      k('restock', 'Restock', 85, { format: 'angka' }), k('terpakai', 'Berkurang', 95, { format: 'angka', catatan: 'Sebelumnya + restock − stok closing' }),
+      k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Sesi kasir antrian (▶ Mulai kasir / ⏹ Tutup kasir di halaman kasir). Status: BUKA / TUTUP / DITERUSKAN.
   'Sesi Kasir': {
     warna: '#0B8043',
