@@ -357,6 +357,11 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - `#jobdesk` = lihat pembagian · `#jobdesk ulang` (owner/PIC) = bagi ulang. Tersimpan di tab **Jobdesk**.
 - **Penilaian oleh PIC**: setiap ada foto laporan pekerjaan jobdesk, bot bertanya ke PIC lewat **chat pribadi** (kalau nomornya belum dikenal: di grup pengeluaran): setelah dicek di lokasi, sesuai atau tidak dan poinnya berapa. PIC membalas `sesuai 10` / `kurang 6 kabel berantakan` / `tidak 0 booth belum dirakit`. Poin masuk **Poin KPI** setiap penanggung jawab pekerjaan itu (dan kolom *Penilaian PIC* di tab Laporan Foto). Satu pekerjaan dinilai sekali; kalau beberapa menunggu, ditanyakan bergiliran. Salah: `#poinbatal K....`.
 
+## #bantu: membantu pekerjaan owner (poin tambahan)
+
+- Karyawan yang membantu pekerjaan owner di luar jobdesk-nya mengirim di grup tim: `#bantu angkat galon & beli es batu untuk pak george` (boleh dengan foto). Beberapa orang: `#bantu Adit dan Veri angkat freezer` — semua nama tim yang disebut ikut tercatat.
+- Bot bertanya ke **owner lewat chat pribadi**: *mau diberi poin berapa?* Owner membalas `sesuai 5` / `10 cepat & rapi`. Poin masuk **Poin KPI** semua yang membantu (alasan: *Bantu owner: ...*). Setiap bantuan ditanyakan (tidak dibatasi sekali).
+
 ## Info loading in
 
 - Bersama jobdesk (H-2), kalau belum diisi bot bertanya di grup tim: **kapan & jam berapa** loading in dan **lokasi pintu/area loading in**. Siapa pun boleh menjawab, contoh `loading in 13 nov jam 22.00` lalu `pintu 3 belakang hall B`.

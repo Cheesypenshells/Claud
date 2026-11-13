@@ -11,7 +11,7 @@
 // lama yang dikirim ulang), dan angka followers di screenshot Instagram (dibaca dengan OCR).
 // Temuan (serpihan, busuk, alat rusak, komplain) langsung diteruskan ke grup pengeluaran (owner + PIC).
 
-import { mintaNilaiJobdesk } from './nilaiJobdesk.js';
+import { mintaNilaiJobdesk, mintaNilaiBantu } from './nilaiJobdesk.js';
 import { pjPerTag, pembantuPerTag } from './jobdesk.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
@@ -36,6 +36,7 @@ export const BUTIR = [
   { tag: 'cooler', tahap: T.HARIAN, bagian: 'sebelum', label: 'Cooler box', isi: 'cooler berisi es cukup, tidak terendam air', foto: true, kata: /\bcooler\b/i },
   { tag: 'nampan', tahap: T.HARIAN, bagian: 'sebelum', label: 'Nampan di freezer', isi: '10 nampan (7 mozza / 1 seafood / 2 garlic)', foto: true, kata: /\bnampan\b/i },
   { tag: 'followers', tahap: T.HARIAN, bagian: 'sebelum', label: 'Followers IG saat buka & tutup', isi: 'screenshot profil Instagram', foto: true, kata: /\b(followers?|follower|pengikut)\b/i, ulang: 2 },
+  { tag: 'bantu', tahap: T.HARIAN, bagian: 'selama', label: 'Bantu kerjaan owner', isi: 'apa yang dibantu (boleh dengan foto)', foto: false, kata: null, opsional: true, bebas: true },
   { tag: 'temuan', tahap: T.HARIAN, bagian: 'selama', label: 'Temuan', isi: 'serpihan / bau / busuk / alat rusak / komplain + tindakan', foto: true, kata: /\b(temuan|serpihan|busuk|basi|bau|rusak|komplain|complain)\b/i, opsional: true },
   { tag: 'omzet', tahap: T.HARIAN, bagian: 'tutup', label: 'Omzet harian', isi: 'format #omzet', foto: false, otomatis: 'omzet' },
   { tag: 'bersih', tahap: T.HARIAN, bagian: 'tutup', label: 'Kebersihan setelah tutup', isi: 'area depan, grill, wastafel, cooler sudah dikuras', foto: true, kata: /\b(bersih|kebersihan|closing|beres(-| )?beres)\b/i },
@@ -128,7 +129,7 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
   const tim = await timEvent(ctx, event.kode);
   const zona = zonaKota(event.kota);
   const baris = [];
-  for (const b of BUTIR.filter((x) => x.tahap === tahap)) {
+  for (const b of BUTIR.filter((x) => x.tahap === tahap && x.tag !== 'bantu')) {
     if (b.otomatis === 'pengiriman') {
       const ada = (await ctx.store.all('Pengiriman')).some((p) => p.kode_event === event.kode && p.status !== STATUS.BATAL);
       baris.push(`${ada ? '✅' : '❌'} ${b.label}${ada ? '' : ' → *#kirim*'}`);
@@ -274,6 +275,14 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
   const sisa = b.opsional ? '' : `\n${await sisaTeks(ctx, event, tahap, tanggal)}`;
   const ket = pesan.adaFoto ? ' _(foto berikutnya dalam 5 menit ikut dihitung)_' : '';
   // Pekerjaan jobdesk: PIC diminta mengecek di lokasi dan memberi poin (chat pribadi / grup pengeluaran).
+  if (tag === 'bantu') {
+    if (!isi.trim()) {
+      await ctx.store.updateWhere('Laporan Foto', (r) => r.id === id, { status: 'BATAL' });
+      return balas('🤝 Tulis juga *bantu apa*, contoh: *#bantu angkat galon & beli es batu untuk pak george* (boleh dengan foto).');
+    }
+    const mintaBantu = await mintaNilaiBantu(ctx, event, { lapId: id, pengirim: nama, jam: `${jam} ${zona.nama}`, isi });
+    return [{ text: `🤝 Terima kasih *${nama}*! Bantuan tercatat (${id}): ${isi}\n_Owner akan memberi poin._` }, ...mintaBantu];
+  }
   const minta = tahap === T.IN ? await mintaNilaiJobdesk(ctx, event, { lapId: id, tag, pengirim: nama, jam: `${jam} ${zona.nama}` }) : [];
   return [{ text: `📷 *${b.label}* (#${tag}) dari *${nama}* jam ${jam} ${zona.nama} tercatat.${ket}${infoAngka}${sisa}${minta.length ? '\n_PIC akan mengecek hasilnya di lokasi._' : ''}` }, ...minta];
 }

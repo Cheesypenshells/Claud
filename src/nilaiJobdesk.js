@@ -30,7 +30,7 @@ const sudahDinilai = async (ctx, kode, tag) => (await ctx.store.all('Poin KPI'))
 
 function teksTanya(item, sisa) {
   return [
-    `🧐 *Cek jobdesk ${item.kode}: ${item.tugas}* (#${item.tag})`,
+    item.tag === 'bantu' ? `🤝 *Cek jobdesk ${item.kode}: ${item.tugas}* (#bantu)` : `🧐 *Cek jobdesk ${item.kode}: ${item.tugas}* (#${item.tag})`,
     `Foto laporan dari *${item.pengirim}* jam ${item.jam} (${item.lapId}). Penanggung jawab: *${item.pj.join(', ')}*`,
     '',
     'Setelah dicek langsung di lokasi, *pengerjaannya sesuai?* Balas *sesuai/kurang/tidak* + *poin*, contoh:',
@@ -39,6 +39,30 @@ function teksTanya(item, sisa) {
     '• *tidak 0 booth belum dirakit*',
     sisa ? `_(masih ada ${sisa} pekerjaan lain menunggu dinilai)_` : '',
   ].filter(Boolean).join('\n');
+}
+
+// Owner (untuk #bantu: membantu pekerjaan owner): chat pribadi nomor owner pertama.
+function tujuanOwner(ctx) {
+  const nomor = [...(ctx.ownerIds || [])][0];
+  return nomor ? { nomor: String(nomor), nama: 'Owner' } : null;
+}
+
+// #bantu: karyawan membantu pekerjaan owner di luar jobdesk -> owner diminta memberi poin.
+// pj = pengirim + nama tim lain yang disebut ("#bantu Adit dan Veri angkat freezer").
+export async function mintaNilaiBantu(ctx, event, { lapId, pengirim, jam, isi }) {
+  if (!ctx.sesi) return [];
+  const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== STATUS.BATAL);
+  const disebut = tim.filter((o) => new RegExp(`(^|[^a-z])${String(o.nama).toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(` ${String(isi).toLowerCase()} `)).map((o) => o.nama);
+  const pj = [...new Set([pengirim, ...disebut])];
+  const tujuan = tujuanOwner(ctx) || await tujuanPic(ctx, event);
+  if (!tujuan) return [];
+  const k = kunciAntre(tujuan.nomor || tujuan.groupId);
+  const antre = ctx.sesi.get(k)?.antre || [];
+  const item = { kode: event.kode, tag: 'bantu', tugas: `Bantu owner: ${isi || '(tanpa keterangan)'}`, pj, lapId, pengirim, jam };
+  antre.push(item);
+  ctx.sesi.set(k, { antre, waktu: Date.now() });
+  const text = teksTanya(item, antre.length - 1).replace('Setelah dicek langsung di lokasi, *pengerjaannya sesuai?*', '*Mau diberi poin berapa?*');
+  return [tujuan.nomor ? { nomor: tujuan.nomor, text } : { groupId: tujuan.groupId, text }];
 }
 
 // Dipanggil setelah foto laporan jobdesk tercatat. Mengembalikan pesan untuk PIC ([] kalau tidak perlu).
@@ -93,7 +117,7 @@ export async function jawabNilaiJobdesk(ctx, pesan, { boleh = true } = {}) {
     urut += 1;
     await ctx.store.append('Poin KPI', {
       id: `K${String(urut).padStart(4, '0')}`, tanggal: tanggalLokal(pesan.waktu), nama, poin: n.poin,
-      alasan: `Jobdesk #${item.tag} ${item.tugas}: ${n.sesuai}${n.catatan ? ` – ${n.catatan}` : ''}`,
+      alasan: item.tag === 'bantu' ? `${item.tugas}${n.catatan ? ` – ${n.catatan}` : ''}` : `Jobdesk #${item.tag} ${item.tugas}: ${n.sesuai}${n.catatan ? ` – ${n.catatan}` : ''}`,
       kode_event: item.kode, dicatat_oleh: `${penilai} (PIC)`, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
     });
   }
