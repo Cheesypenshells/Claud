@@ -144,3 +144,28 @@ test('penilaian jobdesk: foto laporan -> bot tanya PIC lewat chat pribadi, jawab
   const r3 = await raw(G_TIM, DENA, '#booth', pada('05', '09:30'), foto('booth2'));
   assert.ok(!r3.some((b) => b.nomor));
 });
+
+test('jobdesk: PJ cek barang tiba membantu rakit booth; pembantu ikut tercantum & dapat poin booth', async () => {
+  const { bagiJobdesk, pembantuDari } = await import('../src/jobdesk.js');
+  const b = bagiJobdesk(['Adit', 'Alam', 'Bima', 'Imam', 'TiarA', 'Veri']);
+  assert.deepEqual(b.find((t) => t.tag === 'booth').nama, ['Adit', 'Veri']);
+  assert.deepEqual(pembantuDari(Object.fromEntries(b.map((t) => [t.tag, t.nama]))), { booth: ['Bima'] });
+
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const raw = (groupId, senderId, text, waktu, extra = {}) => handlePesan(ctx, {
+    id: `b${++n}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu, pribadi: groupId === 'dm', ...extra,
+  });
+  await raw(G_KELUAR, OWNER, '#event\nKode: SMR26-11\nKota: Semarang\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 30%\nAdmin: 0\nJam buka: 10.00\nPIC: Budi\nSenior: Adit, Alam, Bima, Imam, TiarA, Veri', pada('01', '09:00'));
+  await raw(G_TIM, OWNER, '#daftar event SMR26-11', pada('01', '09:01'));
+  await raw(G_TIM, PIC, 'saya Budi', pada('01', '09:02'));
+  const j = (await raw(G_TIM, OWNER, '#jobdesk', pada('03', '10:00')))[0].text;
+  assert.match(j, /Rakit booth.*👷 Adit, Veri.*🤝 Dibantu: Bima \(setelah #tiba selesai\)/s);
+  assert.match(j, /cek barang tiba.*👷 Bima.*Setelah selesai, bantu \*Rakit booth\*/s);
+  assert.match((await raw(G_TIM, OWNER, '#loadingin', pada('05', '07:00'))).map((x) => x.text).join('\n'), /Booth selesai dirakit.*👷 Adit, Veri 🤝 Bima/s);
+  const r = await raw(G_TIM, PIC, '#booth', pada('05', '08:00'), { adaFoto: true, ambilFoto: async () => Buffer.from('b') });
+  assert.match(r.find((x) => x.nomor === PIC).text, /Penanggung jawab: \*Adit, Veri, Bima\*/);
+  await raw('dm', PIC, 'sesuai 9', pada('05', '09:00'));
+  assert.deepEqual((await store.all('Poin KPI')).map((p) => p.nama), ['Adit', 'Veri', 'Bima']);
+});

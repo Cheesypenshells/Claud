@@ -44,7 +44,7 @@ function teksTanya(item, sisa) {
 // Dipanggil setelah foto laporan jobdesk tercatat. Mengembalikan pesan untuk PIC ([] kalau tidak perlu).
 export async function mintaNilaiJobdesk(ctx, event, { lapId, tag, pengirim, jam }) {
   if (!ctx.sesi || !TUGAS_LOADING_IN.some((t) => t.tag === tag)) return [];
-  const pj = (await pjPerTag(ctx, event.kode))[tag];
+  const pj = (await pjPerTag(ctx, event.kode, { denganBantu: true }))[tag];
   if (!pj?.length || await sudahDinilai(ctx, event.kode, tag)) return [];
   const tujuan = await tujuanPic(ctx, event);
   if (!tujuan) return [];

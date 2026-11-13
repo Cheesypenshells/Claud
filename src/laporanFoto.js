@@ -12,7 +12,7 @@
 // Temuan (serpihan, busuk, alat rusak, komplain) langsung diteruskan ke grup pengeluaran (owner + PIC).
 
 import { mintaNilaiJobdesk } from './nilaiJobdesk.js';
-import { pjPerTag } from './jobdesk.js';
+import { pjPerTag, pembantuPerTag } from './jobdesk.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
@@ -158,9 +158,10 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
   // Penanggung jawab dari jobdesk (loading in).
   if (tahap === T.IN) {
     const pj = await pjPerTag(ctx, event.kode);
+    const bantu = await pembantuPerTag(ctx, event.kode);
     for (let i = 0; i < baris.length; i++) {
       const tag = (baris[i].match(/#(\w+)/) || [])[1] || BUTIR.filter((b) => b.tahap === T.IN)[i]?.tag;
-      if (pj[tag]?.length) baris[i] += ` 👷 ${pj[tag].join(', ')}`;
+      if (pj[tag]?.length) baris[i] += ` 👷 ${pj[tag].join(', ')}${bantu[tag]?.length ? ` 🤝 ${bantu[tag].join(', ')}` : ''}`;
     }
   }
   return `📋 *${NAMA_TAHAP[tahap]} ${event.kode} – ${tanggal}*${jamBuka}\n${baris.join('\n')}`;

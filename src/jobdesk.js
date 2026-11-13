@@ -10,7 +10,8 @@ import { waktuLokal } from './util.js';
 export const TUGAS_LOADING_IN = [
   { tag: 'booth', label: 'Rakit booth (rangka, meja, banner)', berat: 2 },
   { tag: 'gudang', label: 'Tata stok bahan baku & freezer di gudang belakang', berat: 2 },
-  { tag: 'tiba', label: 'Terima & cek barang tiba (hitung koli, cek kerusakan)', berat: 1 },
+  // Pekerjaan ringan (pengecekan): setelah selesai, penanggung jawabnya membantu rakit booth.
+  { tag: 'tiba', label: 'Terima & cek barang tiba (hitung koli, cek kerusakan)', berat: 1, bantuKe: 'booth' },
   { tag: 'listrik', label: 'Pasang listrik, kabel & lampu booth', berat: 1 },
   { tag: 'display', label: 'Tata display oyster, etalase & alat masak', berat: 1 },
 ];
@@ -30,7 +31,7 @@ export function bagiJobdesk(orang, tugas = TUGAS_LOADING_IN) {
   orang.forEach((n, i) => {
     if (i < hasil.length) { hasil[i].nama.push(n); return; }
     // orang berikutnya: ke pekerjaan dengan (jumlah orang / berat) paling kecil
-    const t = [...hasil].sort((a, b) => a.nama.length / a.berat - b.nama.length / b.berat)[0];
+    const t = [...hasil].filter((x) => !x.bantuKe).sort((a, b) => a.nama.length / a.berat - b.nama.length / b.berat)[0];
     t.nama.push(n);
   });
   return hasil;
@@ -48,17 +49,41 @@ export async function jobdeskEvent(ctx, kode) {
   return (await ctx.store.all('Jobdesk')).filter((j) => j.kode_event === kode && j.status !== STATUS.BATAL);
 }
 
-// PJ per tag (untuk checklist laporan foto).
-export async function pjPerTag(ctx, kode) {
+// Pembantu per pekerjaan: penanggung jawab pekerjaan ringan (bantuKe) ikut membantu setelah tugasnya selesai.
+export function pembantuDari(petaPj, tugas = TUGAS_LOADING_IN) {
+  const bantu = {};
+  for (const t of tugas.filter((x) => x.bantuKe)) {
+    for (const n of petaPj[t.tag] || []) {
+      if ((petaPj[t.bantuKe] || []).includes(n)) continue;
+      (bantu[t.bantuKe] = bantu[t.bantuKe] || []).includes(n) || bantu[t.bantuKe].push(n);
+    }
+  }
+  return bantu;
+}
+
+// Penanggung jawab per tag. denganBantu: ikut pembantu (untuk poin penilaian PIC).
+export async function pjPerTag(ctx, kode, { denganBantu = false } = {}) {
   const peta = {};
   for (const j of await jobdeskEvent(ctx, kode)) (peta[j.tag] = peta[j.tag] || []).push(j.nama);
-  return peta;
+  if (!denganBantu) return peta;
+  const bantu = pembantuDari(peta);
+  return Object.fromEntries(Object.keys({ ...peta, ...bantu }).map((t) => [t, [...(peta[t] || []), ...(bantu[t] || [])]]));
+}
+
+export async function pembantuPerTag(ctx, kode) {
+  return pembantuDari(await pjPerTag(ctx, kode));
 }
 
 function teksJobdesk(event, bagian) {
+  const bantu = pembantuDari(Object.fromEntries(bagian.map((t) => [t.tag, t.nama])));
+  const asal = (nama) => bagian.find((t) => t.bantuKe && t.nama.includes(nama));
   return [
     `📋 *JOBDESK LOADING IN ${event.kode}* (${event.kota}, mulai ${event.mulai})`,
-    ...bagian.map((t, i) => `${i + 1}. *${t.label}*\n   👷 ${t.nama.join(', ') || '-'} → kirim foto dengan caption *#${t.tag}*`),
+    ...bagian.map((t, i) => [
+      `${i + 1}. *${t.label}*\n   👷 ${t.nama.join(', ') || '-'} → kirim foto dengan caption *#${t.tag}*`,
+      bantu[t.tag]?.length ? `   🤝 Dibantu: ${bantu[t.tag].map((n) => `${n} (setelah #${asal(n)?.tag || '?'} selesai)`).join(', ')}` : '',
+      t.bantuKe && t.nama.length ? `   ↪️ Setelah selesai, bantu *${bagian.find((x) => x.tag === t.bantuKe)?.label.split(' (')[0] || t.bantuKe}*` : '',
+    ].filter(Boolean).join('\n')),
     '',
     '_Setiap penanggung jawab wajib kirim *foto hasil kerjanya* di grup ini dengan tag di atas. Cek yang belum: *#loadingin*. PIC: *#acc* setelah semua dicek._',
   ].join('\n');
