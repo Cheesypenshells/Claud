@@ -138,12 +138,21 @@ h2.judul span{display:inline-block;padding:3px 16px 5px;background:var(--kuas) c
 .cerita p{margin:8px 0 0}
 .angka{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
 .angka div{background:var(--kuning-muda);border-radius:16px;padding:10px;text-align:center}
-.angka b{display:block;font-family:var(--judul);font-size:38px;line-height:1;color:var(--navy)}
+.angka b{display:block;font-family:var(--judul);font-size:clamp(26px,7vw,38px);line-height:1;color:var(--navy)}
 .angka small{font-weight:700;font-size:13px;color:var(--redup)}
 h3.sub{font-family:var(--judul);font-size:22px;text-transform:uppercase;color:var(--navy);margin:0 0 12px}
 .lini.lewat li::before{background:#9AA0C3}
 .lini .kosong{color:var(--redup);font-weight:600}.lini .kosong::before{background:var(--kuning)}
 @media(max-width:899px){.dua-kolom>div+div{margin-top:24px}}
+.tahun{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:12px}
+@media(min-width:900px){.tahun{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tahun li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:start;background:var(--putih);border-radius:20px;padding:14px;box-shadow:0 6px 20px rgba(34,52,140,.06)}
+.tahun .th{font-family:var(--judul);font-weight:800;font-size:28px;line-height:1;color:var(--putih);background:var(--navy);border-radius:14px;padding:10px 0;text-align:center}
+.tahun h3{margin:0;font-size:17px;font-weight:800;color:var(--navy)}
+.tahun p{margin:4px 0 0;font-size:14px;color:var(--teks)}
+.tahun li.kini{border:3px solid var(--kuning)}.tahun li.kini .th{background:var(--kuning);color:var(--navy-tua)}
+.tahun li.nanti{background:transparent;box-shadow:none;border:2px dashed #B9BDD6}.tahun li.nanti .th{background:transparent;color:var(--redup);border:2px dashed #B9BDD6}
+.tahun li.nanti p{color:var(--redup)}
 /* project */
 .proyek{display:grid;gap:12px}
 .proyek article{background:var(--putih);border-radius:20px;padding:16px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:14px;align-items:start;box-shadow:0 6px 20px rgba(34,52,140,.06)}
@@ -280,15 +289,24 @@ footer img{width:72px}
     <div class="cerita">
       <img src="img/suasana.jpg" alt="Oyster bakar mozzarella di atas bara, suasana malam bazaar" loading="lazy">
       <div>
-        <p class="skrip" style="margin:0">Dari bara ke bazaar</p>
-        <p>Cheesy Pen Shells adalah booth oyster bakar yang berkeliling dari satu bazaar kuliner ke bazaar lainnya. Setiap oyster kami bakar langsung di atas bara, di depan pelanggan, lalu disajikan hangat dengan keju, garlic, atau seafood.</p>
+        <p class="skrip" style="margin:0">Dari bara ke bazaar, sejak 2021</p>
+        <p>Cheesy Pen Shells lahir tahun 2021. Kami membakar oyster segar langsung di atas bara, di depan pelanggan. Berawal dari bazaar di Jakarta, kini kami sudah singgah di pulau-pulau besar Indonesia.</p>
         <div class="angka">
-          <div><b id="jumlahKota">7</b><small>kota bazaar</small></div>
-          <div><b id="jumlahEvent">7</b><small>event dijalani</small></div>
-          <div><b>2</b><small>tim bisa jalan bersamaan</small></div>
+          <div><b>30.000+</b><small>porsi dalam sebulan</small></div>
+          <div><b>4</b><small>event sekaligus</small></div>
+          <div><b>7</b><small>pulau disinggahi</small></div>
         </div>
       </div>
     </div>
+    <ol class="tahun">
+      <li class=""><span class="th">2021</span><div><h3>Cheesy Pen Shells lahir</h3><p>Cheesy Pen Shells resmi berdiri dengan oyster bakar sebagai menu utama.</p></div></li>
+      <li class=""><span class="th">2022</span><div><h3>Event pertama di PRJ</h3><p>Booth pertama kami hadir di Pekan Raya Jakarta, dan dari sinilah perjalanan bazaar dimulai.</p></div></li>
+      <li class=""><span class="th">2023</span><div><h3>Menjelajah Jakarta & sekitarnya</h3><p>Kami hadir di berbagai event di Jakarta dan kota-kota di sekitarnya.</p></div></li>
+      <li class=""><span class="th">2024</span><div><h3>Keluar kota, lalu keluar pulau</h3><p>Mulai merambah luar kota. Di akhir 2024 kami menyeberang ke Sumatra, Kalimantan, Sulawesi, Bali, Lombok, bahkan Papua.</p></div></li>
+      <li class=""><span class="th">2025</span><div><h3>4 event sekaligus</h3><p>Cheesy Pen Shells berjalan di 4 event bersamaan di berbagai kota. Dalam satu bulan, lebih dari 30.000 porsi terjual di 4 sampai 8 kota berbeda.</p></div></li>
+      <li class="kini"><span class="th">2026</span><div><h3>Budidaya tiram di Brebes</h3><p>Kami berfokus membangun project budidaya tiram sendiri di perairan Desa Kaliwlingi, Brebes, sambil tetap berkeliling bazaar.</p></div></li>
+      <li class="nanti"><span class="th">2027</span><div><h3>Babak berikutnya</h3><p>Cerita selanjutnya sedang kami tulis. Ikuti terus perjalanan kami di Instagram.</p></div></li>
+    </ol>
   </section>
 
   <section id="jadwal">
@@ -308,6 +326,7 @@ footer img{width:72px}
   <section id="project">
       <div class="judul-bagian"><h2 class="judul"><span>Sedang kami kerjakan</span></h2></div>
       <div class="proyek">
+        <article><span class="ik" aria-hidden="true">🦪</span><div><h3>Budidaya tiram di Brebes</h3><p>Tahun ini kami berfokus membangun budidaya tiram sendiri di perairan Desa Kaliwlingi, Brebes.</p></div></article>
         <article><span class="ik" aria-hidden="true">🔔</span><div><h3>Antrian pintar di booth</h3><p>Setelah bayar, scan QR dari kasir. HP kamu berbunyi dan bergetar saat oyster kamu siap, jadi tidak perlu berdiri menunggu.</p></div></article>
         <article><span class="ik" aria-hidden="true">📍</span><div><h3>Kota berikutnya</h3><p>Tur bazaar kami terus berjalan. Jadwal kota selanjutnya kami umumkan lebih dulu di Instagram.</p></div></article>
         <article><span class="ik" aria-hidden="true">💬</span><div><h3>Suara pelanggan</h3><p>Setiap keluhan dari QR di booth langsung sampai ke pemilik, supaya pelayanan kami makin baik di setiap kota.</p></div></article>
@@ -409,8 +428,6 @@ footer img{width:72px}
       ? datang.map(function (e) { return baris(e, e.mulai <= h ? 'kini' : 'datang'); }).join('')
       : '<li class="kosong">Jadwal berikutnya segera kami umumkan di Instagram @cheesypenshells.</li>';
     document.getElementById('jadwalLewat').innerHTML = lewat.map(function (e) { return baris(e, 'lewat'); }).join('');
-    document.getElementById('jumlahKota').textContent = Object.keys(kota).length;
-    document.getElementById('jumlahEvent').textContent = daftar.length;
     var sekarang = datang[0];
     if (sekarang) {
       document.getElementById('bannerJadwalAtas').textContent = (sekarang.mulai <= h ? 'Sekarang di ' : 'Segera di ') + judul(sekarang.kota);
