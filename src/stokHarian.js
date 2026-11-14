@@ -218,9 +218,10 @@ function tanggalSesi(s) {
 }
 
 // Format stok dikirim ke grup tim setelah kasir ditutup, atau jam 23.00 kalau hari itu belum ada stok closing.
-// Format stok closing dikirim 1 JAM SEBELUM JAM TUTUP (kolom Jam Tutup event, default 22.00) supaya tim
+// Format stok closing dikirim 15 MENIT SEBELUM JAM TUTUP (22.00 → 21.45) (kolom Jam Tutup event, default 22.00) supaya tim
 // sempat membereskan & menghitung lebih dulu. Kalau sampai kasir ditutup / jam tutup belum ada yang mengisi,
 // bot menagih sekali lagi (format dikirim ulang).
+export const STOK_SEBELUM_TUTUP = 15; // menit
 export async function tugasStokHarian(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
@@ -230,7 +231,7 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
   const tanggal = tanggalClosing(sekarang);
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL')) {
     const tutup = waktuTutup(e, tanggal);
-    const siap = new Date(tutup.getTime() - 60 * 60000);
+    const siap = new Date(tutup.getTime() - STOK_SEBELUM_TUTUP * 60000);
     const sudahIsi = stokRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r));
     const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase())
       && tanggalSesi(s) === tanggal);
@@ -242,7 +243,7 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
       if (sudahIsi) continue;
       pembuka = kasirTutup && sekarang < siap
         ? '🧾 Kasir sudah tutup, saatnya hitung stok bahan baku.'
-        : `⏰ *1 jam lagi closing (${jamTampil(tutup, e)}).* Mulai siap-siap: bereskan dulu yang sudah tidak dipakai, lalu hitung stok bahan baku dan foto.`;
+        : `⏰ *${STOK_SEBELUM_TUTUP} menit lagi closing (${jamTampil(tutup, e)}).* Mulai siap-siap: bereskan dulu yang sudah tidak dipakai, lalu hitung stok bahan baku dan foto.`;
     } else if (ctx.sesi.get(tSiap) && !ctx.sesi.get(tTagih) && !sudahIsi && (kasirTutup || sekarang >= tutup)) {
       ctx.sesi.set(tTagih, { kirim: true });
       pembuka = '🌙 *Stok closing hari ini belum diisi.* Hitung, foto, lalu kirim dengan format di bawah.';

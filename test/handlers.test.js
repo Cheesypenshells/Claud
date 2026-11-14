@@ -1279,20 +1279,20 @@ test('stok closing harian: format dari bot, berkurang dihitung dari stok awal/ke
   assert.deepEqual(aktif.map((r) => [r.jumlah, r.terpakai]), [[16, 8]]);
   // stok naik -> peringatan
   assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nbumbu garlic 9 pack', { ...w('04', '22:00'), adaFoto: true }), /naik 1/);
-  // format dikirim 1 jam sebelum jam tutup (default 22.00), ditagih lagi saat jam tutup kalau belum diisi
+  // format dikirim 15 menit sebelum jam tutup (default 22.00 → 21.45), ditagih lagi saat jam tutup kalau belum diisi
   const { tugasStokHarian } = await import('../src/stokHarian.js');
-  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T20:59:00+07:00'))).length, 0);
-  const siap = await tugasStokHarian(ctx, new Date('2026-11-05T21:00:00+07:00'));
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T21:44:00+07:00'))).length, 0);
+  const siap = await tugasStokHarian(ctx, new Date('2026-11-05T21:45:00+07:00'));
   assert.equal(siap[0].groupId, G_TIM);
-  assert.match(siap[0].text, /1 jam lagi closing \(22\.00 WIB\).*bereskan.*#stok/s);
-  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T21:30:00+07:00'))).length, 0);
+  assert.match(siap[0].text, /15 menit lagi closing \(22\.00 WIB\).*bereskan.*#stok/s);
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T21:55:00+07:00'))).length, 0);
   const ingat = await tugasStokHarian(ctx, new Date('2026-11-05T22:01:00+07:00'));
   assert.match(ingat[0].text, /Stok closing hari ini belum diisi.*#stok/s);
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T23:30:00+07:00'))).length, 0);
   // jam tutup bisa diubah owner
   assert.match(await kirim(G_KELUAR, OWNER, '#ubah jam tutup 23.00', w('06', '09:00')), /Jam tutup: 23:00/);
-  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-06T21:30:00+07:00'))).length, 0);
-  assert.match((await tugasStokHarian(ctx, new Date('2026-11-06T22:00:00+07:00')))[0].text, /1 jam lagi closing \(23\.00 WIB\)/);
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-06T22:44:00+07:00'))).length, 0);
+  assert.match((await tugasStokHarian(ctx, new Date('2026-11-06T22:45:00+07:00')))[0].text, /15 menit lagi closing \(23\.00 WIB\)/);
 });
 
 test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan closing, minus poin untuk pelapor', async () => {
