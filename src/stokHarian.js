@@ -61,6 +61,7 @@ export function tanggalClosing(waktu) {
 // Bahan yang dicek di event ini: yang pernah dibawa/restock/sisa, ditambah oyster (dibeli di lokasi). Kosong = semua bahan.
 export function bahanEvent(kode, bahanRows, hargaBahan) {
   const dipakai = new Set(bahanRows.filter((b) => b.kode_event === kode && aktif(b)).map((b) => b.bahan));
+  if (!dipakai.size) return hargaBahan; // belum ada #keluar: tampilkan semua bahan
   BAHAN_DIBELI.forEach((b) => { if (hargaBahan.some((h) => h.bahan === b)) dipakai.add(b); });
   const daftar = hargaBahan.filter((h) => dipakai.has(h.bahan));
   return daftar.length ? daftar : hargaBahan;
