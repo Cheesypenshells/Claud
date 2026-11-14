@@ -1365,3 +1365,32 @@ test('tugas harian jam 08.00 di grup tim, #pemanggang & #tukar oleh owner/PIC, d
   assert.match(d, /Denda selisih stok JMB26-11\*: Tiara Rp 100.000, Veri Rp 100.000, Bima Rp 100.000, Imam Rp 100.000 \(dibagi rata dari Rp 400.000\)/);
   assert.equal((await store.all('Denda')).length, 4);
 });
+
+test('penilaian harian PIC jam 22.00: per orang sesuai bagian, kategori 1-4 + poin + catatan, masuk kinerja KPI', async () => {
+  const { store, kirim, ctx } = setup();
+  const { bacaJawaban, tugasNilaiHarian } = await import('../src/nilaiHarian.js');
+  assert.deepEqual(bacaJawaban('1 90 cepat & rapi'), { kategori: 1, poin: 90, catatan: 'cepat & rapi' });
+  assert.deepEqual(bacaJawaban('2'), { kategori: 2, poin: 65, catatan: '' });
+  assert.match(bacaJawaban('4 50 telat').salah, /1–20/);
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Tiara, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  await store.append('Karyawan', { nama: 'Budi', nomor_wa: '082222222222' });
+  await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Kasir', nama: 'Tiara', status: 'OK' });
+  await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Plating', nama: 'Tiara', rangkap: 'ya', status: 'OK' });
+  await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Getok', nama: 'Bima', status: 'OK' });
+  assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T21:00:00+07:00'))).length, 0);
+  const k = await tugasNilaiHarian(ctx, new Date('2026-11-03T22:00:00+07:00'));
+  assert.equal(k[0].nomor, PIC);
+  assert.match(k[0].text, /Penilaian harian JMB26-11.*3 Nov \(1\/2\).*Tiara\* – Kasir \+ Plating.*Ramah & cepat.*Stok nampan.*1️⃣ Sangat baik \(75–100\).*4️⃣ Buruk \(1–20\)/s);
+  assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T22:30:00+07:00'))).length, 0);
+  const dm = (text) => handlePesan(ctx, { id: `d${Math.random()}`, groupId: 'dm', pribadi: true, senderId: PIC, senderName: 'Budi', text, adaFoto: false, waktu: new Date('2026-11-03T22:05:00+07:00') }).then((r) => r.map((x) => x.text).join('\n'));
+  assert.match(await dm('1 95 cepat'), /Bima\* – Getok.*Es batu dipesan jam 09.30/s);
+  const akhir = await dm('3 40 sering main hp');
+  assert.match(akhir, /selesai.*Tiara: \*95\* – cepat.*Bima: \*40\* – sering main hp/s);
+  const { skorEvent, bahanKpi } = await import('../src/kpi.js');
+  const { bacaData } = await import('../src/main.js');
+  const { hitungEvent } = await import('../src/laporan.js');
+  const data = await bacaData(store);
+  const s = skorEvent(hitungEvent(data.events[0], data), { ...(await bahanKpi(store)), hariIni: '2026-11-04' }).find((x) => x.nama === 'Bima');
+  assert.equal(s.kinerja, 9.6); // 40/100 × 24
+});

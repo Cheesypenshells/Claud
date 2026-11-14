@@ -145,6 +145,16 @@ export const KOLOM = {
       k('rangkap', 'Rangkap', 80, { catatan: 'ya = plating dirangkap kasir' }), k('status', 'Status', 85), k('dicatat', 'Dicatat', 140),
     ],
   },
+  // Penilaian harian oleh PIC (jam 22.00): kategori 1-4 + poin 1-100 + catatan, per bagian tugas.
+  'Nilai Harian': {
+    warna: '#6A1B9A',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('bagian', 'Bagian', 140),
+      k('kategori', 'Kategori', 120, { catatan: '1 Sangat baik 75-100 · 2 Baik 50-75 · 3 Kurang 25-50 · 4 Buruk 1-20' }),
+      k('poin', 'Poin', 70, { format: 'angka' }), k('catatan', 'Catatan', 260), k('penilai', 'Penilai', 140),
+      k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Stok bahan baku saat closing setiap hari (#stok di grup tim). Hanya jumlah, tanpa harga.
   'Stok Harian': {
     warna: '#6D4C41',

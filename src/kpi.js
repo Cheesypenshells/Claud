@@ -18,9 +18,9 @@ import { komplainAktif } from './komplain.js';
 // Semua data yang dipakai KPI, sekali baca (tab yang belum ada dianggap kosong).
 export async function bahanKpi(store) {
   const baca = async (tab) => { try { return await store.all(tab); } catch { return []; } };
-  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak] = await Promise.all(
-    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok'].map(baca));
-  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak };
+  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian] = await Promise.all(
+    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian'].map(baca));
+  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian };
 }
 
 // Menit dari teks waktu "YYYY-MM-DD HH:MM[:SS]" (WIB).
@@ -75,7 +75,7 @@ export function yangDinilai(r) {
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".
-export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], hariIni = tanggalLokal(new Date()) } = {}) {
+export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], harian = [], hariIni = tanggalLokal(new Date()) } = {}) {
   const kode = r.event.kode;
   const milik = nilai.filter((n) => n.kode_event === kode && aktif(n));
   const target = num(r.event.target_omzet);
@@ -117,13 +117,20 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
       rinci.absen = Math.max(0, BOBOT.absen - telat * ATURAN_OTOMATIS.telat - tidakHadir * ATURAN_OTOMATIS.tidakHadir);
       otomatis.absen = { telat, tidakHadir, hadir: hadir.size };
     }
-    // Kinerja kasir dari bintang pelanggan
+    // Kinerja: rata-rata penilaian harian PIC (0-100); kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian).
+    const nh = harian.filter((x) => x.kode_event === kode && aktif(x) && sama(x.nama, o.nama) && Number(x.poin) > 0).map((x) => Number(x.poin));
+    const kinerjaHarian = nh.length ? bulat((nh.reduce((a, b) => a + b, 0) / nh.length / 100) * BOBOT.kinerja) : null;
+    if (nh.length) otomatis.harian = { rata: bulat(nh.reduce((a, b) => a + b, 0) / nh.length), jumlah: nh.length };
     const bintang = antrian.filter((q) => q.kode_event === kode && sama(q.kasir, o.nama) && Number(q.rating) > 0).map((q) => Number(q.rating));
+    let kinerjaBintang = null;
     if (bintang.length >= ATURAN_OTOMATIS.minBintang) {
       const rata = bintang.reduce((a, b) => a + b, 0) / bintang.length;
-      rinci.kinerja = bulat((rata / 5) * BOBOT.kinerja);
+      kinerjaBintang = bulat((rata / 5) * BOBOT.kinerja);
       otomatis.bintang = { rata: bulat(rata), jumlah: bintang.length };
     } else if (bintang.length) otomatis.bintang = { rata: bulat(bintang.reduce((a, b) => a + b, 0) / bintang.length), jumlah: bintang.length, kurang: true };
+    if (kinerjaHarian !== null && kinerjaBintang !== null) rinci.kinerja = bulat((kinerjaHarian + kinerjaBintang) / 2);
+    else if (kinerjaHarian !== null) rinci.kinerja = kinerjaHarian;
+    else if (kinerjaBintang !== null) rinci.kinerja = kinerjaBintang;
 
     // Laporan foto wajib yang terlewat
     const terlewat = [];
@@ -167,8 +174,11 @@ export function teksOtomatis(s) {
   const b = [];
   const a = s.otomatis?.absen;
   if (a) b.push(`absen otomatis ${s.absen}/12 (${a.hadir} hari hadir${a.telat ? `, telat ${a.telat}×` : ''}${a.tidakHadir ? `, tidak hadir tanpa izin ${a.tidakHadir}×` : ''})`);
+  const h = s.otomatis?.harian;
+  if (h) b.push(`nilai harian PIC rata-rata ${String(h.rata).replace('.', ',')} (${h.jumlah} hari)`);
   const t = s.otomatis?.bintang;
-  if (t) b.push(t.kurang ? `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian (belum ${ATURAN_OTOMATIS.minBintang}, kinerja dari PIC)` : `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian → kinerja ${s.kinerja}/24`);
+  if (t) b.push(t.kurang ? `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian (belum ${ATURAN_OTOMATIS.minBintang})` : `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian`);
+  if (h || (t && !t.kurang)) b[b.length - 1] += ` → kinerja ${s.kinerja}/24${h && t && !t.kurang ? ' (harian 50% + bintang 50%)' : ''}`;
   if (s.laporanMinus) b.push(`laporan terlewat ${s.laporanTerlewat.join(', ')} (−${s.laporanMinus})`);
   if (s.selisihStok) b.push(`stok ${s.stok}/10 (${s.selisihStok} selisih saat sidak)`);
   if (s.lambatMinus) b.push(`layanan lambat (> ${ATURAN_OTOMATIS.targetTungguMenit} mnt): ${s.hariLambat.join(', ')} (−${s.lambatMinus})`);
