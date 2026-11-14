@@ -150,8 +150,9 @@ export const KOLOM = {
     warna: '#6A1B9A',
     kolom: [
       k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('bagian', 'Bagian', 140),
-      k('kategori', 'Kategori', 120, { catatan: '1 Sangat baik 75-100 · 2 Baik 50-75 · 3 Kurang 25-50 · 4 Buruk 1-20' }),
-      k('poin', 'Poin', 70, { format: 'angka' }), k('catatan', 'Catatan', 260), k('penilai', 'Penilai', 140),
+      k('kategori', 'Kategori', 120, { catatan: 'Buruk 1-24 · Cukup buruk 25-49 · Sudah cukup 50-74 · Baik sekali 75-100' }),
+      k('poin', 'Poin', 70, { format: 'angka' }), k('catatan', 'Catatan (rahasia)', 240),
+      k('pesan', 'Pesan untuk Karyawan', 240), k('pesan_terkirim', 'Pesan Terkirim', 110), k('penilai', 'Penilai', 140),
       k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },

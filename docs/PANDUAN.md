@@ -519,7 +519,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 ## Penilaian harian PIC (jam 22.00)
 
 - Setiap hari event jam 22.00 (atau lebih cepat setelah ⏹ Tutup kasir), bot mengirim penilaian ke **chat pribadi PIC** (nomor PIC belum dikenal: grup pengeluaran), satu per satu per orang. Pertanyaannya sesuai bagian tugas orang itu hari itu (kasir, plating, pemanggang, getok).
-- Pilihan: **1 Sangat baik (75–100) · 2 Baik (50–75) · 3 Kurang (25–50) · 4 Buruk (1–20)**. Balas nomor + poin + catatan: `1 90 cepat & rapi`, `3 40 sering main hp`; nomor saja = poin tengah; `lewati`; `batal`.
+- Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (nilainya tidak ikut dikirim); balas `tidak` kalau tidak ada. `lewati` / `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
 
