@@ -87,6 +87,14 @@ const jamKe = (tanggal, menit, zona) => {
   const [y, m, d] = tanggal.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d, 0, menit) - zona.jam * 3600000);
 };
+// Jam tutup booth (kolom Jam Tutup event, default 22.00). Lewat tengah malam (< 05.00) = dini hari berikutnya.
+export const JAM_TUTUP_BAWAAN = '22:00';
+export function waktuTutup(event, tanggal) {
+  const zona = zonaKota(event.kota);
+  const menit = bacaJam(event.jam_tutup) ?? bacaJam(JAM_TUTUP_BAWAAN);
+  return new Date(jamKe(tanggal, menit, zona).getTime() + (menit < 5 * 60 ? 24 * 3600e3 : 0));
+}
+
 export function jadwalHari(event, tanggal, aturan = []) {
   const khusus = aturan.filter((a) => !a.nama).pop();
   const menitBuka = bacaJam(khusus?.buka) ?? bacaJam(event.jam_buka);

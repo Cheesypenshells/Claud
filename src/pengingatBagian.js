@@ -4,12 +4,12 @@
 //   siap    1 jam sebelum buka                                Kasir #depan · Pemanggang #grill · Plating #nampan
 //   buka    saat buka                                         Kasir #followers (buka)
 //   tagih   10 menit setelah buka                             yang belum mengirim laporan bagiannya
-//   tutup   setelah ⏹ Tutup kasir atau 22.00                  Kasir #followers (tutup) · semua #bersih & #pulang
+//   tutup   setelah ⏹ Tutup kasir atau jam tutup event (default 22.00)                  Kasir #followers (tutup) · semua #bersih & #pulang
 //   pulang  23.30                                             yang belum #pulang
 
 import { STATUS } from './schema.js';
 import { tanggalLokal } from './util.js';
-import { jadwalHari, aturanHari, wajibAbsen } from './absensi.js';
+import { jadwalHari, aturanHari, wajibAbsen, waktuTutup } from './absensi.js';
 import { tugasHariIni, BAGIAN } from './tugasHarian.js';
 
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -88,7 +88,7 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
     }
     // 5) tutup: setelah kasir ditutup hari ini, atau 22.00
     const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase()) && String(s.ditutup || '').slice(0, 10) === tanggal);
-    const tutupSaat = kasirTutup ? sekarang : waktuWIB(tanggal, '22:00');
+    const tutupSaat = kasirTutup ? sekarang : waktuTutup(e, tanggal);
     if (slot('tutup', tutupSaat)) {
       for (const n of orang('Kasir')) pribadi(n, `📱 *${n}*, sebelum pulang: screenshot followers Instagram lagi dan kirim *#followers* (tutup).`);
       keGrup(`🧹 *Waktunya closing ${e.kode}:*\n• Kasir: *#followers* (tutup)\n• Semua: bersih-bersih, lalu foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih)\n• Hitung stok + foto: *#stok* (getok: oyster di cooler · plating & kasir: gudang + booth)\n• Ada bahan rusak/hilang? *#rusak* + foto\n• Tiap orang: *#pulang* sebelum pulang`);

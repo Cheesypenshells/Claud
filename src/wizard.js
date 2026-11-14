@@ -182,7 +182,7 @@ export function prosesJawaban(ctx, pesan, { events = [] } = {}) {
 const KUNCI_UBAH = [
   ['bagi hasil', 'Bagi hasil'], ['potongan', 'Bagi hasil'], ['admin', 'Admin'], ['tanggal', 'Tanggal'], ['kota', 'Kota'],
   ['lokasi', 'Kota'], ['io', 'IO'], ['wilayah', 'Wilayah harga'], ['jadwal', 'Jadwal trf'], ['jam buka', 'Jam buka'],
-  ['jam', 'Jam buka'], ['target', 'Target omzet'], ['pic', 'PIC'],
+  ['jam tutup', 'Jam tutup'], ['jam closing', 'Jam tutup'], ['tutup', 'Jam tutup'], ['jam', 'Jam buka'], ['target', 'Target omzet'], ['pic', 'PIC'],
 ];
 
 export function blokUbah(event, teks) {
@@ -195,7 +195,7 @@ export function blokUbah(event, teks) {
     Kota: event.kota, IO: event.io, Tanggal: `${event.mulai.split('-').reverse().join('/')} - ${event.selesai.split('-').reverse().join('/')}`,
     'Wilayah harga': event.wilayah, 'Bagi hasil': `${event.bagi_hasil_persen}%`, Admin: String(event.admin || 0),
     'Jadwal trf': event.jadwal_trf === 'AKHIR' ? 'setelah event selesai' : 'H+1', 'Jam buka': event.jam_buka,
-    'Target omzet': String(event.target_omzet || ''), PIC: event.pic,
+    'Jam tutup': event.jam_tutup, 'Target omzet': String(event.target_omzet || ''), PIC: event.pic,
   };
   sekarang[kunci[1]] = kunci[1] === 'Bagi hasil' && !/%/.test(nilai) ? `${nilai}%` : nilai;
   return ['#event', `Kode: ${event.kode}`, ...Object.entries(sekarang).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `${k}: ${v}`)].join('\n');

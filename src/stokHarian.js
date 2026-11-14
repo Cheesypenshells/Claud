@@ -14,6 +14,7 @@ import { parseBahan } from './parsers.js';
 import { cocokkan } from './katalog.js';
 import { BAHAN_DIBELI } from './bahan.js';
 import { tanggalLokal, waktuLokal, tambahHari, parseMoney, rupiah } from './util.js';
+import { waktuTutup, zonaKota, lokal } from './absensi.js';
 
 const balas = (text) => [{ text }];
 
@@ -217,6 +218,9 @@ function tanggalSesi(s) {
 }
 
 // Format stok dikirim ke grup tim setelah kasir ditutup, atau jam 23.00 kalau hari itu belum ada stok closing.
+// Format stok closing dikirim 1 JAM SEBELUM JAM TUTUP (kolom Jam Tutup event, default 22.00) supaya tim
+// sempat membereskan & menghitung lebih dulu. Kalau sampai kasir ditutup / jam tutup belum ada yang mengisi,
+// bot menagih sekali lagi (format dikirim ulang).
 export async function tugasStokHarian(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
@@ -224,24 +228,36 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
   const [events, grup, sesiKasir, stokRows, hargaBahan, bahanRows] = await Promise.all(
     ['Event', 'Grup', 'Sesi Kasir', 'Stok Harian', 'Harga Bahan', 'Bahan Event'].map(baca));
   const tanggal = tanggalClosing(sekarang);
-  const jam = Number(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false }).slice(0, 2));
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL')) {
-    const tanda = `stokharian:${e.kode}:${tanggal}`;
-    if (ctx.sesi.get(tanda)) continue;
-    if (stokRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r))) continue;
+    const tutup = waktuTutup(e, tanggal);
+    const siap = new Date(tutup.getTime() - 60 * 60000);
+    const sudahIsi = stokRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r));
     const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase())
       && tanggalSesi(s) === tanggal);
-    if (!kasirTutup && !(jam >= 23)) continue;
-    ctx.sesi.set(tanda, { kirim: true });
+    const tSiap = `stokharian:${e.kode}:${tanggal}`;
+    const tTagih = `stoktagih:${e.kode}:${tanggal}`;
+    let pembuka = null;
+    if (!ctx.sesi.get(tSiap) && (sekarang >= siap || kasirTutup)) {
+      ctx.sesi.set(tSiap, { kirim: true });
+      if (sudahIsi) continue;
+      pembuka = kasirTutup && sekarang < siap
+        ? '🧾 Kasir sudah tutup, saatnya hitung stok bahan baku.'
+        : `⏰ *1 jam lagi closing (${jamTampil(tutup, e)}).* Mulai siap-siap: bereskan dulu yang sudah tidak dipakai, lalu hitung stok bahan baku dan foto.`;
+    } else if (ctx.sesi.get(tSiap) && !ctx.sesi.get(tTagih) && !sudahIsi && (kasirTutup || sekarang >= tutup)) {
+      ctx.sesi.set(tTagih, { kirim: true });
+      pembuka = '🌙 *Stok closing hari ini belum diisi.* Hitung, foto, lalu kirim dengan format di bawah.';
+    }
+    if (!pembuka) continue;
     let tugasHari = [];
     try { tugasHari = (await ctx.store.all('Tugas Harian')).filter((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r)); } catch { tugasHari = []; }
     const nama = (bg) => [...new Set(tugasHari.filter((t) => bg.includes(t.bagian)).map((t) => t.nama))];
     const teks = teksFormatStok(e, bahanEvent(e.kode, bahanRows, hargaBahan), tanggal, { getok: nama(['Getok']), plating: nama(['Plating', 'Kasir']) });
-    const pembuka = kasirTutup ? '🧾 Kasir sudah tutup, saatnya hitung stok bahan baku.' : '🌙 Stok closing hari ini belum diisi.';
     for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: `${pembuka}\n\n${teks}` });
   }
   return keluar;
 }
+
+const jamTampil = (d, e) => { const z = zonaKota(e.kota); return `${lokal(d, z).jam.replace(':', '.')} ${z.nama}`; };
 
 // ---------------------------------------------------------------- sidak stok (PIC/owner, dadakan)
 // #sidak (chat pribadi ke bot atau grup pengeluaran; TIDAK di grup tim supaya tetap dadakan)

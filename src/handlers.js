@@ -677,6 +677,7 @@ async function perintahEvent(ctx, pesan, grup, cmd) {
     `Jadwal transfer: ${data.jadwal_trf === 'AKHIR' ? 'sekali setelah event selesai' : 'H+1, Jumat-Minggu dibayar Senin'}`,
     data.target_omzet ? `Target omzet: ${rupiah(data.target_omzet)}` : null,
     data.jam_buka ? `Jam buka: ${data.jam_buka}` : null,
+    data.jam_tutup ? `Jam tutup: ${data.jam_tutup}` : null,
     '',
     `*Tim:*\n${tim}`,
     '',
@@ -1582,7 +1583,7 @@ export async function handlePesan(ctx, pesan) {
       case 'ubah': {
         if (!isOwner) return balas('⚠️ Perintah ini khusus owner.');
         const blok = blokUbah(event, teksTanpaPerintah);
-        if (!blok) return balas('Format: *#ubah <data> <nilai baru>*\nContoh: #ubah bagi hasil 27 | #ubah tanggal 1-16 Nov 2026 | #ubah admin 750rb | #ubah jam buka 12.00\nData: kota, io, tanggal, wilayah, bagi hasil, admin, jadwal, jam buka, target, pic');
+        if (!blok) return balas('Format: *#ubah <data> <nilai baru>*\nContoh: #ubah bagi hasil 27 | #ubah tanggal 1-16 Nov 2026 | #ubah admin 750rb | #ubah jam buka 12.00 | #ubah jam tutup 22.00\nData: kota, io, tanggal, wilayah, bagi hasil, admin, jadwal, jam buka, jam tutup, target, pic');
         return perintahEvent(ctx, pesan, grup, { badan: blok.split('\n').slice(1).join('\n') });
       }
       case 'selesai':

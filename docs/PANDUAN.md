@@ -26,6 +26,7 @@ Hanya jawaban owner yang dibaca bot. Ketik **batal** untuk berhenti.
 | `#ubah tanggal 1-16 Nov 2026` | Tanggal event diperpanjang |
 | `#ubah admin 750rb` | Biaya admin IO diganti |
 | `#ubah jam buka 12.00` | Jam buka booth (patokan absensi) |
+| `#ubah jam tutup 22.00` | Jam tutup booth (format stok closing dikirim 1 jam sebelumnya; kosong = 22.00) |
 | `#tambah DW Rina 100rb` / `#berhenti Joko` | Tim berubah di tengah event |
 
 ### Cara lama: satu blok sekaligus
@@ -475,7 +476,8 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 
 ## Stok bahan baku closing (setiap hari)
 
-- Setelah **⏹ Tutup kasir** (atau jam 23.00 kalau belum ada yang mengisi), bot mengirim **format stok closing** ke grup tim berisi bahan event itu.
+- **1 jam sebelum jam tutup**, bot mengirim **format stok closing** ke grup tim, supaya tim sempat membereskan yang sudah tidak dipakai dan menghitung lebih dulu. Kalau sampai **jam tutup / ⏹ Tutup kasir** belum ada yang mengisi, bot menagih sekali lagi.
+- Jam tutup per event: kolom **Jam Tutup** di tab Event, atau owner `#ubah jam tutup 23.00`. Kosong = **22.00**.
 - **Wajib pakai foto bukti**: foto stoknya, lalu kirim foto dengan caption `#stok ...`. Tanpa foto ditolak.
 - Dibagi per bagian & **lokasi**:
   - 🦪 **Tim getok** – oyster sisa di **cooler**:
@@ -566,5 +568,6 @@ Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat
 - **1 jam sebelum buka**: Kasir `#depan`, Pemanggang `#grill`, Plating `#nampan`, lengkap dengan daftar tugasnya.
 - **Saat buka**: Kasir screenshot `#followers`.
 - **10 menit setelah buka**: yang belum mengirim laporan bagiannya ditagih satu per satu.
-- **Setelah ⏹ Tutup kasir / 22.00**: closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
+- **1 jam sebelum jam tutup**: format stok closing (`#stok` + foto).
+- **Setelah ⏹ Tutup kasir / jam tutup**: closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
 - **23.30**: yang belum `#pulang` ditagih.

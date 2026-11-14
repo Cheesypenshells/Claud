@@ -20,7 +20,7 @@ export const KOLOM = {
       k('bagi_hasil_persen', 'Bagi Hasil IO', 115, { format: 'persen', catatan: 'Potongan omzet oleh IO, biasanya 25–30%' }),
       k('admin', 'Biaya Admin IO', 130, { format: 'rupiah' }),
       k('jadwal_trf', 'Jadwal Transfer', 130, { catatan: 'HARIAN = H+1, omzet Jumat–Minggu dibayar Senin. AKHIR = sekali setelah event selesai' }),
-      k('jam_buka', 'Jam Buka', 90),
+      k('jam_buka', 'Jam Buka', 90), k('jam_tutup', 'Jam Tutup', 90, { catatan: 'Kosong = 22.00. Format stok closing dikirim 1 jam sebelumnya' }),
       k('pic', 'PIC', 110),
       k('senior', 'Senior', 160),
       k('dw', 'Daily Worker', 160),
