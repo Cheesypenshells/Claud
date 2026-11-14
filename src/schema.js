@@ -1,0 +1,468 @@
+// Struktur tab Google Sheets.
+// Setiap kolom punya `key` (dipakai kode) dan `label` (judul yang terlihat di Sheets).
+// Owner boleh mengubah isi sel langsung di Sheets; jangan mengubah judul kolom.
+//
+// Format kolom: 'rupiah' | 'persen' | 'angka' | undefined (teks biasa)
+
+const k = (key, label, lebar, opsi = {}) => ({ key, label, lebar, ...opsi });
+
+export const KOLOM = {
+  Event: {
+    warna: '#E8710A',
+    kolom: [
+      k('kode', 'Kode Event', 110, { catatan: 'Kode unik event, contoh JMB26-11 (Jambi, November 2026)' }),
+      k('kota', 'Kota', 110),
+      k('io', 'Event Organizer (IO)', 170),
+      k('mulai', 'Tanggal Mulai', 115),
+      k('selesai', 'Tanggal Selesai', 120),
+      k('wilayah', 'Wilayah Harga', 115, { catatan: 'Jawa / Sumatra (+5rb) / Kalimantan (+10rb)' }),
+      k('target_omzet', 'Target Omzet', 140, { format: 'rupiah' }),
+      k('bagi_hasil_persen', 'Bagi Hasil IO', 115, { format: 'persen', catatan: 'Potongan omzet oleh IO, biasanya 25–30%' }),
+      k('admin', 'Biaya Admin IO', 130, { format: 'rupiah' }),
+      k('jadwal_trf', 'Jadwal Transfer', 130, { catatan: 'HARIAN = H+1, omzet Jumat–Minggu dibayar Senin. AKHIR = sekali setelah event selesai' }),
+      k('jam_buka', 'Jam Buka', 90), k('jam_tutup', 'Jam Tutup', 90, { catatan: 'Kosong = 22.00. Format stok closing dikirim 15 menit sebelumnya' }),
+      k('pic', 'PIC', 110),
+      k('senior', 'Senior', 160),
+      k('dw', 'Daily Worker', 160),
+      k('kasir', 'Kasir', 110),
+      k('status', 'Status', 95, { catatan: 'AKTIF atau SELESAI' }),
+      k('dibuat', 'Dibuat', 140),
+      k('owner_hadir', 'Kehadiran Owner', 130, { catatan: 'tidak / 1 hari / setengah / penuh. Menentukan fee PIC: 25% / 20% / 15% / 10% dari laba bersih. Diubah lewat #owner di grup' }),
+      k('file_event', 'ID File Event', 200, { catatan: 'Diisi otomatis oleh bot: spreadsheet event di folder EVENT', sembunyi: true }),
+      k('fee_pic_persen', 'Fee PIC Khusus (%)', 120, { catatan: 'Kosong = menurut kehadiran owner (25/20/15/10%). Diisi lewat #feepic 20 di grup pengeluaran' }),
+      k('pemanggang', 'Pemanggang Tetap', 120, { catatan: 'Ditentukan owner/PIC lewat #pemanggang Veri' }),
+      k('kasir_antrian', 'Kasir Antrian', 120, { catatan: 'Nama orang yang memegang halaman kasir antrian (boleh lebih dari satu, pisahkan koma). Tidak mengubah peran/gaji. Diisi lewat #kasirnya Tiara' }),
+      k('loading_in', 'Loading In (waktu)', 140, { catatan: 'YYYY-MM-DD HH:MM. Ditanyakan bot di grup tim, atau #loading 13 nov 22.00' }),
+      k('lokasi_loading', 'Lokasi / Pintu Loading In', 220),
+    ],
+  },
+  Transaksi: {
+    warna: '#0B8043',
+    kolom: [
+      k('id', 'No. Catatan', 105, { catatan: 'Nomor catatan dari bot. Untuk membatalkan: ketik #batal T0001 di grup' }),
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110, { catatan: 'RUKO = biaya ruko (gaji tetap, listrik, air, sewa)' }),
+      k('buku', 'Buku', 80, { catatan: 'EVENT = pembukuan event, RUKO = pembukuan ruko' }),
+      k('jenis', 'Jenis', 130, { catatan: 'Pengeluaran, Transfer IO (uang masuk dari IO), atau Potongan IO (listrik/air/gas/galon)' }),
+      k('kategori', 'Kategori', 170),
+      k('keterangan', 'Keterangan', 260),
+      k('nominal', 'Nominal', 135, { format: 'rupiah' }),
+      k('metode', 'Metode Bayar', 115),
+      k('dibayar_oleh', 'Uang Siapa', 130, { catatan: 'Siapa yang mengeluarkan uang: PIC, Mama, karyawan, George, atau Kas usaha. Dipakai untuk menghitung penggantian. Ubah lewat #uang T0012 mama' }),
+      k('sumber', 'Sumber', 95, { catatan: 'teks = diketik di grup, foto+teks = dikirim dengan foto' }),
+      k('pengirim', 'Dicatat Oleh', 200),
+      k('status', 'Status', 85, { catatan: 'OK = dihitung, BATAL = tidak dihitung. Jangan hapus baris; ganti saja menjadi BATAL' }),
+      k('dicatat', 'Waktu Dicatat', 140),
+      k('bukti', 'Bukti', 170, { catatan: 'Struk ✓ = struk dicek bot (nominal, tanggal, toko). ACC owner = tanpa struk / struk tidak sesuai tapi disetujui owner. Wajib untuk pengeluaran >= Rp 100.000' }),
+    ],
+  },
+  // ---------- KPI karyawan ----------
+  // Data karyawan (diisi owner). PIN disimpan dalam bentuk acak (hash), tidak bisa dibaca.
+  Karyawan: {
+    warna: '#3949AB',
+    kolom: [
+      k('kode', 'Kode', 80, { catatan: 'Kode kartu, contoh K01' }),
+      k('nama', 'Nama', 150, { catatan: 'Sama persis dengan nama di tim event' }),
+      k('nomor_wa', 'Nomor WA', 140, { catatan: '0812... atau 62812...' }),
+      k('peran', 'Peran', 100, { catatan: 'Tetap / PIC / DW / Kasir' }),
+      k('keahlian', 'Keahlian', 240, { catatan: 'Jago di bagian apa, contoh: grill, kasir, closing pembeli' }),
+      k('foto', 'Foto (link)', 200),
+      k('mulai_kerja', 'Mulai Kerja', 110),
+      k('status', 'Status', 90, { catatan: 'AKTIF / KELUAR' }),
+      k('pin', 'PIN (terkunci)', 120, { catatan: 'Diisi bot saat karyawan membuat PIN. Jangan diubah.', sembunyi: true }),
+      k('catatan', 'Catatan', 200),
+      k('bank', 'Bank', 100, { catatan: 'Untuk transfer fee / gaji / penggantian. Diisi bot dari jawaban karyawan (#rekening)' }),
+      k('no_rekening', 'No. Rekening', 160),
+      k('atas_nama', 'Atas Nama', 160),
+    ],
+  },
+  // Penilaian PIC per event (skala 1-5 atau persen 0-100). Baris bernama TIM = nilai kinerja tim.
+  'Nilai KPI': {
+    warna: '#3949AB',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 150, { catatan: 'TIM = nilai kinerja tim keseluruhan' }),
+      k('absen', 'Absen (20%)', 100, { catatan: '1-5 atau 0-100' }),
+      k('kinerja', 'Performa Kinerja (40%)', 140),
+      k('attitude', 'Attitude (20%)', 105),
+      k('karir', 'Karir (20%)', 100),
+      k('tim', 'Kinerja Tim', 100, { catatan: 'Hanya di baris TIM, 1-5' }),
+      k('catatan', 'Catatan', 220),
+      k('penilai', 'Dinilai Oleh', 160),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Poin plus / minus (contoh: SOP tidak dikerjakan -10, bantu masak bumbu +20).
+  'Poin KPI': {
+    warna: '#3949AB',
+    kolom: [
+      k('id', 'No.', 80),
+      k('tanggal', 'Tanggal', 105),
+      k('nama', 'Nama', 150),
+      k('poin', 'Poin', 80, { format: 'angka' }),
+      k('alasan', 'Alasan', 260),
+      k('kode_event', 'Kode Event', 110),
+      k('dicatat_oleh', 'Dicatat Oleh', 180),
+      k('status', 'Status', 85, { catatan: 'OK / BATAL' }),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Pengiriman & stok awal event (loading in).
+  Pengiriman: {
+    warna: '#6D4C41',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('tanggal', 'Tanggal', 105),
+      k('penanggung_jawab', 'Penanggung Jawab', 150),
+      k('moda', 'Dikirim Pakai', 140, { catatan: 'Truk / Kereta (transit) / lainnya' }),
+      k('koli_kering', 'Koli Bahan Kering', 120, { format: 'angka' }),
+      k('isi_kering', 'Isi Bahan Kering', 320),
+      k('koli_baku', 'Koli Bahan Baku', 120, { format: 'angka' }),
+      k('rincian', 'Isi Bahan Baku', 320),
+      k('pengirim', 'Dicatat Oleh', 190),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Antrian pesanan (ditulis halaman kasir Google Apps Script). Label kolom harus sama dengan apps-script/Code.gs.
+  Antrian: {
+    warna: '#E8710A',
+    kolom: [
+      k('id', 'ID', 140), k('token', 'Token', 140, { sembunyi: true }), k('kode_event', 'Kode Event', 110), k('tanggal', 'Tanggal', 105),
+      k('nomor', 'No. Antrian', 90, { format: 'angka' }), k('status', 'Status', 100), k('menu', 'Menu (dari struk)', 220),
+      k('foto_struk', 'Foto Struk', 160), k('foto_bakar', 'Foto Dibakar', 160), k('teks_struk', 'Teks Struk', 200, { sembunyi: true }),
+      k('dibuat', 'Dibuat', 140), k('dibakar', 'Mulai Dibakar', 140), k('dipanggil', 'Dipanggil', 140), k('panggil_ke', 'Dipanggil Ke', 90, { format: 'angka' }),
+      k('diambil', 'Diambil', 140), k('kasir', 'Kasir', 110), k('sesi', 'Sesi Kasir', 120, { sembunyi: true }),
+      k('rating', 'Bintang', 80, { format: 'angka' }), k('ulasan', 'Ulasan', 220), k('dinilai', 'Dinilai', 140),
+    ],
+  },
+  // Pembagian tugas harian (jam 08.00 di grup tim): Kasir, Pemanggang, Getok, Plating.
+  'Tugas Harian': {
+    warna: '#00838F',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bagian', 'Bagian', 110), k('nama', 'Nama', 140),
+      k('rangkap', 'Rangkap', 80, { catatan: 'ya = plating dirangkap kasir' }), k('status', 'Status', 85), k('dicatat', 'Dicatat', 140),
+    ],
+  },
+  // Penilaian harian oleh PIC (jam 22.00): kategori 1-4 + poin 1-100 + catatan, per bagian tugas.
+  'Nilai Harian': {
+    warna: '#6A1B9A',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('bagian', 'Bagian', 140),
+      k('kategori', 'Kategori', 120, { catatan: 'Buruk 1-24 · Cukup buruk 25-49 · Sudah cukup 50-74 · Baik sekali 75-100' }),
+      k('poin', 'Poin', 70, { format: 'angka' }), k('catatan', 'Catatan (rahasia)', 240),
+      k('pesan', 'Pesan untuk Karyawan', 240), k('pesan_terkirim', 'Pesan Terkirim', 110), k('penilai', 'Penilai', 140),
+      k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Kejadian, barang perlu dibeli, PR harian (#kejadian / #beli / #pr); tampil di pesan tugas pagi berikutnya.
+  'Catatan Harian': {
+    warna: '#EF6C00',
+    kolom: [
+      k('id', 'No.', 70), k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110),
+      k('jenis', 'Jenis', 100, { catatan: 'KEJADIAN / BELI / PR' }), k('isi', 'Isi', 360), k('oleh', 'Oleh', 140),
+      k('status', 'Status', 110, { catatan: 'BELI: BELUM / SUDAH DIBELI · lainnya OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Stok bahan baku saat closing setiap hari (#stok di grup tim). Hanya jumlah, tanpa harga.
+  'Stok Harian': {
+    warna: '#6D4C41',
+    kolom: [
+      k('tanggal', 'Tanggal Closing', 110), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('lokasi', 'Lokasi', 85, { catatan: 'Gudang / Booth / Cooler' }), k('jumlah', 'Stok Closing', 100, { format: 'angka' }), k('satuan', 'Satuan', 80),
+      k('total', 'Total Semua Lokasi', 115, { format: 'angka' }),
+      k('sebelumnya', 'Stok Sebelumnya (total)', 130, { format: 'angka', catatan: 'Closing kemarin, atau stok awal di hari pertama' }),
+      k('restock', 'Restock', 85, { format: 'angka' }), k('terpakai', 'Berkurang (total)', 110, { format: 'angka', catatan: 'Sebelumnya + restock − total stok closing' }),
+      k('penanggung_jawab', 'Penanggung Jawab', 160, { catatan: 'Oyster: tim getok · bahan lain & nampan: plating + kasir. Menanggung kalau bahan rusak/hilang' }),
+      k('foto', 'Foto Bukti', 120), k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Denda uang selain telat absen (mis. selisih stok tidak wajar), dipotong di #gajian.
+  Denda: {
+    warna: '#C62828',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('jumlah', 'Jumlah', 110, { format: 'rupiah' }),
+      k('jenis', 'Jenis', 120), k('alasan', 'Alasan', 320), k('oleh', 'Diputuskan Oleh', 160),
+      k('status', 'Status', 85, { catatan: 'OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Sidak stok dadakan oleh PIC/owner (#sidak lewat chat pribadi / grup pengeluaran).
+  // Bahan baku rusak / hilang (#rusak + foto). Penanggung jawab bahan menanggung; owner memutuskan ganti rugi.
+  'Bahan Rusak': {
+    warna: '#6D4C41',
+    kolom: [
+      k('id', 'ID', 70), k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('jumlah', 'Jumlah', 85, { format: 'angka' }), k('satuan', 'Satuan', 80), k('lokasi', 'Lokasi', 85),
+      k('keterangan', 'Penyebab / Keterangan', 260), k('penanggung_jawab', 'Penanggung Jawab', 160), k('foto', 'Foto Bukti', 120),
+      k('pelapor', 'Dilaporkan Oleh', 140), k('keputusan', 'Keputusan', 140, { catatan: 'MENUNGGU / GANTI RUGI / TANPA GANTI RUGI' }),
+      k('ganti_rugi', 'Total Ganti Rugi', 120, { format: 'rupiah' }), k('diputuskan_oleh', 'Diputuskan Oleh', 140), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  'Sidak Stok': {
+    warna: '#B71C1C',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('hitung_sidak', 'Hitungan Sidak', 110, { format: 'angka' }), k('satuan', 'Satuan', 80),
+      k('menurut_laporan', 'Menurut Laporan', 115, { format: 'angka', catatan: 'Stok closing terakhir + restock setelahnya' }),
+      k('selisih', 'Selisih', 85, { format: 'angka' }), k('laporan_tanggal', 'Laporan Closing Tgl', 120), k('pelapor', 'Pelapor Closing', 140),
+      k('oleh', 'Disidak Oleh', 160), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Sesi kasir antrian (▶ Mulai kasir / ⏹ Tutup kasir di halaman kasir). Status: BUKA / TUTUP / DITERUSKAN.
+  'Sesi Kasir': {
+    warna: '#0B8043',
+    kolom: [
+      k('id', 'ID', 140), k('kode_event', 'Kode Event', 110), k('tanggal', 'Tanggal', 105), k('kasir', 'Kasir', 140),
+      k('dibuka', 'Dibuka', 140), k('ditutup', 'Ditutup', 140), k('jumlah_struk', 'Struk Dilayani', 100, { format: 'angka' }),
+      k('diambil', 'Diambil', 90, { format: 'angka' }), k('batal', 'Batal', 80, { format: 'angka' }), k('belum', 'Belum Selesai', 100, { format: 'angka' }),
+      k('rata_tunggu_menit', 'Rata-rata Tunggu (menit)', 120, { format: 'angka' }), k('rating_rata', 'Bintang Rata-rata', 110),
+      k('jumlah_rating', 'Jumlah Penilaian', 110, { format: 'angka' }), k('rating_kasir', 'Bintang per Kasir', 220),
+      k('ulasan_buruk', 'Ulasan Bintang Rendah', 280), k('status', 'Status', 100), k('diteruskan', 'Diteruskan ke Owner', 140),
+    ],
+  },
+  // Komplain pelanggan dari QR di depan booth (halaman Google Apps Script). Status: BARU / DITERUSKAN / BATAL.
+  Komplain: {
+    warna: '#D93025',
+    kolom: [
+      k('id', 'ID', 140), k('waktu', 'Waktu', 140), k('kode_event', 'Kode Event', 110), k('lokasi', 'Lokasi', 180), k('kategori', 'Kategori', 160),
+      k('detail', 'Detail', 320), k('nama', 'Nama (opsional)', 130), k('kontak', 'Kontak (opsional)', 130),
+      k('status', 'Status', 100, { catatan: 'BARU = belum diteruskan bot · DITERUSKAN · BATAL = tidak valid (tidak mengurangi KPI)' }), k('diteruskan', 'Diteruskan ke Owner', 140),
+    ],
+  },
+  // Buku kontak per kota/lokasi event (tukang es batu, katering, gas, supplier, dll.).
+  'Kontak Lokasi': {
+    warna: '#00897B',
+    kolom: [
+      k('kota', 'Kota', 110),
+      k('lokasi', 'Lokasi / Event', 180),
+      k('jenis', 'Jenis', 140, { catatan: 'Es batu, Katering, Gas, Galon / air, Supplier oyster, Tukang listrik, dll.' }),
+      k('nama', 'Nama', 160),
+      k('nomor', 'Nomor', 140),
+      k('catatan', 'Catatan', 200),
+      k('dicatat_oleh', 'Dicatat Oleh', 150),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Jobdesk loading in: siapa mengerjakan apa (dibagi bot H-2 sebelum event).
+  Jobdesk: {
+    warna: '#5E35B1',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('tahap', 'Tahap', 110),
+      k('tag', 'Tag Laporan', 100, { catatan: 'Foto laporan dikirim dengan caption #tag ini' }),
+      k('tugas', 'Pekerjaan', 300),
+      k('nama', 'Penanggung Jawab', 150),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dibagi', 140),
+    ],
+  },
+  // Laporan foto SOP: loading in, laporan harian, loading out (grup tim).
+  'Laporan Foto': {
+    warna: '#5E35B1',
+    kolom: [
+      k('id', 'No.', 80),
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('tahap', 'Tahap', 120, { catatan: 'Loading in / Laporan harian / Loading out' }),
+      k('tag', 'Laporan', 100),
+      k('nama', 'Dikirim Oleh', 140),
+      k('jam', 'Jam', 90),
+      k('jumlah_foto', 'Jumlah Foto', 95, { format: 'angka' }),
+      k('isi', 'Keterangan', 260),
+      k('angka', 'Angka (followers)', 120, { format: 'angka' }),
+      k('foto_id', 'ID Foto', 160, { sembunyi: true }),
+      k('sidik', 'Sidik Foto', 160, { sembunyi: true }),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+      k('penilaian', 'Penilaian PIC', 220, { catatan: 'Jobdesk: sesuai / kurang / tidak + poin (dari PIC lewat bot)' }),
+    ],
+  },
+  // Izin / dispensasi per orang & jadwal khusus per hari (diisi owner lewat #izin / #jadwal).
+  'Jadwal Absen': {
+    warna: '#00897B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 140, { catatan: 'Kosong = jadwal khusus untuk seluruh tim' }),
+      k('jenis', 'Jenis', 120, { catatan: 'IZIN (bebas denda) / DISPENSASI (jam datang khusus) / JADWAL KHUSUS' }),
+      k('buka', 'Jam Buka', 90),
+      k('datang', 'Jam Datang', 95),
+      k('alasan', 'Alasan', 220),
+      k('oleh', 'Diberikan Oleh', 140),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Absensi foto harian tim event (denda telat per hari).
+  Absensi: {
+    warna: '#00897B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 140),
+      k('peran', 'Peran', 90),
+      k('nomor_wa', 'Nomor WA', 130),
+      k('jam', 'Jam Absen', 100),
+      k('batas', 'Batas Absen', 100, { catatan: '1 jam sebelum booth buka' }),
+      k('telat_menit', 'Telat (menit)', 100, { format: 'angka' }),
+      k('denda', 'Denda', 110, { format: 'rupiah', catatan: '1-15 mnt 10rb · 16-30 mnt 25rb · >30 mnt 50rb per jam (kelipatan). Ubah ke 0 kalau dimaafkan' }),
+      k('gaya', 'Gaya Foto', 220),
+      k('foto_id', 'ID Foto', 160, { sembunyi: true }),
+      k('sidik', 'Sidik Foto', 160, { sembunyi: true }),
+      k('status', 'Status', 90, { catatan: 'OK / DITOLAK' }),
+      k('catatan', 'Catatan', 200),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Struk yang sudah dipakai: supaya satu struk tidak dipakai dua kali.
+  Struk: {
+    warna: '#795548',
+    kolom: [
+      k('id_transaksi', 'No. Catatan', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('tanggal', 'Tanggal Struk', 115),
+      k('nominal', 'Nominal', 130, { format: 'rupiah' }),
+      k('toko', 'Toko / Merek', 200),
+      k('referensi', 'No. Referensi', 170),
+      k('hash', 'Sidik Foto', 150, { catatan: 'Sidik digital foto struk (foto yang sama persis akan terdeteksi)', sembunyi: true }),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  Omzet: {
+    warna: '#1A73E8',
+    kolom: [
+      k('tanggal', 'Tanggal Jualan', 120),
+      k('kode_event', 'Kode Event', 110),
+      k('omzet', 'Omzet', 140, { format: 'rupiah' }),
+      k('jumlah_transaksi', 'Jumlah Transaksi', 135, { format: 'angka' }),
+      k('refund', 'Refund / Koreksi', 135, { format: 'rupiah' }),
+      k('catatan', 'Catatan', 260),
+      k('pengirim', 'Dilaporkan Oleh', 200),
+      k('status', 'Status', 85, { catatan: 'OK = dihitung. BATAL = laporan lama yang sudah diganti laporan baru di tanggal yang sama' }),
+      k('dicatat', 'ID Laporan', 160, { sembunyi: true }),
+    ],
+  },
+  'Tim Event': {
+    warna: '#8E24AA',
+    kolom: [
+      k('kode_event', 'Kode Event', 110),
+      k('nama', 'Nama', 150),
+      k('peran', 'Peran', 100, { catatan: 'PIC / Tetap (karyawan tetap) / DW (daily worker) / Kasir' }),
+      k('upah_harian', 'Upah per Hari', 130, { format: 'rupiah', catatan: 'DW & kasir standar Rp 100.000; PIC & karyawan tetap 0 (karyawan tetap digaji bulanan)' }),
+      k('mulai', 'Mulai Kerja', 115),
+      k('selesai', 'Selesai Kerja', 115, { catatan: 'Kosong = sampai event selesai. Diisi otomatis kalau ada #berhenti' }),
+      k('status', 'Status', 95, { catatan: 'AKTIF / BERHENTI' }),
+      k('catatan', 'Catatan', 220),
+      k('dicatat', 'Waktu Dicatat', 140),
+      k('gaji_event', 'Gaji Khusus Event', 140, { format: 'rupiah', catatan: 'Karyawan tetap: gaji untuk event ini (menggantikan estimasi gaji pokok ÷ 30 × hari). Diisi lewat #gaji Tiara, Dena 2jt' }),
+    ],
+  },
+  'Bahan Event': {
+    warna: '#C2185B',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('bahan', 'Bahan', 140),
+      k('gerak', 'Keluar / Restock / Kembali', 150, { catatan: 'Keluar = dibawa dari gudang ke event, Restock = tambahan di tengah event, Kembali = sisa dikembalikan ke gudang' }),
+      k('jumlah', 'Jumlah', 90),
+      k('satuan', 'Satuan', 85),
+      k('pengirim', 'Dicatat Oleh', 200),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+      k('harga_satuan', 'Nilai Sisa per Satuan', 140, { format: 'rupiah', catatan: 'Khusus baris Kembali (sisa): nilai per satuan yang disebut owner. Kosong = harga tab Harga Bahan' }),
+    ],
+  },
+  'Porsi Gratis': {
+    warna: '#F9AB00',
+    kolom: [
+      k('tanggal', 'Tanggal', 105),
+      k('kode_event', 'Kode Event', 110),
+      k('menu', 'Menu', 160),
+      k('porsi', 'Porsi', 75, { format: 'angka' }),
+      k('isi', 'Isi per Porsi (pcs)', 120, { format: 'angka' }),
+      k('pcs', 'Total pcs', 90, { format: 'angka' }),
+      k('untuk', 'Diberikan Untuk', 220),
+      k('pengirim', 'Dicatat Oleh', 200),
+      k('status', 'Status', 85),
+      k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  'Harga Bahan': {
+    warna: '#795548',
+    kolom: [
+      k('bahan', 'Bahan', 150),
+      k('satuan', 'Satuan', 90),
+      k('harga', 'Harga per Satuan', 140, { format: 'rupiah' }),
+      k('alias', 'Kata yang Dikenali Bot', 320, { catatan: 'Kata-kata di chat yang dibaca sebagai bahan ini, dipisah koma' }),
+    ],
+  },
+  'Harga Menu': {
+    warna: '#795548',
+    kolom: [
+      k('menu', 'Menu', 170),
+      k('jawa', 'Harga Jual Jawa (per pcs)', 160, { format: 'rupiah' }),
+      k('sumatra', 'Harga Jual Sumatra (per pcs)', 170, { format: 'rupiah' }),
+      k('kalimantan', 'Harga Jual Kalimantan (per pcs)', 185, { format: 'rupiah' }),
+      k('alias', 'Kata yang Dikenali Bot', 320),
+    ],
+  },
+  'Kamus Kategori': {
+    warna: '#795548',
+    kolom: [
+      k('kata', 'Kata / Keterangan', 220, { catatan: 'Kalau keterangan pengeluaran mengandung kata ini, bot memakai kategori di sebelahnya' }),
+      k('kategori', 'Kategori', 220),
+      k('dicatat', 'Dipelajari Dari', 260),
+    ],
+  },
+  Pengaturan: {
+    warna: '#5F6368',
+    kolom: [
+      k('kunci', 'Pengaturan', 160),
+      k('nilai', 'Nilai', 380),
+      k('keterangan', 'Keterangan', 360),
+    ],
+  },
+  Grup: {
+    warna: '#5F6368',
+    kolom: [
+      k('group_id', 'ID Grup WA', 220, { sembunyi: true }),
+      k('nama_grup', 'Nama Grup WhatsApp', 220),
+      k('jenis', 'Jenis Grup', 120, { catatan: 'pengeluaran / event (tim) / ruko / gudang' }),
+      k('kode_event', 'Kode Event', 110),
+      k('didaftarkan_oleh', 'Didaftarkan Oleh', 200),
+      k('tanggal', 'Tanggal Daftar', 140),
+    ],
+  },
+};
+
+// Tab hasil hitungan bot untuk sheet Main (disembunyikan). Kolom c1..c9 isinya berbeda per bagian.
+export const TAB_DATA_MAIN = 'Data Main';
+export const KOLOM_DATA_MAIN = ['kode', 'bagian', 'urut', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'];
+
+// Daftar key per tab (dipakai MemoryStore dan untuk urutan kolom).
+export const TABS = Object.fromEntries(
+  Object.entries(KOLOM).map(([tab, def]) => [tab, def.kolom.map((c) => c.key)]),
+);
+
+// Jenis grup WhatsApp yang bisa didaftarkan.
+export const JENIS_GRUP = ['pengeluaran', 'event', 'gudang', 'ruko'];
+
+// Buku pembukuan: event (per kota) atau ruko (gaji tetap, listrik, air, sewa).
+export const BUKU = { EVENT: 'EVENT', RUKO: 'RUKO' };
+
+// Jenis transaksi (nilai ini yang terlihat di Sheets).
+export const JENIS = {
+  KELUAR: 'Pengeluaran',
+  MASUK_IO: 'Transfer IO',
+  POTONGAN_IO: 'Potongan IO',
+  PENGGANTIAN: 'Penggantian', // owner mengganti uang yang dipakai PIC/keluarga/karyawan (bukan biaya)
+};
+
+export const KAS_USAHA = 'Kas usaha';
+
+// Nilai lama (versi awal bot) yang otomatis dibaca sebagai nilai baru.
+export const JENIS_LAMA = { KELUAR: JENIS.KELUAR, MASUK_IO: JENIS.MASUK_IO, POTONGAN_IO: JENIS.POTONGAN_IO };
+
+export const STATUS = { OK: 'OK', BATAL: 'BATAL', CEK: 'CEK' };
