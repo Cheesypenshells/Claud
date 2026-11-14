@@ -31,15 +31,16 @@ export const BUTIR = [
   { tag: 'kirim', tahap: T.IN, label: 'Data pengiriman & stok awal', isi: 'dijawab lewat pertanyaan #kirim', foto: false, otomatis: 'pengiriman' },
   { tag: 'acc', tahap: T.IN, label: 'ACC PIC sebelum buka', isi: 'PIC/owner ketik #acc setelah semua dicek', foto: false, khusus: 'pic' },
 
-  { tag: 'posisi', tahap: T.HARIAN, bagian: 'sebelum', label: 'Pembagian posisi', isi: 'Kasir, Grill, Plating, Getok 1, Getok 2', foto: false, kata: null },
-  { tag: 'grill', tahap: T.HARIAN, bagian: 'sebelum', label: 'Grill siap', isi: 'grill, torch, gas, bumbu + tampak depan booth + display cangkang', foto: true, kata: /\b(grill|torch)\b.*\b(siap|ready|ok)\b|\bfoto grill\b/i },
-  { tag: 'cooler', tahap: T.HARIAN, bagian: 'sebelum', label: 'Cooler box', isi: 'cooler berisi es cukup, tidak terendam air', foto: true, kata: /\bcooler\b/i },
-  { tag: 'nampan', tahap: T.HARIAN, bagian: 'sebelum', label: 'Nampan di freezer', isi: '10 nampan (7 mozza / 1 seafood / 2 garlic)', foto: true, kata: /\bnampan\b/i },
+  { tag: 'posisi', tahap: T.HARIAN, bagian: 'sebelum', label: 'Pembagian tugas', isi: 'dibagi bot jam 08.00 (#tugas)', foto: false, otomatis: 'tugas' },
+  { tag: 'depan', tahap: T.HARIAN, bagian: 'sebelum', label: 'Depan & kulkas (kasir)', isi: 'dekorasi tampak depan rapi, kulkas menyala, cucian kemarin malam bersih', foto: true, kata: /\b(tampak depan|dekorasi depan|kulkas)\b/i },
+  { tag: 'grill', tahap: T.HARIAN, bagian: 'sebelum', label: 'Grill siap', isi: 'pajangan oyster / area panggang dihias, pemanggang bersih, gas kaleng penuh & jauh dari panas', foto: true, kata: /\b(grill|torch)\b.*\b(siap|ready|ok)\b|\bfoto grill\b/i },
+  { tag: 'cooler', tahap: T.HARIAN, bagian: 'sebelum', label: 'Cooler box', isi: 'es batu dipesan jam 09.30 & dituang ke cooler box (kosong pun difoto)', foto: true, kata: /\bcooler\b/i },
+  { tag: 'nampan', tahap: T.HARIAN, bagian: 'sebelum', label: 'Nampan di freezer', isi: 'minimal 7 nampan di freezer, oyster fresh menarik, area kulkas bersih, nampan bersih & kering, wadah air buangan', foto: true, kata: /\bnampan\b/i },
   { tag: 'followers', tahap: T.HARIAN, bagian: 'sebelum', label: 'Followers IG saat buka & tutup', isi: 'screenshot profil Instagram', foto: true, kata: /\b(followers?|follower|pengikut)\b/i, ulang: 2 },
   { tag: 'bantu', tahap: T.HARIAN, bagian: 'selama', label: 'Bantu kerjaan owner', isi: 'apa yang dibantu (boleh dengan foto)', foto: false, kata: null, opsional: true, bebas: true },
   { tag: 'temuan', tahap: T.HARIAN, bagian: 'selama', label: 'Temuan', isi: 'serpihan / bau / busuk / alat rusak / komplain + tindakan', foto: true, kata: /\b(temuan|serpihan|busuk|basi|bau|rusak|komplain|complain)\b/i, opsional: true },
   { tag: 'omzet', tahap: T.HARIAN, bagian: 'tutup', label: 'Omzet harian', isi: 'format #omzet', foto: false, otomatis: 'omzet' },
-  { tag: 'bersih', tahap: T.HARIAN, bagian: 'tutup', label: 'Kebersihan setelah tutup', isi: 'area depan, grill, wastafel, cooler sudah dikuras', foto: true, kata: /\b(bersih|kebersihan|closing|beres(-| )?beres)\b/i },
+  { tag: 'bersih', tahap: T.HARIAN, bagian: 'tutup', label: 'Kebersihan setelah tutup', isi: 'regulator gas dilepas, booth bersih, cucian bersih, cooler dikuras', foto: true, kata: /\b(bersih|kebersihan|closing|beres(-| )?beres)\b/i },
   { tag: 'pulang', tahap: T.HARIAN, bagian: 'tutup', label: 'Absen pulang', isi: 'tiap orang ketik #pulang', foto: false, orang: true },
 
   { tag: 'stokakhir', tahap: T.OUT, label: 'Stok akhir', isi: 'stock opname akhir + foto stok dingin', foto: true, kata: /\bstok akhir\b/i },
@@ -137,6 +138,12 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
     if (b.otomatis === 'pengiriman') {
       const ada = (await ctx.store.all('Pengiriman')).some((p) => p.kode_event === event.kode && p.status !== STATUS.BATAL);
       baris.push(`${ada ? '✅' : '❌'} ${b.label}${ada ? '' : ' → *#kirim*'}`);
+      continue;
+    }
+    if (b.otomatis === 'tugas') {
+      let ada = false;
+      try { ada = (await ctx.store.all('Tugas Harian')).some((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && r.status !== STATUS.BATAL); } catch { ada = false; }
+      baris.push(`${ada ? '✅' : '❌'} ${b.label}${ada ? '' : ' → *#tugas*'}`);
       continue;
     }
     if (b.otomatis === 'omzet') {
@@ -314,7 +321,7 @@ export async function tugasLaporan(ctx, sekarang = new Date()) {
     ctx.sesi.set(kunci, { kirim: true });
     const grupTim = grup.filter((g) => g.kode_event === ev.kode && g.jenis === 'event').map((g) => g.group_id);
     const semua = (await laporan(ctx, ev.kode)).filter((r) => r.tanggal === tanggal);
-    const belum = BUTIR.filter((b) => b.tahap === T.HARIAN && b.bagian === 'sebelum' && !semua.some((r) => r.tag === b.tag)).map((b) => `#${b.tag}`);
+    const belum = BUTIR.filter((b) => b.tahap === T.HARIAN && b.bagian === 'sebelum' && !b.otomatis && !semua.some((r) => r.tag === b.tag)).map((b) => `#${b.tag}`);
     const bagian = [];
     if (belum.length) bagian.push(`⏰ *Booth ${ev.kode} sudah buka.* Laporan sebelum buka yang belum masuk: ${belum.join(', ')}`);
     if (aktif.includes(T.IN)) {

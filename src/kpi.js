@@ -18,9 +18,27 @@ import { komplainAktif } from './komplain.js';
 // Semua data yang dipakai KPI, sekali baca (tab yang belum ada dianggap kosong).
 export async function bahanKpi(store) {
   const baca = async (tab) => { try { return await store.all(tab); } catch { return []; } };
-  const [nilai, absensi, izin, antrian, laporan, jobdesk] = await Promise.all(
-    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk'].map(baca));
-  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk };
+  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak] = await Promise.all(
+    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok'].map(baca));
+  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak };
+}
+
+// Menit dari teks waktu "YYYY-MM-DD HH:MM[:SS]" (WIB).
+function waktuMenit(v) {
+  const m = String(v || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) / 60000 : null;
+}
+
+// Rata-rata menit tunggu (struk difoto -> dipanggil) per tanggal untuk satu event.
+export function tungguPerHari(antrian, kode) {
+  const per = {};
+  for (const q of antrian.filter((x) => x.kode_event === kode && x.status !== 'BATAL')) {
+    const a = waktuMenit(q.dibuat), b = waktuMenit(q.dipanggil);
+    if (a === null || b === null || b < a) continue;
+    const t = String(q.tanggal || q.dibuat).slice(0, 10);
+    (per[t] = per[t] || []).push(b - a);
+  }
+  return Object.fromEntries(Object.entries(per).map(([t, v]) => [t, Math.round((v.reduce((x, y) => x + y, 0) / v.length) * 10) / 10]));
 }
 
 // Tanggal-tanggal dari a sampai b (YYYY-MM-DD).
@@ -34,7 +52,9 @@ export const BOBOT = { absen: 12, kinerja: 24, attitude: 12, karir: 12, omzet: 1
 export const ASPEK = ['absen', 'kinerja', 'attitude', 'karir'];
 export const NAMA_ASPEK = { absen: 'Absen', kinerja: 'Performa kinerja', attitude: 'Attitude', karir: 'Karir' };
 export const POIN_KOMPLAIN = 2; // tiap komplain pelanggan mengurangi 2 dari 10 poin kebersihan & komplain
-export const ATURAN_OTOMATIS = { telat: 2, tidakHadir: 6, minBintang: 5, laporan: 2 };
+export const ATURAN_OTOMATIS = { telat: 2, tidakHadir: 6, minBintang: 5, laporan: 2, selisihStok: 2, targetTungguMenit: 7, lambat: 2 };
+// Foto laporan wajib per bagian tugas harian (lihat tugasHarian.js).
+export const LAPORAN_BAGIAN = { Kasir: ['depan', 'followers'], Pemanggang: ['grill'], Getok: ['cooler'], Plating: ['nampan'] };
 
 const num = (v) => (v === '' || v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
 const bulat = (n) => Math.round(n * 100) / 100;
@@ -55,17 +75,23 @@ export function yangDinilai(r) {
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".
-export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], hariIni = tanggalLokal(new Date()) } = {}) {
+export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], hariIni = tanggalLokal(new Date()) } = {}) {
   const kode = r.event.kode;
   const milik = nilai.filter((n) => n.kode_event === kode && aktif(n));
   const target = num(r.event.target_omzet);
   const omzet = target ? bulat(Math.min(1, r.omzetBersih / target) * BOBOT.omzet) : BOBOT.omzet;
-  const stok = BOBOT.stok; // deteksi selisih stok belum aktif: dianggap tepat
+  // Ketepatan stok: tiap bahan yang selisih saat sidak mengurangi 2 poin, rata untuk seluruh tim.
+  const selisihStok = sidak.filter((x) => x.kode_event === kode && x.selisih !== '' && x.selisih !== undefined && Number(x.selisih) !== 0).length;
+  const stok = Math.max(0, BOBOT.stok - selisihStok * ATURAN_OTOMATIS.selisihStok);
+  // Kecepatan layanan: tiap hari dengan rata-rata tunggu di atas 7 menit mengurangi 2 poin kelompok.
+  const tunggu = tungguPerHari(antrian, kode);
+  const hariLambat = Object.entries(tunggu).filter(([, m]) => m > ATURAN_OTOMATIS.targetTungguMenit);
+  const lambatMinus = hariLambat.length * ATURAN_OTOMATIS.lambat;
   const jumlahKomplain = komplain.filter((k) => k.kode_event === kode && aktif(k)).length;
   const komplainPoin = Math.max(0, BOBOT.komplain - jumlahKomplain * POIN_KOMPLAIN);
   const baris = milik.filter((n) => sama(n.nama, 'TIM')).pop();
   const tim = baris ? poinDari(baris.tim, BOBOT.tim) : null;
-  const kelompok = bulat(omzet + stok + komplainPoin + (tim ?? 0));
+  const kelompok = Math.max(0, bulat(omzet + stok + komplainPoin + (tim ?? 0) - lambatMinus));
 
   // Data otomatis event ini
   const absenEv = absensi.filter((a) => a.kode_event === kode && String(a.status || 'OK').toUpperCase() !== 'DITOLAK');
@@ -106,6 +132,14 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
         if (!lapEv.some((l) => l.tag === j.tag)) terlewat.push(`#${j.tag}`);
       }
     }
+    // Laporan wajib bagian tugas harian (kasir #depan #followers, pemanggang #grill, getok #cooler, plating #nampan).
+    for (const t of hariLewat) {
+      for (const tg of tugas.filter((x) => x.kode_event === kode && aktif(x) && String(x.tanggal) === t && sama(x.nama, o.nama))) {
+        for (const tag of LAPORAN_BAGIAN[tg.bagian] || []) {
+          if (!lapEv.some((l) => l.tag === tag && String(l.tanggal) === t)) terlewat.push(`#${tag} ${t.slice(5)}`);
+        }
+      }
+    }
     if (absenOtomatis) {
       for (const t of hariLewat) {
         const hadirHari = absenEv.some((a) => sama(a.nama, o.nama) && String(a.tanggal) === t);
@@ -119,7 +153,7 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
     const individu = adaIndividu ? bulat(ASPEK.reduce((s, a) => s + (rinci[a] ?? 0), 0)) : null;
     return {
       kode, nama: o.nama, peran: o.peran, hari: o.hari, ...rinci, individu,
-      omzet, stok, komplain: komplainPoin, jumlahKomplain, tim, kelompok,
+      omzet, stok, selisihStok, komplain: komplainPoin, jumlahKomplain, tim, kelompok, tunggu, hariLambat: hariLambat.map(([t, m]) => `${t.slice(5)} ${m} mnt`), lambatMinus,
       otomatis, laporanMinus, laporanTerlewat: [...new Set(terlewat)],
       total: individu === null || !n ? null : Math.max(0, bulat(individu + kelompok - laporanMinus)),
       lengkap, bonusMaks: o.bonus || 0,
@@ -136,6 +170,8 @@ export function teksOtomatis(s) {
   const t = s.otomatis?.bintang;
   if (t) b.push(t.kurang ? `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian (belum ${ATURAN_OTOMATIS.minBintang}, kinerja dari PIC)` : `⭐ ${String(t.rata).replace('.', ',')} dari ${t.jumlah} penilaian → kinerja ${s.kinerja}/24`);
   if (s.laporanMinus) b.push(`laporan terlewat ${s.laporanTerlewat.join(', ')} (−${s.laporanMinus})`);
+  if (s.selisihStok) b.push(`stok ${s.stok}/10 (${s.selisihStok} selisih saat sidak)`);
+  if (s.lambatMinus) b.push(`layanan lambat (> ${ATURAN_OTOMATIS.targetTungguMenit} mnt): ${s.hariLambat.join(', ')} (−${s.lambatMinus})`);
   return b.join(' · ');
 }
 

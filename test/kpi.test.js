@@ -165,3 +165,34 @@ test('KPI otomatis: absen (−2 telat, −6 tidak hadir tanpa izin), bintang kas
   const lama = skorEvent(r, { nilai, hariIni: '2026-11-17' }).find((x) => x.nama === 'Tiara');
   assert.equal(lama.absen, 2.4);
 });
+
+test('tugas harian: pembagian 3/4/5/6 orang, kasir & pemanggang tetap, plating bergilir', async () => {
+  const { bagiTugas } = await import('../src/tugasHarian.js');
+  const s = (d) => d.map((x) => `${x.bagian}:${x.nama}${x.rangkap ? '*' : ''}`).join(' ');
+  assert.equal(s(bagiTugas(['Tiara', 'Veri', 'Bima'], { kasir: 'Tiara', pemanggang: 'Veri' })), 'Kasir:Tiara Pemanggang:Veri Plating:Tiara* Getok:Bima');
+  assert.equal(s(bagiTugas(['Tiara', 'Veri', 'Bima', 'Imam'], { kasir: 'tiara', pemanggang: 'Veri' })), 'Kasir:Tiara Pemanggang:Veri Plating:Tiara* Getok:Bima Getok:Imam');
+  assert.equal(s(bagiTugas(['Tiara', 'Veri', 'Bima', 'Imam', 'Adit'], { kasir: 'Tiara', pemanggang: 'Veri' })), 'Kasir:Tiara Pemanggang:Veri Plating:Bima Getok:Imam Getok:Adit');
+  assert.equal(s(bagiTugas(['Tiara', 'Veri', 'Bima', 'Imam', 'Adit'], { kasir: 'Tiara', pemanggang: 'Veri', hariKe: 1 })), 'Kasir:Tiara Pemanggang:Veri Plating:Imam Getok:Adit Getok:Bima');
+  assert.equal(s(bagiTugas(['A', 'B', 'C', 'D', 'E', 'F'], { kasir: 'A', pemanggang: 'B' })), 'Kasir:A Pemanggang:B Plating:C Getok:D Getok:E Getok:F');
+});
+
+test('KPI: laporan per bagian harian, stok −2 per selisih sidak (rata), hari lambat > 7 menit −2 kelompok', async () => {
+  const { tungguPerHari, teksOtomatis } = await import('../src/kpi.js');
+  const r = { event: { kode: 'SMR', mulai: '2026-11-14', selesai: '2026-11-15', target_omzet: '' }, omzetBersih: 0,
+    barisTim: [{ nama: 'Tiara', peran: 'Tetap', hari: 2 }, { nama: 'Bima', peran: 'Tetap', hari: 2 }] };
+  const tugas = [{ kode_event: 'SMR', tanggal: '2026-11-14', bagian: 'Kasir', nama: 'Tiara' }, { kode_event: 'SMR', tanggal: '2026-11-14', bagian: 'Plating', nama: 'Tiara' },
+    { kode_event: 'SMR', tanggal: '2026-11-14', bagian: 'Getok', nama: 'Bima' }];
+  const lap = (tag, t) => ({ kode_event: 'SMR', tag, tanggal: t, status: 'OK' });
+  const laporan = [lap('depan', '2026-11-14'), lap('cooler', '2026-11-14')]; // followers & nampan tidak ada
+  const sidak = [{ kode_event: 'SMR', bahan: 'Mozzarella', selisih: -2 }, { kode_event: 'SMR', bahan: 'Garlic', selisih: 0 }, { kode_event: 'SMR', bahan: 'Nampan Garlic', selisih: -1 }];
+  const q = (t, a, b) => ({ kode_event: 'SMR', tanggal: t, dibuat: `${t} ${a}:00`, dipanggil: `${t} ${b}:00`, status: 'DIAMBIL' });
+  const antrian = [q('2026-11-14', '10:00', '10:05'), q('2026-11-14', '10:10', '10:20'), q('2026-11-15', '11:00', '11:04')];
+  assert.deepEqual(tungguPerHari(antrian, 'SMR'), { '2026-11-14': 7.5, '2026-11-15': 4 });
+  const s = Object.fromEntries(skorEvent(r, { tugas, laporan, sidak, antrian, hariIni: '2026-11-16' }).map((x) => [x.nama, x]));
+  assert.deepEqual(s.Tiara.laporanTerlewat, ['#followers 11-14', '#nampan 11-14']);
+  assert.deepEqual(s.Bima.laporanTerlewat, []);
+  assert.equal(s.Tiara.stok, 6); assert.equal(s.Bima.stok, 6);   // 2 bahan selisih, sama untuk semua
+  assert.equal(s.Tiara.lambatMinus, 2);                          // 14 Nov rata-rata 7,5 menit
+  assert.equal(s.Tiara.kelompok, 15 + 6 + 10 - 2);
+  assert.match(teksOtomatis(s.Tiara), /stok 6\/10 \(2 selisih saat sidak\).*layanan lambat.*11-14 7.5 mnt/);
+});

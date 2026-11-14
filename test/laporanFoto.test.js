@@ -55,7 +55,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   // saat buka: pengingat laporan sebelum buka & loading in yang belum
   const ingat = await tugasLaporan(ctx, pada('02', '11:00'));
   assert.equal(ingat[0].groupId, G_TIM);
-  assert.match(ingat[0].text, /sudah buka.*#posisi, #grill, #cooler, #nampan.*Loading in belum lengkap.*Gudang belakang.*Data pengiriman/s);
+  assert.match(ingat[0].text, /sudah buka.*#depan, #grill, #cooler, #nampan.*Loading in belum lengkap.*Gudang belakang.*Data pengiriman/s);
   assert.equal((await tugasLaporan(ctx, pada('02', '11:01'))).length, 0);
   // temuan diteruskan ke grup pengeluaran
   const temuan = await kirimRaw(G_TIM, TIAR, '#temuan oyster bau 3 pcs, sudah dibuang', pada('02', '15:00'), foto('bau'));
@@ -67,7 +67,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   assert.match(await kirim(G_TIM, DENA, '#pulang', pada('02', '22:30')), /Absen pulang.*Dena/s);
   assert.match(await kirim(G_TIM, DENA, '#pulang', pada('02', '22:31')), /sudah #pulang/);
   const harian = await kirim(G_TIM, PIC, '#harian', pada('02', '22:40'));
-  assert.match(harian, /Laporan harian JMB26-11 – 2026-11-02.*❌ Pembagian posisi.*✅ Followers.*12.500.*12.540.*✅ Temuan.*❌ Omzet harian.*Absen pulang: 1\/3 \(belum: Budi, Tiar\)/s);
+  assert.match(harian, /Laporan harian JMB26-11 – 2026-11-02.*❌ Pembagian tugas.*✅ Followers.*12.500.*12.540.*✅ Temuan.*❌ Omzet harian.*Absen pulang: 1\/3 \(belum: Budi, Tiar\)/s);
   // obrolan tanpa foto tidak dibalas
   assert.equal(await kirim(G_TIM, DENA, 'cooler nya dimana ya', pada('03', '09:00')), '');
 

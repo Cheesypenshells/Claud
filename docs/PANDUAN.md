@@ -500,3 +500,18 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Tersimpan di folder Drive **CPS ANTRIAN (foto struk & pesanan)** (akun owner), dan di tab Antrian (kolom Foto Struk / Foto Dibakar).
 - **Dihapus otomatis 7 hari setelah event selesai** (dipindahkan ke Sampah Drive, dicek tiap hari jam 03.00). Data pesanan di sheet tetap; kolom fotonya berisi "DIHAPUS tanggal".
 - Pemicu harian dipasang dengan menjalankan **MULAI_PASANG** sekali dari editor Apps Script (setelah menempel kode baru).
+
+## Pembagian tugas harian (jam 08.00)
+
+- Setiap hari event jam 08.00 bot membagi tugas di grup tim: **Kasir** (dari jawaban "saya" pertanyaan kasir), **Pemanggang** (tetap, `#pemanggang Veri` oleh owner/PIC), **Getok** dan **Plating** (dibagi bot, bergilir tiap hari).
+  - 3 orang: kasir + plating · pemanggang · getok 1 — 4 orang: kasir + plating · pemanggang · getok 2 — 5 orang: plating sendiri · getok 2 — 6+: tambahan ke getok.
+- Tugas & foto wajib: Getok jam 09.30 pesan es batu → cooler box (`#cooler`, kosong pun difoto), getok sampai plating bilang stop · Kasir dekorasi depan, kulkas menyala, cucian kemarin bersih (`#depan`), followers (`#followers`) · Pemanggang pajangan & area panggang bersih, gas kaleng penuh & jauh dari panas (`#grill`) · Plating kekurangan nampan (min 7), oyster fresh menarik, area kulkas bersih, nampan bersih & kering, wadah air buangan (`#nampan`).
+- `#tugas` lihat pembagian hari ini · `#tukar Bima Tiara` (owner/PIC) tukar bagian hari ini.
+- KPI: laporan bagian yang tidak dikirim −2 untuk yang bertugas hari itu.
+
+## KPI kelompok tambahan
+
+- **Ketepatan stok (10)**: −2 per bahan yang selisih saat sidak, sama untuk seluruh tim.
+- **Denda selisih stok** (owner, setelah sidak): `denda 200rb Bima` (yang lalai) atau `denda 200rb rata` (dibagi rata ke senior event itu). Tercatat di tab **Denda**.
+- **Kecepatan layanan**: target rata-rata tunggu (struk difoto → dipanggil) di bawah 7 menit per hari; hari yang lebih lambat −2 kelompok.
+- `#gajian` memotong **denda telat absen + denda di tab Denda** dari transfer.

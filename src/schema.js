@@ -30,6 +30,7 @@ export const KOLOM = {
       k('owner_hadir', 'Kehadiran Owner', 130, { catatan: 'tidak / 1 hari / setengah / penuh. Menentukan fee PIC: 25% / 20% / 15% / 10% dari laba bersih. Diubah lewat #owner di grup' }),
       k('file_event', 'ID File Event', 200, { catatan: 'Diisi otomatis oleh bot: spreadsheet event di folder EVENT', sembunyi: true }),
       k('fee_pic_persen', 'Fee PIC Khusus (%)', 120, { catatan: 'Kosong = menurut kehadiran owner (25/20/15/10%). Diisi lewat #feepic 20 di grup pengeluaran' }),
+      k('pemanggang', 'Pemanggang Tetap', 120, { catatan: 'Ditentukan owner/PIC lewat #pemanggang Veri' }),
       k('kasir_antrian', 'Kasir Antrian', 120, { catatan: 'Nama orang yang memegang halaman kasir antrian (boleh lebih dari satu, pisahkan koma). Tidak mengubah peran/gaji. Diisi lewat #kasirnya Tiara' }),
       k('loading_in', 'Loading In (waktu)', 140, { catatan: 'YYYY-MM-DD HH:MM. Ditanyakan bot di grup tim, atau #loading 13 nov 22.00' }),
       k('lokasi_loading', 'Lokasi / Pintu Loading In', 220),
@@ -136,6 +137,14 @@ export const KOLOM = {
       k('rating', 'Bintang', 80, { format: 'angka' }), k('ulasan', 'Ulasan', 220), k('dinilai', 'Dinilai', 140),
     ],
   },
+  // Pembagian tugas harian (jam 08.00 di grup tim): Kasir, Pemanggang, Getok, Plating.
+  'Tugas Harian': {
+    warna: '#00838F',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bagian', 'Bagian', 110), k('nama', 'Nama', 140),
+      k('rangkap', 'Rangkap', 80, { catatan: 'ya = plating dirangkap kasir' }), k('status', 'Status', 85), k('dicatat', 'Dicatat', 140),
+    ],
+  },
   // Stok bahan baku saat closing setiap hari (#stok di grup tim). Hanya jumlah, tanpa harga.
   'Stok Harian': {
     warna: '#6D4C41',
@@ -145,6 +154,15 @@ export const KOLOM = {
       k('sebelumnya', 'Stok Sebelumnya', 115, { format: 'angka', catatan: 'Closing kemarin, atau stok awal di hari pertama' }),
       k('restock', 'Restock', 85, { format: 'angka' }), k('terpakai', 'Berkurang', 95, { format: 'angka', catatan: 'Sebelumnya + restock − stok closing' }),
       k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
+  // Denda uang selain telat absen (mis. selisih stok tidak wajar), dipotong di #gajian.
+  Denda: {
+    warna: '#C62828',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('jumlah', 'Jumlah', 110, { format: 'rupiah' }),
+      k('jenis', 'Jenis', 120), k('alasan', 'Alasan', 320), k('oleh', 'Diputuskan Oleh', 160),
+      k('status', 'Status', 85, { catatan: 'OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
   // Sidak stok dadakan oleh PIC/owner (#sidak lewat chat pribadi / grup pengeluaran).

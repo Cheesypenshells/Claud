@@ -26,6 +26,7 @@ import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawab
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
+import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya, perintahTanyaKasir, tanganiJawabKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
@@ -1364,6 +1365,16 @@ export async function handlePesan(ctx, pesan) {
         const boleh = isOwner || (await eventSidak(ctx, pesan, false)).some((e) => e.kode === event?.kode);
         if (!boleh) return balas('⚠️ Sidak stok hanya oleh owner atau PIC event ini.');
         return perintahSidak(ctx, pesan, event, cmd);
+      }
+      case 'tugas':
+      case 'tugasharian':
+        return perintahTugas(ctx, pesan, event);
+      case 'pemanggang':
+      case 'tukar': {
+        const boleh = isOwner || (await eventSidak(ctx, pesan, false)).some((e) => e.kode === event?.kode);
+        return cmd.perintah === 'pemanggang'
+          ? perintahPemanggang(ctx, pesan, event, cmd.sisaBaris || cmd.argumen.join(' '), { boleh })
+          : perintahTukar(ctx, pesan, event, cmd.argumen, { boleh });
       }
       case 'stok':
       case 'stock':

@@ -5,6 +5,7 @@
 
 import { waktuLokal, tanggalLokal } from './util.js';
 import { jadwalHari, aturanHari } from './absensi.js';
+import { tugasHariIni, buatTugas } from './tugasHarian.js';
 
 const balas = (text) => [{ text }];
 
@@ -44,7 +45,7 @@ export async function tugasSesiKasir(ctx, sekarang = new Date()) {
       `🧾 *Kasir ${r.kode_event} ditutup* (${r.tanggal}, ${jam(r.dibuka)}–${jam(r.ditutup)})`,
       `👤 Kasir: ${r.kasir || '-'}`,
       `🧾 *${r.jumlah_struk || 0} struk dilayani* · ${r.diambil || 0} diambil · ${r.batal || 0} batal${Number(r.belum) ? ` · ⚠️ ${r.belum} belum diambil` : ''}`,
-      r.rata_tunggu_menit !== '' && r.rata_tunggu_menit !== undefined ? `⏱️ Rata-rata tunggu sampai dipanggil: ${r.rata_tunggu_menit} menit` : '',
+      r.rata_tunggu_menit !== '' && r.rata_tunggu_menit !== undefined ? `⏱️ Rata-rata tunggu sampai dipanggil: ${r.rata_tunggu_menit} menit ${Number(r.rata_tunggu_menit) < 7 ? '✅' : '⚠️ (target di bawah 7 menit, hari lambat −2 KPI kelompok)'}` : '',
       bintang,
       r.ulasan_buruk ? `\n*Ulasan bintang rendah:*\n${r.ulasan_buruk}` : '',
     ].filter(Boolean).join('\n');
@@ -190,5 +191,10 @@ export async function tanganiJawabKasir(ctx, pesan, event) {
   const daftar = [...lama.filter((x) => !sama(x, entri)), entri];
   await ctx.store.updateWhere('Event', (e) => e.kode === event.kode, { kasir_antrian: daftar.join(', ') });
   if (aktif) ctx.sesi.set(kunciTanya(pesan.groupId), { ...s, dijawab: true });
+  // Pembagian tugas hari ini ikut kasir terbaru (kalau sudah dibuat).
+  try {
+    const tgl = tanggalLokal(pesan.waktu || new Date());
+    if ((await tugasHariIni(ctx, event, tgl)).length) await buatTugas(ctx, { ...event, kasir_antrian: daftar.join(', ') }, tgl, 'kasir');
+  } catch { /* tab belum ada */ }
   return balas(`✅ Siap, *${nama}* pegang kasir antrian hari ini (${event.kode}).\nKalau link kasir sudah tersimpan di HP-mu, langsung buka saja. Kalau belum, kirim *#kasir* lewat *chat pribadi* ke nomor bot ini (PIN sudah ada di link-nya).`);
 }

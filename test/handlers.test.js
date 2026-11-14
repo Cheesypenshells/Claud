@@ -1337,3 +1337,31 @@ test('stok closing nampan freezer: 3 jenis, total dibanding minimal 7, ikut sida
   assert.match(await kirim(G_KELUAR, OWNER, '#sidak\nNampan Garlic = 2 nampan\nNampan Garlic Mozza = 2 nampan', w('03', '08:00')),
     /❌ Nampan Garlic: sidak \*2 nampan\*, laporan closing 2 Nov.*: 4 = 4 → selisih \*-2 nampan\*.*✅ Nampan Garlic Mozza/s);
 });
+
+test('tugas harian jam 08.00 di grup tim, #pemanggang & #tukar oleh owner/PIC, denda selisih stok rata ke senior & potong di #gajian', async () => {
+  const { store, kirim, ctx } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Tiara, Veri, Bima, Imam`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
+  await store.updateWhere('Event', (e) => e.kode === 'JMB26-11', { kasir_antrian: 'Tiara' });
+  assert.match(await kirim(G_TIM, KARYAWAN, '#pemanggang Veri', w('02', '07:00')), /hanya|owner atau PIC/);
+  const p = await kirim(G_TIM, OWNER, '#pemanggang veri', w('02', '07:30'));
+  assert.match(p, /Pemanggang tetap JMB26-11: \*Veri\*.*KASIR\*: \*Tiara\*.*PEMANGGANG\*: \*Veri\*.*GETOK\*: \*Bima\*, \*Imam\*.*09.30.*#cooler.*PLATING\*: dirangkap kasir/s);
+  const { tugasPembagianHarian } = await import('../src/tugasHarian.js');
+  assert.equal((await tugasPembagianHarian(ctx, new Date('2026-11-03T07:59:00+07:00'))).length, 0);
+  const pagi = await tugasPembagianHarian(ctx, new Date('2026-11-03T08:00:00+07:00'));
+  assert.equal(pagi[0].groupId, G_TIM);
+  assert.match(pagi[0].text, /TUGAS HARI INI JMB26-11.*3 Nov.*#depan.*#grill.*#nampan/s);
+  assert.equal((await tugasPembagianHarian(ctx, new Date('2026-11-03T09:00:00+07:00'))).length, 0);
+  assert.match(await kirim(G_TIM, OWNER, '#tukar Bima Veri', w('03', '09:00')), /Bima\* ⇄ \*Veri\*.*PEMANGGANG\*: \*Bima\*/s);
+  // denda selisih stok dibagi rata ke senior, terpotong di #gajian
+  await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 20 pack', w('02', '08:00'));
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack', w('03', '22:00'));
+  await kirim(G_KELUAR, OWNER, '#sidak\nmozzarella 10 pack', w('04', '08:00'));
+  assert.match(await kirim(G_KELUAR, PIC, 'denda 400rb rata', w('04', '08:01')), /hanya diputuskan owner/);
+  const d = await kirim(G_KELUAR, OWNER, 'denda 400rb rata', w('04', '08:02'));
+  assert.match(d, /Denda selisih stok JMB26-11\*: Tiara Rp 100.000, Veri Rp 100.000, Bima Rp 100.000, Imam Rp 100.000 \(dibagi rata dari Rp 400.000\)/);
+  assert.equal((await store.all('Denda')).length, 4);
+});

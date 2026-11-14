@@ -35,11 +35,20 @@ export async function rincianGajian(ctx, event) {
     const k = karyawan.find((x) => sama(x.nama, nama));
     return k?.no_rekening ? `${k.bank} ${k.no_rekening}${k.atas_nama ? ` a.n. ${k.atas_nama}` : ''}` : '';
   };
+  // Potongan denda: telat absen (tab Absensi) + denda lain seperti selisih stok (tab Denda).
+  const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
+  const [absensi, dendaLain] = await Promise.all([baca('Absensi'), baca('Denda')]);
+  const dendaDari = (nama) => {
+    const telat = absensi.filter((a) => a.kode_event === ev.kode && sama(a.nama, nama) && String(a.status || 'OK').toUpperCase() !== 'DITOLAK').reduce((t, a) => t + (Number(a.denda) || 0), 0);
+    const lain = dendaLain.filter((x) => x.kode_event === ev.kode && sama(x.nama, nama) && x.status !== 'BATAL').reduce((t, x) => t + (Number(x.jumlah) || 0), 0);
+    return { telat, lain, total: telat + lain };
+  };
   const orang = r.barisTim.filter((o) => !o.owner && !o.catatanGaji && o.peran !== PERAN.PIC).map((o) => {
     const s = skor.find((x) => sama(x.nama, o.nama));
     const total = s?.total ?? null;
     const bonusDiterima = o.bonus ? (total === null ? null : Math.round((o.bonus * total) / 100)) : 0;
-    return { ...o, skor: total, bonusDiterima, transfer: o.upah + (bonusDiterima ?? 0), rekening: rek(o.nama) };
+    const denda = dendaDari(o.nama);
+    return { ...o, skor: total, bonusDiterima, denda, transfer: Math.max(0, o.upah + (bonusDiterima ?? 0) - denda.total), rekening: rek(o.nama) };
   });
   return { r, ev, orang, atur: data.atur };
 }
@@ -69,13 +78,14 @@ export async function perintahGajian(ctx, pesan, event, { isOwner }) {
         : `bonus ${rupiah(o.bonus)} × KPI ${Math.round(o.skor)}% = ${rupiah(o.bonusDiterima)}`;
     if (o.bonus && o.skor === null) adaBelumDinilai = true;
     totalTetap += o.transfer;
-    baris.push(`• *${o.nama}*: gaji pokok ${rupiah(o.upah)} + ${bonusTeks} → *${rupiah(o.transfer)}*${o.rekening ? `\n   🏦 ${o.rekening}` : '\n   🏦 _rekening belum ada_'}`);
+    const potong = o.denda.total ? ` − denda ${rupiah(o.denda.total)}${o.denda.telat && o.denda.lain ? ` (telat ${rupiah(o.denda.telat)}, lain ${rupiah(o.denda.lain)})` : o.denda.telat ? ' (telat)' : ' (selisih stok/lain)'}` : '';
+    baris.push(`• *${o.nama}*: gaji pokok ${rupiah(o.upah)} + ${bonusTeks}${potong} → *${rupiah(o.transfer)}*${o.rekening ? `\n   🏦 ${o.rekening}` : '\n   🏦 _rekening belum ada_'}`);
   }
   if (!tetap.length) baris.push('_(tidak ada karyawan tetap)_');
   baris.push(`*Total karyawan tetap: ${rupiah(totalTetap)}*`);
   if (harian.length) {
     baris.push('', '*DW & kasir* (upah harian, biasanya dibayar PIC di lokasi)');
-    for (const o of harian) baris.push(`• ${o.nama} (${o.peran}): ${o.hari} hari → ${rupiah(o.upah + o.bonus)}${o.bonus ? ` (termasuk bonus ${rupiah(o.bonus)})` : ''}`);
+    for (const o of harian) baris.push(`• ${o.nama} (${o.peran}): ${o.hari} hari → ${rupiah(o.upah + o.bonus)}${o.bonus ? ` (termasuk bonus ${rupiah(o.bonus)})` : ''}${o.denda.total ? ` − denda ${rupiah(o.denda.total)} = *${rupiah(Math.max(0, o.upah + o.bonus - o.denda.total))}*` : ''}`);
   }
   const dwCatatan = r.barisTim.find((o) => o.catatanGaji);
   if (dwCatatan) baris.push('', `*DW & kasir* sesuai catatan gaji: ${rupiah(dwCatatan.upah)}`);
