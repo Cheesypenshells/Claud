@@ -8,6 +8,7 @@
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
 import { tanggalClosing } from './stokHarian.js';
+import { tambahCatatan } from './catatanHarian.js';
 
 const balas = (text) => [{ text }];
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -51,7 +52,7 @@ function teksTanya(s) {
 
 // Baca jawaban "1 90 catatan" / "2" / "3 40".
 export function bacaJawaban(teks) {
-  const m = String(teks || '').trim().match(/^([1-4])(?:\s*[.):-]?\s*(\d{1,3}))?\s*(?:poin)?\s*[,.-]?\s*(.*)$/is);
+  const m = String(teks || '').trim().match(/^([1-4])(?=[\s.):-]|$)(?:\s*[.):-]?\s*(\d{1,3})(?!\d))?\s*(?:poin)?\s*[,.-]?\s*(.*)$/is);
   if (!m) return null;
   const k = KATEGORI[m[1]];
   const poin = m[2] !== undefined ? Number(m[2]) : k.tengah;
@@ -125,7 +126,18 @@ export async function jawabNilaiHarian(ctx, pesan) {
   if (!s || Date.now() - s.waktu > 2 * 24 * 3600e3) return null;
   const teks = String(pesan.text || '').trim();
   if (!teks || teks.startsWith('#')) return null;
+  // Di grup (pengeluaran) hanya balasan yang me-reply pesan penilaian, supaya catatan pengeluaran tidak tertukar.
+  if (!pesan.pribadi && !/Penilaian harian|kejadian atau PR/i.test(pesan.kutipan?.teks || '')) return null;
   if (/^batal$/i.test(teks)) { ctx.sesi.hapus(k); return balas('👌 Penilaian harian dihentikan. Yang sudah dijawab tetap tersimpan.'); }
+  // Langkah terakhir: kejadian / PR hari ini (dibagikan ke tim di pesan tugas besok pagi).
+  if (s.tahap === 'kejadian') {
+    ctx.sesi.hapus(k);
+    if (/^(tidak|tdk|gak|ga|nggak|tidak ada|aman|nihil|-)$/i.test(teks)) return balas('👌 Oke, tidak ada kejadian/PR. Terima kasih!');
+    const event = (await ctx.store.all('Event')).find((e) => e.kode === s.kode) || { kode: s.kode };
+    const id = await tambahCatatan(ctx, { event, jenis: 'PR', isi: teks, oleh: `${pesan.senderName || pesan.senderId} (PIC)`, tanggal: s.tanggal, waktu: pesan.waktu });
+    return balas(`📌 Dicatat (${id}). Akan muncul di pesan tugas besok pagi untuk tim.
+_Barang yang perlu dibeli bisa dicatat terpisah dengan *#beli ...* supaya tetap muncul sampai dibeli._`);
+  }
   const o = s.daftar[s.i];
   if (/^lewati$/i.test(teks)) {
     s.i += 1;
@@ -142,9 +154,12 @@ export async function jawabNilaiHarian(ctx, pesan) {
   }
   s.waktu = Date.now();
   if (s.i < s.daftar.length) { ctx.sesi.set(k, s); return balas(teksTanya(s)); }
-  ctx.sesi.hapus(k);
+  ctx.sesi.set(k, { ...s, tahap: 'kejadian', waktu: Date.now() });
   const rows = (await ctx.store.all('Nilai Harian')).filter((r) => r.kode_event === s.kode && String(r.tanggal) === s.tanggal && r.status !== STATUS.BATAL);
   return balas([`✅ *Penilaian harian ${s.kode} – ${tglPendek(s.tanggal)} selesai.* Terima kasih!`,
     ...rows.map((r) => `${KATEGORI[String(r.kategori)[0]]?.ikon || '•'} ${r.nama}: *${r.poin}*${r.catatan ? ` – ${r.catatan}` : ''}`),
-    '_Rata-rata nilai harian dipakai untuk nilai Kinerja KPI._'].join('\n'));
+    '_Rata-rata nilai harian dipakai untuk nilai Kinerja KPI._',
+    '',
+    '📌 *Terakhir: ada kejadian atau PR hari ini?* (misalnya kompor bocor, antrian sore lama, gas kaleng hampir habis)',
+    'Tulis saja, nanti dibagikan ke tim di pesan tugas besok pagi. Kalau tidak ada, balas *tidak*.'].join('\n'));
 }

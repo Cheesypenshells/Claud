@@ -10,6 +10,7 @@
 
 import { STATUS } from './schema.js';
 import { tanggalLokal, waktuLokal } from './util.js';
+import { teksCatatanPagi } from './catatanHarian.js';
 
 const balas = (text) => [{ text }];
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -69,7 +70,7 @@ async function dataTim(ctx, event) {
 const kasirEvent = (event) => String(event.kasir_antrian || '').split(',').map((x) => x.replace(/\s*\(\d+\)\s*$/, '').trim()).filter(Boolean).pop() || '';
 const hariKeDari = (event, tanggal) => Math.max(0, Math.round((new Date(tanggal) - new Date(event.mulai)) / 86400000));
 
-export function teksTugas(event, tanggal, daftar) {
+export function teksTugas(event, tanggal, daftar, tambahan = '') {
   const per = (b) => daftar.filter((d) => d.bagian === b);
   const blok = Object.keys(BAGIAN).map((b) => {
     const orang = per(b);
@@ -83,7 +84,9 @@ export function teksTugas(event, tanggal, daftar) {
     `📋 *TUGAS HARI INI ${event.kode}* – ${tglPendek(tanggal)}`,
     '',
     ...blok.flatMap((x) => [x, '']),
+    ...(tambahan ? [tambahan, ''] : []),
     '🧹 Tutup: semua bantu bersih-bersih; foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih) lalu tiap orang *#pulang*.',
+    '_Lapor kejadian: *#kejadian ...* · perlu dibeli: *#beli ...* · PR/evaluasi: *#pr ...*_',
     '_Tukar bagian (PIC/owner): *#tukar Bima Tiara* · lihat lagi: *#tugas*_',
     '_Laporan foto yang tidak dikirim mengurangi KPI −2 untuk bagian yang bertugas._',
   ].join('\n');
@@ -125,7 +128,8 @@ export async function tugasPembagianHarian(ctx, sekarang = new Date()) {
     ctx.sesi.set(tanda, { kirim: true });
     const ada = await tugasHariIni(ctx, e, tanggal);
     const daftar = ada.length ? ada : await buatTugas(ctx, e, tanggal);
-    for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teksTugas(e, tanggal, daftar) });
+    const tambahan = await teksCatatanPagi(ctx, e, tanggal);
+    for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: teksTugas(e, tanggal, daftar, tambahan) });
   }
   return keluar;
 }
@@ -135,7 +139,7 @@ export async function perintahTugas(ctx, pesan, event) {
   if (!event) return balas('⚠️ Ketik di grup event.');
   const tanggal = tanggalLokal(pesan.waktu);
   const ada = await tugasHariIni(ctx, event, tanggal);
-  return balas(teksTugas(event, tanggal, ada.length ? ada : await buatTugas(ctx, event, tanggal, waktuLokal(pesan.waktu))));
+  return balas(teksTugas(event, tanggal, ada.length ? ada : await buatTugas(ctx, event, tanggal, waktuLokal(pesan.waktu)), await teksCatatanPagi(ctx, event, tanggal)));
 }
 
 // #pemanggang Veri (owner/PIC): pemanggang tetap event ini; pembagian hari ini diperbarui.

@@ -28,6 +28,7 @@ import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
+import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
 import { perintahQr, perintahKasir, eventKasirUntuk, perintahKasirnya, perintahTanyaKasir, tanganiJawabKasir } from './komplain.js';
 import { jawabNilaiJobdesk } from './nilaiJobdesk.js';
 import { perintahLoading, tanganiInfoLoading } from './loadingInfo.js';
@@ -1381,6 +1382,19 @@ export async function handlePesan(ctx, pesan) {
         const boleh = isOwner || (await eventSidak(ctx, pesan, false)).some((e) => e.kode === event?.kode);
         return boleh ? perintahNilaiHarian(ctx, pesan, event) : balas('⚠️ Khusus owner atau PIC.');
       }
+      case 'kejadian':
+      case 'insiden':
+      case 'beli':
+      case 'belanja':
+      case 'perlubeli':
+      case 'pr':
+      case 'evaluasi': {
+        const gp = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event?.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
+        return perintahCatatan(ctx, pesan, event, cmd, { grupPengeluaran: gp });
+      }
+      case 'sudahbeli':
+      case 'udahbeli':
+        return perintahSudahBeli(ctx, pesan, event, cmd.argumen);
       case 'tugas':
       case 'tugasharian':
         return perintahTugas(ctx, pesan, event);

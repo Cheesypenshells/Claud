@@ -155,6 +155,15 @@ export const KOLOM = {
       k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Kejadian, barang perlu dibeli, PR harian (#kejadian / #beli / #pr); tampil di pesan tugas pagi berikutnya.
+  'Catatan Harian': {
+    warna: '#EF6C00',
+    kolom: [
+      k('id', 'No.', 70), k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110),
+      k('jenis', 'Jenis', 100, { catatan: 'KEJADIAN / BELI / PR' }), k('isi', 'Isi', 360), k('oleh', 'Oleh', 140),
+      k('status', 'Status', 110, { catatan: 'BELI: BELUM / SUDAH DIBELI · lainnya OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Stok bahan baku saat closing setiap hari (#stok di grup tim). Hanya jumlah, tanpa harga.
   'Stok Harian': {
     warna: '#6D4C41',

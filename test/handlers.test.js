@@ -1394,3 +1394,30 @@ test('penilaian harian PIC jam 22.00: per orang sesuai bagian, kategori 1-4 + po
   const s = skorEvent(hitungEvent(data.events[0], data), { ...(await bahanKpi(store)), hariIni: '2026-11-04' }).find((x) => x.nama === 'Bima');
   assert.equal(s.kinerja, 9.6); // 40/100 × 24
 });
+
+test('catatan harian: #kejadian #beli #pr, kejadian/PR dari PIC di akhir penilaian, tampil di tugas pagi besoknya, #sudahbeli', async () => {
+  const { store, kirim, ctx } = setup();
+  const { bacaJawaban, mulaiNilaiHarian } = await import('../src/nilaiHarian.js');
+  assert.equal(bacaJawaban('15rb parkir'), null);
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Tiara, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
+  const kj = await handlePesan(ctx, { id: 'k1', groupId: G_TIM, groupName: G_TIM, senderId: KARYAWAN, senderName: 'Bima', text: '#kejadian kompor 2 bocor, sudah pakai cadangan', adaFoto: false, ...w('03', '15:00') });
+  assert.match(kj[0].text, /Kejadian dicatat \(J1\)/);
+  assert.equal(kj[1].groupId, G_KELUAR); // diteruskan ke grup pengeluaran
+  assert.match(await kirim(G_TIM, KARYAWAN, '#beli gas kaleng 10\nplastik wrap', w('03', '15:05')), /gas kaleng 10 \(B1\), plastik wrap \(B2\)/);
+  // PIC di akhir penilaian harian
+  const ev = (await store.all('Event'))[0];
+  await mulaiNilaiHarian(ctx, ev, '2026-11-03', { nomor: PIC });
+  const dm = (text) => handlePesan(ctx, { id: `d${Math.random()}`, groupId: 'dm', pribadi: true, senderId: PIC, senderName: 'Budi', text, adaFoto: false, ...w('03', '22:05') }).then((r) => r.map((x) => x.text).join('\n'));
+  await dm('1 90'); 
+  const akhir = await dm('2 60 lambat');
+  assert.match(akhir, /ada kejadian atau PR hari ini/);
+  assert.match(await dm('antrian sore lama, besok tambah 1 orang getok'), /Dicatat \(R1\)/);
+  // tugas pagi besoknya
+  const { tugasPembagianHarian } = await import('../src/tugasHarian.js');
+  const pagi = (await tugasPembagianHarian(ctx, new Date('2026-11-04T08:00:00+07:00')))[0].text;
+  assert.match(pagi, /Perlu dibeli.*gas kaleng 10 _\(B1\)_.*plastik wrap.*Kejadian kemarin & PR.*kompor 2 bocor.*antrian sore lama/s);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#sudahbeli b1', w('04', '10:00')), /Sudah dibeli: B1/);
+  assert.doesNotMatch((await kirim(G_TIM, KARYAWAN, '#tugas', w('04', '10:01'))), /gas kaleng 10/);
+});

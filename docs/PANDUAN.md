@@ -522,3 +522,13 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Pilihan: **1 Sangat baik (75–100) · 2 Baik (50–75) · 3 Kurang (25–50) · 4 Buruk (1–20)**. Balas nomor + poin + catatan: `1 90 cepat & rapi`, `3 40 sering main hp`; nomor saja = poin tengah; `lewati`; `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
+
+## Kejadian, barang perlu dibeli, PR (catatan harian)
+
+- Siapa saja di grup tim / pengeluaran:
+  - `#kejadian kompor 2 bocor, sudah pakai cadangan` — kejadian hari ini (diteruskan ke grup pengeluaran)
+  - `#beli gas kaleng 10` (boleh beberapa baris, satu barang per baris) — tampil setiap pagi sampai `#sudahbeli B1`
+  - `#pr evaluasi antrian sore terlalu lama` — PR / evaluasi
+- PIC ditanya **"ada kejadian atau PR hari ini?"** di akhir penilaian harian (dibagikan ke tim besok pagi; balas *tidak* kalau tidak ada).
+- Pesan **tugas jam 08.00** menampilkan **🛒 Perlu dibeli** (yang belum dibeli) dan **📌 Kejadian kemarin & PR**. Tab **Catatan Harian**. Hanya teks, tanpa harga.
+- Kejadian dengan foto (oyster bau, alat rusak, komplain) tetap bisa lewat `#temuan` + foto.
