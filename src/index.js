@@ -20,6 +20,7 @@ import { tugasKomplain, tugasLinkKasir, tugasSesiKasir } from './komplain.js';
 import { tugasStokHarian } from './stokHarian.js';
 import { tugasPembagianHarian } from './tugasHarian.js';
 import { tugasNilaiHarian } from './nilaiHarian.js';
+import { tugasPengingatBagian } from './pengingatBagian.js';
 import { ikutGajian } from './gajian.js';
 import { tanggalLokal } from './util.js';
 
@@ -102,6 +103,8 @@ async function main() {
     for (const p of await tugasSesiKasir(ctx)) await wa.kirimPribadi(p.nomor, p.text);
     // Pembagian tugas harian jam 08.00 di grup tim.
     for (const p of await tugasPembagianHarian(ctx)) await wa.kirim(p.groupId, p.text);
+    // Bot aktif menyuruh & menagih laporan tiap bagian (chat pribadi + grup tim).
+    for (const p of await tugasPengingatBagian(ctx)) { if (p.nomor) await wa.kirimPribadi(p.nomor, p.text); else await wa.kirim(p.groupId, p.text); }
     // Penilaian harian ke PIC (jam 22.00 / setelah kasir tutup).
     for (const p of await tugasNilaiHarian(ctx)) { if (p.nomor) await wa.kirimPribadi(p.nomor, p.text); else await wa.kirim(p.groupId, p.text); }
     // Format stok closing ke grup tim setelah kasir tutup (atau jam 23.00).

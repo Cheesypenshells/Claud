@@ -325,7 +325,10 @@ export async function tugasLaporan(ctx, sekarang = new Date()) {
     const semua = (await laporan(ctx, ev.kode)).filter((r) => r.tanggal === tanggal);
     const belum = BUTIR.filter((b) => b.tahap === T.HARIAN && b.bagian === 'sebelum' && !b.otomatis && !semua.some((r) => r.tag === b.tag)).map((b) => `#${b.tag}`);
     const bagian = [];
-    if (belum.length) bagian.push(`⏰ *Booth ${ev.kode} sudah buka.* Laporan sebelum buka yang belum masuk: ${belum.join(', ')}`);
+    // Hari dengan pembagian tugas: penagihan per orang dilakukan pengingatBagian.js (10 menit setelah buka).
+    let adaTugas = false;
+    try { adaTugas = (await ctx.store.all('Tugas Harian')).some((r) => r.kode_event === ev.kode && String(r.tanggal) === tanggal && r.status !== STATUS.BATAL); } catch { adaTugas = false; }
+    if (belum.length && !adaTugas) bagian.push(`⏰ *Booth ${ev.kode} sudah buka.* Laporan sebelum buka yang belum masuk: ${belum.join(', ')}`);
     if (aktif.includes(T.IN)) {
       const inBelum = (await teksStatus(ctx, ev, T.IN, tanggal)).split('\n').filter((x) => x.startsWith('❌'));
       if (inBelum.length) bagian.push(`📦 Loading in belum lengkap:\n${inBelum.join('\n')}`);

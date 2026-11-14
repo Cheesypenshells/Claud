@@ -1431,3 +1431,31 @@ test('catatan harian: #kejadian #beli #pr, kejadian/PR dari PIC di akhir penilai
   assert.match(await kirim(G_TIM, KARYAWAN, '#sudahbeli b1', w('04', '10:00')), /Sudah dibeli: B1/);
   assert.doesNotMatch((await kirim(G_TIM, KARYAWAN, '#tugas', w('04', '10:01'))), /gas kaleng 10/);
 });
+
+test('bot aktif menyuruh & menagih bagian: es batu getok, 1 jam sebelum buka, tagih yang belum lapor, closing, #pulang', async () => {
+  const { store, kirim, ctx } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nJam buka: 11.00\nSenior: Tiara, Veri, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  for (const [n, no] of [['Tiara', '081'], ['Veri', '082'], ['Bima', '083']]) await store.append('Karyawan', { nama: n, nomor_wa: `${no}1111111` });
+  const t = (bagian, nama, rangkap = '') => ({ tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian, nama, rangkap, status: 'OK' });
+  for (const r of [t('Kasir', 'Tiara'), t('Plating', 'Tiara', 'ya'), t('Pemanggang', 'Veri'), t('Getok', 'Bima')]) await store.append('Tugas Harian', r);
+  const { tugasPengingatBagian } = await import('../src/pengingatBagian.js');
+  const pada = (jam) => tugasPengingatBagian(ctx, new Date(`2026-11-03T${jam}:00+07:00`));
+  assert.equal((await pada('09:00')).length, 0);
+  const es = await pada('09:30');
+  assert.equal(es.find((x) => x.nomor)?.nomor, '62831111111');
+  assert.match(es.find((x) => x.nomor).text, /Bima\*, sekarang waktunya \*pesan es batu\*.*#cooler/s);
+  assert.equal((await pada('09:35')).length, 0); // sekali saja
+  const siap = await pada('10:00');
+  assert.match(siap.find((x) => x.groupId).text, /1 jam lagi buka \(11:00\).*Tiara: \*#depan\*.*Veri: \*#grill\*.*Tiara: \*#nampan\*/s);
+  assert.ok(siap.some((x) => x.nomor === '62821111111' && /Pemanggang.*Gas kaleng.*#grill/s.test(x.text)));
+  // Veri sudah kirim #grill
+  await store.append('Laporan Foto', { kode_event: 'JMB26-11', tanggal: '2026-11-03', tag: 'grill', nama: 'Veri', status: 'OK' });
+  assert.match((await pada('11:00')).find((x) => x.nomor === '62811111111').text, /#followers/);
+  const tagih = await pada('11:10');
+  assert.match(tagih.find((x) => x.groupId).text, /belum masuk.*Tiara: \*#depan\*.*Tiara: \*#nampan\*.*Bima: \*#cooler\*/s);
+  assert.doesNotMatch(tagih.find((x) => x.groupId).text, /Veri/);
+  assert.match((await pada('22:00')).find((x) => x.groupId).text, /closing.*#bersih.*#stok.*#pulang/s);
+  await store.append('Laporan Foto', { kode_event: 'JMB26-11', tanggal: '2026-11-03', tag: 'pulang', nama: 'Tiara', status: 'OK' });
+  assert.match((await pada('23:30')).find((x) => x.groupId).text, /Belum \*#pulang\*: Veri, Bima/);
+});

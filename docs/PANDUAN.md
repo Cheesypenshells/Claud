@@ -534,3 +534,13 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Kejadian dengan foto (oyster bau, alat rusak, komplain) tetap bisa lewat `#temuan` + foto.
 
 - **PIC tidak perlu absen** (datang maupun `#pulang`): tidak diingatkan, tidak didenda, tidak tercantum "belum absen". Kalau PIC mengirim foto absen, bot hanya membalas bahwa PIC tidak perlu absen.
+
+## Bot aktif menyuruh & menagih (setiap hari event)
+
+Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat pribadi ke orangnya + ringkasan di grup tim:
+- **09.30** (atau 1 jam sebelum buka kalau lebih awal): Getok — pesan es batu, tuang ke cooler, kirim `#cooler`.
+- **1 jam sebelum buka**: Kasir `#depan`, Pemanggang `#grill`, Plating `#nampan`, lengkap dengan daftar tugasnya.
+- **Saat buka**: Kasir screenshot `#followers`.
+- **10 menit setelah buka**: yang belum mengirim laporan bagiannya ditagih satu per satu.
+- **Setelah ⏹ Tutup kasir / 22.00**: closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
+- **23.30**: yang belum `#pulang` ditagih.
