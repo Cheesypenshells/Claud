@@ -494,3 +494,9 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - `#sidak` saja: bot mengirim format. Isi hitungan stok saat itu, lalu kirim. Bot membandingkan dengan **laporan closing terakhir + restock setelahnya**, menandai ✅ sesuai / ❌ selisih per bahan.
 - Kalau ada selisih, bot bertanya minus poin untuk pelapor closing: balas `minus 5` (untuk pelapor), `minus 5 Bima` (orang tertentu), atau `tidak`. Poin masuk **Poin KPI**; hasil sidak tersimpan di tab **Sidak Stok**. Tim tidak diberi tahu.
 - Paling tepat dilakukan **sebelum booth buka** atau **setelah tim melapor stok closing** (saat jualan, stok memang sedang berkurang).
+
+### Foto struk & foto dibakar di Drive
+
+- Tersimpan di folder Drive **CPS ANTRIAN (foto struk & pesanan)** (akun owner), dan di tab Antrian (kolom Foto Struk / Foto Dibakar).
+- **Dihapus otomatis 7 hari setelah event selesai** (dipindahkan ke Sampah Drive, dicek tiap hari jam 03.00). Data pesanan di sheet tetap; kolom fotonya berisi "DIHAPUS tanggal".
+- Pemicu harian dipasang dengan menjalankan **MULAI_PASANG** sekali dari editor Apps Script (setelah menempel kode baru).

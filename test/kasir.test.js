@@ -203,3 +203,34 @@ test('animasi: atribut SVG sebelum "/>" selalu berkutip (tanpa kutip, bentuk ber
   const src = readFileSync(new URL('../apps-script/klien/animasi.js', import.meta.url), 'utf8');
   assert.deepEqual(src.match(/=[^'"\s>]+\/>/g), null);
 });
+
+test('apps-script: foto struk & dibakar dihapus 7 hari setelah event selesai, data pesanan tetap', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const ID = (n) => `${n}`.padEnd(30, 'x');
+  const rows = [
+    { kode_event: 'BAL26-09', tanggal: '2026-09-30', nomor: 1, foto_struk: ID('a'), foto_bakar: ID('b'), menu: '2× Garlic' }, // selesai 4 Okt -> hapus
+    { kode_event: 'SMR26-11', tanggal: '2026-11-14', nomor: 1, foto_struk: ID('c'), foto_bakar: '' },                     // masih berjalan
+    { kode_event: 'TES-SETUP', tanggal: '2026-11-14', nomor: 2, foto_struk: ID('d'), foto_bakar: '' },                    // tes, belum 7 hari
+  ];
+  const sampah = [];
+  Object.assign(c, {
+    hariIni_: () => '2026-11-20', tab_: () => ({}), baca_: () => rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    ubah_: (t, b, isi) => Object.assign(rows[b - 2], isi),
+    selesaiEvent_: () => ({ 'BAL26-09': '2026-10-04', 'SMR26-11': '2026-11-22' }),
+    DriveApp: { getFileById: (id) => ({ setTrashed: () => sampah.push(id) }) },
+    Utilities: { formatDate: (d) => new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10) },
+    Logger: { log() {} },
+  });
+  vm.runInContext("Date.now = () => new Date('2026-11-20T10:00:00+07:00').getTime();", c);
+  assert.equal(c.bersihkanFoto(), 2);
+  assert.deepEqual(sampah, [ID('a'), ID('b')]);
+  assert.equal(rows[0].foto_struk, 'DIHAPUS 2026-11-20');
+  assert.equal(rows[0].menu, '2× Garlic');
+  assert.equal(rows[1].foto_struk, ID('c'));
+  assert.equal(rows[2].foto_struk, ID('d'));
+  assert.equal(c.linkFoto_('DIHAPUS 2026-11-20'), '');
+});

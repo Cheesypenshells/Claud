@@ -51,6 +51,7 @@ function MULAI_PASANG() {
   tab_('Komplain', KOLOM_KOMPLAIN);
   tab_('Sesi Kasir', KOLOM_SESI);
   folder_();
+  PASANG_PEMBERSIH();
   var t = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd');
   Logger.log('✅ Siap. Sheet: ' + ss_().getName() + ' · PIN kasir: ' + (pinKasir_() ? 'ada' : 'BELUM (isi pin_kasir di tab Pengaturan)') + ' · ' + t);
   Logger.log('Lanjut: Terapkan > Deployment baru > Aplikasi web (Jalankan sebagai: Saya, Akses: Siapa saja).');
@@ -169,7 +170,55 @@ function simpanFoto_(dataUrl, nama) {
   return { id: file.getId(), blob: blob };
 }
 
-function linkFoto_(id) { return id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1000' : ''; }
+function linkFoto_(id) { return /^[\w-]{20,}$/.test(String(id || '')) ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1000' : ''; }
+
+// ---------------------------------------------------------------- hapus foto otomatis
+// Foto struk & foto dibakar dipindahkan ke Sampah Drive 7 hari setelah event selesai (data pesanan di sheet tetap).
+// Berjalan tiap hari jam 03.00 (pemicu dipasang oleh MULAI_PASANG / PASANG_PEMBERSIH).
+var HAPUS_FOTO_HARI = 7;
+
+function PASANG_PEMBERSIH() {
+  var ada = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'bersihkanFoto'; });
+  if (!ada) ScriptApp.newTrigger('bersihkanFoto').timeBased().everyDays(1).atHour(3).inTimezone('Asia/Jakarta').create();
+  Logger.log('🧹 Pembersih foto aktif: foto dihapus ' + HAPUS_FOTO_HARI + ' hari setelah event selesai, dicek tiap hari jam 03.00.');
+}
+
+// Tanggal selesai tiap event (tab Event), untuk semua event termasuk yang sudah selesai.
+function selesaiEvent_() {
+  var sh = ss_().getSheetByName('Event');
+  var peta = {};
+  if (!sh || sh.getLastRow() < 2) return peta;
+  var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var j = v[0], iKode = j.indexOf('Kode Event'), iMulai = j.indexOf('Tanggal Mulai'), iSelesai = j.indexOf('Tanggal Selesai');
+  v.slice(1).forEach(function (r) {
+    var kode = String(r[iKode] || '');
+    if (kode) peta[kode] = tglStr_(r[iSelesai]) || tglStr_(r[iMulai]);
+  });
+  return peta;
+}
+
+function bersihkanFoto() {
+  var hari = hariIni_();
+  var batas = Utilities.formatDate(new Date(Date.now() - HAPUS_FOTO_HARI * 86400000), 'Asia/Jakarta', 'yyyy-MM-dd');
+  var selesai = selesaiEvent_();
+  var t = tab_('Antrian', KOLOM_ANTRIAN);
+  var dihapus = 0;
+  baca_(t).forEach(function (o) {
+    // Event tidak dikenal (pesanan tes): hitung dari tanggal pesanan.
+    var akhir = selesai[o.kode_event] || tglStr_(o.tanggal);
+    if (!akhir || akhir > batas) return;
+    var isi = {};
+    ['foto_struk', 'foto_bakar'].forEach(function (kolom) {
+      var id = String(o[kolom] || '');
+      if (!/^[\w-]{20,}$/.test(id)) return;
+      try { DriveApp.getFileById(id).setTrashed(true); dihapus++; } catch (e) { /* sudah terhapus */ }
+      isi[kolom] = 'DIHAPUS ' + hari;
+    });
+    if (Object.keys(isi).length) ubah_(t, o._baris, isi);
+  });
+  Logger.log('🧹 ' + dihapus + ' foto dipindahkan ke Sampah (event selesai sebelum ' + batas + ').');
+  return dihapus;
+}
 
 // OCR struk: unggah ke Drive sebagai Google Docs (Drive membaca teks gambar), ambil teks, buang dokumennya.
 function ocr_(blob) {
