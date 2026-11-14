@@ -53,7 +53,7 @@ function teksTanya(s) {
     '_Catatan hanya untuk owner/PIC · *lewati* · *batal*_',
   ].join('\n');
 }
-const teksTanyaPesan = (o, j) => `${kategoriDari(j.poin).ikon} *${o.nama}*: ${j.poin} → *${kategoriDari(j.poin).nama}*\n\n💬 *Pesan untuk ${o.nama}?* (dikirim langsung ke chat pribadinya, contoh: _bagus, pertahankan ya_ / _besok lebih cepat getoknya_)\nBalas *tidak* kalau tidak ada pesan.`;
+const teksTanyaPesan = (o, j) => `${kategoriDari(j.poin).ikon} *${o.nama}*: ${j.poin} → *${kategoriDari(j.poin).nama}*\n\n💬 *Pesan untuk ${o.nama}?* (dikirim langsung ke chat pribadinya *tanpa nilai & kategori*, contoh: _bagus, pertahankan ya_ / _besok lebih cepat getoknya_)\nBalas *tidak* kalau tidak ada pesan.`;
 
 // Baca jawaban "80 cepat & rapi" / "45" -> { poin, catatan }.
 export function bacaJawaban(teks) {

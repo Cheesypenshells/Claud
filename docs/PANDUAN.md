@@ -323,6 +323,7 @@ Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran de
 
 - Event sebelum 14 Nov 2026 **sudah dibayar** owner: tidak ikut daftar gaji, KPI, dan bonus (pembukuan event-event itu tetap). Batasnya bisa diubah di tab Pengaturan, kunci `gaji_mulai`.
 - `#gajian` (owner, grup pengeluaran) atau `#gajian SMR26-11` (chat pribadi): per karyawan tetap **gaji pokok + bonus omzet × skor KPI** = yang ditransfer, beserta rekening. DW/kasir dan PIC ikut ditampilkan.
+- **Denda telat absen** hanya dipotong dari **bonus event**. Bonus tidak ada/kurang → sisa denda **diakumulasikan ke event berikutnya** (tertulis di #gajian: "sisa Rp ... dibawa ke event berikutnya").
 - Bonus baru final setelah PIC/owner menilai KPI (`#nilai`); sehari setelah event selesai bot meminta penilaian otomatis.
 - **Rekening tim**: sehari setelah event selesai (jam 10.00), bot meminta rekening ke senior, DW, dan kasir yang belum punya rekening di tab Karyawan, lewat **chat pribadi** (kalau nomornya dikenal). Yang nomornya belum dikenal diminta lewat satu pesan di grup tim untuk mengirim rekening ke chat pribadi bot, contoh `Joko BCA 1234567890 a.n. Joko`. Sekali per event.
 
@@ -512,7 +513,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
   - `ganti rugi 150rb Bima` → hanya Bima
   - `tidak` → tanpa ganti rugi
   - atau `#gantirugi RS3 150rb [Nama]` / `tidak RS3`
-- Ganti rugi masuk tab **Denda** (jenis *Ganti rugi bahan rusak*) dan **dipotong di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
+- Ganti rugi masuk tab **Denda** (jenis *Ganti rugi bahan rusak*) dan **dipotong dari total gaji di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
 
 ### Sidak stok dadakan (PIC / owner)
 
@@ -540,12 +541,12 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - **Ketepatan stok (10)**: −2 per bahan yang selisih saat sidak, sama untuk seluruh tim.
 - **Denda selisih stok** (owner, setelah sidak): `denda 200rb Bima` (yang lalai) atau `denda 200rb rata` (dibagi rata ke senior event itu). Tercatat di tab **Denda**.
 - **Kecepatan layanan**: target rata-rata tunggu (struk difoto → dipanggil) di bawah 7 menit per hari; hari yang lebih lambat −2 kelompok.
-- `#gajian` memotong **denda telat absen + denda di tab Denda** dari transfer.
+- `#gajian`: **denda telat absen dipotong dari bonus event** (gaji pokok/upah tidak dipotong). Kalau bonus event tidak ada atau kurang, **sisanya dibawa ke event berikutnya** sampai lunas. Denda di tab Denda (selisih stok, ganti rugi bahan rusak) dipotong dari total transfer.
 
 ## Penilaian harian PIC (setelah tutup kasir)
 
 - Setiap hari event **setelah ⏹ Tutup kasir** (cadangan 23.30 kalau kasir tidak dipakai), bot mengirim penilaian ke **chat pribadi PIC** (nomor PIC belum dikenal: grup pengeluaran), satu per satu per orang. Pertanyaannya sesuai bagian tugas orang itu hari itu (kasir, plating, pemanggang, getok).
-- Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (nilainya tidak ikut dikirim); balas `tidak` kalau tidak ada. `lewati` / `batal`.
+- Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (**nilai, kategori, dan catatan tidak ikut dikirim** — karyawan hanya menerima pesannya); balas `tidak` kalau tidak ada. `lewati` / `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
 
