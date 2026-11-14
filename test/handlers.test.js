@@ -1284,15 +1284,19 @@ test('stok closing harian: format dari bot, berkurang dihitung dari stok awal/ke
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T21:44:00+07:00'))).length, 0);
   const siap = await tugasStokHarian(ctx, new Date('2026-11-05T21:45:00+07:00'));
   assert.equal(siap[0].groupId, G_TIM);
-  assert.match(siap[0].text, /15 menit lagi closing \(22\.00 WIB\).*bereskan.*#stok/s);
-  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T21:55:00+07:00'))).length, 0);
-  const ingat = await tugasStokHarian(ctx, new Date('2026-11-05T22:01:00+07:00'));
-  assert.match(ingat[0].text, /Stok closing hari ini belum diisi.*#stok/s);
+  assert.match(siap[0].text, /15 menit lagi jam closing \(22\.00 WIB\).*bereskan.*Kirim setelah kasir tutup.*#stok/s);
+  // kasir belum tutup (pembeli masih ada) -> belum ditagih walau sudah lewat 22.00
+  await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-05', dibuka: '2026-11-05 10:00:00', status: 'BUKA' });
+  assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T22:30:00+07:00'))).length, 0);
+  // kasir ditutup 22.40 -> ditagih
+  await store.updateWhere('Sesi Kasir', (r) => r.id === 'S1', { status: 'TUTUP', ditutup: '2026-11-05 22:40:00' });
+  const ingat = await tugasStokHarian(ctx, new Date('2026-11-05T22:41:00+07:00'));
+  assert.match(ingat[0].text, /Kasir sudah tutup.*belum diisi.*#stok/s);
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T23:30:00+07:00'))).length, 0);
   // jam tutup bisa diubah owner
   assert.match(await kirim(G_KELUAR, OWNER, '#ubah jam tutup 23.00', w('06', '09:00')), /Jam tutup: 23:00/);
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-06T22:44:00+07:00'))).length, 0);
-  assert.match((await tugasStokHarian(ctx, new Date('2026-11-06T22:45:00+07:00')))[0].text, /15 menit lagi closing \(23\.00 WIB\)/);
+  assert.match((await tugasStokHarian(ctx, new Date('2026-11-06T22:45:00+07:00')))[0].text, /15 menit lagi jam closing \(23\.00 WIB\)/);
 });
 
 test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan closing, minus poin untuk pelapor', async () => {
@@ -1422,7 +1426,9 @@ test('penilaian harian PIC jam 22.00: per orang sesuai bagian, kategori 1-4 + po
   await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Plating', nama: 'Tiara', rangkap: 'ya', status: 'OK' });
   await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Getok', nama: 'Bima', status: 'OK' });
   assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T21:00:00+07:00'))).length, 0);
-  const k = await tugasNilaiHarian(ctx, new Date('2026-11-03T22:00:00+07:00'));
+  assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T22:00:00+07:00'))).length, 0); // kasir belum tutup, tanpa sesi: cadangan 23.30
+  await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-03', status: 'TUTUP', ditutup: '2026-11-03 22:20:00' });
+  const k = await tugasNilaiHarian(ctx, new Date('2026-11-03T22:21:00+07:00'));
   assert.equal(k[0].nomor, PIC);
   assert.match(k[0].text, /Penilaian harian JMB26-11.*3 Nov \(1\/2\).*Tiara\* – Kasir \+ Plating.*Ramah & cepat.*Stok nampan.*Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100/s);
   assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T22:30:00+07:00'))).length, 0);
@@ -1496,7 +1502,10 @@ test('bot aktif menyuruh & menagih bagian: es batu getok, 1 jam sebelum buka, ta
   const tagih = await pada('11:10');
   assert.match(tagih.find((x) => x.groupId).text, /belum masuk.*Tiara: \*#depan\*.*Tiara: \*#nampan\*.*Bima: \*#cooler\*/s);
   assert.doesNotMatch(tagih.find((x) => x.groupId).text, /Veri/);
-  assert.match((await pada('22:00')).find((x) => x.groupId).text, /closing.*#bersih.*#stok.*#pulang/s);
+  assert.equal((await pada('22:00')).length, 0); // kasir belum tutup
+  await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-03', status: 'TUTUP', ditutup: '2026-11-03 22:50:00' });
+  assert.match((await pada('22:51')).find((x) => x.groupId).text, /closing.*#bersih.*#stok.*#pulang/s);
   await store.append('Laporan Foto', { kode_event: 'JMB26-11', tanggal: '2026-11-03', tag: 'pulang', nama: 'Tiara', status: 'OK' });
-  assert.match((await pada('23:30')).find((x) => x.groupId).text, /Belum \*#pulang\*: Veri, Bima/);
+  assert.equal((await pada('23:30')).length, 0); // #pulang ditagih 1 jam setelah kasir tutup
+  assert.match((await pada('23:50')).find((x) => x.groupId).text, /Belum \*#pulang\*: Veri, Bima/);
 });

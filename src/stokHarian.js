@@ -14,7 +14,7 @@ import { parseBahan } from './parsers.js';
 import { cocokkan } from './katalog.js';
 import { BAHAN_DIBELI } from './bahan.js';
 import { tanggalLokal, waktuLokal, tambahHari, parseMoney, rupiah } from './util.js';
-import { waktuTutup, zonaKota, lokal } from './absensi.js';
+import { waktuTutup, zonaKota, lokal, saatClosing } from './absensi.js';
 
 const balas = (text) => [{ text }];
 
@@ -211,11 +211,6 @@ export async function perintahStok(ctx, pesan, event, cmd) {
 }
 
 // Tanggal closing sebuah sesi kasir dari kolom Ditutup ("2026-11-14 22:10:00"), cadangan: kolom Tanggal.
-function tanggalSesi(s) {
-  const m = String(s.ditutup || '').match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
-  if (m) return Number(m[2]) < 5 ? tambahHari(m[1], -1) : m[1];
-  return String(s.tanggal || '').slice(0, 10);
-}
 
 // Format stok dikirim ke grup tim setelah kasir ditutup, atau jam 23.00 kalau hari itu belum ada stok closing.
 // Format stok closing dikirim 15 MENIT SEBELUM JAM TUTUP (22.00 → 21.45) (kolom Jam Tutup event, default 22.00) supaya tim
@@ -233,20 +228,24 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
     const tutup = waktuTutup(e, tanggal);
     const siap = new Date(tutup.getTime() - STOK_SEBELUM_TUTUP * 60000);
     const sudahIsi = stokRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r));
-    const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase())
-      && tanggalSesi(s) === tanggal);
+    const closing = saatClosing(e, tanggal, sesiKasir);
+    const sudahClosing = sekarang >= closing.saat;
     const tSiap = `stokharian:${e.kode}:${tanggal}`;
     const tTagih = `stoktagih:${e.kode}:${tanggal}`;
     let pembuka = null;
-    if (!ctx.sesi.get(tSiap) && (sekarang >= siap || kasirTutup)) {
+    if (!ctx.sesi.get(tSiap) && (sekarang >= siap || sudahClosing)) {
       ctx.sesi.set(tSiap, { kirim: true });
       if (sudahIsi) continue;
-      pembuka = kasirTutup && sekarang < siap
-        ? '🧾 Kasir sudah tutup, saatnya hitung stok bahan baku.'
-        : `⏰ *${STOK_SEBELUM_TUTUP} menit lagi closing (${jamTampil(tutup, e)}).* Mulai siap-siap: bereskan dulu yang sudah tidak dipakai, lalu hitung stok bahan baku dan foto.`;
-    } else if (ctx.sesi.get(tSiap) && !ctx.sesi.get(tTagih) && !sudahIsi && (kasirTutup || sekarang >= tutup)) {
+      pembuka = sudahClosing && closing.kasir
+        ? '🧾 *Kasir sudah tutup*, saatnya hitung stok bahan baku, foto, lalu kirim.'
+        : `⏰ *${STOK_SEBELUM_TUTUP} menit lagi jam closing (${jamTampil(tutup, e)}).* Mulai siap-siap: bereskan dulu yang sudah tidak dipakai, lalu hitung stok bahan baku dan foto. Kirim setelah kasir tutup.`;
+      if (sudahClosing) ctx.sesi.set(tTagih, { kirim: true });
+    } else if (ctx.sesi.get(tSiap) && !ctx.sesi.get(tTagih) && sudahClosing) {
       ctx.sesi.set(tTagih, { kirim: true });
-      pembuka = '🌙 *Stok closing hari ini belum diisi.* Hitung, foto, lalu kirim dengan format di bawah.';
+      if (sudahIsi) continue;
+      pembuka = closing.kasir
+        ? '🧾 *Kasir sudah tutup.* Stok closing hari ini belum diisi: hitung, foto, lalu kirim dengan format di bawah.'
+        : '🌙 *Stok closing hari ini belum diisi.* Hitung, foto, lalu kirim dengan format di bawah.';
     }
     if (!pembuka) continue;
     let tugasHari = [];

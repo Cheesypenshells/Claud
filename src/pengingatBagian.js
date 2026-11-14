@@ -4,12 +4,12 @@
 //   siap    1 jam sebelum buka                                Kasir #depan · Pemanggang #grill · Plating #nampan
 //   buka    saat buka                                         Kasir #followers (buka)
 //   tagih   10 menit setelah buka                             yang belum mengirim laporan bagiannya
-//   tutup   setelah ⏹ Tutup kasir atau jam tutup event (default 22.00)                  Kasir #followers (tutup) · semua #bersih & #pulang
-//   pulang  23.30                                             yang belum #pulang
+//   tutup   setelah ⏹ Tutup kasir (cadangan 23.30 kalau kasir tidak dipakai)                  Kasir #followers (tutup) · semua #bersih & #pulang
+//   pulang  1 jam setelah closing (paling cepat 23.30)         yang belum #pulang
 
 import { STATUS } from './schema.js';
-import { tanggalLokal } from './util.js';
-import { jadwalHari, aturanHari, wajibAbsen, waktuTutup } from './absensi.js';
+import { jadwalHari, aturanHari, wajibAbsen, saatClosing } from './absensi.js';
+import { tanggalClosing } from './stokHarian.js';
 import { tugasHariIni, BAGIAN } from './tugasHarian.js';
 
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -25,7 +25,7 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
   if (!ctx.sesi) return keluar;
   const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
   const [events, grup, karyawan, laporan, sesiKasir, tim] = await Promise.all(['Event', 'Grup', 'Karyawan', 'Laporan Foto', 'Sesi Kasir', 'Tim Event'].map(baca));
-  const tanggal = tanggalLokal(sekarang);
+  const tanggal = tanggalClosing(sekarang); // lewat tengah malam (sebelum 05.00) masih hari kemarin
   const nomorDari = (nama) => { const k = karyawan.find((x) => sama(x.nama, nama) && x.nomor_wa); return k ? nomor62(k.nomor_wa) : null; };
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL' && x.status !== 'SELESAI')) {
     const tugas = await tugasHariIni(ctx, e, tanggal);
@@ -87,14 +87,13 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
       if (unik.length) keGrup(`❗ *Laporan bagian yang belum masuk:*\n${unik.map((b) => `• ${b.nama}: *#${b.tag}*`).join('\n')}`);
     }
     // 5) tutup: setelah kasir ditutup hari ini, atau 22.00
-    const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase()) && String(s.ditutup || '').slice(0, 10) === tanggal);
-    const tutupSaat = kasirTutup ? sekarang : waktuTutup(e, tanggal);
-    if (slot('tutup', tutupSaat)) {
+    const closing = saatClosing(e, tanggal, sesiKasir);
+    if (slot('tutup', closing.saat)) {
       for (const n of orang('Kasir')) pribadi(n, `📱 *${n}*, sebelum pulang: screenshot followers Instagram lagi dan kirim *#followers* (tutup).`);
       keGrup(`🧹 *Waktunya closing ${e.kode}:*\n• Kasir: *#followers* (tutup)\n• Semua: bersih-bersih, lalu foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih)\n• Hitung stok + foto: *#stok* (getok: oyster di cooler · plating & kasir: gudang + booth)\n• Ada bahan rusak/hilang? *#rusak* + foto\n• Tiap orang: *#pulang* sebelum pulang`);
     }
-    // 6) tagih #pulang (23.30)
-    if (slot('pulang', waktuWIB(tanggal, '23:30'))) {
+    // 6) tagih #pulang: 1 jam setelah closing (paling cepat 23.30)
+    if (slot('pulang', new Date(Math.max(closing.saat.getTime() + 60 * 60000, waktuWIB(tanggal, '23:30').getTime())))) {
       const wajib = tim.filter((o) => o.kode_event === e.kode && o.status !== STATUS.BATAL && o.status !== 'BERHENTI' && wajibAbsen(o)).map((o) => o.nama);
       const hadir = [...new Set(tugas.map((t) => t.nama))].filter((n) => wajib.some((w) => sama(w, n)));
       const belum = hadir.filter((n) => !sudah('pulang', n));

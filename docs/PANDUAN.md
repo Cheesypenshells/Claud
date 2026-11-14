@@ -476,7 +476,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 
 ## Stok bahan baku closing (setiap hari)
 
-- **15 menit sebelum jam tutup** (jam tutup 22.00 → **21.45**), bot mengirim **format stok closing** ke grup tim, supaya tim sempat membereskan yang sudah tidak dipakai dan menghitung lebih dulu. Kalau sampai **jam tutup / ⏹ Tutup kasir** belum ada yang mengisi, bot menagih sekali lagi.
+- **15 menit sebelum jam tutup** (jam tutup 22.00 → **21.45**), bot mengirim **format stok closing** ke grup tim, supaya tim sempat membereskan yang sudah tidak dipakai dan menghitung lebih dulu. Setelah kasir benar-benar **⏹ Tutup kasir** (saat pembeli sudah habis, jamnya tidak tentu), kalau stok belum diisi bot menagih sekali lagi. Kalau hari itu kasir tidak dipakai: tagihan cadangan jam tutup + 1,5 jam (**23.30**); kasir lupa ditutup: **01.00**.
 - Jam tutup per event: kolom **Jam Tutup** di tab Event, atau owner `#ubah jam tutup 23.00`. Kosong = **22.00**.
 - **Wajib pakai foto bukti**: foto stoknya, lalu kirim foto dengan caption `#stok ...`. Tanpa foto ditolak.
 - Dibagi per bagian & **lokasi**:
@@ -542,9 +542,9 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - **Kecepatan layanan**: target rata-rata tunggu (struk difoto → dipanggil) di bawah 7 menit per hari; hari yang lebih lambat −2 kelompok.
 - `#gajian` memotong **denda telat absen + denda di tab Denda** dari transfer.
 
-## Penilaian harian PIC (jam 22.00)
+## Penilaian harian PIC (setelah tutup kasir)
 
-- Setiap hari event jam 22.00 (atau lebih cepat setelah ⏹ Tutup kasir), bot mengirim penilaian ke **chat pribadi PIC** (nomor PIC belum dikenal: grup pengeluaran), satu per satu per orang. Pertanyaannya sesuai bagian tugas orang itu hari itu (kasir, plating, pemanggang, getok).
+- Setiap hari event **setelah ⏹ Tutup kasir** (cadangan 23.30 kalau kasir tidak dipakai), bot mengirim penilaian ke **chat pribadi PIC** (nomor PIC belum dikenal: grup pengeluaran), satu per satu per orang. Pertanyaannya sesuai bagian tugas orang itu hari itu (kasir, plating, pemanggang, getok).
 - Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (nilainya tidak ikut dikirim); balas `tidak` kalau tidak ada. `lewati` / `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
@@ -569,5 +569,5 @@ Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat
 - **Saat buka**: Kasir screenshot `#followers`.
 - **10 menit setelah buka**: yang belum mengirim laporan bagiannya ditagih satu per satu.
 - **15 menit sebelum jam tutup (21.45)**: format stok closing (`#stok` + foto).
-- **Setelah ⏹ Tutup kasir / jam tutup**: closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
-- **23.30**: yang belum `#pulang` ditagih.
+- **Setelah ⏹ Tutup kasir** (cadangan 23.30): closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
+- **1 jam setelah tutup kasir** (paling cepat 23.30): yang belum `#pulang` ditagih.

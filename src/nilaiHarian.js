@@ -10,6 +10,7 @@
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
 import { tanggalClosing } from './stokHarian.js';
+import { saatClosing } from './absensi.js';
 import { tambahCatatan } from './catatanHarian.js';
 
 const balas = (text) => [{ text }];
@@ -91,20 +92,17 @@ export async function mulaiNilaiHarian(ctx, event, tanggal, tujuan) {
   return [tujuan.nomor ? { nomor: tujuan.nomor, text: teks } : { groupId: tujuan.groupId, text: teks }];
 }
 
-// Jam 22.00 (atau setelah kasir ditutup) setiap hari event: kirim penilaian ke PIC, sekali per hari.
+// Setelah kasir ditutup (cadangan 23.30 kalau kasir tidak dipakai) setiap hari event: kirim penilaian ke PIC, sekali per hari.
 export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
   const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
   const [events, sesiKasir] = await Promise.all([baca('Event'), baca('Sesi Kasir')]);
   const tanggal = tanggalClosing(sekarang);
-  const jam = Number(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false }).slice(0, 2));
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL')) {
     const tanda = `nilaiharian-kirim:${e.kode}:${tanggal}`;
     if (ctx.sesi.get(tanda)) continue;
-    const kasirTutup = sesiKasir.some((s) => s.kode_event === e.kode && ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase())
-      && String(s.ditutup || '').slice(0, 10) >= tanggal);
-    if (!kasirTutup && !(jam >= 22 || jam < 5)) continue;
+    if (sekarang < saatClosing(e, tanggal, sesiKasir).saat) continue;
     const tujuan = await tujuanPic(ctx, e);
     if (!tujuan) continue;
     ctx.sesi.set(tanda, { kirim: true });

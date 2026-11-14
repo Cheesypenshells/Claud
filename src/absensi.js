@@ -95,6 +95,29 @@ export function waktuTutup(event, tanggal) {
   return new Date(jamKe(tanggal, menit, zona).getTime() + (menit < 5 * 60 ? 24 * 3600e3 : 0));
 }
 
+// Saat closing sebenarnya: kasir menekan ⏹ Tutup kasir (biasanya saat pembeli habis, jam 22.00 ke atas, tidak tentu).
+// Cadangan kalau tidak ada yang menutup kasir: jam tutup + 1,5 jam (22.00 → 23.30) bila kasir tidak dipakai hari itu,
+// atau jam tutup + 3 jam (01.00) bila kasir masih terbuka (lupa ditutup).
+// tanggal = tanggal closing (lewat tengah malam sebelum 05.00 masih ikut hari sebelumnya).
+const tglJamSesi = (v) => String(v || '').match(/(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+export function tanggalSesiKasir(s) {
+  const m = tglJamSesi(s.ditutup) || tglJamSesi(s.dibuka);
+  if (m) {
+    if (Number(m[2]) >= 5) return m[1];
+    const d = new Date(`${m[1]}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10);
+  }
+  return String(s.tanggal || '').slice(0, 10);
+}
+export function saatClosing(event, tanggal, sesiKasir = []) {
+  const tutup = waktuTutup(event, tanggal);
+  const sesi = sesiKasir.filter((s) => s.kode_event === event.kode && tanggalSesiKasir(s) === tanggal);
+  const masihBuka = sesi.some((s) => String(s.status).toUpperCase() === 'BUKA');
+  const ditutup = sesi.filter((s) => ['TUTUP', 'DITERUSKAN'].includes(String(s.status).toUpperCase()))
+    .map((s) => { const m = tglJamSesi(s.ditutup); return m ? new Date(`${m[1]}T${m[2].padStart(2, '0')}:${m[3]}:00+07:00`) : null; }).filter(Boolean);
+  if (ditutup.length && !masihBuka) return { saat: new Date(Math.max(...ditutup)), kasir: true };
+  return { saat: new Date(tutup.getTime() + (masihBuka ? 180 : 90) * 60000), kasir: false };
+}
+
 export function jadwalHari(event, tanggal, aturan = []) {
   const khusus = aturan.filter((a) => !a.nama).pop();
   const menitBuka = bacaJam(khusus?.buka) ?? bacaJam(event.jam_buka);
