@@ -532,3 +532,5 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - PIC ditanya **"ada kejadian atau PR hari ini?"** di akhir penilaian harian (dibagikan ke tim besok pagi; balas *tidak* kalau tidak ada).
 - Pesan **tugas jam 08.00** menampilkan **🛒 Perlu dibeli** (yang belum dibeli) dan **📌 Kejadian kemarin & PR**. Tab **Catatan Harian**. Hanya teks, tanpa harga.
 - Kejadian dengan foto (oyster bau, alat rusak, komplain) tetap bisa lewat `#temuan` + foto.
+
+- **PIC tidak perlu absen** (datang maupun `#pulang`): tidak diingatkan, tidak didenda, tidak tercantum "belum absen". Kalau PIC mengirim foto absen, bot hanya membalas bahwa PIC tidak perlu absen.

@@ -65,7 +65,7 @@ test('absensi foto: pengumuman gaya, absen tepat waktu / telat dengan denda, tol
 
   // 10.00: pengingat yang belum absen
   const ingat = await tugasAbsensi(ctx, jam('10:00'));
-  assert.match(ingat[0].text, /Batas absen 10:00 WIB sudah lewat.*Belum absen: \*Budi, Tiar, Joko\*/s);
+  assert.match(ingat[0].text, /Batas absen 10:00 WIB sudah lewat.*Belum absen: \*Tiar, Joko\*/s);
 
   // telat 17 menit -> 25rb
   const idTiar = `a${n + 1}`;
@@ -80,7 +80,7 @@ test('absensi foto: pengumuman gaya, absen tepat waktu / telat dengan denda, tol
   assert.match(await kirim(G_TIM, OWNER, 'bebas denda izin ban bocor', jam('11:15'), { kutipan: { id: idTiar2, teks: 'absen' } }), /Denda absen \*Tiar\* 2026-11-03 dihapus/);
   // absen manual oleh PIC: Joko datang 10.40 -> 40 menit -> 50rb
   assert.match(await kirim(G_TIM, PIC, '#absen Joko 10.40', jam('11:20')), /Absen manual \*Joko\* jam 10.40 WIB.*Telat 40 menit → denda \*Rp 50.000\*/s);
-  assert.match(await kirim(G_TIM, PIC, '#absen', jam('11:30')), /✅ Dena 09:50 WIB.*✅ Tiar 11:10 WIB.*✅ Joko 10:40 WIB – telat 40 mnt.*Belum absen: \*Budi\*/s);
+  assert.match(await kirim(G_TIM, PIC, '#absen', jam('11:30')), /✅ Dena 09:50 WIB.*✅ Tiar 11:10 WIB.*✅ Joko 10:40 WIB – telat 40 mnt.*Semua sudah absen/s);
   assert.match(await kirim(G_KELUAR, OWNER, '#absen denda', jam('11:31')), /Dena: 1 hari, telat 0× → \*Rp 0\*.*Tiar: 1 hari, telat 1× → \*Rp 0\*.*Joko: 1 hari, telat 1× → \*Rp 50.000\*.*Total denda: Rp 50.000/s);
   // obrolan yang menyebut absen tidak dibalas
   assert.equal(await kirim(G_TIM, DENA, 'nanti jangan lupa absen ya teman teman', jam('11:40')), '');
@@ -144,4 +144,10 @@ test('izin, dispensasi & jadwal khusus dari owner', async () => {
   assert.match(await kirim(G_KELUAR, OWNER, '#jadwal', pada('2026-11-07', '20:02')), /2026-11-08 SEMUA:\s+datang 07:00.*2026-11-08 Budi: dispensasi s\/d 09:00/s);
   assert.match(await kirim(G_KELUAR, OWNER, '#jadwal batal minggu', pada('2026-11-07', '20:03')), /2026-11-08 kembali normal: buka 11:00/);
   assert.match(await kirim(G_KELUAR, OWNER, '#izin batal Budi minggu', pada('2026-11-07', '20:04')), /Izin\/dispensasi \*Budi\* 2026-11-08 dibatalkan/);
+});
+
+test('PIC tidak perlu absen: tidak diingatkan, tidak tercantum "belum absen", foto absen PIC tidak dicatat', async () => {
+  const { wajibAbsen } = await import('../src/absensi.js');
+  assert.equal(wajibAbsen({ nama: 'Budi', peran: 'PIC' }), false);
+  assert.equal(wajibAbsen({ nama: 'Dena', peran: 'Tetap' }), true);
 });

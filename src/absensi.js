@@ -144,6 +144,9 @@ export function teksPengumuman(event, tanggal, aturan = []) {
   ].filter((b) => b !== null).join('\n');
 }
 
+// PIC tidak perlu absen (datang & pulang): tidak diingatkan, tidak didenda, tidak dihitung belum absen.
+export const wajibAbsen = (o) => o.peran !== 'PIC';
+
 export async function timEvent(ctx, kode) {
   return (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === kode && o.status !== STATUS.BATAL && o.status !== 'BERHENTI');
 }
@@ -185,7 +188,7 @@ export async function tugasAbsensi(ctx, sekarang = new Date()) {
     if (!st.batas && sekarang >= j.batas && sekarang < j.buka) {
       st.batas = true;
       const sudah = await absenHari(ctx, ev.kode, tanggal);
-      const belum = (await timEvent(ctx, ev.kode)).filter((o) => !sudah.some((a) => sama(a.nama, o.nama)))
+      const belum = (await timEvent(ctx, ev.kode)).filter(wajibAbsen).filter((o) => !sudah.some((a) => sama(a.nama, o.nama)))
         .filter((o) => { const b = batasOrang(j, aturan, o.nama, tanggal); return !b.bebas && b.batas <= sekarang; });
       if (belum.length) {
         for (const g of grupTim) {
@@ -240,6 +243,7 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
 
   const orang = await namaDariNomor(ctx, pesan.senderId, tim);
   if (!orang) return '🤔 Nomor kamu belum dikenal bot. Balas *saya [nama kamu]* dulu (contoh: saya Dena), lalu kirim ulang foto absen.';
+  if (orang.peran === 'PIC') return `👌 *${orang.nama}*, PIC tidak perlu absen. Terima kasih!`;
   if (pesan.diteruskan) return `❌ Foto terusan (forward) tidak diterima, *${orang.nama}*. Ambil selfie baru dengan gaya ${gaya} dan kirim langsung dari kamera.`;
   const sudah = (await absenHari(ctx, event.kode, tanggal)).find((a) => sama(a.nama, orang.nama));
   if (sudah) return `👌 *${orang.nama}* sudah absen hari ini jam ${sudah.jam}.`;
@@ -313,7 +317,7 @@ export async function perintahAbsen(ctx, pesan, event, argumen = [], { isOwner =
   const aturan = await aturanHari(ctx, event.kode, tanggal);
   const j = jadwalHari(event, tanggal, aturan);
   const hari = semua.filter((a) => a.tanggal === tanggal);
-  const belum = tim.filter((o) => !hari.some((a) => sama(a.nama, o.nama)));
+  const belum = tim.filter(wajibAbsen).filter((o) => !hari.some((a) => sama(a.nama, o.nama)));
   return [
     `📸 *Absen ${event.kode} – ${tanggal}*`,
     `Buka ${jamTeks(j.buka, zona)} · batas absen ${jamTeks(j.batas, zona)} · gaya: ${gayaHari(event.kode, tanggal)}`,

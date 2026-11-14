@@ -16,7 +16,7 @@ import { pjPerTag, pembantuPerTag } from './jobdesk.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
-import { zonaKota, lokal, jadwalHari, aturanHari, timEvent, namaDariNomor } from './absensi.js';
+import { zonaKota, lokal, jadwalHari, aturanHari, timEvent, namaDariNomor, wajibAbsen } from './absensi.js';
 
 const T = { IN: 'loadingin', HARIAN: 'harian', OUT: 'loadingout' };
 const NAMA_TAHAP = { loadingin: 'Loading in', harian: 'Laporan harian', loadingout: 'Loading out' };
@@ -153,8 +153,10 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
     }
     const milik = hari.filter((r) => r.tag === b.tag);
     if (b.orang) {
-      const belum = tim.filter((o) => !milik.some((r) => sama(r.nama, o.nama)));
-      baris.push(`${belum.length ? '❌' : '✅'} ${b.label}: ${milik.length}/${tim.length}${belum.length ? ` (belum: ${belum.map((o) => o.nama).join(', ')})` : ''}`);
+      const wajib = tim.filter(wajibAbsen); // PIC tidak perlu absen pulang
+      const belum = wajib.filter((o) => !milik.some((r) => sama(r.nama, o.nama)));
+      const sudahWajib = wajib.filter((o) => milik.some((r) => sama(r.nama, o.nama))).length;
+      baris.push(`${belum.length ? '❌' : '✅'} ${b.label}: ${sudahWajib}/${wajib.length}${belum.length ? ` (belum: ${belum.map((o) => o.nama).join(', ')})` : ''}`);
       continue;
     }
     if (!milik.length) {
