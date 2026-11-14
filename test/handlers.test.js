@@ -1266,19 +1266,19 @@ test('stok closing harian: format dari bot, berkurang dihitung dari stok awal/ke
   assert.match(format, /Stok closing JMB26-11.*2 Nov.*#stok\n.*Mozzarella = \.\.\. pack/s);
   assert.doesNotMatch(format, /Rp/); // tanpa harga di grup tim
   // closing hari 1 (lewat tengah malam = closing tgl 2)
-  const h1 = await kirim(G_TIM, KARYAWAN, '#stok\nMozzarella = 14 pack\nBumbu Garlic = 8 pack', w('03', '00:30'));
-  assert.match(h1, /2 Nov tercatat.*Mozzarella: \*14 pack\* \(stok awal 20\) → berkurang \*6 pack\*.*Bumbu Garlic: \*8 pack\* \(stok awal 10\) → berkurang \*2 pack\*/s);
+  const h1 = await kirim(G_TIM, KARYAWAN, '#stok\nMozzarella = 14 pack\nBumbu Garlic = 8 pack', { ...w('03', '00:30'), adaFoto: true });
+  assert.match(h1, /2 Nov tercatat.*foto bukti ✅.*Mozzarella: Booth \*14 pack\* \(stok awal 20\) → berkurang \*6 pack\* · PJ: Joko.*Bumbu Garlic: Booth \*8 pack\* \(stok awal 10\) → berkurang \*2 pack\*/s);
   // hari 2: restock 10, closing 15 -> berkurang 14 + 10 - 15 = 9
   await kirim(G_TIM, KARYAWAN, '#restock mozzarella 10 pack', w('03', '15:00'));
-  const h2 = await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 15 pack', w('03', '22:10'));
-  assert.match(h2, /Mozzarella: \*15 pack\* \(kemarin 14 \+ restock 10\) → berkurang \*9 pack\*/);
+  const h2 = await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 15 pack', { ...w('03', '22:10'), adaFoto: true });
+  assert.match(h2, /Mozzarella: Booth \*15 pack\* \(kemarin 14 \+ restock 10\) → berkurang \*9 pack\*/);
   assert.match(h2, /Belum diisi:.*Bumbu Garlic/);
   // koreksi: kirim ulang hari yang sama menggantikan
-  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 16 pack', w('03', '22:20'));
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 16 pack', { ...w('03', '22:20'), adaFoto: true });
   const aktif = (await store.all('Stok Harian')).filter((r) => r.status !== 'BATAL' && r.bahan === 'Mozzarella' && r.tanggal === '2026-11-03');
   assert.deepEqual(aktif.map((r) => [r.jumlah, r.terpakai]), [[16, 8]]);
   // stok naik -> peringatan
-  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nbumbu garlic 9 pack', w('04', '22:00')), /naik 1/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nbumbu garlic 9 pack', { ...w('04', '22:00'), adaFoto: true }), /naik 1/);
   // pengingat otomatis jam 23.00 kalau belum diisi
   const { tugasStokHarian } = await import('../src/stokHarian.js');
   assert.equal((await tugasStokHarian(ctx, new Date('2026-11-05T22:00:00+07:00'))).length, 0);
@@ -1297,7 +1297,7 @@ test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan
   await store.append('Karyawan', { nama: 'Andi', nomor_wa: KARYAWAN });
   const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
   await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 20 pack\nbumbu garlic 10 pack', w('02', '08:00'));
-  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack\nbumbu garlic 8 pack', w('02', '22:00'));
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack\nbumbu garlic 8 pack', { ...w('02', '22:00'), adaFoto: true });
   // di grup tim ditolak (supaya dadakan), karyawan biasa ditolak
   assert.match(await kirim(G_TIM, OWNER, '#sidak', w('03', '08:00')), /chat pribadi ke bot/);
   assert.match(await kirim(G_KELUAR, KARYAWAN, '#sidak', w('03', '08:00')), /hanya oleh owner atau PIC/);
@@ -1306,7 +1306,7 @@ test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan
   const hasil = await kirim(G_KELUAR, OWNER, '#sidak\nmozzarella 17 pack\nbumbu garlic 8 pack', w('03', '08:30'));
   assert.match(hasil, /❌ Mozzarella: sidak \*17 pack\*, laporan closing 2 Nov oleh Andi: 14 \+ restock 5 = 19 → selisih \*-2 pack\*/);
   assert.match(hasil, /✅ Bumbu Garlic: sidak \*8 pack\* = sesuai/);
-  assert.match(hasil, /minus poin KPI untuk pelapor closing \(Andi\)/);
+  assert.match(hasil, /minus poin KPI untuk penanggung jawab bahan \(Andi\)/);
   const minus = await kirim(G_KELUAR, OWNER, 'minus 5', w('03', '08:31'));
   assert.match(minus, /-5 poin KPI\* untuk Andi.*Mozzarella -2 pack/s);
   const p = (await store.all('Poin KPI')).pop();
@@ -1315,6 +1315,40 @@ test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan
   const jumlah = (await store.all('Poin KPI')).length;
   await kirim(G_KELUAR, OWNER, 'minus 5', w('03', '08:32'));
   assert.equal((await store.all('Poin KPI')).length, jumlah); // sudah selesai, tidak dobel
+});
+
+test('bahan rusak: #rusak wajib foto, PJ dari tugas harian, owner putuskan ganti rugi → Denda → #gajian', async () => {
+  const { store, kirim } = setup();
+  const { isiHargaAwal } = await import('../src/main.js');
+  await isiHargaAwal(store);
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Andi`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  await store.append('Karyawan', { nama: 'Andi', nomor_wa: KARYAWAN });
+  for (const [nama, bagian] of [['Andi', 'Getok'], ['Bima', 'Getok'], ['Tiara', 'Kasir']]) {
+    await store.append('Tugas Harian', { tanggal: '2026-11-02', kode_event: 'JMB26-11', nama, bagian, status: 'OK' });
+  }
+  const w = { waktu: new Date('2026-11-02T21:00:00+07:00') };
+  assert.match(await kirim(G_TIM, KARYAWAN, '#rusak oyster 2 kg, busuk es habis', w), /wajib pakai \*foto bukti\*/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#rusak oyster 2 kg', { ...w, adaFoto: true }), /penyebab/);
+  const lapor = await kirim(G_TIM, KARYAWAN, '#rusak oyster 2 kg, busuk karena es cooler habis', { ...w, adaFoto: true });
+  assert.match(lapor, /Bahan rusak dicatat.*Oyster 2 kg\* \(Cooler\) – PJ: Andi, Bima _\(RS1\)_/s);
+  assert.match(lapor, /Keputusan owner.*ganti rugi 150rb/s); // diteruskan ke grup pengeluaran
+  assert.doesNotMatch(lapor.split('Keputusan owner')[0], /Rp/); // tanpa harga di grup tim
+  const r = (await store.all('Bahan Rusak'))[0];
+  assert.equal(r.penanggung_jawab, 'Andi, Bima'); assert.equal(r.keputusan, 'MENUNGGU'); assert.equal(r.lokasi, 'Cooler');
+  // karyawan tidak boleh memutuskan; owner balas pesan bot → dibagi rata ke PJ
+  assert.match(await kirim(G_KELUAR, KARYAWAN, '', { ...w, text: 'ganti rugi 100rb', kutipan: { teks: lapor } }), /hanya diputuskan owner/);
+  const putus = await kirim(G_KELUAR, OWNER, '', { ...w, text: 'ganti rugi 100rb', kutipan: { teks: lapor } });
+  assert.match(putus, /Andi Rp 50\.000, Bima Rp 50\.000 \(dibagi rata dari Rp 100\.000\)/);
+  const denda = await store.all('Denda');
+  assert.deepEqual(denda.map((d) => [d.nama, d.jumlah, d.jenis]), [['Andi', 50000, 'Ganti rugi bahan rusak'], ['Bima', 50000, 'Ganti rugi bahan rusak']]);
+  assert.equal((await store.all('Bahan Rusak'))[0].keputusan, 'GANTI RUGI');
+  assert.match(await kirim(G_KELUAR, OWNER, '#gantirugi RS1 50rb', w), /sudah diputuskan/);
+  // laporan kedua: hanya satu orang / tanpa ganti rugi
+  await kirim(G_TIM, KARYAWAN, '#rusak mozzarella 2 pack gudang, kemasan bocor', { ...w, adaFoto: true });
+  assert.match(await kirim(G_KELUAR, OWNER, '#gantirugi RS2 30rb Tiara', w), /Tiara Rp 30\.000/);
+  await kirim(G_TIM, KARYAWAN, '#rusak mozzarella 1 pack, jatuh', { ...w, adaFoto: true });
+  assert.match(await kirim(G_KELUAR, OWNER, 'tidak RS3', w), /tanpa ganti rugi/);
 });
 
 test('stok closing nampan freezer: 3 jenis, total dibanding minimal 7, ikut sidak', async () => {
@@ -1328,11 +1362,11 @@ test('stok closing nampan freezer: 3 jenis, total dibanding minimal 7, ikut sida
   await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
   const w = (tgl, jam) => ({ waktu: new Date(`2026-11-${tgl}T${jam}:00+07:00`) });
   assert.match(await kirim(G_TIM, KARYAWAN, '#stok', w('02', '22:00')), /minimal 7.*Nampan Garlic = \.\.\. nampan\nNampan Garlic Mozza = \.\.\. nampan\nNampan Garlic Mozza Topping = \.\.\. nampan/s);
-  const kurang = await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 3 nampan\nNampan Garlic Mozza = 2 nampan\nNampan Garlic Mozza Topping = 1 nampan', w('02', '22:05'));
+  const kurang = await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 3 nampan\nNampan Garlic Mozza = 2 nampan\nNampan Garlic Mozza Topping = 1 nampan', { ...w('02', '22:05'), adaFoto: true });
   assert.match(kurang, /Nampan siap bakar.*Nampan Garlic: \*3\*.*Total nampan di freezer: \*6\* ⚠️ \*kurang 1 dari minimal 7\*/s);
   assert.doesNotMatch(kurang, /Bumbu Garlic: \*3/); // nampan tidak tertukar dengan bahan baku
   // koreksi sebagian: total ikut nampan yang sudah dilapor hari ini
-  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 4 nampan', w('02', '22:10')), /Total nampan di freezer: \*7\* ✅/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#stok\nNampan Garlic = 4 nampan', { ...w('02', '22:10'), adaFoto: true }), /Total nampan di freezer: \*7\* ✅/);
   // sidak besok pagi: nampan dibandingkan dengan closing
   assert.match(await kirim(G_KELUAR, OWNER, '#sidak\nNampan Garlic = 2 nampan\nNampan Garlic Mozza = 2 nampan', w('03', '08:00')),
     /❌ Nampan Garlic: sidak \*2 nampan\*, laporan closing 2 Nov.*: 4 = 4 → selisih \*-2 nampan\*.*✅ Nampan Garlic Mozza/s);
@@ -1358,7 +1392,7 @@ test('tugas harian jam 08.00 di grup tim, #pemanggang & #tukar oleh owner/PIC, d
   assert.match(await kirim(G_TIM, OWNER, '#tukar Bima Veri', w('03', '09:00')), /Bima\* ⇄ \*Veri\*.*PEMANGGANG\*: \*Bima\*/s);
   // denda selisih stok dibagi rata ke senior, terpotong di #gajian
   await kirim(G_TIM, KARYAWAN, '#keluar\nmozzarella 20 pack', w('02', '08:00'));
-  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack', w('03', '22:00'));
+  await kirim(G_TIM, KARYAWAN, '#stok\nmozzarella 14 pack', { ...w('03', '22:00'), adaFoto: true });
   await kirim(G_KELUAR, OWNER, '#sidak\nmozzarella 10 pack', w('04', '08:00'));
   assert.match(await kirim(G_KELUAR, PIC, 'denda 400rb rata', w('04', '08:01')), /hanya diputuskan owner/);
   const d = await kirim(G_KELUAR, OWNER, 'denda 400rb rata', w('04', '08:02'));

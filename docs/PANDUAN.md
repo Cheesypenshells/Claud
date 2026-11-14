@@ -476,23 +476,47 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 ## Stok bahan baku closing (setiap hari)
 
 - Setelah **⏹ Tutup kasir** (atau jam 23.00 kalau belum ada yang mengisi), bot mengirim **format stok closing** ke grup tim berisi bahan event itu.
-- Tim menyalin format, mengganti titik-titik dengan jumlahnya, lalu mengirim:
-  ```
-  #stok
-  Mozzarella = 14 pack
-  Bumbu Garlic = 8 pack
-  ```
+- **Wajib pakai foto bukti**: foto stoknya, lalu kirim foto dengan caption `#stok ...`. Tanpa foto ditolak.
+- Dibagi per bagian & **lokasi**:
+  - 🦪 **Tim getok** – oyster sisa di **cooler**:
+    ```
+    #stok
+    [Cooler]
+    Oyster = 6 kg
+    ```
+  - 🍽️ **Plating & kasir** – bahan baku sisa di **gudang** dan di **booth**, plus nampan di freezer:
+    ```
+    #stok
+    [Gudang]
+    Mozzarella = 10 pack
+    [Booth]
+    Mozzarella = 4 pack
+    Nampan Garlic = 3 nampan
+    ```
+  - Lokasi juga boleh ditulis di baris: `mozzarella 4 pack booth`. Tanpa lokasi: oyster = Cooler, lainnya = Booth.
+- **Penanggung jawab bahan** (tercatat di kolom *Penanggung Jawab* tab Stok Harian, dari tugas harian hari itu): **oyster = tim getok**, **bahan lain & nampan = plating + kasir**. Merekalah yang ditanya minus poin / denda saat sidak, dan yang menanggung ganti rugi kalau bahan rusak.
 - Bot menghitung **berkurang berapa**: stok closing kemarin (hari pertama: stok awal `#keluar`) + restock hari itu − stok closing sekarang. Kalau stok malah naik, bot memberi peringatan (mungkin restock belum dicatat atau salah hitung).
-- Boleh dikirim sebagian; kirim ulang di hari yang sama = koreksi. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
+- Boleh dikirim sebagian; kirim ulang bahan + lokasi yang sama di hari yang sama = koreksi. Berkurang dihitung dari **total semua lokasi**. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
 - **Nampan siap bakar di freezer** (hasil tim plating) ikut dihitung, 3 jenis: **Nampan Garlic** (oyster + bumbu garlic), **Nampan Garlic Mozza** (garlic + keju mozzarella), **Nampan Garlic Mozza Topping** (garlic + mozzarella + topping). Bot menjumlahkan semua jenis dan memberi peringatan kalau **kurang dari 7 nampan** (ubah di Pengaturan kunci `min_nampan`). Nampan juga ikut `#sidak`.
 - Hanya jumlah, **tanpa harga**. Tersimpan di tab **Stok Harian**. Di hari terakhir, sisa tetap dicatat owner/PIC sebagai `#sisa` di grup pengeluaran.
 
+
+### Bahan baku rusak / hilang (`#rusak`)
+
+- Siapa saja di grup tim, **wajib dengan foto**: `#rusak oyster 2 kg, busuk karena es cooler habis` · `#rusak mozzarella 2 pack gudang, kemasan bocor`.
+- Bot mencatat di tab **Bahan Rusak** dengan **penanggung jawab** bahan hari itu (oyster → getok, lainnya → plating + kasir) dan meneruskan ke **grup pengeluaran**.
+- **Owner** memutuskan (balas pesan bot di grup pengeluaran, atau ketik dengan kodenya):
+  - `ganti rugi 150rb` → dibagi rata ke penanggung jawab
+  - `ganti rugi 150rb Bima` → hanya Bima
+  - `tidak` → tanpa ganti rugi
+  - atau `#gantirugi RS3 150rb [Nama]` / `tidak RS3`
+- Ganti rugi masuk tab **Denda** (jenis *Ganti rugi bahan rusak*) dan **dipotong di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
 
 ### Sidak stok dadakan (PIC / owner)
 
 - Lewat **chat pribadi ke bot** (`#sidak` atau `#sidak SMR26-11`) atau di **grup pengeluaran**. Di grup tim ditolak supaya tetap dadakan.
 - `#sidak` saja: bot mengirim format. Isi hitungan stok saat itu, lalu kirim. Bot membandingkan dengan **laporan closing terakhir + restock setelahnya**, menandai ✅ sesuai / ❌ selisih per bahan.
-- Kalau ada selisih, bot bertanya minus poin untuk pelapor closing: balas `minus 5` (untuk pelapor), `minus 5 Bima` (orang tertentu), atau `tidak`. Poin masuk **Poin KPI**; hasil sidak tersimpan di tab **Sidak Stok**. Tim tidak diberi tahu.
+- Kalau ada selisih, bot bertanya minus poin untuk **penanggung jawab bahan**: balas `minus 5` (untuk penanggung jawab), `minus 5 Bima` (orang tertentu), atau `tidak`. Poin masuk **Poin KPI**; hasil sidak tersimpan di tab **Sidak Stok**. Tim tidak diberi tahu.
 - Paling tepat dilakukan **sebelum booth buka** atau **setelah tim melapor stok closing** (saat jualan, stok memang sedang berkurang).
 
 ### Foto struk & foto dibakar di Drive

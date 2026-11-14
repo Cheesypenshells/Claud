@@ -66,34 +66,79 @@ export function bahanEvent(kode, bahanRows, hargaBahan) {
   return daftar.length ? daftar : hargaBahan;
 }
 
-export function teksFormatStok(event, daftar, tanggal) {
+// Lokasi stok: oyster di cooler (tim getok); bahan baku & nampan di gudang / booth (tim plating & kasir).
+export const LOKASI = ['Gudang', 'Booth', 'Cooler'];
+const lokasiBawaan = (bahan) => (BAHAN_DIBELI.includes(bahan) ? 'Cooler' : 'Booth');
+const tugasOyster = (bahan) => BAHAN_DIBELI.includes(bahan);
+
+// Penanggung jawab bahan hari itu: oyster = tim getok; bahan lain & nampan = plating + kasir. Cadangan: pelapor.
+export function penjagaBahan(bahan, tugasHari, pelapor) {
+  const bagian = tugasOyster(bahan) ? ['Getok'] : ['Plating', 'Kasir'];
+  const nama = [...new Set(tugasHari.filter((t) => bagian.includes(t.bagian)).map((t) => t.nama))];
+  return nama.length ? nama : [pelapor].filter(Boolean);
+}
+
+// Baca isi #stok: judul [Gudang] / [Booth] / [Cooler] (atau kata gudang/booth di baris) menentukan lokasi.
+export function bacaIsiStok(teks, hargaBahan) {
+  const items = [];
+  let lokasi = null;
+  for (const baris of String(teks).split('\n')) {
+    const judul = baris.match(/^\s*\[?\s*(gudang|booth|cooler|freezer)\s*\]?\s*:?\s*$/i);
+    if (judul) { lokasi = /freezer/i.test(judul[1]) ? 'Booth' : judul[1][0].toUpperCase() + judul[1].slice(1).toLowerCase(); continue; }
+    const diBaris = (baris.match(/\b(gudang|booth|cooler)\b/i) || [])[1];
+    const bersih = baris.replace(/\b(gudang|booth|cooler)\b/ig, '');
+    const { nampan, sisa } = pisahNampan(bersih);
+    const bahan = [...parseBahan(sisa, hargaBahan, cocokkan), ...nampan];
+    for (const it of bahan) {
+      const lok = diBaris ? diBaris[0].toUpperCase() + diBaris.slice(1).toLowerCase() : lokasi || (adalahNampan(it.bahan) ? 'Booth' : lokasiBawaan(it.bahan));
+      items.push({ ...it, lokasi: lok });
+    }
+  }
+  return items;
+}
+
+const baris = (b) => `${b.bahan} = ... ${b.satuan || ''}`.trim();
+export function teksFormatStok(event, daftar, tanggal, { getok = [], plating = [] } = {}) {
+  const oyster = daftar.filter((b) => tugasOyster(b.bahan));
+  const lain = daftar.filter((b) => !tugasOyster(b.bahan));
   return [
     `📦 *Stok closing ${event.kode}* – ${tglPendek(tanggal)}`,
-    'Hitung sisa bahan baku setelah tutup. *Salin pesan di bawah, ganti titik-titik dengan jumlahnya, lalu kirim.*',
+    'Hitung sisa bahan baku, *foto stoknya*, lalu kirim foto dengan caption pesan di bawah (ganti titik-titik dengan jumlahnya).',
+    '_Penanggung jawab bahan hari ini menanggung kalau ada bahan rusak / hilang._',
     '',
-    '#stok',
-    ...daftar.map((b) => `${b.bahan} = ... ${b.satuan || ''}`.trim()),
-    `(nampan di freezer, minimal ${MIN_NAMPAN})`,
-    ...NAMPAN.map((n) => `${n.bahan} = ... nampan`),
+    `🦪 *Tim getok${getok.length ? ` (${getok.join(', ')})` : ''}* – oyster sisa:`,
+    '#stok', '[Cooler]', ...(oyster.length ? oyster : [{ bahan: 'Oyster', satuan: 'kg' }]).map(baris),
+    '',
+    `🍽️ *Plating & kasir${plating.length ? ` (${plating.join(', ')})` : ''}* – bahan baku di gudang & booth:`,
+    '#stok', '[Gudang]', ...lain.map(baris), '[Booth]', ...lain.map(baris),
+    `(nampan di freezer, minimal ${MIN_NAMPAN})`, ...NAMPAN.map((n) => `${n.bahan} = ... nampan`),
   ].join('\n');
 }
 
-// Hitung berkurang per bahan untuk tanggal closing `tanggal`.
+// Total stok per bahan pada satu tanggal (semua lokasi).
+function totalTanggal(stokRows, kode, bahan, tanggal) {
+  const rows = stokRows.filter((r) => r.kode_event === kode && r.bahan === bahan && aktif(r) && String(r.tanggal) === tanggal);
+  return rows.length ? rows.reduce((t, r) => t + num(r.jumlah), 0) : null;
+}
+
+// Hitung berkurang per bahan (total semua lokasi) untuk tanggal closing `tanggal`.
 export function hitungStok({ kode, mulai }, tanggal, item, stokRows, bahanRows) {
   const milikBahan = (r) => r.kode_event === kode && r.bahan === item.bahan && aktif(r);
-  const kemarin = stokRows.filter((r) => milikBahan(r) && String(r.tanggal) < tanggal).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).pop();
+  const tglKemarin = [...new Set(stokRows.filter((r) => milikBahan(r) && String(r.tanggal) < tanggal).map((r) => String(r.tanggal)))].sort().pop();
+  const kemarin = tglKemarin ? totalTanggal(stokRows, kode, item.bahan, tglKemarin) : null;
   const gerak = bahanRows.filter(milikBahan);
-  let sebelumnya = null;
+  const total = item.total ?? item.jumlah;
+  if (adalahNampan(item.bahan)) return { ...item, total, sebelumnya: kemarin, restock: 0, terpakai: null, dariKemarin: kemarin !== null, nampan: true };
+  let sebelumnya = kemarin;
   let dari = mulai;
-  if (adalahNampan(item.bahan)) return { ...item, sebelumnya: kemarin ? num(kemarin.jumlah) : null, restock: 0, terpakai: null, dariKemarin: Boolean(kemarin), nampan: true };
-  if (kemarin) { sebelumnya = num(kemarin.jumlah); dari = tambahHari(String(kemarin.tanggal), 1); }
+  if (kemarin !== null) dari = tambahHari(tglKemarin, 1);
   else {
     const awal = gerak.filter((r) => r.gerak === 'Keluar');
-    if (awal.length) sebelumnya = awal.reduce((s, r) => s + num(r.jumlah), 0);
+    if (awal.length) sebelumnya = awal.reduce((t, r) => t + num(r.jumlah), 0);
   }
-  const restock = gerak.filter((r) => r.gerak === 'Restock' && String(r.tanggal) >= dari && String(r.tanggal) <= tanggal).reduce((s, r) => s + num(r.jumlah), 0);
-  const terpakai = sebelumnya === null ? null : sebelumnya + restock - item.jumlah;
-  return { ...item, sebelumnya, restock, terpakai, dariKemarin: Boolean(kemarin) };
+  const restock = gerak.filter((r) => r.gerak === 'Restock' && String(r.tanggal) >= dari && String(r.tanggal) <= tanggal).reduce((t, r) => t + num(r.jumlah), 0);
+  const terpakai = sebelumnya === null ? null : sebelumnya + restock - total;
+  return { ...item, total, sebelumnya, restock, terpakai, dariKemarin: kemarin !== null };
 }
 
 export async function perintahStok(ctx, pesan, event, cmd) {
@@ -102,46 +147,63 @@ export async function perintahStok(ctx, pesan, event, cmd) {
   const bahanRows = await ctx.store.all('Bahan Event');
   const tanggal = tanggalClosing(pesan.waktu);
   const daftar = bahanEvent(event.kode, bahanRows, hargaBahan);
+  let tugasHari = [];
+  try { tugasHari = (await ctx.store.all('Tugas Harian')).filter((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && aktif(r)); } catch { tugasHari = []; }
+  const nama = (bg) => [...new Set(tugasHari.filter((t) => bg.includes(t.bagian)).map((t) => t.nama))];
   const teks = [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n');
-  const { nampan, sisa: teksBahan } = pisahNampan(teks);
-  const items = [...parseBahan(teksBahan, hargaBahan, cocokkan), ...nampan];
-  if (!items.length) return balas(teksFormatStok(event, daftar, tanggal));
+  const items = bacaIsiStok(teks, hargaBahan);
+  if (!items.length) return balas(teksFormatStok(event, daftar, tanggal, { getok: nama(['Getok']), plating: nama(['Plating', 'Kasir']) }));
+  if (!pesan.adaFoto) return balas('📷 *Laporan stok wajib pakai foto bukti.* Foto stoknya (cooler / gudang / booth), lalu kirim foto itu dengan caption *#stok ...* yang sama.');
 
   let stokRows = [];
   try { stokRows = await ctx.store.all('Stok Harian'); } catch { stokRows = []; }
-  const hasil = items.map((it) => hitungStok(event, tanggal, it, stokRows, bahanRows));
   const pengirim = pesan.senderName ? `${pesan.senderName} (${pesan.senderId})` : pesan.senderId;
-  for (const h of hasil) {
-    // Kirim ulang di hari yang sama = koreksi: catatan lama bahan itu dibatalkan.
-    await ctx.store.updateWhere('Stok Harian', (r) => r.kode_event === event.kode && r.bahan === h.bahan && String(r.tanggal) === tanggal && aktif(r), { status: STATUS.BATAL });
-    await ctx.store.append('Stok Harian', {
-      tanggal, kode_event: event.kode, bahan: h.bahan, jumlah: h.jumlah, satuan: h.satuan,
-      sebelumnya: h.sebelumnya ?? '', restock: h.restock || '', terpakai: h.terpakai ?? '',
-      pengirim, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
-    });
+  // Kirim ulang bahan + lokasi yang sama di hari yang sama = koreksi. Hitung dulu di memori, lalu simpan.
+  const samaBaris = (r, it) => r.kode_event === event.kode && r.bahan === it.bahan && (r.lokasi || 'Booth') === it.lokasi && String(r.tanggal) === tanggal && aktif(r);
+  let karyawanRows = []; try { karyawanRows = await ctx.store.all('Karyawan'); } catch { karyawanRows = []; }
+  const pelaporNama = namaPelapor(pengirim, karyawanRows);
+  const baruRows = items.map((it) => ({
+    tanggal, kode_event: event.kode, bahan: it.bahan, lokasi: it.lokasi, jumlah: it.jumlah, satuan: it.satuan,
+    penanggung_jawab: penjagaBahan(it.bahan, tugasHari, pelaporNama).join(', '),
+    foto: pesan.id || 'ada', pengirim, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
+  }));
+  stokRows = [...stokRows.map((r) => (items.some((it) => samaBaris(r, it)) ? { ...r, status: STATUS.BATAL } : r)), ...baruRows];
+  // Ringkasan per bahan (total semua lokasi hari ini)
+  const bahanDilapor = [...new Set(items.map((i) => i.bahan))];
+  const hasil = bahanDilapor.map((b) => {
+    const rows = stokRows.filter((r) => r.kode_event === event.kode && r.bahan === b && aktif(r) && String(r.tanggal) === tanggal);
+    const it = items.find((x) => x.bahan === b);
+    return { ...hitungStok(event, tanggal, { bahan: b, satuan: it.satuan, total: rows.reduce((t, r) => t + num(r.jumlah), 0) }, stokRows, bahanRows), rows };
+  });
+  for (const it of items) {
+    for (let i = 0; i < 10; i++) if (!(await ctx.store.updateWhere('Stok Harian', (r) => samaBaris(r, it), { status: STATUS.BATAL }))) break;
   }
+  for (const r of baruRows) {
+    const h = hasil.find((x) => x.bahan === r.bahan);
+    await ctx.store.append('Stok Harian', { ...r, total: h.total, sebelumnya: h.sebelumnya ?? '', restock: h.restock || '', terpakai: h.terpakai ?? '' });
+  }
+  const rincian = (h) => h.rows.map((r) => `${r.lokasi || 'Booth'} ${fmt(num(r.jumlah))}`).join(' + ');
   const baris = hasil.filter((h) => !h.nampan).map((h) => {
     const s = h.satuan || '';
-    if (h.terpakai === null) return `• ${h.bahan}: *${fmt(h.jumlah)} ${s}* _(stok awal belum tercatat, jadi pemakaian mulai dihitung besok)_`;
+    const pj = h.rows[0]?.penanggung_jawab ? ` · PJ: ${h.rows[0].penanggung_jawab}` : '';
+    const lok = h.rows.length > 1 ? `${rincian(h)} = ` : `${h.rows[0]?.lokasi || ''} `;
+    if (h.terpakai === null) return `• ${h.bahan}: ${lok}*${fmt(h.total)} ${s}*${pj} _(stok awal belum tercatat, pemakaian mulai dihitung besok)_`;
     const asal = `${h.dariKemarin ? 'kemarin' : 'stok awal'} ${fmt(h.sebelumnya)}${h.restock ? ` + restock ${fmt(h.restock)}` : ''}`;
-    if (h.terpakai < 0) return `• ${h.bahan}: *${fmt(h.jumlah)} ${s}* (${asal}) ⚠️ *naik ${fmt(-h.terpakai)}*: cek lagi hitungannya atau restock yang belum dicatat`;
-    return `• ${h.bahan}: *${fmt(h.jumlah)} ${s}* (${asal}) → berkurang *${fmt(h.terpakai)} ${s}*`;
+    if (h.terpakai < 0) return `• ${h.bahan}: ${lok}*${fmt(h.total)} ${s}* (${asal}) ⚠️ *naik ${fmt(-h.terpakai)}*: cek lagi hitungannya atau restock yang belum dicatat${pj}`;
+    return `• ${h.bahan}: ${lok}*${fmt(h.total)} ${s}* (${asal}) → berkurang *${fmt(h.terpakai)} ${s}*${pj}`;
   });
-  const belum = [...daftar, ...NAMPAN].filter((b) => !hasil.some((h) => h.bahan === b.bahan)).map((b) => b.bahan);
-  const hariIniLain = stokRows.filter((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && aktif(r) && !hasil.some((h) => h.bahan === r.bahan));
-  const masihBelum = belum.filter((b) => !hariIniLain.some((r) => r.bahan === b));
-  // Nampan: jumlah per jenis + total dibanding minimal (gabung dengan yang sudah dilapor hari ini).
-  const barisNampan = hasil.filter((h) => h.nampan).map((h) => `• ${h.bahan}: *${fmt(h.jumlah)}*${h.sebelumnya !== null ? ` (kemarin ${fmt(h.sebelumnya)})` : ''}`);
-  const nampanHariIni = [...hasil.filter((h) => h.nampan), ...hariIniLain.filter((r) => adalahNampan(r.bahan))];
+  const sudahHariIni = new Set(stokRows.filter((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && aktif(r)).map((r) => r.bahan));
+  const masihBelum = [...daftar, ...NAMPAN].map((b) => b.bahan).filter((b) => !sudahHariIni.has(b));
+  const barisNampan = hasil.filter((h) => h.nampan).map((h) => `• ${h.bahan}: *${fmt(h.total)}*${h.sebelumnya !== null ? ` (kemarin ${fmt(h.sebelumnya)})` : ''}`);
+  const totalNampan = stokRows.filter((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && aktif(r) && adalahNampan(r.bahan)).reduce((t, r) => t + num(r.jumlah), 0);
   let minimal = MIN_NAMPAN;
-  try { minimal = Number((await ctx.store.all('Pengaturan')).find((p) => p.kunci === 'min_nampan')?.nilai) || MIN_NAMPAN; } catch { /* bawaan */ }
-  const totalNampan = nampanHariIni.reduce((t, r) => t + num(r.jumlah), 0);
+  try { minimal = Number((await ctx.store.all('Pengaturan')).find((x) => x.kunci === 'min_nampan')?.nilai) || MIN_NAMPAN; } catch { /* bawaan */ }
   const terakhir = event.selesai && tanggal >= event.selesai;
   return balas([
-    `📦 *Stok closing ${event.kode}* – ${tglPendek(tanggal)} tercatat (oleh ${pesan.senderName || 'tim'})`,
+    `📦 *Stok closing ${event.kode}* – ${tglPendek(tanggal)} tercatat (oleh ${pesan.senderName || 'tim'}, 📷 foto bukti ✅)`,
     ...baris,
     ...(barisNampan.length ? ['', '🧊 *Nampan siap bakar di freezer*', ...barisNampan, teksTotalNampan(totalNampan, minimal)] : []),
-    masihBelum.length ? `\n_Belum diisi: ${masihBelum.join(', ')}. Kirim lagi dengan *#stok* (boleh sebagian)._` : '',
+    masihBelum.length ? `\n_Belum diisi: ${masihBelum.join(', ')}. Kirim lagi dengan foto + *#stok* (boleh sebagian)._` : '',
     terakhir ? '\n_Hari terakhir event: sisa bahan ini juga dicatat owner/PIC sebagai *#sisa* di grup pengeluaran._' : '',
   ].filter(Boolean).join('\n'));
 }
@@ -170,7 +232,10 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
       && tanggalSesi(s) === tanggal);
     if (!kasirTutup && !(jam >= 23)) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    const teks = teksFormatStok(e, bahanEvent(e.kode, bahanRows, hargaBahan), tanggal);
+    let tugasHari = [];
+    try { tugasHari = (await ctx.store.all('Tugas Harian')).filter((r) => r.kode_event === e.kode && String(r.tanggal) === tanggal && aktif(r)); } catch { tugasHari = []; }
+    const nama = (bg) => [...new Set(tugasHari.filter((t) => bg.includes(t.bagian)).map((t) => t.nama))];
+    const teks = teksFormatStok(e, bahanEvent(e.kode, bahanRows, hargaBahan), tanggal, { getok: nama(['Getok']), plating: nama(['Plating', 'Kasir']) });
     const pembuka = kasirTutup ? '🧾 Kasir sudah tutup, saatnya hitung stok bahan baku.' : '🌙 Stok closing hari ini belum diisi.';
     for (const g of grup.filter((x) => x.kode_event === e.kode && x.jenis === 'event')) keluar.push({ groupId: g.group_id, text: `${pembuka}\n\n${teks}` });
   }
@@ -182,7 +247,7 @@ export async function tugasStokHarian(ctx, sekarang = new Date()) {
 //   #sidak              -> format hitungan
 //   #sidak
 //   Mozzarella = 12 pack -> dibandingkan dengan laporan closing terakhir (+ restock setelahnya).
-// Kalau berbeda, bot bertanya: minus berapa poin untuk pelapor closing itu ("minus 5", "minus 5 Bima", "tidak").
+// Kalau berbeda, bot bertanya: minus berapa poin untuk penanggung jawab bahan itu ("minus 5", "minus 5 Bima", "tidak").
 
 const kunciSidak = (pesan) => `sidak:${pesan.pribadi ? pesan.senderId : pesan.groupId}`;
 const nomor62 = (n) => String(n || '').replace(/\D/g, '').replace(/^0/, '62');
@@ -208,8 +273,12 @@ export async function perintahSidak(ctx, pesan, event, cmd) {
   const hargaBahan = await ctx.store.all('Harga Bahan');
   const bahanRows = await ctx.store.all('Bahan Event');
   const teks = [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n').replace(/\b[A-Z]{3}\d{2}-\d{2}(-\d+)?\b/g, '');
-  const { nampan, sisa: teksBahan } = pisahNampan(teks);
-  const items = [...parseBahan(teksBahan, hargaBahan, cocokkan), ...nampan];
+  // Boleh per lokasi ([Gudang] / [Booth] / [Cooler]); dibandingkan per bahan (total semua lokasi).
+  const perLokasi = bacaIsiStok(teks, hargaBahan);
+  const items = [...new Set(perLokasi.map((x) => x.bahan))].map((b) => {
+    const r = perLokasi.filter((x) => x.bahan === b);
+    return { bahan: b, satuan: r[0].satuan, jumlah: r.reduce((t, x) => t + x.jumlah, 0) };
+  });
   const daftar = bahanEvent(event.kode, bahanRows, hargaBahan);
   if (!items.length) {
     return balas([`🕵️ *Sidak stok ${event.kode}* (dadakan, tim tidak diberi tahu)`, 'Hitung stok sekarang, ganti titik-titik, lalu kirim:', '', `#sidak ${event.kode}`,
@@ -221,12 +290,18 @@ export async function perintahSidak(ctx, pesan, event, cmd) {
   try { stokRows = await ctx.store.all('Stok Harian'); } catch { stokRows = []; }
   const karyawan = await ctx.store.all('Karyawan');
   const hasil = items.map((it) => {
-    const lap = stokRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r)).sort((a, b) => `${a.tanggal}${a.dicatat}`.localeCompare(`${b.tanggal}${b.dicatat}`)).pop();
-    if (!lap) return { ...it, laporan: null };
-    const restock = bahanRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r) && r.gerak === 'Restock' && String(r.tanggal) > String(lap.tanggal))
-      .reduce((s, r) => s + num(r.jumlah), 0);
-    const seharusnya = num(lap.jumlah) + restock;
-    return { ...it, laporan: lap, restock, seharusnya, selisih: it.jumlah - seharusnya, pelapor: namaPelapor(lap.pengirim, karyawan) };
+    const milik = stokRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r));
+    const tgl = [...new Set(milik.map((r) => String(r.tanggal)))].sort().pop();
+    if (!tgl) return { ...it, laporan: null };
+    const rows = milik.filter((r) => String(r.tanggal) === tgl);
+    const totalLap = rows.reduce((t, r) => t + num(r.jumlah), 0);
+    const restock = bahanRows.filter((r) => r.kode_event === event.kode && r.bahan === it.bahan && aktif(r) && r.gerak === 'Restock' && String(r.tanggal) > tgl)
+      .reduce((t, r) => t + num(r.jumlah), 0);
+    const seharusnya = totalLap + restock;
+    // Yang ditanya minus/denda: penanggung jawab bahan itu; cadangan: pelapor.
+    const pj = [...new Set(rows.flatMap((r) => String(r.penanggung_jawab || '').split(',').map((x) => x.trim()).filter(Boolean)))];
+    const pelapor = pj.length ? pj.join(', ') : [...new Set(rows.map((r) => namaPelapor(r.pengirim, karyawan)))].join(', ');
+    return { ...it, laporan: { tanggal: tgl, jumlah: totalLap }, restock, seharusnya, selisih: it.jumlah - seharusnya, pelapor, pjList: pj.length ? pj : pelapor.split(', ') };
   });
   const tanggal = tanggalLokal(pesan.waktu);
   const oleh = pesan.senderName || pesan.senderId;
@@ -245,7 +320,7 @@ export async function perintahSidak(ctx, pesan, event, cmd) {
     return `❌ ${h.bahan}: sidak *${fmt(h.jumlah)} ${s}*, ${dasar} → selisih *${h.selisih > 0 ? '+' : ''}${fmt(h.selisih)} ${s}*`;
   });
   const beda = hasil.filter((h) => h.laporan && h.selisih !== 0);
-  const pelapor = [...new Set(beda.map((h) => h.pelapor))];
+  const pelapor = [...new Set(beda.flatMap((h) => h.pjList))];
   if (beda.length && ctx.sesi) {
     ctx.sesi.set(kunciSidak(pesan), { kode: event.kode, pelapor, ringkas: beda.map((h) => `${h.bahan} ${h.selisih > 0 ? '+' : ''}${fmt(h.selisih)} ${h.satuan || ''}`.trim()).join(', '), tanggal: String(beda[0].laporan.tanggal), waktu: Date.now() });
   }
@@ -253,7 +328,7 @@ export async function perintahSidak(ctx, pesan, event, cmd) {
     `🕵️ *Hasil sidak stok ${event.kode}* (${oleh})`,
     ...baris,
     beda.length
-      ? `\n⚠️ *${beda.length} bahan berbeda dengan laporan.* Mau beri minus poin KPI untuk pelapor closing (${pelapor.join(', ')})?\nBalas: *minus 5* · *minus 5 ${pelapor[0]}* · *tidak*\n_Selisih tidak wajar (owner): *denda 200rb ${pelapor[0]}* untuk yang lalai, atau *denda 200rb rata* dibagi rata ke senior event ini._`
+      ? `\n⚠️ *${beda.length} bahan berbeda dengan laporan.* Mau beri minus poin KPI untuk penanggung jawab bahan (${pelapor.join(', ')})?\nBalas: *minus 5* · *minus 5 ${pelapor[0]}* · *tidak*\n_Selisih tidak wajar (owner): *denda 200rb ${pelapor[0]}* untuk yang lalai, atau *denda 200rb rata* dibagi rata ke senior event ini._`
       : (hasil.some((h) => h.laporan) ? '\n✅ Semua sesuai dengan laporan closing.' : ''),
     '_Hasil sidak tercatat di tab Sidak Stok. Tim tidak diberi tahu._',
   ].filter(Boolean).join('\n'));

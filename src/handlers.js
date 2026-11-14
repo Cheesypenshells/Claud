@@ -26,6 +26,7 @@ import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawab
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
+import { perintahRusak, jawabRusak } from './bahanRusak.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
 import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
@@ -973,7 +974,8 @@ async function handlePribadi(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
-  if (!cmd) return (await jawabNilaiHarian(ctx, pesan)) || (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
+  if (cmd?.perintah === 'gantirugi') return (await jawabRusak(ctx, pesan, { isOwner })) || [];
+  if (!cmd) return (await jawabRusak(ctx, pesan, { isOwner })) || (await jawabNilaiHarian(ctx, pesan)) || (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
   if (cmd.perintah === 'nilaiharian') {
     const evs = await eventSidak(ctx, pesan, isOwner);
     const kodeN = cmd.argumen.find((a) => /^[A-Z]{3}\d{2}-\d{2}/i.test(a));
@@ -1129,6 +1131,8 @@ export async function handlePesan(ctx, pesan) {
   }
   // Jawaban minus poin setelah sidak stok / penilaian harian PIC (grup pengeluaran).
   if (!cmd && event && grup.jenis === 'pengeluaran') {
+    const rs = await jawabRusak(ctx, pesan, { isOwner });
+    if (rs) return rs;
     const nh = await jawabNilaiHarian(ctx, pesan);
     if (nh) return nh;
     const sd = await jawabSidak(ctx, pesan);
@@ -1409,6 +1413,14 @@ export async function handlePesan(ctx, pesan) {
       case 'stock':
       case 'stokclosing':
         return perintahStok(ctx, pesan, event, cmd);
+      case 'rusak':
+      case 'bahanrusak':
+      case 'hilang': {
+        const gp = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event?.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
+        return perintahRusak(ctx, pesan, event, cmd, { grupPengeluaran: gp });
+      }
+      case 'gantirugi':
+        return (await jawabRusak(ctx, pesan, { isOwner })) || [];
       case 'tanyakasir': {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahTanyaKasir(ctx, pesan, event, { boleh: isOwner || milikSaya.some((e) => e.kode === event?.kode) });

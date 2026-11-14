@@ -91,7 +91,7 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
     const tutupSaat = kasirTutup ? sekarang : waktuWIB(tanggal, '22:00');
     if (slot('tutup', tutupSaat)) {
       for (const n of orang('Kasir')) pribadi(n, `📱 *${n}*, sebelum pulang: screenshot followers Instagram lagi dan kirim *#followers* (tutup).`);
-      keGrup(`🧹 *Waktunya closing ${e.kode}:*\n• Kasir: *#followers* (tutup)\n• Semua: bersih-bersih, lalu foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih)\n• Hitung stok: *#stok*\n• Tiap orang: *#pulang* sebelum pulang`);
+      keGrup(`🧹 *Waktunya closing ${e.kode}:*\n• Kasir: *#followers* (tutup)\n• Semua: bersih-bersih, lalu foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih)\n• Hitung stok + foto: *#stok* (getok: oyster di cooler · plating & kasir: gudang + booth)\n• Ada bahan rusak/hilang? *#rusak* + foto\n• Tiap orang: *#pulang* sebelum pulang`);
     }
     // 6) tagih #pulang (23.30)
     if (slot('pulang', waktuWIB(tanggal, '23:30'))) {

@@ -170,10 +170,12 @@ export const KOLOM = {
     warna: '#6D4C41',
     kolom: [
       k('tanggal', 'Tanggal Closing', 110), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
-      k('jumlah', 'Stok Closing', 100, { format: 'angka' }), k('satuan', 'Satuan', 80),
-      k('sebelumnya', 'Stok Sebelumnya', 115, { format: 'angka', catatan: 'Closing kemarin, atau stok awal di hari pertama' }),
-      k('restock', 'Restock', 85, { format: 'angka' }), k('terpakai', 'Berkurang', 95, { format: 'angka', catatan: 'Sebelumnya + restock − stok closing' }),
-      k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+      k('lokasi', 'Lokasi', 85, { catatan: 'Gudang / Booth / Cooler' }), k('jumlah', 'Stok Closing', 100, { format: 'angka' }), k('satuan', 'Satuan', 80),
+      k('total', 'Total Semua Lokasi', 115, { format: 'angka' }),
+      k('sebelumnya', 'Stok Sebelumnya (total)', 130, { format: 'angka', catatan: 'Closing kemarin, atau stok awal di hari pertama' }),
+      k('restock', 'Restock', 85, { format: 'angka' }), k('terpakai', 'Berkurang (total)', 110, { format: 'angka', catatan: 'Sebelumnya + restock − total stok closing' }),
+      k('penanggung_jawab', 'Penanggung Jawab', 160, { catatan: 'Oyster: tim getok · bahan lain & nampan: plating + kasir. Menanggung kalau bahan rusak/hilang' }),
+      k('foto', 'Foto Bukti', 120), k('pengirim', 'Dicatat Oleh', 200), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
   // Denda uang selain telat absen (mis. selisih stok tidak wajar), dipotong di #gajian.
@@ -186,6 +188,17 @@ export const KOLOM = {
     ],
   },
   // Sidak stok dadakan oleh PIC/owner (#sidak lewat chat pribadi / grup pengeluaran).
+  // Bahan baku rusak / hilang (#rusak + foto). Penanggung jawab bahan menanggung; owner memutuskan ganti rugi.
+  'Bahan Rusak': {
+    warna: '#6D4C41',
+    kolom: [
+      k('id', 'ID', 70), k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('bahan', 'Bahan', 140),
+      k('jumlah', 'Jumlah', 85, { format: 'angka' }), k('satuan', 'Satuan', 80), k('lokasi', 'Lokasi', 85),
+      k('keterangan', 'Penyebab / Keterangan', 260), k('penanggung_jawab', 'Penanggung Jawab', 160), k('foto', 'Foto Bukti', 120),
+      k('pelapor', 'Dilaporkan Oleh', 140), k('keputusan', 'Keputusan', 140, { catatan: 'MENUNGGU / GANTI RUGI / TANPA GANTI RUGI' }),
+      k('ganti_rugi', 'Total Ganti Rugi', 120, { format: 'rupiah' }), k('diputuskan_oleh', 'Diputuskan Oleh', 140), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   'Sidak Stok': {
     warna: '#B71C1C',
     kolom: [
