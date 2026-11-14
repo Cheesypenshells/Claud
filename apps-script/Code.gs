@@ -438,7 +438,8 @@ function buatPesanan(pin, kode, dataUrl) {
     // Nomor berlanjut selama event; event berikutnya mulai dari 1 lagi.
     var nomor = semua.filter(function (o) { return o.kode_event === kode; })
       .reduce(function (m, o) { return Math.max(m, Number(o.nomor) || 0); }, 0) + 1;
-    var id = 'Q' + Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyMMddHHmmss') + Math.floor(Math.random() * 90 + 10);
+    // ID unik walau beberapa HP kasir memotret struk di detik yang sama.
+    var id = 'Q' + Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyMMddHHmmss') + Utilities.getUuid().replace(/-/g, '').slice(0, 6);
     var token = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
     var foto = simpanFoto_(dataUrl, kode + '-' + hari + '-no' + nomor + '-struk');
     var o = { id: id, token: token, kode_event: kode, tanggal: hari, nomor: nomor, status: STATUS.MENUNGGU, menu: '',
