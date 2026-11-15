@@ -323,8 +323,8 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
   let telat = menit && !pribadi.bebas ? `⏰ Telat *${menit} menit* → denda *${rupiah(denda)}*` : '✅ Tepat waktu';
   if (pribadi.bebas) telat = '✅ Izin owner, tanpa denda';
   else if (pribadi.izin) telat += ` _(${ketIzin})_`;
-  const ketWajah = wajah?.otomatis ? '\n🙂 _Foto wajah terdeteksi, dicatat sebagai absen._' : wajah && !wajah.ada ? '\n⚠️ _Wajah tidak terlihat jelas di foto ini. PIC tolong cek._' : '';
-  return `📸 Absen *${orang.nama}* jam ${jam} ${zona.nama} tercatat. ${telat}${ketWajah}\n_Gaya hari ini: ${gaya}. Owner/PIC bisa reply foto ini dengan *tolak* kalau gayanya salah._`;
+  // Hasil deteksi wajah TIDAK diumumkan di grup (supaya cara kerjanya tidak dimanfaatkan); hanya di kolom Catatan tab Absensi.
+  return `📸 Absen *${orang.nama}* jam ${jam} ${zona.nama} tercatat. ${telat}\n_Gaya hari ini: ${gaya}. Owner/PIC bisa reply foto ini dengan *tolak* kalau gayanya salah._`;
 }
 
 // #absen: rekap hari ini (atau tanggal tertentu). #absen Dena 10.05 (owner/PIC): catat manual.

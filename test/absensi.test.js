@@ -192,12 +192,16 @@ test('foto wajah tanpa caption jam 06.00-12.00 = absen otomatis; bukan wajah / d
   await kirim(PIC, 'saya Budi', jam('05:04'));
   assert.equal(await kirim(DENA, '', jam('05:50'), foto('wajah-dena0')), ''); // sebelum 06.00
   assert.equal(await kirim(DENA, '', jam('08:40'), foto('cooler')), ''); // bukan wajah
-  assert.match(await kirim(DENA, '', jam('08:45'), foto('wajah-dena')), /Absen \*Dena\* jam 08:45 WIB tercatat.*Foto wajah terdeteksi/s);
+  const otomatis = await kirim(DENA, '', jam('08:45'), foto('wajah-dena'));
+  assert.match(otomatis, /Absen \*Dena\* jam 08:45 WIB tercatat/);
+  assert.doesNotMatch(otomatis, /wajah/i); // hasil deteksi wajah tidak diumumkan di grup
   assert.equal(await kirim(DENA, '', jam('09:30'), foto('wajah-dena2')), ''); // sudah absen: foto wajah lain diabaikan
   assert.equal(await kirim(PIC, '', jam('08:50'), foto('wajah-budi')), ''); // PIC tidak absen
   assert.equal(await kirim(TIAR, '', jam('12:05'), foto('wajah-tiar')), ''); // lewat 12.00
   // caption absen tapi wajah tidak terlihat: tetap tercatat, ditandai untuk dicek PIC
-  assert.match(await kirim(TIAR, 'absen', jam('12:10'), foto('punggung')), /tercatat.*Wajah tidak terlihat jelas/s);
+  const tanpaWajah = await kirim(TIAR, 'absen', jam('12:10'), foto('punggung'));
+  assert.match(tanpaWajah, /tercatat/);
+  assert.doesNotMatch(tanpaWajah, /wajah/i);
   const rows = await store.all('Absensi');
   assert.match(rows.find((r) => r.nama === 'Dena').catatan, /otomatis dari foto wajah/);
   assert.match(rows.find((r) => r.nama === 'Tiar').catatan, /wajah tidak terdeteksi/);
