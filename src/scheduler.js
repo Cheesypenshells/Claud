@@ -16,8 +16,14 @@ function grupUntuk(grupRows, kode, jenis) {
   return grupRows.filter((g) => g.kode_event === kode && g.jenis === jenis).map((g) => g.group_id);
 }
 
-export function buatPenjadwal({ store, jam }) {
-  const sudahJalan = new Set();
+// `sesi` (tersimpan di file) dipakai untuk mengingat pengingat yang sudah terkirim hari ini, supaya bot yang restart
+// (mis. pembaruan otomatis tiap ada versi baru) tidak mengirim ulang pengingat yang sama.
+export function buatPenjadwal({ store, jam, sesi = null }) {
+  const lokal = new Set();
+  const sudahJalan = {
+    has: (k) => lokal.has(k) || Boolean(sesi?.get(`jadwal:${k}`)),
+    add: (k) => { lokal.add(k); sesi?.set(`jadwal:${k}`, { kirim: true }); },
+  };
 
   return async function tugasJatuhTempo(sekarang = new Date()) {
     const hariIni = tanggalLokal(sekarang);

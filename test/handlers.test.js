@@ -116,6 +116,18 @@ test('foto: harga diambil dari caption, foto tanpa harga diminta ditulis', async
   assert.match(await kirim(G_KELUAR, OWNER, '#trf', { adaFoto: true }), /tulis harga/);
 });
 
+test('penjadwal: bot restart (penjadwal baru, sesi sama) tidak mengirim ulang pengingat yang sudah terkirim hari itu', async () => {
+  const { store, kirim, ctx } = setup();
+  await kirim(G_KELUAR, OWNER, BLOK_EVENT);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const jam = { pengingatOmzet: '23:00', rekapMalam: '23:30', pengingatTransfer: '10:00' };
+  const a = buatPenjadwal({ store, jam, sesi: ctx.sesi });
+  assert.equal((await a(new Date('2026-11-03T16:05:00Z'))).length, 1); // omzet belum masuk
+  const setelahRestart = buatPenjadwal({ store, jam, sesi: ctx.sesi }); // proses baru, ingatan memori kosong
+  assert.equal((await setelahRestart(new Date('2026-11-03T16:15:00Z'))).length, 0);
+  assert.equal((await setelahRestart(new Date('2026-11-04T16:05:00Z'))).length, 1); // besoknya tetap jalan
+});
+
 test('penjadwal: pengingat omzet, rekap malam, pengingat transfer telat', async () => {
   const { store, kirim } = setup();
   await kirim(G_KELUAR, OWNER, BLOK_EVENT);
