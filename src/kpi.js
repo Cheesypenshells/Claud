@@ -18,9 +18,11 @@ import { komplainAktif } from './komplain.js';
 // Semua data yang dipakai KPI, sekali baca (tab yang belum ada dianggap kosong).
 export async function bahanKpi(store) {
   const baca = async (tab) => { try { return await store.all(tab); } catch { return []; } };
-  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian] = await Promise.all(
-    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian'].map(baca));
-  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian };
+  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, pengaturan] = await Promise.all(
+    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian', 'Pengaturan'].map(baca));
+  // Pengaturan "bebas_laporan": tanggal (YYYY-MM-DD, pisah koma) yang laporan bagiannya tidak memotong KPI (mis. bot mati).
+  const bebasLaporan = String(pengaturan.find((r) => r.kunci === 'bebas_laporan')?.nilai || '').match(/\d{4}-\d{2}-\d{2}/g) || [];
+  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, bebasLaporan };
 }
 
 // Menit dari teks waktu "YYYY-MM-DD HH:MM[:SS]" (WIB).
@@ -75,7 +77,7 @@ export function yangDinilai(r) {
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".
-export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], harian = [], hariIni = tanggalLokal(new Date()) } = {}) {
+export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], harian = [], bebasLaporan = [], hariIni = tanggalLokal(new Date()) } = {}) {
   const kode = r.event.kode;
   const milik = nilai.filter((n) => n.kode_event === kode && aktif(n));
   const target = num(r.event.target_omzet);
@@ -140,7 +142,7 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
       }
     }
     // Laporan wajib bagian tugas harian (kasir #depan #followers, pemanggang #grill, getok #cooler, plating #nampan).
-    for (const t of hariLewat) {
+    for (const t of hariLewat.filter((d) => !bebasLaporan.includes(d))) {
       for (const tg of tugas.filter((x) => x.kode_event === kode && aktif(x) && String(x.tanggal) === t && sama(x.nama, o.nama))) {
         for (const tag of LAPORAN_BAGIAN[tg.bagian] || []) {
           if (!lapEv.some((l) => l.tag === tag && String(l.tanggal) === t)) terlewat.push(`#${tag} ${t.slice(5)}`);

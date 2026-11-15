@@ -40,11 +40,13 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
     const lap = laporan.filter((l) => l.kode_event === e.kode && String(l.tanggal) === tanggal && String(l.status || 'OK').toUpperCase() === 'OK');
     const sudah = (tag, nama) => lap.some((l) => l.tag === tag && (!nama || sama(l.nama, nama)));
     const orang = (bagian) => tugas.filter((t) => t.bagian === bagian).map((t) => t.nama);
+    // Pengingat pagi yang sudah lewat > 30 menit (mis. bot baru dinyalakan siang) tidak dikirim lagi.
+    const BASI = { es: 30, siap: 30, buka: 30, tagih: 30 };
     const slot = (nama, saat) => {
       const tanda = `ingatbagian:${e.kode}:${tanggal}:${nama}`;
       if (sekarang < saat || ctx.sesi.get(tanda)) return false;
       ctx.sesi.set(tanda, { kirim: true });
-      return true;
+      return !(BASI[nama] && sekarang - saat > BASI[nama] * 60000);
     };
     const pribadi = (nama, teks) => { const n = nomorDari(nama); if (n) keluar.push({ nomor: n, text: teks }); };
     const keGrup = (teks) => grupTim.forEach((g) => keluar.push({ groupId: g, text: teks }));

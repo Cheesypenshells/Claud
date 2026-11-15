@@ -1557,6 +1557,24 @@ test('catatan harian: #kejadian #beli #pr, kejadian/PR dari PIC di akhir penilai
   assert.doesNotMatch((await kirim(G_TIM, KARYAWAN, '#tugas', w('04', '10:01'))), /gas kaleng 10/);
 });
 
+test('bot baru dinyalakan siang: pengingat pagi tidak dikirim sekaligus; hari bebas_laporan tidak memotong KPI laporan', async () => {
+  const { store, kirim, ctx } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nJam buka: 10.00\nSenior: Tiara, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  for (const [b, n] of [['Kasir', 'Tiara'], ['Getok', 'Bima']]) await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: b, nama: n, status: 'OK' });
+  const { tugasPengingatBagian } = await import('../src/pengingatBagian.js');
+  const siang = await tugasPengingatBagian(ctx, new Date('2026-11-03T12:37:00+07:00'));
+  assert.equal(siang.filter((x) => /es batu|1 jam lagi buka|belum masuk|followers/.test(x.text)).length, 0);
+  // KPI: laporan bagian 3 Nov tidak dikirim, tapi 3 Nov bebas_laporan
+  const { skorEvent, bahanKpi } = await import('../src/kpi.js');
+  const { bacaData } = await import('../src/main.js');
+  const { hitungEvent } = await import('../src/laporan.js');
+  const skor = async () => { const data = await bacaData(store); return skorEvent(hitungEvent(data.events[0], data), { ...(await bahanKpi(store)), hariIni: '2026-11-04' }).find((x) => x.nama === 'Bima'); };
+  assert.ok((await skor()).laporanTerlewat.includes('#cooler 11-03'));
+  await store.append('Pengaturan', { kunci: 'bebas_laporan', nilai: '2026-11-03' });
+  assert.equal((await skor()).laporanTerlewat.includes('#cooler 11-03'), false);
+});
+
 test('bot aktif menyuruh & menagih bagian: es batu getok, 1 jam sebelum buka, tagih yang belum lapor, closing, #pulang', async () => {
   const { store, kirim, ctx } = setup();
   await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nJam buka: 11.00\nSenior: Tiara, Veri, Bima`);
