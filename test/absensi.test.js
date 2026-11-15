@@ -146,6 +146,30 @@ test('izin, dispensasi & jadwal khusus dari owner', async () => {
   assert.match(await kirim(G_KELUAR, OWNER, '#izin batal Budi minggu', pada('2026-11-07', '20:04')), /Izin\/dispensasi \*Budi\* 2026-11-08 dibatalkan/);
 });
 
+test('absen: caption "#Absen" + foto diterima; foto tanpa caption lalu teks "#absen" (≤10 menit) juga diterima', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  let n = 0;
+  const kirim = async (senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `b${++n}`, groupId: G_TIM, groupName: G_TIM, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  })).map((r) => r.text).join('\n');
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  await handlePesan(ctx, { id: 'e1', groupId: G_KELUAR, groupName: G_KELUAR, senderId: OWNER, senderName: 'O', adaFoto: false, waktu: jam('07:00'), text: '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 2-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 10.00\nPIC: Budi\nSenior: Dena, Tiar' });
+  await kirim(OWNER, '#daftar event JMB26-11', jam('07:01'));
+  await kirim(DENA, 'saya Dena', jam('07:02'));
+  await kirim(TIAR, 'saya Tiar', jam('07:03'));
+  assert.match(await kirim(DENA, '#Absen', jam('09:39'), foto('d1')), /Absen \*Dena\* jam 09:39 WIB tercatat.*Telat \*39 menit\*/s);
+  // foto dulu (tanpa caption), lalu teks #absen 1 menit kemudian -> jam foto yang dipakai
+  assert.equal(await kirim(TIAR, '', jam('09:38'), foto('t1')), '');
+  assert.match(await kirim(TIAR, '#absen', jam('09:39')), /Absen \*Tiar\* jam 09:38 WIB tercatat/);
+  // #absen teks saja (tanpa foto baru) = rekap
+  assert.match(await kirim(TIAR, '#absen', jam('09:45')), /Absen JMB26-11.*Dena 09:39.*Tiar 09:38/s);
+  // foto lebih dari 10 menit sebelumnya tidak dipakai
+  await kirim('6287777777777', 'saya Joko', jam('07:05'));
+  await kirim('6287777777777', '', jam('09:00'), foto('j1'));
+  assert.doesNotMatch(await kirim('6287777777777', 'absen', jam('09:20')), /tercatat/);
+});
+
 test('PIC tidak perlu absen: tidak diingatkan, tidak tercantum "belum absen", foto absen PIC tidak dicatat', async () => {
   const { wajibAbsen } = await import('../src/absensi.js');
   assert.equal(wajibAbsen({ nama: 'Budi', peran: 'PIC' }), false);

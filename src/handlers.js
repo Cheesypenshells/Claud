@@ -1110,7 +1110,7 @@ export async function handlePesan(ctx, pesan) {
     if (j) return balas(j.teks);
   }
   // Absensi foto di grup tim (dan reply owner/PIC "tolak" / "bebas denda" ke foto absen).
-  if (!cmd && event && grup.jenis === 'event') {
+  if (event && grup.jenis === 'event' && (!cmd || (['absen', 'absensi', 'hadir'].includes(cmd.perintah) && !cmd.argumen.length))) {
     const absen = await tanganiAbsen(ctx, pesan, event, { isOwner });
     if (absen) return balas(absen);
   }

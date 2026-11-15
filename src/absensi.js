@@ -255,8 +255,23 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
   }
 
   const balasPengumuman = /ABSENSI/.test(pesan.kutipan?.teks || '');
-  if (!RE_ABSEN.test(teks) && !(pesan.adaFoto && balasPengumuman)) return null;
-  if (teks.startsWith('#')) return null;
+  const kunciFoto = ctx.sesi ? `fotoabsen:${pesan.groupId}:${pesan.senderId}` : null;
+  // Foto tanpa caption absen: diingat 10 menit, siapa tahu disusul teks "absen" / "#absen" (foto dulu, caption terpisah).
+  if (pesan.adaFoto && !RE_ABSEN.test(teks) && !balasPengumuman) {
+    if (kunciFoto && !teks) ctx.sesi.set(kunciFoto, { id: pesan.id, waktu: pesan.waktu.getTime(), diteruskan: Boolean(pesan.diteruskan) });
+    return null;
+  }
+  if (!RE_ABSEN.test(teks) && !balasPengumuman) return null;
+  // "#absen" / "#Absen" + foto = absen. "#absen" teks saja = rekap, kecuali baru saja kirim foto tanpa caption.
+  const pakaiPagar = teks.startsWith('#');
+  if (pakaiPagar && !/^#\s*(absen|absensi|hadir)\s*$/i.test(teks)) return null;
+  if (!pesan.adaFoto && kunciFoto) {
+    const f = ctx.sesi.get(kunciFoto);
+    if (f && pesan.waktu.getTime() - f.waktu <= 10 * 60000 && pesan.waktu.getTime() >= f.waktu) {
+      ctx.sesi.hapus(kunciFoto);
+      pesan = { ...pesan, id: f.id, adaFoto: true, waktu: new Date(f.waktu), diteruskan: f.diteruskan, ambilFoto: null };
+    } else if (pakaiPagar) return null;
+  }
   const zona = zonaKota(event.kota);
   const { tanggal, jam } = lokal(pesan.waktu, zona);
   if (!hariEvent(event, tanggal)) return null;

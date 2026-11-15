@@ -409,7 +409,7 @@ Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat bia
 Syarat: **Jam Buka** event terisi (setup event, atau owner `#ubah jam buka 11.00`). Jam dihitung di zona kota event (WIB / WITA untuk Bali, Lombok, Kalimantan Selatan/Timur, Sulawesi / WIT untuk Papua, Maluku).
 
 1. **2 jam sebelum buka** bot mengumumkan di grup tim: jam batas absen, **gaya foto hari ini** (contoh ✌️ peace, 👍 jempol, 🫶 love, 🫡 hormat; berganti setiap hari), format absen, dan aturan denda.
-2. Karyawan wajib datang **1 jam sebelum buka**: selfie di booth dengan gaya hari itu, kirim **langsung dari kamera** dengan caption `absen`.
+2. Karyawan wajib datang **1 jam sebelum buka**: selfie di booth dengan gaya hari itu, kirim **langsung dari kamera** dengan caption `absen` atau `#absen`. Kalau fotonya terkirim tanpa caption, ketik `absen` / `#absen` paling lambat 10 menit setelahnya (jam foto yang dipakai).
 3. Bot mencatat jam foto di tab **Absensi** dan membalas tepat waktu / telat + dendanya.
 4. Saat batas absen lewat, bot menyebut siapa yang belum absen.
 
