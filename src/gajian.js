@@ -25,9 +25,8 @@ export function gajiMulai(atur = {}) {
 // Event yang penggajian/KPI-nya dihitung bot (mulai >= batas).
 export const ikutGajian = (event, atur) => String(event?.mulai || '') >= gajiMulai(atur);
 
-// Denda TELAT ABSEN dipotong dari BONUS event saja (gaji pokok / upah tidak dipotong).
-// Kalau bonus event itu tidak ada / kurang, sisanya dibawa (diakumulasikan) ke event berikutnya.
-// Denda lain (selisih stok, ganti rugi bahan rusak – tab Denda) tetap dipotong dari total transfer.
+// SEMUA denda (telat absen, selisih stok, ganti rugi bahan rusak) dipotong dari GAJI POKOK / upah, bukan dari bonus
+// (bonus bisa kosong kalau event sepi). Kalau denda lebih besar dari gaji pokok event ini, sisanya dibawa ke event berikutnya.
 function dasarGajian(ev, data, kpiBahan, absensi, dendaLain) {
   const r = hitungEvent(ev, data);
   const skor = skorEvent(r, kpiBahan);
@@ -55,41 +54,34 @@ export async function rincianGajian(ctx, event) {
   };
   const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
   const [absensi, dendaLain] = await Promise.all([baca('Absensi'), baca('Denda')]);
-  // Sisa denda telat dari event-event sebelumnya (yang ikut gajian bot), dihitung berurutan.
+  // Sisa denda yang belum habis dipotong dari event-event sebelumnya (yang ikut gajian bot), dihitung berurutan.
   const bawa = new Map();
   const kunci = (n) => String(n || '').trim().toLowerCase();
   const sebelum = (data.events || []).filter((e) => e.kode !== ev.kode && e.status !== 'BATAL' && ikutGajian(e, data.atur) && String(e.mulai) < String(ev.mulai))
     .sort((a, b) => String(a.mulai).localeCompare(String(b.mulai)));
   for (const e of sebelum) {
     for (const o of dasarGajian(e, data, kpiBahan, absensi, dendaLain).orang) {
-      const utang = (bawa.get(kunci(o.nama)) || 0) + o.telat;
-      bawa.set(kunci(o.nama), utang - Math.min(utang, Math.max(0, o.bonusDiterima ?? 0)));
+      const utang = (bawa.get(kunci(o.nama)) || 0) + o.telat + o.lain;
+      bawa.set(kunci(o.nama), utang - Math.min(utang, Math.max(0, o.upah)));
     }
   }
   const { r, orang: dasar } = dasarGajian(ev, data, kpiBahan, absensi, dendaLain);
   const orang = dasar.map((o) => {
     const dariLalu = bawa.get(kunci(o.nama)) || 0;
-    const telatTotal = dariLalu + o.telat;
-    const bonus = o.bonusDiterima ?? 0;
-    const potongBonus = Math.min(telatTotal, Math.max(0, bonus));
-    const dibawa = telatTotal - potongBonus;
-    const transfer = Math.max(0, o.upah + bonus - potongBonus - o.lain);
-    return { ...o, denda: { telat: o.telat, dariLalu, potongBonus, dibawa, lain: o.lain }, transfer, rekening: rek(o.nama) };
+    const total = dariLalu + o.telat + o.lain;
+    const potong = Math.min(total, Math.max(0, o.upah));
+    const transfer = o.upah - potong + (o.bonusDiterima ?? 0);
+    return { ...o, denda: { telat: o.telat, lain: o.lain, dariLalu, total, potong, dibawa: total - potong }, transfer, rekening: rek(o.nama) };
   });
   return { r, ev, orang, atur: data.atur };
 }
 
-// Teks potongan satu orang.
+// Teks potongan satu orang (dari gaji pokok).
 function teksPotong(o) {
   const d = o.denda;
-  const bagian = [];
-  if (d.telat || d.dariLalu) {
-    const asal = [d.telat ? `telat event ini ${rupiah(d.telat)}` : '', d.dariLalu ? `sisa event lalu ${rupiah(d.dariLalu)}` : ''].filter(Boolean).join(' + ');
-    if (o.bonusDiterima === null) bagian.push(`denda telat ${rupiah(d.telat + d.dariLalu)} (${asal}) → dipotong dari bonus setelah KPI dinilai`);
-    else bagian.push(`denda telat ${rupiah(d.telat + d.dariLalu)} (${asal}) → dipotong dari bonus ${rupiah(d.potongBonus)}${d.dibawa ? `, *sisa ${rupiah(d.dibawa)} dibawa ke event berikutnya*` : ''}`);
-  }
-  if (d.lain) bagian.push(`− denda selisih stok/ganti rugi ${rupiah(d.lain)}`);
-  return bagian.length ? `\n   ⏱️ ${bagian.join('\n   ')}` : '';
+  if (!d.total) return '';
+  const asal = [d.telat ? `telat absen ${rupiah(d.telat)}` : '', d.lain ? `selisih stok/ganti rugi ${rupiah(d.lain)}` : '', d.dariLalu ? `sisa event lalu ${rupiah(d.dariLalu)}` : ''].filter(Boolean).join(' + ');
+  return `\n   ✂️ denda ${rupiah(d.total)} (${asal}) → dipotong dari gaji pokok ${rupiah(d.potong)}${d.dibawa ? `, *sisa ${rupiah(d.dibawa)} dibawa ke event berikutnya*` : ''}`;
 }
 
 export async function perintahGajian(ctx, pesan, event, { isOwner }) {
@@ -131,6 +123,6 @@ export async function perintahGajian(ctx, pesan, event, { isOwner }) {
   baris.push('', adaBelumDinilai
     ? '_Bonus baru final setelah PIC menilai KPI (*#nilai*). Sehari setelah event selesai bot meminta penilaian otomatis._'
     : '_Bonus = bonus omzet × skor KPI. Gaji pokok 2,5 jt dibagi jumlah event yang dijaga dalam sebulan._');
-  baris.push('_Denda telat absen hanya dipotong dari bonus event; kalau bonus tidak ada/kurang, sisanya dibawa ke event berikutnya._');
+  baris.push('_Semua denda (telat absen, selisih stok, ganti rugi bahan rusak) dipotong dari gaji pokok, bukan bonus. Kalau melebihi gaji pokok, sisanya dibawa ke event berikutnya._');
   return balas(baris.join('\n'));
 }

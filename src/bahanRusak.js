@@ -96,5 +96,5 @@ export async function jawabRusak(ctx, pesan, { isOwner }) {
     });
   }
   await tandai({ keputusan: 'GANTI RUGI', ganti_rugi: jumlah });
-  return balas(`💸 *Ganti rugi bahan rusak* ${kode.join(', ')} (${ringkas}): ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${kena.length > 1 ? ` (dibagi rata dari ${rupiah(jumlah)})` : ''}.\n_Dipotong dari gaji di *#gajian*. Tercatat di tab Denda._`);
+  return balas(`💸 *Ganti rugi bahan rusak* ${kode.join(', ')} (${ringkas}): ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${kena.length > 1 ? ` (dibagi rata dari ${rupiah(jumlah)})` : ''}.\n_Dipotong dari gaji pokok di *#gajian*. Tercatat di tab Denda._`);
 }

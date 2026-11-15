@@ -1183,7 +1183,7 @@ test('#gajian: mulai event Semarang; event sebelumnya sudah dibayar; bonus x KPI
   assert.match(lama[0].text, /sudah dibayar/);
 });
 
-test('#gajian: denda telat absen dipotong dari bonus event, sisanya dibawa ke event berikutnya', async () => {
+test('#gajian: semua denda dipotong dari gaji pokok (bukan bonus); sisa melebihi gaji pokok dibawa ke event berikutnya', async () => {
   const { store, kirim } = setup();
   const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-22 Nov 2026');
   await kirim(G_KELUAR, OWNER, `${blok}\nSenior: Adit, Alam`);
@@ -1193,26 +1193,27 @@ test('#gajian: denda telat absen dipotong dari bonus event, sisanya dibawa ke ev
   await kirim(G_KELUAR, OWNER, '#nilai Alam 5 5 5 5', nanti);
   await kirim(G_KELUAR, OWNER, '#nilai tim 5', nanti);
   const { rincianGajian } = await import('../src/gajian.js');
-  const bonusAlam = (await rincianGajian({ store }, { kode: 'SMR26-11' })).orang.find((o) => o.nama === 'Alam').bonusDiterima;
-  assert.ok(bonusAlam > 0);
+  const dasar = (await rincianGajian({ store }, { kode: 'SMR26-11' })).orang;
+  const upahAlam = dasar.find((o) => o.nama === 'Alam').upah;
   await store.append('Absensi', { kode_event: 'SMR26-11', nama: 'Adit', denda: 25000, status: 'OK' });
-  await store.append('Absensi', { kode_event: 'SMR26-11', nama: 'Alam', denda: bonusAlam + 50000, status: 'OK' });
+  await store.append('Denda', { kode_event: 'SMR26-11', nama: 'Adit', jumlah: 100000, jenis: 'Selisih stok', status: 'OK' });
+  await store.append('Absensi', { kode_event: 'SMR26-11', nama: 'Alam', denda: upahAlam + 50000, status: 'OK' });
   const g = await kirim(G_KELUAR, OWNER, '#gajian', nanti);
   const r1 = await rincianGajian({ store }, { kode: 'SMR26-11' });
   const adit = r1.orang.find((o) => o.nama === 'Adit');
   const alam = r1.orang.find((o) => o.nama === 'Alam');
-  assert.equal(adit.transfer, adit.upah + adit.bonusDiterima - 25000);
-  assert.equal(alam.transfer, alam.upah); // bonus habis, gaji pokok utuh
+  assert.equal(adit.transfer, adit.upah - 125000 + adit.bonusDiterima); // bonus utuh, denda dari gaji pokok
+  assert.equal(alam.transfer, alam.bonusDiterima); // gaji pokok habis, bonus tidak disentuh
   assert.equal(alam.denda.dibawa, 50000);
-  assert.match(g, /Alam\*.*denda telat .* dipotong dari bonus .*sisa Rp 50\.000 dibawa ke event berikutnya/s);
-  // event berikutnya tanpa bonus (omzet di bawah 100 jt): sisa tetap dibawa, gaji pokok tidak dipotong
+  assert.match(g, /Adit\*.*denda Rp 125.000.*dipotong dari gaji pokok Rp 125.000/s);
+  assert.match(g, /Alam\*.*dipotong dari gaji pokok.*sisa Rp 50.000 dibawa ke event berikutnya/s);
+  // event berikutnya (> sebulan kemudian): sisa dipotong dari gaji pokok event itu
   const blok2 = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: BDG26-12').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 20-26 Dec 2026');
   await kirim('grup-bdg', OWNER, `${blok2}\nSenior: Alam`);
-  const r2 = await rincianGajian({ store }, { kode: 'BDG26-12' });
-  const alam2 = r2.orang.find((o) => o.nama === 'Alam');
+  const alam2 = (await rincianGajian({ store }, { kode: 'BDG26-12' })).orang.find((o) => o.nama === 'Alam');
   assert.equal(alam2.denda.dariLalu, 50000);
-  assert.equal(alam2.transfer, alam2.upah);
-  assert.equal(alam2.denda.dibawa, 50000);
+  assert.equal(alam2.transfer, alam2.upah - 50000 + alam2.bonusDiterima);
+  assert.equal(alam2.denda.dibawa, 0);
 });
 
 test('rekening tim setelah event selesai: chat pribadi ke yang bernomor, grup tim untuk yang belum; jawaban di chat pribadi disimpan', async () => {

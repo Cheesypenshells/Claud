@@ -384,7 +384,7 @@ export async function jawabSidak(ctx, pesan) {
       });
     }
     ctx.sesi.hapus(k);
-    return balas(`💸 *Denda selisih stok ${s.kode}*: ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${rata ? ` (dibagi rata dari ${rupiah(jumlah)})` : ''}.\n_Dipotong dari gaji di *#gajian*. Tercatat di tab Denda (ubah Status jadi BATAL kalau dibatalkan)._`);
+    return balas(`💸 *Denda selisih stok ${s.kode}*: ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${rata ? ` (dibagi rata dari ${rupiah(jumlah)})` : ''}.\n_Dipotong dari gaji pokok di *#gajian*. Tercatat di tab Denda (ubah Status jadi BATAL kalau dibatalkan)._`);
   }
 
   // Minus poin KPI: "minus 5" (pelapor) / "minus 5 Bima"
