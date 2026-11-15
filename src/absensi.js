@@ -14,6 +14,7 @@
 //   "Jadwal Absen".
 
 import { createHash } from 'node:crypto';
+import { deteksiWajah } from './wajah.js';
 import { STATUS } from './schema.js';
 import { rupiah, waktuLokal, BULAN } from './util.js';
 
@@ -256,12 +257,18 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
 
   const balasPengumuman = /ABSENSI/.test(pesan.kutipan?.teks || '');
   const kunciFoto = ctx.sesi ? `fotoabsen:${pesan.groupId}:${pesan.senderId}` : null;
-  // Foto tanpa caption absen: diingat 10 menit, siapa tahu disusul teks "absen" / "#absen" (foto dulu, caption terpisah).
+  // Foto TANPA caption jam 06.00–12.00: kalau ada wajah (selfie) dari anggota tim yang belum absen -> langsung dicatat absen.
+  // Kalau bukan wajah: diingat 10 menit, siapa tahu disusul teks "absen" / "#absen" (foto dulu, caption terpisah).
+  let wajah = null;
   if (pesan.adaFoto && !RE_ABSEN.test(teks) && !balasPengumuman) {
-    if (kunciFoto && !teks) ctx.sesi.set(kunciFoto, { id: pesan.id, waktu: pesan.waktu.getTime(), diteruskan: Boolean(pesan.diteruskan) });
-    return null;
+    if (teks) return null;
+    wajah = await cekSelfiePagi(ctx, pesan, event);
+    if (!wajah?.ada) {
+      if (kunciFoto) ctx.sesi.set(kunciFoto, { id: pesan.id, waktu: pesan.waktu.getTime(), diteruskan: Boolean(pesan.diteruskan) });
+      return null;
+    }
   }
-  if (!RE_ABSEN.test(teks) && !balasPengumuman) return null;
+  if (!wajah && !RE_ABSEN.test(teks) && !balasPengumuman) return null;
   // "#absen" / "#Absen" + foto = absen. "#absen" teks saja = rekap, kecuali baru saja kirim foto tanpa caption.
   const pakaiPagar = teks.startsWith('#');
   if (pakaiPagar && !/^#\s*(absen|absensi|hadir)\s*$/i.test(teks)) return null;
@@ -295,10 +302,10 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
   if (sudah) return `👌 *${orang.nama}* sudah absen hari ini jam ${sudah.jam}.`;
 
   let sidik = '';
-  if (pesan.ambilFoto) {
-    const buffer = await pesan.ambilFoto().catch(() => null);
-    if (buffer) sidik = createHash('sha256').update(buffer).digest('hex').slice(0, 24);
-  }
+  const buffer = wajah?.buffer || (pesan.ambilFoto ? await pesan.ambilFoto().catch(() => null) : null);
+  if (buffer) sidik = createHash('sha256').update(buffer).digest('hex').slice(0, 24);
+  // Foto dengan caption absen: tetap diterima, tapi kalau wajah tidak terlihat diberi tanda untuk dicek PIC.
+  if (!wajah && buffer) wajah = await (ctx.deteksiWajah || deteksiWajah)(buffer).catch(() => null);
   if (sidik && (await ctx.store.all('Absensi')).some((a) => a.sidik === sidik)) {
     return `❌ Foto ini *sama persis* dengan foto absen sebelumnya, *${orang.nama}*. Ambil selfie baru dengan gaya ${gaya}.`;
   }
@@ -309,12 +316,15 @@ export async function tanganiAbsen(ctx, pesan, event, { isOwner = false } = {}) 
   await ctx.store.append('Absensi', {
     tanggal, kode_event: event.kode, nama: orang.nama, peran: orang.peran || '', nomor_wa: `0${nomor62(pesan.senderId).replace(/^62/, '')}`,
     jam: `${jam} ${zona.nama}`, batas: jamTeks(pribadi.batas, zona), telat_menit: pribadi.bebas ? 0 : menit, denda, gaya: gaya.replace(/\*/g, ''),
-    foto_id: pesan.id, sidik, status: STATUS.OK, catatan: ketIzin, dicatat: waktuLokal(pesan.waktu),
+    foto_id: pesan.id, sidik, status: STATUS.OK,
+    catatan: [ketIzin, wajah && !wajah.ada ? 'wajah tidak terdeteksi, cek foto' : '', wajah?.otomatis ? 'otomatis dari foto wajah' : ''].filter(Boolean).join('; '),
+    dicatat: waktuLokal(pesan.waktu),
   });
   let telat = menit && !pribadi.bebas ? `⏰ Telat *${menit} menit* → denda *${rupiah(denda)}*` : '✅ Tepat waktu';
   if (pribadi.bebas) telat = '✅ Izin owner, tanpa denda';
   else if (pribadi.izin) telat += ` _(${ketIzin})_`;
-  return `📸 Absen *${orang.nama}* jam ${jam} ${zona.nama} tercatat. ${telat}\n_Gaya hari ini: ${gaya}. Owner/PIC bisa reply foto ini dengan *tolak* kalau gayanya salah._`;
+  const ketWajah = wajah?.otomatis ? '\n🙂 _Foto wajah terdeteksi, dicatat sebagai absen._' : wajah && !wajah.ada ? '\n⚠️ _Wajah tidak terlihat jelas di foto ini. PIC tolong cek._' : '';
+  return `📸 Absen *${orang.nama}* jam ${jam} ${zona.nama} tercatat. ${telat}${ketWajah}\n_Gaya hari ini: ${gaya}. Owner/PIC bisa reply foto ini dengan *tolak* kalau gayanya salah._`;
 }
 
 // #absen: rekap hari ini (atau tanggal tertentu). #absen Dena 10.05 (owner/PIC): catat manual.
@@ -504,4 +514,22 @@ export async function perintahJadwal(ctx, pesan, event, teks) {
   const j = jadwalHari(event, tanggal, await aturanHari(ctx, event.kode, tanggal));
   if (!buka) buka = lokal(j.buka, zona).jam;
   return `🗓️ *Jadwal khusus ${event.kode} ${tanggal}*${a.alasan ? ` (${a.alasan})` : ''}\nBuka *${jamTeks(j.buka, zona)}* · karyawan datang & absen paling lambat *${jamTeks(j.batas, zona)}* · gaya foto diumumkan *${jamTeks(j.umum, zona)}*.`;
+}
+
+// Foto tanpa caption: selfie pagi (06.00–12.00 waktu kota event) dari anggota tim yang belum absen hari itu?
+// Cek murah dulu (jam, tim, sudah absen), baru unduh foto & deteksi wajah.
+export const JAM_FOTO_WAJAH = { mulai: 6, sampai: 12 };
+async function cekSelfiePagi(ctx, pesan, event) {
+  if (!pesan.ambilFoto || pesan.diteruskan) return null;
+  const zona = zonaKota(event.kota);
+  const { tanggal, jam } = lokal(pesan.waktu, zona);
+  const j = Number(jam.slice(0, 2));
+  if (j < JAM_FOTO_WAJAH.mulai || j >= JAM_FOTO_WAJAH.sampai || !hariEvent(event, tanggal)) return null;
+  const orang = await namaDariNomor(ctx, pesan.senderId, await timEvent(ctx, event.kode));
+  if (!orang || orang.peran === 'PIC') return null;
+  if ((await absenHari(ctx, event.kode, tanggal)).some((a) => sama(a.nama, orang.nama))) return null;
+  const buffer = await pesan.ambilFoto().catch(() => null);
+  if (!buffer) return null;
+  const hasil = await (ctx.deteksiWajah || deteksiWajah)(buffer).catch(() => null);
+  return hasil ? { ...hasil, buffer, otomatis: hasil.ada } : null;
 }

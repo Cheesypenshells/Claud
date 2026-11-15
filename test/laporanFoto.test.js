@@ -51,7 +51,9 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
 
   // ---- harian ----
   ocr = 'cheesypenshells\n312 12.500 401\nPostingan Pengikut Mengikuti';
-  assert.match(await kirim(G_TIM, DENA, '#followers', pada('02', '10:50'), foto('ig1')), /Followers terbaca: \*12.500\*/);
+  const pagi = await kirim(G_TIM, DENA, '#followers', pada('02', '10:50'), foto('ig1'));
+  assert.match(pagi, /Followers terbaca: \*12.500\*/);
+  assert.doesNotMatch(pagi.split('Belum:')[1] || '', /#omzet|#bersih|#pulang/); // laporan pagi tidak ditagih laporan closing
   // saat buka: pengingat laporan sebelum buka & loading in yang belum
   const ingat = await tugasLaporan(ctx, pada('02', '11:00'));
   assert.equal(ingat[0].groupId, G_TIM);

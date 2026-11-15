@@ -170,6 +170,39 @@ test('absen: caption "#Absen" + foto diterima; foto tanpa caption lalu teks "#ab
   assert.doesNotMatch(await kirim('6287777777777', 'absen', jam('09:20')), /tercatat/);
 });
 
+test('foto wajah tanpa caption jam 06.00-12.00 = absen otomatis; bukan wajah / di luar jam tidak; caption absen tanpa wajah ditandai', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { deteksiWajah } = await import('../src/wajah.js');
+  // detektor asli: foto makanan/oyster bukan wajah
+  for (const f of ['fresh-oyster', 'menu-garlic', 'menu-seafood', 'oyster-es']) {
+    assert.equal((await deteksiWajah(readFileSync(new URL(`../docs/img/${f}.jpg`, import.meta.url)))).ada, false, f);
+  }
+  const store = new MemoryStore();
+  const wajahPalsu = async (buf) => ({ ada: String(buf).startsWith('wajah'), skor: 50, wajah: [] });
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map(), deteksiWajah: wajahPalsu };
+  let n = 0;
+  const kirim = async (senderId, text, waktu, extra = {}) => (await handlePesan(ctx, {
+    id: `w${++n}`, groupId: G_TIM, groupName: G_TIM, senderId, senderName: 'X', text, adaFoto: false, waktu, ...extra,
+  })).map((r) => r.text).join('\n');
+  const foto = (isi) => ({ adaFoto: true, ambilFoto: async () => Buffer.from(isi) });
+  await handlePesan(ctx, { id: 'e1', groupId: G_KELUAR, groupName: G_KELUAR, senderId: OWNER, senderName: 'O', adaFoto: false, waktu: jam('05:00'), text: '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 2-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 500rb\nJam buka: 10.00\nPIC: Budi\nSenior: Dena, Tiar' });
+  await kirim(OWNER, '#daftar event JMB26-11', jam('05:01'));
+  await kirim(DENA, 'saya Dena', jam('05:02'));
+  await kirim(TIAR, 'saya Tiar', jam('05:03'));
+  await kirim(PIC, 'saya Budi', jam('05:04'));
+  assert.equal(await kirim(DENA, '', jam('05:50'), foto('wajah-dena0')), ''); // sebelum 06.00
+  assert.equal(await kirim(DENA, '', jam('08:40'), foto('cooler')), ''); // bukan wajah
+  assert.match(await kirim(DENA, '', jam('08:45'), foto('wajah-dena')), /Absen \*Dena\* jam 08:45 WIB tercatat.*Foto wajah terdeteksi/s);
+  assert.equal(await kirim(DENA, '', jam('09:30'), foto('wajah-dena2')), ''); // sudah absen: foto wajah lain diabaikan
+  assert.equal(await kirim(PIC, '', jam('08:50'), foto('wajah-budi')), ''); // PIC tidak absen
+  assert.equal(await kirim(TIAR, '', jam('12:05'), foto('wajah-tiar')), ''); // lewat 12.00
+  // caption absen tapi wajah tidak terlihat: tetap tercatat, ditandai untuk dicek PIC
+  assert.match(await kirim(TIAR, 'absen', jam('12:10'), foto('punggung')), /tercatat.*Wajah tidak terlihat jelas/s);
+  const rows = await store.all('Absensi');
+  assert.match(rows.find((r) => r.nama === 'Dena').catatan, /otomatis dari foto wajah/);
+  assert.match(rows.find((r) => r.nama === 'Tiar').catatan, /wajah tidak terdeteksi/);
+});
+
 test('PIC tidak perlu absen: tidak diingatkan, tidak tercantum "belum absen", foto absen PIC tidak dicatat', async () => {
   const { wajibAbsen } = await import('../src/absensi.js');
   assert.equal(wajibAbsen({ nama: 'Budi', peran: 'PIC' }), false);

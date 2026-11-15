@@ -181,9 +181,14 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
   return `📋 *${NAMA_TAHAP[tahap]} ${event.kode} – ${tanggal}*${jamBuka}\n${baris.join('\n')}`;
 }
 
-function sisaTeks(ctx, event, tahap, tanggal) {
+// Laporan closing (#omzet, #bersih, #pulang) baru disebut "belum" kalau yang dikirim juga laporan closing,
+// supaya laporan pagi tidak ditagih omzet yang memang baru ada malam.
+function sisaTeks(ctx, event, tahap, tanggal, butir = null) {
+  const tutup = new Set(BUTIR.filter((x) => x.tahap === tahap && x.bagian === 'tutup').map((x) => x.tag));
+  const sertakanTutup = butir?.bagian === 'tutup';
   return teksStatus(ctx, event, tahap, tanggal).then((t) => {
-    const belum = t.split('\n').filter((b) => b.startsWith('❌')).map((b) => (b.match(/\*#(\w+)\*/) || [])[1]).filter(Boolean);
+    const belum = t.split('\n').filter((b) => b.startsWith('❌')).map((b) => (b.match(/\*#(\w+)\*/) || [])[1]).filter(Boolean)
+      .filter((tag) => sertakanTutup || !tutup.has(tag));
     return belum.length ? `Belum: ${belum.map((x) => `#${x}`).join(', ')}` : `🎉 ${NAMA_TAHAP[tahap]} lengkap.`;
   });
 }
@@ -290,7 +295,7 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
     keluar.unshift({ text: `🚨 Temuan dari *${nama}* tercatat (${id}) dan sudah diteruskan ke owner & PIC.${isi ? '' : '\nTulis juga jenis temuan & tindakannya, contoh: *#temuan oyster bau 3 pcs, sudah dibuang*'}` });
     return keluar;
   }
-  const sisa = b.opsional ? '' : `\n${await sisaTeks(ctx, event, tahap, tanggal)}`;
+  const sisa = b.opsional ? '' : `\n${await sisaTeks(ctx, event, tahap, tanggal, b)}`;
   const ket = pesan.adaFoto ? ' _(foto berikutnya dalam 5 menit ikut dihitung)_' : '';
   // Pekerjaan jobdesk: PIC diminta mengecek di lokasi dan memberi poin (chat pribadi / grup pengeluaran).
   if (tag === 'bantu') {
