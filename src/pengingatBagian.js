@@ -5,10 +5,12 @@
 //   buka    saat buka                                         Kasir #followers (buka)
 //   tagih   10 menit setelah buka                             yang belum mengirim laporan bagiannya
 //   tutup   setelah ⏹ Tutup kasir (cadangan 23.30 kalau kasir tidak dipakai)                  Kasir #followers (tutup) · semua #bersih & #pulang
+//   kasir   tiap jam setelah jam tutup (sampai 02.00) selama kasir belum ⏹ Tutup kasir;
+//           pagi berikutnya tiap jam kalau kasir kemarin masih terbuka (struk jangan terbawa ke hari baru)
 //   pulang  1 jam setelah closing (paling cepat 23.30)         yang belum #pulang
 
 import { STATUS } from './schema.js';
-import { jadwalHari, aturanHari, wajibAbsen, saatClosing } from './absensi.js';
+import { jadwalHari, aturanHari, wajibAbsen, saatClosing, waktuTutup, tanggalSesiKasir, zonaKota, lokal } from './absensi.js';
 import { tanggalClosing } from './stokHarian.js';
 import { tugasHariIni, BAGIAN } from './tugasHarian.js';
 
@@ -29,10 +31,11 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
   const nomorDari = (nama) => { const k = karyawan.find((x) => sama(x.nama, nama) && x.nomor_wa); return k ? nomor62(k.nomor_wa) : null; };
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL' && x.status !== 'SELESAI')) {
     const tugas = await tugasHariIni(ctx, e, tanggal);
-    if (!tugas.length) continue;
     const grupTim = grup.filter((g) => g.kode_event === e.kode && g.jenis === 'event').map((g) => g.group_id);
     const j = jadwalHari(e.jam_buka ? e : { ...e, jam_buka: '10:00' }, tanggal, await aturanHari(ctx, e.kode, tanggal));
     if (!j) continue;
+    keluar.push(...ingatTutupKasir(ctx, e, tanggal, sekarang, { sesiKasir, tugas, buka: j.buka, nomorDari, grupTim }));
+    if (!tugas.length) continue;
     const buka = j.buka;
     const lap = laporan.filter((l) => l.kode_event === e.kode && String(l.tanggal) === tanggal && String(l.status || 'OK').toUpperCase() === 'OK');
     const sudah = (tag, nama) => lap.some((l) => l.tag === tag && (!nama || sama(l.nama, nama)));
@@ -99,6 +102,43 @@ export async function tugasPengingatBagian(ctx, sekarang = new Date()) {
       const belum = hadir.filter((n) => !sudah('pulang', n));
       belum.forEach((n) => pribadi(n, `🏠 *${n}*, jangan lupa ketik *#pulang* di grup tim sebelum pulang ya.`));
       if (belum.length) keGrup(`🏠 Belum *#pulang*: ${belum.join(', ')}`);
+    }
+  }
+  return keluar;
+}
+
+// Kasir lupa ⏹ Tutup kasir: struk hari itu terbawa ke hari berikutnya dan penilaian harian tidak terkirim.
+// Setelah jam tutup: tiap 1 jam (sampai 02.00) chat pribadi ke kasir + grup tim.
+// Pagi berikutnya (mulai 1,5 jam sebelum buka): tiap 1 jam selama kasir kemarin masih terbuka, owner juga diberi tahu.
+const tglPendek = (t) => `${Number(t.slice(8, 10))} ${['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][Number(t.slice(5, 7)) - 1]}`;
+function ingatTutupKasir(ctx, e, tanggal, sekarang, { sesiKasir, tugas, buka, nomorDari, grupTim }) {
+  const keluar = [];
+  const terbuka = sesiKasir.filter((s) => s.kode_event === e.kode && String(s.status).toUpperCase() === 'BUKA');
+  if (!terbuka.length) return keluar;
+  const zona = zonaKota(e.kota);
+  const jamLokal = Number(lokal(sekarang, zona).jam.slice(0, 2));
+  const kirimKe = (sesi, teks, tanda, owner) => {
+    if (ctx.sesi.get(tanda)) return;
+    ctx.sesi.set(tanda, { kirim: true });
+    const kasir = String(sesi.kasir || '').split(',').map((x) => x.trim()).filter(Boolean).pop() || tugas.find((t) => t.bagian === 'Kasir')?.nama;
+    const n = kasir && nomorDari(kasir);
+    if (n) keluar.push({ nomor: n, text: `${kasir ? `*${kasir}*, ` : ''}${teks}` });
+    grupTim.forEach((g) => keluar.push({ groupId: g, text: teks }));
+    if (owner) for (const o of ctx.ownerIds || []) keluar.push({ nomor: o, text: `⚠️ ${e.kode}: ${teks}` });
+  };
+  for (const sesi of terbuka) {
+    const hariSesi = tanggalSesiKasir(sesi);
+    if (hariSesi < tanggal) {
+      // kasir kemarin masih terbuka (pagi/siang hari baru)
+      const mulai = new Date(buka.getTime() - 90 * 60000);
+      if (sekarang < mulai || jamLokal < 5) continue;
+      const ke = Math.floor((sekarang - mulai) / 3600e3);
+      kirimKe(sesi, `⚠️ *Kasir ${tglPendek(hariSesi)} belum ditutup!* Struk hari ini jadi tercampur dengan kemarin.\nBuka halaman kasir → tekan *⏹ Tutup kasir*, lalu *▶ Mulai kasir* lagi untuk hari ini.`, `tutupkasir-lama:${e.kode}:${sesi.id}:${tanggal}:${ke}`, ke === 0);
+    } else if (hariSesi === tanggal) {
+      const tutup = waktuTutup(e, tanggal);
+      if (sekarang < tutup || (jamLokal >= 2 && jamLokal < 5)) continue;
+      const ke = Math.floor((sekarang - tutup) / 3600e3);
+      kirimKe(sesi, `🧾 *Kasir belum ditutup* (sudah lewat jam tutup ${lokal(tutup, zona).jam.replace(':', '.')}).\nKalau pembeli sudah habis, buka halaman kasir dan tekan *⏹ Tutup kasir* supaya struk hari ini tidak terbawa ke besok, lalu lanjut stok closing & penilaian harian.\n_Masih ada pembeli? Abaikan, bot tanya lagi 1 jam lagi._`, `tutupkasir:${e.kode}:${sesi.id}:${tanggal}:${ke}`, false);
     }
   }
   return keluar;

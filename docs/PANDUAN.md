@@ -549,6 +549,8 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (**nilai, kategori, dan catatan tidak ikut dikirim** — karyawan hanya menerima pesannya); balas `tidak` kalau tidak ada. `lewati` / `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
+- **Kemarin belum dinilai** (misalnya kasir lupa ⏹ Tutup kasir atau bot mati): malam ini bot menanyakan **2 hari berurutan**, kemarin dulu lalu hari ini.
+- Manual: `#nilaiharian` (hari ini) · `#nilaiharian kemarin` · `#nilaiharian 2 hari`.
 
 ## Kejadian, barang perlu dibeli, PR (catatan harian)
 
@@ -572,3 +574,4 @@ Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat
 - **15 menit sebelum jam tutup (21.45)**: format stok closing (`#stok` + foto).
 - **Setelah ⏹ Tutup kasir** (cadangan 23.30): closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
 - **1 jam setelah tutup kasir** (paling cepat 23.30): yang belum `#pulang` ditagih.
+- **Kasir belum ⏹ Tutup kasir** setelah jam tutup: kasir (chat pribadi) + grup tim diingatkan **tiap 1 jam** sampai ditutup (berhenti jam 02.00). Besok paginya, kalau kasir kemarin masih terbuka, diingatkan tiap jam mulai 1,5 jam sebelum buka dan owner diberi tahu: tutup dulu, lalu ▶ Mulai kasir lagi supaya struk tidak tercampur.

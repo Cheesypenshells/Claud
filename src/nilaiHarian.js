@@ -1,5 +1,5 @@
 // Penilaian harian oleh PIC (chat pribadi; kalau nomor PIC belum dikenal: grup pengeluaran).
-// Dikirim setiap hari event jam 22.00, atau lebih cepat setelah ⏹ Tutup kasir. Satu per satu per orang,
+// Dikirim setiap hari event setelah ⏹ Tutup kasir (cadangan 23.30). Kemarin belum dinilai -> ditanya juga (kemarin dulu). Satu per satu per orang,
 // pertanyaannya sesuai bagian tugas orang itu hari itu (tab Tugas Harian).
 // Per orang dua langkah: (1) nilai 1–100 + catatan (rahasia), kategori ditentukan bot:
 //   Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100
@@ -8,7 +8,7 @@
 // Tersimpan di tab "Nilai Harian"; rata-ratanya dipakai untuk nilai Kinerja KPI.
 
 import { STATUS } from './schema.js';
-import { waktuLokal } from './util.js';
+import { waktuLokal, tambahHari } from './util.js';
 import { tanggalClosing } from './stokHarian.js';
 import { saatClosing } from './absensi.js';
 import { tambahCatatan } from './catatanHarian.js';
@@ -83,12 +83,19 @@ async function daftarDinilai(ctx, event, tanggal) {
   return nama.map((n) => ({ nama: n, bagian: hari.filter((r) => sama(r.nama, n)).map((r) => r.bagian) }));
 }
 
+// tanggal boleh satu tanggal atau beberapa (hari yang terlewat dulu, lalu hari ini): dinilai berurutan.
 export async function mulaiNilaiHarian(ctx, event, tanggal, tujuan) {
-  const daftar = await daftarDinilai(ctx, event, tanggal);
-  if (!daftar.length) return [];
-  const s = { kode: event.kode, tanggal, daftar, i: 0, waktu: Date.now() };
+  const semuaTgl = [tanggal].flat();
+  const antri = [];
+  for (const t of semuaTgl) { const d = await daftarDinilai(ctx, event, t); if (d.length) antri.push({ tanggal: t, daftar: d }); }
+  if (!antri.length) return [];
+  const [awal, ...sisa] = antri;
+  const s = { kode: event.kode, tanggal: awal.tanggal, daftar: awal.daftar, i: 0, antri: sisa, waktu: Date.now() };
   ctx.sesi.set(tujuan.nomor ? `nilaiharian:${tujuan.nomor}` : `nilaiharian:${tujuan.groupId}`, s);
-  const teks = `Halo${tujuan.pic ? ` ${tujuan.pic}` : ''}! Saatnya penilaian harian tim *${event.kode}* hari ini (rahasia, untuk KPI).\n\n${teksTanya(s)}`;
+  const pembuka = antri.length > 1
+    ? `Penilaian harian tim *${event.kode}* untuk *${antri.length} hari* (${antri.map((a) => tglPendek(a.tanggal)).join(' lalu ')}) karena kemarin belum dinilai (rahasia, untuk KPI). Mulai dari ${tglPendek(awal.tanggal)}.`
+    : `Saatnya penilaian harian tim *${event.kode}* ${tglPendek(awal.tanggal)} (rahasia, untuk KPI).`;
+  const teks = `Halo${tujuan.pic ? ` ${tujuan.pic}` : ''}! ${pembuka}\n\n${teksTanya(s)}`;
   return [tujuan.nomor ? { nomor: tujuan.nomor, text: teks } : { groupId: tujuan.groupId, text: teks }];
 }
 
@@ -97,7 +104,7 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
   const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
-  const [events, sesiKasir] = await Promise.all([baca('Event'), baca('Sesi Kasir')]);
+  const [events, sesiKasir, nilaiRows] = await Promise.all([baca('Event'), baca('Sesi Kasir'), baca('Nilai Harian')]);
   const tanggal = tanggalClosing(sekarang);
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL')) {
     const tanda = `nilaiharian-kirim:${e.kode}:${tanggal}`;
@@ -106,7 +113,15 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
     const tujuan = await tujuanPic(ctx, e);
     if (!tujuan) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    keluar.push(...(await mulaiNilaiHarian(ctx, e, tanggal, tujuan)));
+    // Kemarin terlewat (mis. kasir lupa ditutup / bot mati)? Dinilai dulu, lalu hari ini.
+    const kemarin = tambahHari(tanggal, -1);
+    const daftarTgl = [];
+    if (kemarin >= e.mulai && !nilaiRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === kemarin && r.status !== STATUS.BATAL)) {
+      daftarTgl.push(kemarin);
+      ctx.sesi.set(`nilaiharian-kirim:${e.kode}:${kemarin}`, { kirim: true });
+    }
+    daftarTgl.push(tanggal);
+    keluar.push(...(await mulaiNilaiHarian(ctx, e, daftarTgl, tujuan)));
   }
   return keluar;
 }
@@ -114,7 +129,8 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
 // #nilaiharian (owner/PIC): mulai penilaian hari ini sekarang juga.
 export async function perintahNilaiHarian(ctx, pesan, event) {
   if (!event) return balas('⚠️ Sebutkan eventnya, contoh: *#nilaiharian SMR26-11*');
-  const tanggal = tanggalClosing(pesan.waktu);
+  const hariIni = tanggalClosing(pesan.waktu);
+  const tanggal = /\bkemarin\b/i.test(pesan.text || '') ? tambahHari(hariIni, -1) : /\b(2\s*hari|dua\s*hari)\b/i.test(pesan.text || '') ? [tambahHari(hariIni, -1), hariIni] : hariIni;
   const tujuan = pesan.pribadi ? { nomor: pesan.senderId } : { groupId: pesan.groupId };
   const k = await mulaiNilaiHarian(ctx, event, tanggal, tujuan);
   return k.length ? [{ text: k[0].text }] : balas('⚠️ Belum ada tim untuk dinilai.');
@@ -133,11 +149,21 @@ export async function jawabNilaiHarian(ctx, pesan) {
   // Langkah terakhir: kejadian / PR hari ini (dibagikan ke tim di pesan tugas besok pagi).
   if (s.tahap === 'kejadian') {
     ctx.sesi.hapus(k);
-    if (/^(tidak|tdk|gak|ga|nggak|tidak ada|aman|nihil|-)$/i.test(teks)) return balas('👌 Oke, tidak ada kejadian/PR. Terima kasih!');
-    const event = (await ctx.store.all('Event')).find((e) => e.kode === s.kode) || { kode: s.kode };
-    const id = await tambahCatatan(ctx, { event, jenis: 'PR', isi: teks, oleh: `${pesan.senderName || pesan.senderId} (PIC)`, tanggal: s.tanggal, waktu: pesan.waktu });
-    return balas(`📌 Dicatat (${id}). Akan muncul di pesan tugas besok pagi untuk tim.
-_Barang yang perlu dibeli bisa dicatat terpisah dengan *#beli ...* supaya tetap muncul sampai dibeli._`);
+    let jawab;
+    if (/^(tidak|tdk|gak|ga|nggak|tidak ada|aman|nihil|-)$/i.test(teks)) jawab = '👌 Oke, tidak ada kejadian/PR. Terima kasih!';
+    else {
+      const event = (await ctx.store.all('Event')).find((e) => e.kode === s.kode) || { kode: s.kode };
+      const id = await tambahCatatan(ctx, { event, jenis: 'PR', isi: teks, oleh: `${pesan.senderName || pesan.senderId} (PIC)`, tanggal: s.tanggal, waktu: pesan.waktu });
+      jawab = `📌 Dicatat (${id}). Akan muncul di pesan tugas besok pagi untuk tim.\n_Barang yang perlu dibeli bisa dicatat terpisah dengan *#beli ...* supaya tetap muncul sampai dibeli._`;
+    }
+    // Hari berikutnya yang masih antre (mis. kemarin terlewat, lalu hari ini).
+    if (s.antri?.length) {
+      const [lanjut, ...sisa] = s.antri;
+      const s2 = { kode: s.kode, tanggal: lanjut.tanggal, daftar: lanjut.daftar, i: 0, antri: sisa, waktu: Date.now() };
+      ctx.sesi.set(k, s2);
+      return balas(`${jawab}\n\n➡️ *Lanjut penilaian ${tglPendek(lanjut.tanggal)}.*\n\n${teksTanya(s2)}`);
+    }
+    return balas(jawab);
   }
   const o = s.daftar[s.i];
   // Langkah 2: pesan PIC untuk karyawan -> dikirim ke chat pribadinya.

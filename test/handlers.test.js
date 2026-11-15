@@ -1457,6 +1457,7 @@ test('penilaian harian PIC jam 22.00: per orang sesuai bagian, kategori 1-4 + po
   await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Kasir', nama: 'Tiara', status: 'OK' });
   await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Plating', nama: 'Tiara', rangkap: 'ya', status: 'OK' });
   await store.append('Tugas Harian', { tanggal: '2026-11-03', kode_event: 'JMB26-11', bagian: 'Getok', nama: 'Bima', status: 'OK' });
+  await store.append('Nilai Harian', { tanggal: '2026-11-02', kode_event: 'JMB26-11', nama: 'Lain', poin: 80, status: 'OK' }); // 2 Nov sudah dinilai
   assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T21:00:00+07:00'))).length, 0);
   assert.equal((await tugasNilaiHarian(ctx, new Date('2026-11-03T22:00:00+07:00'))).length, 0); // kasir belum tutup, tanpa sesi: cadangan 23.30
   await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-03', status: 'TUTUP', ditutup: '2026-11-03 22:20:00' });
@@ -1481,6 +1482,51 @@ test('penilaian harian PIC jam 22.00: per orang sesuai bagian, kategori 1-4 + po
   const data = await bacaData(store);
   const s = skorEvent(hitungEvent(data.events[0], data), { ...(await bahanKpi(store)), hariIni: '2026-11-04' }).find((x) => x.nama === 'Bima');
   assert.equal(s.kinerja, 9.6); // 40/100 × 24
+});
+
+test('kasir lupa tutup: diingatkan tiap jam setelah jam tutup & pagi berikutnya; penilaian harian 2 hari (kemarin dulu)', async () => {
+  const { store, kirim, ctx } = setup();
+  const { tugasPengingatBagian } = await import('../src/pengingatBagian.js');
+  const { tugasNilaiHarian } = await import('../src/nilaiHarian.js');
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT.replace('PIC: Budi', 'PIC: Budi\nJam buka: 10.00')}\nSenior: Tiara, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  await store.append('Karyawan', { nama: 'Tiara', nomor_wa: '085555555555' });
+  await store.append('Karyawan', { nama: 'Budi', nomor_wa: '082222222222' });
+  for (const t of ['2026-11-02', '2026-11-03']) {
+    await store.append('Tugas Harian', { tanggal: t, kode_event: 'JMB26-11', bagian: 'Kasir', nama: 'Tiara', status: 'OK' });
+    await store.append('Tugas Harian', { tanggal: t, kode_event: 'JMB26-11', bagian: 'Getok', nama: 'Bima', status: 'OK' });
+  }
+  await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-02', kasir: 'Tiara', dibuka: '2026-11-02 09:50:00', status: 'BUKA' });
+  const pada = (tgl, jam) => tugasPengingatBagian(ctx, new Date(`2026-11-${tgl}T${jam}:00+07:00`));
+  const ingat = (r) => r.filter((x) => /Kasir .*belum ditutup/.test(x.text));
+  assert.equal(ingat(await pada('02', '21:59')).length, 0);
+  const a = ingat(await pada('02', '22:00'));
+  assert.equal(a.find((x) => x.nomor === '6285555555555')?.text.includes('*Tiara*'), true);
+  assert.ok(a.some((x) => x.groupId === G_TIM && /⏹ Tutup kasir/.test(x.text)));
+  assert.equal(ingat(await pada('02', '22:30')).length, 0); // belum 1 jam
+  assert.ok(ingat(await pada('02', '23:00')).length > 0);
+  assert.equal(ingat(await pada('03', '03:00')).length, 0); // malam: berhenti jam 02.00
+  // pagi berikutnya: kasir kemarin masih terbuka -> diingatkan + owner diberi tahu
+  const pagi = ingat(await pada('03', '08:30'));
+  assert.ok(pagi.some((x) => /Kasir 2 Nov belum ditutup.*▶ Mulai kasir/s.test(x.text) && x.groupId === G_TIM));
+  assert.ok(pagi.some((x) => x.nomor === OWNER));
+  assert.equal(ingat(await pada('03', '09:00')).length, 0);
+  assert.ok(ingat(await pada('03', '09:30')).length > 0); // tiap jam
+  // ditutup -> berhenti
+  await store.updateWhere('Sesi Kasir', (r) => r.id === 'S1', { status: 'TUTUP', ditutup: '2026-11-03 09:40:00' });
+  assert.equal(ingat(await pada('03', '10:30')).length, 0);
+  // malam 3 Nov: penilaian kemarin (2 Nov, belum dinilai) dulu, lalu 3 Nov
+  await store.append('Sesi Kasir', { id: 'S2', kode_event: 'JMB26-11', tanggal: '2026-11-03', kasir: 'Tiara', dibuka: '2026-11-03 10:00:00', status: 'TUTUP', ditutup: '2026-11-03 22:30:00' });
+  const n = await tugasNilaiHarian(ctx, new Date('2026-11-03T22:31:00+07:00'));
+  assert.match(n[0].text, /untuk \*2 hari\* \(2 Nov lalu 3 Nov\).*Penilaian harian JMB26-11\* – 2 Nov \(1\/2\)/s);
+  const dm = (text) => handlePesan(ctx, { id: `d${Math.random()}`, groupId: 'dm', pribadi: true, senderId: PIC, senderName: 'Budi', text, adaFoto: false, waktu: new Date('2026-11-03T22:35:00+07:00') }).then((r) => r.map((x) => x.text).join('\n'));
+  await dm('80'); await dm('tidak'); await dm('70'); await dm('tidak');
+  const lanjut = await dm('tidak'); // kejadian 2 Nov
+  assert.match(lanjut, /Lanjut penilaian 3 Nov.*– 3 Nov \(1\/2\)/s);
+  await dm('90'); await dm('tidak'); await dm('60'); await dm('tidak');
+  assert.match(await dm('tidak'), /tidak ada kejadian/);
+  const rows = (await store.all('Nilai Harian')).filter((r) => r.status === 'OK');
+  assert.deepEqual(rows.map((r) => [r.tanggal, r.nama, r.poin]), [['2026-11-02', 'Tiara', 80], ['2026-11-02', 'Bima', 70], ['2026-11-03', 'Tiara', 90], ['2026-11-03', 'Bima', 60]]);
 });
 
 test('catatan harian: #kejadian #beli #pr, kejadian/PR dari PIC di akhir penilaian, tampil di tugas pagi besoknya, #sudahbeli', async () => {
