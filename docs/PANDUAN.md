@@ -517,6 +517,12 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
   - atau `#gantirugi RS3 150rb [Nama]` / `tidak RS3`
 - Ganti rugi masuk tab **Denda** (jenis *Ganti rugi bahan rusak*) dan **dipotong dari gaji pokok di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
 
+### Denda kelalaian langsung (owner)
+
+- Kalau ada kelalaian yang tidak lewat laporan (misalnya oyster gosong karena pemanggang lalai), owner ketik di grup tim atau grup pengeluaran, boleh dengan **foto bukti**: `#denda imam 30rb oyster gosong` (atau `#gantirugi imam 30rb ...`).
+- Beberapa orang: `#denda imam alam 60rb ...` (dibagi rata) atau `#denda imam alam 30rb masing-masing`.
+- Masuk tab **Denda** (jenis *Denda kelalaian*) dan **dipotong dari gaji pokok di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
+
 ### Sidak stok dadakan (PIC / owner)
 
 - Lewat **chat pribadi ke bot** (`#sidak` atau `#sidak SMR26-11`) atau di **grup pengeluaran**. Di grup tim ditolak supaya tetap dadakan.

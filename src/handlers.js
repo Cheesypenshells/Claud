@@ -26,7 +26,7 @@ import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawab
 import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
-import { perintahRusak, jawabRusak } from './bahanRusak.js';
+import { perintahRusak, jawabRusak, perintahDendaLangsung } from './bahanRusak.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
 import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
@@ -1420,8 +1420,13 @@ export async function handlePesan(ctx, pesan) {
         const gp = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event?.kode && g.jenis === 'pengeluaran').map((g) => g.group_id);
         return perintahRusak(ctx, pesan, event, cmd, { grupPengeluaran: gp });
       }
-      case 'gantirugi':
-        return (await jawabRusak(ctx, pesan, { isOwner })) || [];
+      case 'denda':
+        return perintahDendaLangsung(ctx, pesan, event, cmd, { isOwner });
+      case 'gantirugi': {
+        // Dengan kode RS = keputusan bahan rusak; tanpa kode = denda langsung ke orangnya (#gantirugi imam 30rb).
+        if (/\bRS\d+\b/i.test(pesan.text || '') || /\bRS\d+\b/i.test(pesan.kutipan?.teks || '')) return (await jawabRusak(ctx, pesan, { isOwner })) || [];
+        return perintahDendaLangsung(ctx, pesan, event, cmd, { isOwner });
+      }
       case 'tanyakasir': {
         const milikSaya = await eventKasirUntuk(ctx, pesan.senderId);
         return perintahTanyaKasir(ctx, pesan, event, { boleh: isOwner || milikSaya.some((e) => e.kode === event?.kode) });

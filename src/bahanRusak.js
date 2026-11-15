@@ -98,3 +98,38 @@ export async function jawabRusak(ctx, pesan, { isOwner }) {
   await tandai({ keputusan: 'GANTI RUGI', ganti_rugi: jumlah });
   return balas(`💸 *Ganti rugi bahan rusak* ${kode.join(', ')} (${ringkas}): ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${kena.length > 1 ? ` (dibagi rata dari ${rupiah(jumlah)})` : ''}.\n_Dipotong dari gaji pokok di *#gajian*. Tercatat di tab Denda._`);
 }
+
+// Denda langsung ke satu / beberapa orang atas kelalaian (owner), tanpa laporan bahan rusak:
+//   #denda imam 30rb oyster gosong     |     #gantirugi imam 30rb      (+ foto sebagai bukti, boleh)
+//   #denda imam dan alam 60rb ...      -> dibagi rata        |   "masing-masing" -> tiap orang sebesar nominal
+// Masuk tab Denda (jenis "Denda kelalaian") -> dipotong dari gaji pokok di #gajian.
+export async function perintahDendaLangsung(ctx, pesan, event, cmd, { isOwner }) {
+  if (!isOwner) return balas('⚠️ Denda hanya diputuskan owner.');
+  if (!event) return balas('⚠️ Ketik di grup event (supaya tahu event mana).');
+  const isi = [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' ').replace(/#/g, '').trim();
+  const contoh = 'Format: *#denda imam 30rb oyster gosong* (boleh dengan foto bukti)\nBeberapa orang: *#denda imam alam 60rb ...* (dibagi rata) atau *... 30rb masing-masing*';
+  const jumlah = parseMoney(isi);
+  if (!isi || !jumlah) return balas(`Nominalnya belum ada.\n${contoh}`);
+  const tim = (await baca(ctx, 'Tim Event')).filter((t) => t.kode_event === event.kode && t.status !== STATUS.BATAL);
+  const kenal = [...tim.map((t) => t.nama), ...(await baca(ctx, 'Karyawan')).map((x) => x.nama)];
+  const kataNama = isi.replace(/[\d.,]+\s*(rb|ribu|k|jt|juta)?/ig, ' ').split(/[\s,&]+/).filter(Boolean);
+  const kena = [];
+  const sisaKata = [];
+  for (const k of kataNama) {
+    const n = kenal.find((x) => sama(x, k)) || (k.length >= 3 ? kenal.find((x) => String(x).toLowerCase().startsWith(k.toLowerCase())) : null);
+    if (n) { if (!kena.some((x) => sama(x, n))) kena.push(n); } else sisaKata.push(k);
+  }
+  if (!kena.length) return balas(`Nama karyawannya tidak ketemu di tim ${event.kode}.\n${contoh}`);
+  const masing = /masing/i.test(isi);
+  const per = masing || kena.length === 1 ? jumlah : Math.round(jumlah / kena.length / 100) * 100;
+  const alasan = sisaKata.filter((k) => !/^(dan|rata|masing|denda|ganti|rugi|gantirugi|potongan|potong|karena|kelalaian|lalai)$/i.test(k)).join(' ').trim();
+  const tanggal = tanggalLokal(pesan.waktu);
+  for (const n of kena) {
+    await ctx.store.append('Denda', {
+      tanggal, kode_event: event.kode, nama: n, jumlah: per, jenis: 'Denda kelalaian',
+      alasan: `${alasan || 'kelalaian'}${pesan.adaFoto ? ' (ada foto bukti di grup)' : ''}${kena.length > 1 && !masing ? ` – dibagi rata ${kena.length} orang dari ${rupiah(jumlah)}` : ''}`,
+      oleh: pesan.senderName || pesan.senderId, status: STATUS.OK, dicatat: waktuLokal(pesan.waktu),
+    });
+  }
+  return balas(`💸 *Denda kelalaian ${event.kode}*: ${kena.map((n) => `${n} ${rupiah(per)}`).join(', ')}${alasan ? `\nAlasan: ${alasan}` : ''}\n_Dipotong dari gaji pokok di *#gajian*. Tercatat di tab Denda (ubah Status jadi BATAL kalau dibatalkan)._`);
+}

@@ -1373,6 +1373,22 @@ test('sidak stok dadakan: hanya PIC/owner di luar grup tim, dibandingkan laporan
   assert.equal((await store.all('Poin KPI')).length, jumlah); // sudah selesai, tidak dobel
 });
 
+test('#denda / #gantirugi langsung ke orangnya (owner): masuk tab Denda, dipotong dari gaji pokok', async () => {
+  const { store, kirim } = setup();
+  await kirim(G_KELUAR, OWNER, `${BLOK_EVENT}\nSenior: Imam, Alam`);
+  await kirim(G_TIM, OWNER, '#daftar event JMB26-11');
+  const w = { waktu: new Date('2026-11-03T14:21:00+07:00') };
+  assert.match(await kirim(G_TIM, KARYAWAN, '#denda imam 30rb', w), /hanya diputuskan owner/);
+  assert.match(await kirim(G_TIM, OWNER, '#gantirugi #imam', { ...w, adaFoto: true }), /Nominalnya belum ada/);
+  const a = await kirim(G_TIM, OWNER, '#gantirugi #imam 30rb oyster gosong', { ...w, adaFoto: true });
+  assert.match(a, /Denda kelalaian JMB26-11\*: Imam Rp 30.000.*Alasan: oyster gosong.*gaji pokok/s);
+  assert.match(await kirim(G_KELUAR, OWNER, '#denda imam alam 60rb lalai bakar', w), /Imam Rp 30.000, Alam Rp 30.000/);
+  assert.match(await kirim(G_TIM, OWNER, '#denda zzz 10rb', w), /tidak ketemu/);
+  const d = await store.all('Denda');
+  assert.deepEqual(d.map((x) => [x.nama, x.jumlah, x.jenis]), [['Imam', 30000, 'Denda kelalaian'], ['Imam', 30000, 'Denda kelalaian'], ['Alam', 30000, 'Denda kelalaian']]);
+  assert.match(d[0].alasan, /oyster gosong.*foto bukti/);
+});
+
 test('bahan rusak: #rusak wajib foto, PJ dari tugas harian, owner putuskan ganti rugi → Denda → #gajian', async () => {
   const { store, kirim } = setup();
   const { isiHargaAwal } = await import('../src/main.js');
