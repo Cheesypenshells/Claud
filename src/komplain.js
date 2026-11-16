@@ -3,7 +3,7 @@
 // Komplain yang tidak dibatalkan owner (Status BATAL di tab) mengurangi nilai KPI kelompok event itu.
 // #qr (owner): link halaman kasir antrian & QR komplain (disimpan di Pengaturan: url_antrian).
 
-import { waktuLokal, tanggalLokal } from './util.js';
+import { waktuLokal, tanggalLokal, rupiah } from './util.js';
 import { jadwalHari, aturanHari } from './absensi.js';
 import { tugasHariIni, buatTugas } from './tugasHarian.js';
 
@@ -38,12 +38,21 @@ export async function tugasSesiKasir(ctx, sekarang = new Date()) {
   let rows;
   try { rows = await ctx.store.all('Sesi Kasir'); } catch { return keluar; }
   const owner = [...(ctx.ownerIds || [])];
+  let omzetLapor = [];
+  try { omzetLapor = await ctx.store.all('Omzet'); } catch { omzetLapor = []; }
   for (const r of rows.filter((x) => String(x.status).toUpperCase() === 'TUTUP')) {
+    // Cek silang omzet dari struk dengan laporan #omzet hari itu (kalau sudah dikirim tim).
+    const lapor = omzetLapor.filter((o) => o.kode_event === r.kode_event && String(o.tanggal) === String(r.tanggal) && o.status !== 'BATAL').pop();
+    const omzetStruk = Number(r.omzet) || 0;
+    const barisOmzet = omzetStruk || Number(r.tanpa_total)
+      ? `💰 *Omzet dari struk: ${rupiah(omzetStruk)}*${Number(r.tanpa_total) ? ` _(${r.tanpa_total} struk belum ada totalnya, belum terhitung)_` : ''}${lapor ? `\n   Laporan #omzet tim: ${rupiah(Number(lapor.omzet) || 0)}${omzetStruk && Math.abs((Number(lapor.omzet) || 0) - omzetStruk) > 1000 ? ` → selisih ${rupiah(Math.abs((Number(lapor.omzet) || 0) - omzetStruk))} ⚠️` : ' ✅ cocok'}` : '\n   _Laporan #omzet tim belum masuk._'}`
+      : '';
     const jam = (w) => String(w || '').slice(11, 16);
     const bintang = Number(r.jumlah_rating) ? `⭐ ${String(r.rating_rata).replace('.', ',')} dari ${r.jumlah_rating} penilaian${r.rating_kasir ? `\n   ${r.rating_kasir}` : ''}` : '⭐ Belum ada penilaian bintang';
     const teks = [
       `🧾 *Kasir ${r.kode_event} ditutup* (${r.tanggal}, ${jam(r.dibuka)}–${jam(r.ditutup)})`,
       `👤 Kasir: ${r.kasir || '-'}`,
+      barisOmzet,
       `🧾 *${r.jumlah_struk || 0} struk dilayani* · ${r.diambil || 0} diambil · ${r.batal || 0} batal${Number(r.belum) ? ` · ⚠️ ${r.belum} belum diambil` : ''}`,
       r.rata_tunggu_menit !== '' && r.rata_tunggu_menit !== undefined ? `⏱️ Rata-rata tunggu sampai dipanggil: ${r.rata_tunggu_menit} menit ${Number(r.rata_tunggu_menit) < 7 ? '✅' : '⚠️ (target di bawah 7 menit, hari lambat −2 KPI kelompok)'}` : '',
       bintang,

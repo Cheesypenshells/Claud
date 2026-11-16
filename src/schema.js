@@ -135,6 +135,8 @@ export const KOLOM = {
       k('dibuat', 'Dibuat', 140), k('dibakar', 'Mulai Dibakar', 140), k('dipanggil', 'Dipanggil', 140), k('panggil_ke', 'Dipanggil Ke', 90, { format: 'angka' }),
       k('diambil', 'Diambil', 140), k('kasir', 'Kasir', 110), k('sesi', 'Sesi Kasir', 120, { sembunyi: true }),
       k('rating', 'Bintang', 80, { format: 'angka' }), k('ulasan', 'Ulasan', 220), k('dinilai', 'Dinilai', 140),
+      k('total', 'Total Belanja (Rp)', 120, { format: 'rupiah', catatan: 'Dibaca dari foto struk / bukti trf, atau diisi kasir' }),
+      k('sumber_total', 'Sumber Total', 100), k('foto_trf', 'Foto Bukti Trf', 160),
     ],
   },
   // Pembagian tugas harian (jam 08.00 di grup tim): Kasir, Pemanggang, Getok, Plating.
@@ -219,6 +221,7 @@ export const KOLOM = {
       k('rata_tunggu_menit', 'Rata-rata Tunggu (menit)', 120, { format: 'angka' }), k('rating_rata', 'Bintang Rata-rata', 110),
       k('jumlah_rating', 'Jumlah Penilaian', 110, { format: 'angka' }), k('rating_kasir', 'Bintang per Kasir', 220),
       k('ulasan_buruk', 'Ulasan Bintang Rendah', 280), k('status', 'Status', 100), k('diteruskan', 'Diteruskan ke Owner', 140),
+      k('omzet', 'Omzet dari Struk (Rp)', 140, { format: 'rupiah' }), k('tanpa_total', 'Struk Tanpa Total', 110, { format: 'angka' }),
     ],
   },
   // Komplain pelanggan dari QR di depan booth (halaman Google Apps Script). Status: BARU / DITERUSKAN / BATAL.

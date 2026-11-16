@@ -130,7 +130,7 @@ test('apps-script/Code.gs sinkron dengan apps-script/klien/ (jalankan: node scri
   assert.equal(src, susunCodeGs(src));
 });
 
-test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & bintang pelanggan', async () => {
+test('apps-script: mulai/tutup kasir, nomor mulai 1 tiap sesi, ringkasan & bintang pelanggan', async () => {
   const { readFileSync } = await import('node:fs');
   const vm = await import('node:vm');
   const c = {};
@@ -138,6 +138,7 @@ test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & 
   vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
   const tabel = {};
   let jam = '2026-11-14 08:00:00';
+  let seq = 0;
   Object.assign(c, {
     cekPin_: () => {}, sekarang_: () => jam, hariIni_: () => jam.slice(0, 10), url_: () => 'https://u/exec', atur_: () => '',
     tab_: (nama) => (tabel[nama] = tabel[nama] || { nama, rows: [] }),
@@ -147,7 +148,7 @@ test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & 
     simpanFoto_: () => ({ id: 'F', blob: null }), ocr_: () => '', bacaMenu_: () => '', linkFoto_: (id) => id,
     daftarEvent: () => [{ kode: 'SMR26-11', kota: 'Semarang', io: 'Kepo' }],
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
-    Utilities: { formatDate: () => '261114080000', getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
+    Utilities: { formatDate: () => `2611${String(++seq).padStart(8, '0')}`, getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
   });
   assert.throws(() => c.buatPesanan('1', 'SMR26-11', 'data:'), /Kasir belum dibuka/);
   assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi, null);
@@ -158,7 +159,7 @@ test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & 
   const p2 = c.buatPesanan('1', 'SMR26-11', 'data:');
   assert.deepEqual([p1.nomor, p2.nomor], [1, 2]);
   c.gantiKasir('1', 'SMR26-11', 'Bima');
-  jam = '2026-11-15 00:30:00'; // lewat tengah malam: nomor tetap berlanjut
+  jam = '2026-11-15 00:30:00'; // lewat tengah malam: masih sesi yang sama, nomor berlanjut
   const p3 = c.buatPesanan('1', 'SMR26-11', 'data:');
   assert.equal(p3.nomor, 3);
   assert.equal(tabel.Antrian.rows[2].kasir, 'Bima');
@@ -186,12 +187,69 @@ test('apps-script: mulai/tutup kasir, nomor berlanjut selama event, ringkasan & 
   // event berikutnya mulai dari 1 lagi
   c.mulaiKasir('1', 'PKL26-12', 'Tiara');
   assert.equal(c.buatPesanan('1', 'PKL26-12', 'data:').nomor, 1);
+  // kasir event yang sama dibuka lagi (hari berikutnya): nomor mulai dari 1, tidak bercampur sesi kemarin
+  jam = '2026-11-15 10:00:00';
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  assert.equal(c.buatPesanan('1', 'SMR26-11', 'data:').nomor, 1);
+  assert.equal(c.buatPesanan('1', 'SMR26-11', 'data:').nomor, 2);
+});
+
+test('apps-script: total belanja dibaca dari teks struk / bukti trf, omzet sesi dijumlah, ringkasan tutup kasir', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  assert.equal(c.angkaRupiah_('Rp 125.000'), 125000);
+  assert.equal(c.angkaRupiah_('125,000'), 125000);
+  assert.equal(c.angkaRupiah_('1.250.000,00'), 1250000);
+  assert.equal(c.bacaTotal_('Garlic 2x 50.000\nMozza 1x 30.000\nSubtotal 130.000\nTOTAL 130.000\nTunai 150.000\nKembali 20.000'), 130000);
+  assert.equal(c.bacaTotal_('Grand Total\nRp 87.500\nTerima kasih'), 87500);
+  assert.equal(c.bacaTotal_('Garlic 2x 50.000\nTunai 150.000'), 0); // tanpa kata total: tidak menebak
+  assert.equal(c.bacaNominalTrf_('Transfer berhasil\nNominal Rp 245.000\nBiaya admin Rp 0\nTotal Rp 245.000'), 245000);
+  assert.equal(c.bacaNominalTrf_('QRIS berhasil\nRp 99.500\nCheesy Pen Shells'), 99500);
+  const tabel = {};
+  let teks = 'Garlic 2x 50.000\nTOTAL 100.000';
+  Object.assign(c, {
+    cekPin_: () => {}, sekarang_: () => '2026-11-14 10:00:00', hariIni_: () => '2026-11-14', url_: () => 'https://u/exec', atur_: () => '',
+    tab_: (nama) => (tabel[nama] = tabel[nama] || { nama, rows: [] }),
+    baca_: (t) => t.rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    tulisBaris_: (t, o) => t.rows.push({ ...o }), ubah_: (t, b, isi) => Object.assign(t.rows[b - 2], isi),
+    simpanFoto_: () => ({ id: 'F', blob: null }), ocr_: () => teks, bacaMenu_: () => '', linkFoto_: (id) => id,
+    daftarEvent: () => [], LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+    Utilities: { formatDate: () => '261114100000', getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
+  });
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  const p1 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p1.total, 100000);
+  teks = 'foto buram';
+  const p2 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p2.total, 0);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi.tanpaTotal, 1);
+  teks = 'Transfer berhasil\nNominal Rp 245.000';
+  assert.deepEqual({ ...c.buktiTransfer('1', p2.id, 'data:') }, { nominal: 245000 });
+  assert.equal(tabel.Antrian.rows[1].sumber_total, 'trf');
+  const p3 = c.buatPesanan('1', 'SMR26-11', 'data:'); // teks masih bukti trf: terbaca sebagai nominal 245.000
+  c.ubahTotal('1', p3.id, '60.000');
+  assert.equal(tabel.Antrian.rows[2].total, 60000);
+  assert.equal(tabel.Antrian.rows[2].sumber_total, 'manual');
+  assert.throws(() => c.ubahTotal('1', p3.id, '12'), /tidak masuk akal/);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi.omzet, 100000 + 245000 + 60000);
+  const r = c.tutupKasir('1', 'SMR26-11');
+  assert.equal(r.omzet, 405000);
+  assert.equal(r.tanpa_total, 0);
+  assert.equal(tabel['Sesi Kasir'].rows[0].omzet, 405000);
 });
 
 test('ringkasan tutup kasir diteruskan bot ke WhatsApp owner sekali', async () => {
   const { tugasSesiKasir } = await import('../src/komplain.js');
   const rows = [{ id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara, Bima', dibuka: '2026-11-14 08:05:00', ditutup: '2026-11-14 22:10:00', jumlah_struk: 126, diambil: 121, batal: 3, belum: 2, rata_tunggu_menit: 11, rating_rata: 4.8, jumlah_rating: 58, rating_kasir: 'Tiara 4,9 (40) · Bima 4,6 (18)', ulasan_buruk: '#88 2★ (Bima) nunggu lama', status: 'TUTUP' }];
   const ctx = { ownerIds: new Set(['62811']), store: { all: async () => rows, updateWhere: async (t, f, v) => { for (const r of rows) if (f(r)) Object.assign(r, v); } } };
+  rows[0].omzet = 7960000; rows[0].tanpa_total = 3;
+  const ctx2 = { ...ctx, store: { all: async (t) => (t === 'Omzet' ? [{ kode_event: 'SMR26-11', tanggal: '2026-11-14', omzet: 7900000, status: 'OK' }] : rows), updateWhere: ctx.store.updateWhere } };
+  const k2 = await tugasSesiKasir(ctx2);
+  assert.match(k2[0].text, /Omzet dari struk: Rp 7.960.000.*3 struk belum ada totalnya.*Laporan #omzet tim: Rp 7.900.000 → selisih Rp 60.000 ⚠️/s);
+  rows[0].status = 'TUTUP'; delete rows[0].omzet; delete rows[0].tanpa_total;
   const k = await tugasSesiKasir(ctx);
   assert.equal(k[0].nomor, '62811');
   assert.match(k[0].text, /Kasir SMR26-11 ditutup.*08:05–22:10.*126 struk dilayani.*121 diambil.*2 belum diambil.*11 menit.*4,8 dari 58.*Tiara 4,9.*#88 2★/s);

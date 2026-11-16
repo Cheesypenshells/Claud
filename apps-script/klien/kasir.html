@@ -10,7 +10,7 @@
 <div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>
 </div>
 </main>
-<div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none">
+<div id="modal"></div><input id="fotoBakar" type="file" accept="image/*" capture="environment" style="display:none"><input id="fotoTrf" type="file" accept="image/*" style="display:none">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 var KUNCI = "__K__", EVLINK = "__E__";
@@ -25,6 +25,7 @@ if (EVLINK) simpan("cps_ev", EVLINK);
 function el(i) { return document.getElementById(i); }
 function aman(s) { return String(s || "").replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
 function jamDari(waktu) { return String(waktu || "").slice(11, 16); }
+function rp(n) { return "Rp " + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 function pesan(t) { el("proses").textContent = t; if (t) setTimeout(function () { if (el("proses").textContent === t) el("proses").textContent = ""; }, 7000); }
 
 function kecilkan(file, cb) {
@@ -66,16 +67,17 @@ function gambarSesi() {
     tandaSesi = tanda;
     el("sesiBox").innerHTML = sesi
       ? "<div class=\"sesi buka\"><div><span class=lampu></span><b>Kasir buka</b> sejak " + jamDari(sesi.dibuka) + " · kasir <b>" + aman(sesi.kasir) + "</b></div>" +
-        "<div class=redup id=statSesi></div>" +
+        "<div class=redup id=statSesi></div><div id=omzetSesi style=\"margin-top:4px\"></div>" +
         "<label class=\"tombol kuning\" style=\"text-align:center;margin-top:12px\">📷 Pesanan baru – foto struk<input id=struk type=file accept=\"image/*\" capture=environment style=\"display:none\" onchange=\"pesananBaru(this)\"></label>" +
         "<div class=aksi><button class=\"kecil abu\" onclick=\"gantiKasirUI()\">👤 Ganti kasir</button><button class=\"kecil merah\" onclick=\"tutupKasirUI()\">⏹ Tutup kasir</button></div></div>"
-      : "<div class=\"sesi tutup\"><b>Kasir belum dibuka</b><p class=redup style=\"margin:4px 0 0\">Tekan <b>Mulai kasir</b> sebelum melayani pelanggan pertama. Nomor antrian berlanjut selama event dan mulai dari 1 lagi di event berikutnya.</p>" +
+      : "<div class=\"sesi tutup\"><b>Kasir belum dibuka</b><p class=redup style=\"margin:4px 0 0\">Tekan <b>Mulai kasir</b> sebelum melayani pelanggan pertama. Nomor antrian mulai dari 1 setiap kali kasir dibuka, jadi tidak bercampur dengan hari sebelumnya.</p>" +
         "<label for=namaKasir>Nama kasir</label><input id=namaKasir value=\"" + aman(saranKasir[kode()] || "") + "\" placeholder=\"Contoh: Tiara\">" +
         "<button class=kuning style=\"margin-top:12px\" onclick=\"mulaiKasir()\">▶ Mulai kasir</button></div>";
   }
   if (sesi && el("statSesi")) {
     var n = function (st) { return data.filter(function (o) { return o.status === st; }).length; };
     el("statSesi").textContent = sesi.jumlah + " struk dilayani · " + n("MENUNGGU") + " menunggu · " + n("DIBAKAR") + " dibakar · " + n("SIAP") + " dipanggil";
+    el("omzetSesi").innerHTML = "💰 Omzet sesi ini: <b>" + rp(sesi.omzet) + "</b>" + (sesi.tanpaTotal ? " <span class=redup>(" + sesi.tanpaTotal + " struk belum ada total)</span>" : "");
   }
 }
 function mulaiKasir() {
@@ -106,6 +108,7 @@ function tampilRingkasan(r) {
   var bintang = r.jumlah_rating ? "⭐ " + String(r.rating_rata).replace(".", ",") + " dari " + r.jumlah_rating + " penilaian" : "Belum ada penilaian bintang";
   el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h2 class=judul><span>Kasir ditutup</span></h2>" +
     "<p class=redup>" + aman(r.kode_event) + " · " + jamDari(r.dibuka) + "–" + jamDari(r.ditutup) + " · kasir " + aman(r.kasir) + "</p>" +
+    "<p style=\"font-size:1.3em;margin:6px 0\">💰 Omzet dari struk: <b>" + rp(r.omzet) + "</b>" + (r.tanpa_total ? "<br><span class=redup style=\"font-size:.7em\">" + r.tanpa_total + " struk belum ada totalnya (belum terhitung)</span>" : "") + "</p>" +
     "<div class=ringkas><div><b>" + r.jumlah_struk + "</b><small>struk dilayani</small></div><div><b>" + r.diambil + "</b><small>sudah diambil</small></div><div><b>" + r.batal + "</b><small>batal</small></div><div><b>" + (r.rata_tunggu_menit || "–") + "</b><small>menit rata-rata tunggu</small></div></div>" +
     "<p><b>" + bintang + "</b>" + (r.rating_kasir ? "<br><span class=redup>" + aman(r.rating_kasir) + "</span>" : "") + "</p>" +
     (r.belum ? "<p>⚠️ " + r.belum + " pesanan belum diambil saat ditutup.</p>" : "") +
@@ -128,7 +131,7 @@ function kartu(o) {
   if (o.status === "MENUNGGU") a = "<button class=\"kecil\" onclick=\"bakar('" + o.id + "')\">📷 Foto & mulai bakar</button><button class=\"kecil abu\" onclick=\"status('" + o.id + "','DIBAKAR')\">Bakar tanpa foto</button>";
   if (o.status === "DIBAKAR") a = "<button class=\"kecil hijau\" onclick=\"status('" + o.id + "','SIAP')\">🔔 Panggil</button>";
   if (o.status === "SIAP") a = "<button class=\"kecil biru\" onclick=\"status('" + o.id + "','SIAP')\">🔔 Panggil ulang (" + o.panggilKe + "x)</button><button class=\"kecil hijau\" onclick=\"status('" + o.id + "','DIAMBIL')\">✓ Sudah diambil</button>";
-  return "<div class=\"pesanan " + o.status + "\"><img src=\"" + (o.fotoBakar || o.fotoStruk) + "\" onclick=\"lihat('" + o.id + "')\" alt=\"\"><div class=no>#" + o.nomor + "</div><div class=redup>" + o.dibuat + "</div><div style=\"white-space:pre-line\">" + (aman(o.menu) || "<i class=redup>menu: lihat struk</i>") + "</div><div class=aksi>" + a + "<button class=\"kecil abu\" onclick=\"lihat('" + o.id + "')\">QR / detail</button></div></div>";
+  return "<div class=\"pesanan " + o.status + "\"><img src=\"" + (o.fotoBakar || o.fotoStruk) + "\" onclick=\"lihat('" + o.id + "')\" alt=\"\"><div class=no>#" + o.nomor + (sesi && o.sesiId && o.sesiId !== sesi.id ? " <small class=redup>(sesi lama)</small>" : "") + "</div><div class=redup>" + o.dibuat + "</div><div style=\"white-space:pre-line\">" + (aman(o.menu) || "<i class=redup>menu: lihat struk</i>") + "</div><div>" + (o.total ? "💰 " + rp(o.total) + (o.sumberTotal === "trf" ? " <small class=redup>(bukti trf)</small>" : "") : "<i class=redup>💰 total belum terbaca</i>") + "</div><div class=aksi>" + a + "<button class=\"kecil abu\" onclick=\"lihat('" + o.id + "')\">QR / detail</button></div></div>";
 }
 function cari(id) { return data.filter(function (o) { return o.id === id; })[0]; }
 function pesananBaru(inp) {
@@ -141,11 +144,26 @@ function pesananBaru(inp) {
 }
 function lihat(id, o) {
   o = o || cari(id); if (!o) return;
-  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#" + o.nomor + "</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>" + aman(o.menu) + "</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('" + o.id + "')\">Simpan menu</button> <button class=\"kecil merah\" onclick=\"if(confirm('Batalkan pesanan #" + o.nomor + "?'))status('" + o.id + "','BATAL')\">Batalkan</button><br><br><img class=foto src=\"" + o.fotoStruk + "\" alt=\"Struk\">" + (o.fotoBakar ? "<br><img class=foto src=\"" + o.fotoBakar + "\" alt=\"Foto dibakar\">" : "") + "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#" + o.nomor + "</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>" + aman(o.menu) + "</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('" + o.id + "')\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\"" + (o.total || "") + "\" placeholder=\"contoh: 125000\"><br><br><button class=\"kecil hijau\" onclick=\"simpanTotal('" + o.id + "')\">Simpan total</button> <button class=\"kecil biru\" onclick=\"buktiTrf('" + o.id + "')\">📷 Bukti trf</button>" + (o.fotoTrf ? " <a href=\"" + o.fotoTrf + "\" target=_blank>lihat bukti trf</a>" : "") + "<br><br> <button class=\"kecil merah\" onclick=\"if(confirm('Batalkan pesanan #" + o.nomor + "?'))status('" + o.id + "','BATAL')\">Batalkan</button><br><br><img class=foto src=\"" + o.fotoStruk + "\" alt=\"Struk\">" + (o.fotoBakar ? "<br><img class=foto src=\"" + o.fotoBakar + "\" alt=\"Foto dibakar\">" : "") + "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
   var q = qrcode(0, "L"); q.addData(o.link); q.make();
   el("qr").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace("<svg ", "<svg style=\"width:min(86vw,380px);height:auto;background:#fff\" ");
 }
 function tutup() { el("modal").innerHTML = ""; }
+function simpanTotal(id) {
+  google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { pesan("⚠️ " + e.message); }).ubahTotal(PIN, id, el("totalEdit").value);
+}
+function buktiTrf(id) {
+  var i = el("fotoTrf");
+  i.onchange = function () {
+    var f = i.files[0]; i.value = ""; if (!f) return;
+    el("proses").textContent = "Membaca bukti transfer...";
+    kecilkan(f, function (u) {
+      google.script.run.withSuccessHandler(function (r) { tutup(); muat(); pesan(r.nominal ? "💰 Nominal terbaca: " + rp(r.nominal) : "⚠️ Nominal tidak terbaca, isi total manual."); })
+        .withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); }).buktiTransfer(PIN, id, u);
+    });
+  };
+  i.click();
+}
 function simpanMenu(id) { google.script.run.withSuccessHandler(function () { tutup(); muat(); }).ubahMenu(PIN, id, el("menuEdit").value); }
 function status(id, st, foto) {
   google.script.run.withSuccessHandler(function () { tutup(); muat(); })

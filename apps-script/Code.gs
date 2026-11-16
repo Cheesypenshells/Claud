@@ -20,6 +20,7 @@ var KOLOM_ANTRIAN = [
   ['teks_struk', 'Teks Struk'], ['dibuat', 'Dibuat'], ['dibakar', 'Mulai Dibakar'], ['dipanggil', 'Dipanggil'],
   ['panggil_ke', 'Dipanggil Ke'], ['diambil', 'Diambil'], ['kasir', 'Kasir'], ['sesi', 'Sesi Kasir'],
   ['rating', 'Bintang'], ['ulasan', 'Ulasan'], ['dinilai', 'Dinilai'],
+  ['total', 'Total Belanja (Rp)'], ['sumber_total', 'Sumber Total'], ['foto_trf', 'Foto Bukti Trf'],
 ];
 // Sesi kasir: dibuka (▶ Mulai kasir) dan ditutup (⏹ Tutup kasir) di halaman kasir. Ringkasan diteruskan bot ke owner.
 var KOLOM_SESI = [
@@ -27,6 +28,7 @@ var KOLOM_SESI = [
   ['jumlah_struk', 'Struk Dilayani'], ['diambil', 'Diambil'], ['batal', 'Batal'], ['belum', 'Belum Selesai'],
   ['rata_tunggu_menit', 'Rata-rata Tunggu (menit)'], ['rating_rata', 'Bintang Rata-rata'], ['jumlah_rating', 'Jumlah Penilaian'],
   ['rating_kasir', 'Bintang per Kasir'], ['ulasan_buruk', 'Ulasan Bintang Rendah'], ['status', 'Status'], ['diteruskan', 'Diteruskan ke Owner'],
+  ['omzet', 'Omzet dari Struk (Rp)'], ['tanpa_total', 'Struk Tanpa Total'],
 ];
 var KOLOM_KOMPLAIN = [
   ['id', 'ID'], ['waktu', 'Waktu'], ['kode_event', 'Kode Event'], ['lokasi', 'Lokasi'], ['kategori', 'Kategori'],
@@ -208,7 +210,7 @@ function bersihkanFoto() {
     var akhir = selesai[o.kode_event] || tglStr_(o.tanggal);
     if (!akhir || akhir > batas) return;
     var isi = {};
-    ['foto_struk', 'foto_bakar'].forEach(function (kolom) {
+    ['foto_struk', 'foto_bakar', 'foto_trf'].forEach(function (kolom) {
       var id = String(o[kolom] || '');
       if (!/^[\w-]{20,}$/.test(id)) return;
       try { DriveApp.getFileById(id).setTrashed(true); dihapus++; } catch (e) { /* sudah terhapus */ }
@@ -324,6 +326,7 @@ function ringkas_(o, denganToken) {
     fotoStruk: linkFoto_(o.foto_struk), fotoBakar: linkFoto_(o.foto_bakar), dibuat: waktuStr_(o.dibuat).slice(11, 16),
     dipanggil: waktuStr_(o.dipanggil), panggilKe: Number(o.panggil_ke || 0), kodeEvent: o.kode_event,
     rating: Number(o.rating || 0), ulasan: String(o.ulasan || ''), kasir: String(o.kasir || ''),
+    total: Number(o.total || 0), sumberTotal: String(o.sumber_total || ''), fotoTrf: linkFoto_(o.foto_trf), sesiId: String(o.sesi || ''),
     link: denganToken ? (atur_('url_pelanggan') ? atur_('url_pelanggan') + '?t=' : url_() + '?p=pesanan&t=') + o.token : undefined,
   };
 }
@@ -346,8 +349,10 @@ function sesiAktif_(kode) {
   return baca_(tab_('Sesi Kasir', KOLOM_SESI)).filter(function (x) { return x.kode_event === kode && x.status === 'BUKA'; }).pop() || null;
 }
 function ringkasSesi_(x) {
-  var jumlah = baca_(tab_('Antrian', KOLOM_ANTRIAN)).filter(function (o) { return o.sesi === x.id && o.status !== STATUS.BATAL; }).length;
-  return { id: x.id, kasir: String(x.kasir || ''), dibuka: waktuStr_(x.dibuka), jumlah: jumlah };
+  var layan = baca_(tab_('Antrian', KOLOM_ANTRIAN)).filter(function (o) { return o.sesi === x.id && o.status !== STATUS.BATAL; });
+  var omzet = layan.reduce(function (m, o) { return m + (Number(o.total) || 0); }, 0);
+  var tanpa = layan.filter(function (o) { return !Number(o.total); }).length;
+  return { id: x.id, kasir: String(x.kasir || ''), dibuka: waktuStr_(x.dibuka), jumlah: layan.length, omzet: omzet, tanpaTotal: tanpa };
 }
 function kunci_(fn) {
   var lock = LockService.getScriptLock();
@@ -397,6 +402,8 @@ function hitungSesi_(x) {
   var rata = function (a) { return a.length ? Math.round(a.reduce(function (m, v) { return m + v; }, 0) / a.length * 10) / 10 : 0; };
   return {
     jumlah_struk: layan.length,
+    omzet: layan.reduce(function (m, o) { return m + (Number(o.total) || 0); }, 0),
+    tanpa_total: layan.filter(function (o) { return !Number(o.total); }).length,
     diambil: semua.filter(function (o) { return o.status === STATUS.DIAMBIL; }).length,
     batal: semua.length - layan.length,
     belum: semua.filter(function (o) { return [STATUS.MENUNGGU, STATUS.DIBAKAR, STATUS.SIAP].indexOf(o.status) >= 0; }).length,
@@ -435,8 +442,8 @@ function buatPesanan(pin, kode, dataUrl) {
     var semua = baca_(t);
     var sesi = sesiAktif_(kode);
     if (!sesi) throw new Error('Kasir belum dibuka. Tekan ▶ Mulai kasir dulu.');
-    // Nomor berlanjut selama event; event berikutnya mulai dari 1 lagi.
-    var nomor = semua.filter(function (o) { return o.kode_event === kode; })
+    // Nomor antrian mulai dari 1 di setiap sesi kasir (setiap kali ▶ Mulai kasir), tidak bercampur dengan sesi sebelumnya.
+    var nomor = semua.filter(function (o) { return o.kode_event === kode && o.sesi === sesi.id; })
       .reduce(function (m, o) { return Math.max(m, Number(o.nomor) || 0); }, 0) + 1;
     // ID unik walau beberapa HP kasir memotret struk di detik yang sama.
     var id = 'Q' + Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyMMddHHmmss') + Utilities.getUuid().replace(/-/g, '').slice(0, 6);
@@ -450,12 +457,77 @@ function buatPesanan(pin, kode, dataUrl) {
     var teks = ocr_(foto.blob);
     o.teks_struk = teks.slice(0, 2000);
     o.menu = bacaMenu_(teks);
+    o.total = bacaTotal_(teks);
+    o.sumber_total = o.total ? 'struk' : '';
     var baris = baca_(t).filter(function (x) { return x.id === id; })[0];
-    if (baris) ubah_(t, baris._baris, { teks_struk: o.teks_struk, menu: o.menu });
+    if (baris) ubah_(t, baris._baris, { teks_struk: o.teks_struk, menu: o.menu, total: o.total || '', sumber_total: o.sumber_total });
     return ringkas_(o, true);
   } finally {
     try { lock.releaseLock(); } catch (e) { /* sudah dilepas */ }
   }
+}
+
+// "Rp 125.000", "125,000", "125.000,00" -> 125000 (rupiah utuh). 0 kalau bukan angka rupiah.
+function angkaRupiah_(s) {
+  var t = String(s).replace(/rp\.?/ig, '').replace(/\s/g, '');
+  t = t.replace(/[.,]00$/, '');
+  t = t.replace(/[.,](?=\d{3}(\D|$))/g, '');
+  var n = Number(t.replace(/[^\d]/g, ''));
+  return isFinite(n) ? n : 0;
+}
+var POLA_ANGKA = /(?:rp\.?\s*)?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|rp\.?\s*\d{4,}|\b\d{4,}\b/ig;
+function angkaDi_(s) {
+  var m = String(s).match(POLA_ANGKA);
+  return m ? m.map(angkaRupiah_).filter(function (n) { return n >= 1000; }) : [];
+}
+// Total belanja dari teks struk: baris "Total / Grand Total / Total Bayar / Tagihan" (angka di baris itu atau baris berikutnya).
+// Tanpa kata total: 0 (tidak menebak; kasir mengisi manual).
+function bacaTotal_(teks) {
+  var baris = String(teks || '').split(/\r?\n/);
+  var hasil = 0;
+  for (var i = 0; i < baris.length; i++) {
+    var b = baris[i].toLowerCase();
+    if (/sub\s*total|kembali|change/.test(b)) continue;
+    if (!/grand\s*total|\btotal\b|jumlah\s*(bayar|tagihan)|tagihan/.test(b)) continue;
+    var a = angkaDi_(baris[i]);
+    if (!a.length && i + 1 < baris.length) a = angkaDi_(baris[i + 1]);
+    if (a.length) hasil = a[a.length - 1];
+  }
+  return hasil;
+}
+// Nominal dari foto bukti transfer / QRIS: baris total, kalau tidak ada angka "Rp ..." pertama.
+function bacaNominalTrf_(teks) {
+  var t = bacaTotal_(teks);
+  if (t) return t;
+  var cari = String(teks || '').match(/rp\.?\s*\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|rp\.?\s*\d{4,}/ig) || [];
+  var a = cari.map(angkaRupiah_).filter(function (n) { return n >= 1000; });
+  return a.length ? a[0] : 0;
+}
+
+// Kasir memperbaiki / mengisi total belanja satu pesanan.
+function ubahTotal(pin, id, total) {
+  cekPin_(pin);
+  var n = angkaRupiah_(total);
+  if (!(n >= 1000 && n <= 99999999)) throw new Error('Total belanja tidak masuk akal (isi rupiah penuh, contoh 125000).');
+  var t = tab_('Antrian', KOLOM_ANTRIAN);
+  var o = baca_(t).filter(function (x) { return x.id === id; })[0];
+  if (!o) throw new Error('Pesanan tidak ditemukan');
+  ubah_(t, o._baris, { total: n, sumber_total: 'manual' });
+  return n;
+}
+
+// Foto bukti transfer / QRIS pelanggan: nominalnya dibaca dan dipakai sebagai total belanja pesanan itu.
+function buktiTransfer(pin, id, dataUrl) {
+  cekPin_(pin);
+  var t = tab_('Antrian', KOLOM_ANTRIAN);
+  var o = baca_(t).filter(function (x) { return x.id === id; })[0];
+  if (!o) throw new Error('Pesanan tidak ditemukan');
+  var foto = simpanFoto_(dataUrl, o.kode_event + '-' + tglStr_(o.tanggal) + '-no' + o.nomor + '-trf');
+  var nominal = bacaNominalTrf_(ocr_(foto.blob));
+  var isi = { foto_trf: foto.id };
+  if (nominal) { isi.total = nominal; isi.sumber_total = 'trf'; }
+  ubah_(t, o._baris, isi);
+  return { nominal: nominal };
 }
 
 function ubahMenu(pin, id, menu) {
@@ -887,7 +959,7 @@ var HTML_KASIR =
   "<div class=\"kolom\"><div><h3>⏳ Menunggu</h3><div id=\"k-MENUNGGU\"></div></div><div><h3>🔥 Dibakar</h3><div id=\"k-DIBAKAR\"></div></div><div><h3>✅ Siap / dipanggil</h3><div id=\"k-SIAP\"></div></div></div>\n" +
   "</div>\n" +
   "</main>\n" +
-  "<div id=\"modal\"></div><input id=\"fotoBakar\" type=\"file\" accept=\"image/*\" capture=\"environment\" style=\"display:none\">\n" +
+  "<div id=\"modal\"></div><input id=\"fotoBakar\" type=\"file\" accept=\"image/*\" capture=\"environment\" style=\"display:none\"><input id=\"fotoTrf\" type=\"file\" accept=\"image/*\" style=\"display:none\">\n" +
   "<script src=\"https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js\"></script>\n" +
   "<script>\n" +
   "var KUNCI = \"__K__\", EVLINK = \"__E__\";\n" +
@@ -902,6 +974,7 @@ var HTML_KASIR =
   "function el(i) { return document.getElementById(i); }\n" +
   "function aman(s) { return String(s || \"\").replace(/[&<>\"]/g, function (c) { return { \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", \"\\\"\": \"&quot;\" }[c]; }); }\n" +
   "function jamDari(waktu) { return String(waktu || \"\").slice(11, 16); }\n" +
+  "function rp(n) { return \"Rp \" + String(Math.round(Number(n) || 0)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, \".\"); }\n" +
   "function pesan(t) { el(\"proses\").textContent = t; if (t) setTimeout(function () { if (el(\"proses\").textContent === t) el(\"proses\").textContent = \"\"; }, 7000); }\n" +
   "\n" +
   "function kecilkan(file, cb) {\n" +
@@ -943,16 +1016,17 @@ var HTML_KASIR =
   "    tandaSesi = tanda;\n" +
   "    el(\"sesiBox\").innerHTML = sesi\n" +
   "      ? \"<div class=\\\"sesi buka\\\"><div><span class=lampu></span><b>Kasir buka</b> sejak \" + jamDari(sesi.dibuka) + \" · kasir <b>\" + aman(sesi.kasir) + \"</b></div>\" +\n" +
-  "        \"<div class=redup id=statSesi></div>\" +\n" +
+  "        \"<div class=redup id=statSesi></div><div id=omzetSesi style=\\\"margin-top:4px\\\"></div>\" +\n" +
   "        \"<label class=\\\"tombol kuning\\\" style=\\\"text-align:center;margin-top:12px\\\">📷 Pesanan baru – foto struk<input id=struk type=file accept=\\\"image/*\\\" capture=environment style=\\\"display:none\\\" onchange=\\\"pesananBaru(this)\\\"></label>\" +\n" +
   "        \"<div class=aksi><button class=\\\"kecil abu\\\" onclick=\\\"gantiKasirUI()\\\">👤 Ganti kasir</button><button class=\\\"kecil merah\\\" onclick=\\\"tutupKasirUI()\\\">⏹ Tutup kasir</button></div></div>\"\n" +
-  "      : \"<div class=\\\"sesi tutup\\\"><b>Kasir belum dibuka</b><p class=redup style=\\\"margin:4px 0 0\\\">Tekan <b>Mulai kasir</b> sebelum melayani pelanggan pertama. Nomor antrian berlanjut selama event dan mulai dari 1 lagi di event berikutnya.</p>\" +\n" +
+  "      : \"<div class=\\\"sesi tutup\\\"><b>Kasir belum dibuka</b><p class=redup style=\\\"margin:4px 0 0\\\">Tekan <b>Mulai kasir</b> sebelum melayani pelanggan pertama. Nomor antrian mulai dari 1 setiap kali kasir dibuka, jadi tidak bercampur dengan hari sebelumnya.</p>\" +\n" +
   "        \"<label for=namaKasir>Nama kasir</label><input id=namaKasir value=\\\"\" + aman(saranKasir[kode()] || \"\") + \"\\\" placeholder=\\\"Contoh: Tiara\\\">\" +\n" +
   "        \"<button class=kuning style=\\\"margin-top:12px\\\" onclick=\\\"mulaiKasir()\\\">▶ Mulai kasir</button></div>\";\n" +
   "  }\n" +
   "  if (sesi && el(\"statSesi\")) {\n" +
   "    var n = function (st) { return data.filter(function (o) { return o.status === st; }).length; };\n" +
   "    el(\"statSesi\").textContent = sesi.jumlah + \" struk dilayani · \" + n(\"MENUNGGU\") + \" menunggu · \" + n(\"DIBAKAR\") + \" dibakar · \" + n(\"SIAP\") + \" dipanggil\";\n" +
+  "    el(\"omzetSesi\").innerHTML = \"💰 Omzet sesi ini: <b>\" + rp(sesi.omzet) + \"</b>\" + (sesi.tanpaTotal ? \" <span class=redup>(\" + sesi.tanpaTotal + \" struk belum ada total)</span>\" : \"\");\n" +
   "  }\n" +
   "}\n" +
   "function mulaiKasir() {\n" +
@@ -983,6 +1057,7 @@ var HTML_KASIR =
   "  var bintang = r.jumlah_rating ? \"⭐ \" + String(r.rating_rata).replace(\".\", \",\") + \" dari \" + r.jumlah_rating + \" penilaian\" : \"Belum ada penilaian bintang\";\n" +
   "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><h2 class=judul><span>Kasir ditutup</span></h2>\" +\n" +
   "    \"<p class=redup>\" + aman(r.kode_event) + \" · \" + jamDari(r.dibuka) + \"–\" + jamDari(r.ditutup) + \" · kasir \" + aman(r.kasir) + \"</p>\" +\n" +
+  "    \"<p style=\\\"font-size:1.3em;margin:6px 0\\\">💰 Omzet dari struk: <b>\" + rp(r.omzet) + \"</b>\" + (r.tanpa_total ? \"<br><span class=redup style=\\\"font-size:.7em\\\">\" + r.tanpa_total + \" struk belum ada totalnya (belum terhitung)</span>\" : \"\") + \"</p>\" +\n" +
   "    \"<div class=ringkas><div><b>\" + r.jumlah_struk + \"</b><small>struk dilayani</small></div><div><b>\" + r.diambil + \"</b><small>sudah diambil</small></div><div><b>\" + r.batal + \"</b><small>batal</small></div><div><b>\" + (r.rata_tunggu_menit || \"–\") + \"</b><small>menit rata-rata tunggu</small></div></div>\" +\n" +
   "    \"<p><b>\" + bintang + \"</b>\" + (r.rating_kasir ? \"<br><span class=redup>\" + aman(r.rating_kasir) + \"</span>\" : \"\") + \"</p>\" +\n" +
   "    (r.belum ? \"<p>⚠️ \" + r.belum + \" pesanan belum diambil saat ditutup.</p>\" : \"\") +\n" +
@@ -1005,7 +1080,7 @@ var HTML_KASIR =
   "  if (o.status === \"MENUNGGU\") a = \"<button class=\\\"kecil\\\" onclick=\\\"bakar('\" + o.id + \"')\\\">📷 Foto & mulai bakar</button><button class=\\\"kecil abu\\\" onclick=\\\"status('\" + o.id + \"','DIBAKAR')\\\">Bakar tanpa foto</button>\";\n" +
   "  if (o.status === \"DIBAKAR\") a = \"<button class=\\\"kecil hijau\\\" onclick=\\\"status('\" + o.id + \"','SIAP')\\\">🔔 Panggil</button>\";\n" +
   "  if (o.status === \"SIAP\") a = \"<button class=\\\"kecil biru\\\" onclick=\\\"status('\" + o.id + \"','SIAP')\\\">🔔 Panggil ulang (\" + o.panggilKe + \"x)</button><button class=\\\"kecil hijau\\\" onclick=\\\"status('\" + o.id + \"','DIAMBIL')\\\">✓ Sudah diambil</button>\";\n" +
-  "  return \"<div class=\\\"pesanan \" + o.status + \"\\\"><img src=\\\"\" + (o.fotoBakar || o.fotoStruk) + \"\\\" onclick=\\\"lihat('\" + o.id + \"')\\\" alt=\\\"\\\"><div class=no>#\" + o.nomor + \"</div><div class=redup>\" + o.dibuat + \"</div><div style=\\\"white-space:pre-line\\\">\" + (aman(o.menu) || \"<i class=redup>menu: lihat struk</i>\") + \"</div><div class=aksi>\" + a + \"<button class=\\\"kecil abu\\\" onclick=\\\"lihat('\" + o.id + \"')\\\">QR / detail</button></div></div>\";\n" +
+  "  return \"<div class=\\\"pesanan \" + o.status + \"\\\"><img src=\\\"\" + (o.fotoBakar || o.fotoStruk) + \"\\\" onclick=\\\"lihat('\" + o.id + \"')\\\" alt=\\\"\\\"><div class=no>#\" + o.nomor + (sesi && o.sesiId && o.sesiId !== sesi.id ? \" <small class=redup>(sesi lama)</small>\" : \"\") + \"</div><div class=redup>\" + o.dibuat + \"</div><div style=\\\"white-space:pre-line\\\">\" + (aman(o.menu) || \"<i class=redup>menu: lihat struk</i>\") + \"</div><div>\" + (o.total ? \"💰 \" + rp(o.total) + (o.sumberTotal === \"trf\" ? \" <small class=redup>(bukti trf)</small>\" : \"\") : \"<i class=redup>💰 total belum terbaca</i>\") + \"</div><div class=aksi>\" + a + \"<button class=\\\"kecil abu\\\" onclick=\\\"lihat('\" + o.id + \"')\\\">QR / detail</button></div></div>\";\n" +
   "}\n" +
   "function cari(id) { return data.filter(function (o) { return o.id === id; })[0]; }\n" +
   "function pesananBaru(inp) {\n" +
@@ -1018,11 +1093,26 @@ var HTML_KASIR =
   "}\n" +
   "function lihat(id, o) {\n" +
   "  o = o || cari(id); if (!o) return;\n" +
-  "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><div class=redup style=\\\"text-align:center\\\">Nomor antrian</div><div class=nomor>#\" + o.nomor + \"</div><p style=\\\"text-align:center\\\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\\\"display:flex;justify-content:center;margin:10px 0\\\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>\" + aman(o.menu) + \"</textarea><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanMenu('\" + o.id + \"')\\\">Simpan menu</button> <button class=\\\"kecil merah\\\" onclick=\\\"if(confirm('Batalkan pesanan #\" + o.nomor + \"?'))status('\" + o.id + \"','BATAL')\\\">Batalkan</button><br><br><img class=foto src=\\\"\" + o.fotoStruk + \"\\\" alt=\\\"Struk\\\">\" + (o.fotoBakar ? \"<br><img class=foto src=\\\"\" + o.fotoBakar + \"\\\" alt=\\\"Foto dibakar\\\">\" : \"\") + \"<br><button onclick=\\\"tutup()\\\">Tutup</button></div></div>\";\n" +
+  "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><div class=redup style=\\\"text-align:center\\\">Nomor antrian</div><div class=nomor>#\" + o.nomor + \"</div><p style=\\\"text-align:center\\\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\\\"display:flex;justify-content:center;margin:10px 0\\\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>\" + aman(o.menu) + \"</textarea><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanMenu('\" + o.id + \"')\\\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\\\"\" + (o.total || \"\") + \"\\\" placeholder=\\\"contoh: 125000\\\"><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanTotal('\" + o.id + \"')\\\">Simpan total</button> <button class=\\\"kecil biru\\\" onclick=\\\"buktiTrf('\" + o.id + \"')\\\">📷 Bukti trf</button>\" + (o.fotoTrf ? \" <a href=\\\"\" + o.fotoTrf + \"\\\" target=_blank>lihat bukti trf</a>\" : \"\") + \"<br><br> <button class=\\\"kecil merah\\\" onclick=\\\"if(confirm('Batalkan pesanan #\" + o.nomor + \"?'))status('\" + o.id + \"','BATAL')\\\">Batalkan</button><br><br><img class=foto src=\\\"\" + o.fotoStruk + \"\\\" alt=\\\"Struk\\\">\" + (o.fotoBakar ? \"<br><img class=foto src=\\\"\" + o.fotoBakar + \"\\\" alt=\\\"Foto dibakar\\\">\" : \"\") + \"<br><button onclick=\\\"tutup()\\\">Tutup</button></div></div>\";\n" +
   "  var q = qrcode(0, \"L\"); q.addData(o.link); q.make();\n" +
   "  el(\"qr\").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace(\"<svg \", \"<svg style=\\\"width:min(86vw,380px);height:auto;background:#fff\\\" \");\n" +
   "}\n" +
   "function tutup() { el(\"modal\").innerHTML = \"\"; }\n" +
+  "function simpanTotal(id) {\n" +
+  "  google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { pesan(\"⚠️ \" + e.message); }).ubahTotal(PIN, id, el(\"totalEdit\").value);\n" +
+  "}\n" +
+  "function buktiTrf(id) {\n" +
+  "  var i = el(\"fotoTrf\");\n" +
+  "  i.onchange = function () {\n" +
+  "    var f = i.files[0]; i.value = \"\"; if (!f) return;\n" +
+  "    el(\"proses\").textContent = \"Membaca bukti transfer...\";\n" +
+  "    kecilkan(f, function (u) {\n" +
+  "      google.script.run.withSuccessHandler(function (r) { tutup(); muat(); pesan(r.nominal ? \"💰 Nominal terbaca: \" + rp(r.nominal) : \"⚠️ Nominal tidak terbaca, isi total manual.\"); })\n" +
+  "        .withFailureHandler(function (e) { tutup(); pesan(\"⚠️ \" + e.message); }).buktiTransfer(PIN, id, u);\n" +
+  "    });\n" +
+  "  };\n" +
+  "  i.click();\n" +
+  "}\n" +
   "function simpanMenu(id) { google.script.run.withSuccessHandler(function () { tutup(); muat(); }).ubahMenu(PIN, id, el(\"menuEdit\").value); }\n" +
   "function status(id, st, foto) {\n" +
   "  google.script.run.withSuccessHandler(function () { tutup(); muat(); })\n" +
