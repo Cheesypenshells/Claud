@@ -92,7 +92,10 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
   const jumlahKomplain = komplain.filter((k) => k.kode_event === kode && aktif(k)).length;
   const komplainPoin = Math.max(0, BOBOT.komplain - jumlahKomplain * POIN_KOMPLAIN);
   const baris = milik.filter((n) => sama(n.nama, 'TIM')).pop();
-  const tim = baris ? poinDari(baris.tim, BOBOT.tim) : null;
+  // Kinerja tim: nilai PIC (#nilai tim); kalau tidak diisi, rata-rata semua penilaian harian PIC event ini.
+  const semuaHarian = harian.filter((x) => x.kode_event === kode && aktif(x) && Number(x.poin) > 0).map((x) => Number(x.poin));
+  const timOtomatis = semuaHarian.length ? bulat((semuaHarian.reduce((a, b) => a + b, 0) / semuaHarian.length / 100) * BOBOT.tim) : null;
+  const tim = baris ? poinDari(baris.tim, BOBOT.tim) : timOtomatis;
   const kelompok = Math.max(0, bulat(omzet + stok + komplainPoin + (tim ?? 0) - lambatMinus));
 
   // Data otomatis event ini
@@ -133,6 +136,11 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
     if (kinerjaHarian !== null && kinerjaBintang !== null) rinci.kinerja = bulat((kinerjaHarian + kinerjaBintang) / 2);
     else if (kinerjaHarian !== null) rinci.kinerja = kinerjaHarian;
     else if (kinerjaBintang !== null) rinci.kinerja = kinerjaBintang;
+    // Attitude & karir: nilai PIC (#nilai) kalau ada; kalau tidak, ikut rata-rata penilaian harian PIC (bintang pelanggan hanya memengaruhi kinerja).
+    const dasarPersen = nh.length ? nh.reduce((a, b) => a + b, 0) / nh.length : null;
+    for (const a of ['attitude', 'karir']) {
+      if (rinci[a] === null && dasarPersen !== null) { rinci[a] = bulat((dasarPersen / 100) * BOBOT[a]); otomatis.turunan = true; }
+    }
 
     // Laporan foto wajib yang terlewat
     const terlewat = [];
@@ -164,7 +172,7 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
       kode, nama: o.nama, peran: o.peran, hari: o.hari, ...rinci, individu,
       omzet, stok, selisihStok, komplain: komplainPoin, jumlahKomplain, tim, kelompok, tunggu, hariLambat: hariLambat.map(([t, m]) => `${t.slice(5)} ${m} mnt`), lambatMinus,
       otomatis, laporanMinus, laporanTerlewat: [...new Set(terlewat)],
-      total: individu === null || !n ? null : Math.max(0, bulat(individu + kelompok - laporanMinus)),
+      total: individu === null || !(n || nh.length) ? null : Math.max(0, bulat(individu + kelompok - laporanMinus)),
       lengkap, bonusMaks: o.bonus || 0,
       catatanTarget: target ? '' : 'event tanpa target omzet (poin omzet penuh)',
     };

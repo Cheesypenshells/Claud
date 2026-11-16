@@ -200,9 +200,12 @@ export async function tugasPenilaian(ctx, sekarang = new Date()) {
   const [events, nilai, karyawan, grup, pengaturan] = await Promise.all([
     ctx.store.all('Event'), ctx.store.all('Nilai KPI'), ctx.store.all('Karyawan'), ctx.store.all('Grup'), ctx.store.all('Pengaturan'),
   ]);
+  let harian = [];
+  try { harian = await ctx.store.all('Nilai Harian'); } catch { harian = []; }
   for (const e of events.filter((x) => x.selesai === kemarin && x.status !== 'BATAL')) {
     const kunci = `kpi_ditanya_${e.kode}`;
-    if (pengaturan.some((p) => p.kunci === kunci) || nilai.some((n) => n.kode_event === e.kode)) continue;
+    // Event yang sudah dinilai harian oleh PIC tidak perlu ditanya 4 angka lagi.
+    if (pengaturan.some((p) => p.kunci === kunci) || nilai.some((n) => n.kode_event === e.kode) || harian.some((h) => h.kode_event === e.kode && h.status !== STATUS.BATAL)) continue;
     await ctx.store.append('Pengaturan', { kunci, nilai: hariIni, keterangan: 'Bot sudah meminta penilaian KPI ke PIC' });
     const pic = karyawan.find((k) => sama(k.nama, e.pic) && k.nomor_wa);
     if (pic) {

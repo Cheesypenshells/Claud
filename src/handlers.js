@@ -27,6 +27,7 @@ import { perintahGajian } from './gajian.js';
 import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
 import { perintahRusak, jawabRusak, perintahDendaLangsung } from './bahanRusak.js';
+import { perintahRapor, perintahKpiSaya } from './raporKpi.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
 import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
@@ -994,6 +995,8 @@ async function handlePribadi(ctx, pesan) {
   const opsi = { event: null, argumen: cmd.argumen, isOwner };
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
+  if (cmd.perintah === 'rapor') return perintahRapor(ctx, pesan, null, cmd, { isOwner });
+  if (['kpisaya', 'kpiku', 'rapor_saya'].includes(cmd.perintah)) return perintahKpiSaya(ctx, pesan);
   if (isOwner && cmd.perintah === 'karyawan') return balas(await perintahKaryawan(ctx, [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), null));
   if (isOwner && ['izin', 'ijin', 'ijjin', 'dispensasi', 'jadwal'].includes(cmd.perintah)) {
     // Chat pribadi: event dari kode yang ditulis, atau satu-satunya event yang belum selesai.
@@ -1499,6 +1502,9 @@ export async function handlePesan(ctx, pesan) {
         return balas(mulaiPengiriman(ctx, pesan.groupId, event));
       case 'poinbatal': return perintahPoinBatal(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
       case 'kpi': return perintahKpi(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
+      case 'rapor': return perintahRapor(ctx, pesan, event, cmd, { isOwner });
+      case 'kpisaya':
+      case 'kpiku': return balas('🔒 Rapor KPI pribadi. Ketik *#kpisaya* lewat *chat pribadi* ke bot ini.');
       case 'batal': return perintahBatal(ctx, pesan, cmd, isOwner);
       case 'kategori': return perintahKategori(ctx, cmd);
       case 'uang':

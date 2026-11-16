@@ -263,27 +263,34 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 
 ## KPI karyawan
 
-**Nilai otomatis (mulai event Semarang):**
-- **Absen (12)**: dihitung dari absensi foto. Mulai 12 per event, **−2 setiap telat**, **−6 setiap tidak hadir tanpa izin** (karyawan tetap). Izin/dispensasi dari owner (`#izin`) **tidak dipotong**. Kalau event belum punya data absensi, nilai PIC yang dipakai.
-- **Kinerja kasir (24)**: untuk yang pegang kasir antrian, **rata-rata bintang pelanggan ÷ 5 × 24** (minimal 5 penilaian; kalau kurang, nilai PIC yang dipakai).
-- **Laporan foto terlewat: −2 per laporan** untuk penanggung jawabnya: pekerjaan jobdesk loading in yang tidak ada fotonya, dan `#pulang` yang tidak dikirim di hari ia hadir.
-- PIC tetap menilai 4 angka seperti biasa; bot memberi tahu bagian mana yang sudah otomatis. Rinciannya tampil di `#nilai`, `#kpi`, dan kolom *Nilai Otomatis* di file KPI KARYAWAN.
+**Skor maksimal 100 poin per event** = 60 individu + 40 kelompok. Skor = persen klaim bonus (skor 80 → 80% dari bonus maksimal). Rekap bulanan menambah poin plus/minus owner (dibatasi 0–100).
 
-**Skor maksimal 100 poin per bulan** = 60 individu + 40 kelompok, lalu + poin plus − poin minus (dibatasi 0–100). Poin = persen klaim bonus (skor 80 → 80% bonus maksimal).
-
-| Bagian | Poin | Sumber |
+| Bagian | Poin | Sumber (otomatis) |
 |---|---|---|
-| Absen (20% individu) | 12 | Nilai PIC 1–5 |
-| Performa kinerja (40%) | 24 | Nilai PIC 1–5 |
-| Attitude (20%) | 12 | Nilai PIC 1–5 |
-| Karir (20%) | 12 | Nilai PIC 1–5 |
-| Omzet vs target | 15 | Omzet event ÷ target |
-| Ketepatan stok | 10 | (deteksi stok menyusul; sementara penuh) |
-| Kebersihan & komplain | 10 | −2 per komplain pelanggan dari QR booth |
-| Kinerja tim | 5 | Nilai PIC 1–5 |
+| Absen | 12 | Absensi foto: **−2 per telat**, **−6 per tidak hadir tanpa izin** (karyawan tetap). Izin/dispensasi `#izin` tidak dipotong. |
+| Kinerja | 24 | **Rata-rata penilaian harian PIC** (1–100) ÷ 100 × 24. Kasir: digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). |
+| Sikap kerja (attitude) | 12 | Ikut rata-rata penilaian harian PIC (atau bintang pelanggan untuk kasir), kecuali PIC mengisi `#nilai`. |
+| Pengembangan (karir) | 12 | Sama seperti attitude. |
+| Omzet vs target | 15 | Omzet event ÷ target omzet. |
+| Ketepatan stok | 10 | **−2 per bahan yang selisih saat sidak** (seluruh tim). |
+| Kebersihan & komplain | 10 | **−2 per komplain** pelanggan dari QR booth. |
+| Kinerja tim | 5 | Rata-rata seluruh penilaian harian PIC (atau `#nilai tim`). |
 
-- **Penilaian PIC:** sehari setelah event selesai (jam 10.00) bot chat pribadi ke PIC dan menanyakan tiap anggota tim satu per satu: balas 4 angka `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Syarat: nama & nomor WA PIC ada di tab **Karyawan** PEMBUKUAN. Kalau tidak ada, bot mengingatkan di grup pengeluaran: ketik `#nilai`.
+Potongan otomatis lain: **laporan foto terlewat −2 per laporan** (bagian tugas harian: `#depan #followers #grill #cooler #nampan`, `#pulang`, jobdesk loading in) untuk penanggung jawabnya, dan **layanan lambat −2 per hari** (rata-rata tunggu pelanggan di atas 7 menit, seluruh tim). Hari yang dibebaskan owner lewat Pengaturan `bebas_laporan` tidak memotong laporan.
+
+- **Sumber utama: penilaian harian PIC** (lihat bagian *Penilaian harian PIC*). Karyawan tanpa penilaian harian dan tanpa bintang belum punya skor.
+- **Cadangan:** kalau PIC tidak pernah menjawab penilaian harian, sehari setelah event selesai (jam 10.00) bot menanyakan 4 angka per orang di chat pribadi: `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Nilai `#nilai` yang diisi PIC menggantikan nilai turunan harian untuk attitude, karir, dan tim.
 - **Langsung:** `#nilai Dena 5 4 4 3`, `#nilai tim 4`, untuk event lama `#nilai BAL26-09`.
+
+### Rapor KPI ke karyawan
+
+- Sehari setelah event selesai (jam 12.00) bot memberi tahu **owner**: "Rapor KPI ... siap" beserta ringkasan peringkat. **Owner yang memutuskan kapan rapor dikirim.**
+- Owner (grup event / grup pengeluaran, atau chat pribadi dengan `#rapor KODE`):
+  - `#rapor` → ringkasan & peringkat tim (termasuk siapa yang belum dinilai).
+  - `#rapor Dena` → pratinjau rapor Dena persis seperti yang ia terima (belum dikirim).
+  - `#rapor kirim` → kirim rapor ke chat pribadi tiap karyawan yang nomornya dikenal bot. Yang belum dinilai atau tanpa nomor ditandai, tidak dikirim.
+- Karyawan juga bisa mengetik **`#kpisaya`** lewat chat pribadi ke bot untuk melihat rapornya sendiri (bertanda *sementara* kalau event masih berjalan).
+- Isi rapor: skor dan persen klaim bonus, rincian individu & kelompok dengan lampu 🟢🟡🔴, potongan (telat, laporan terlewat, layanan lambat), dan **2 saran peningkatan**. Tidak memuat catatan rahasia PIC, nilai harian per hari, nilai orang lain, maupun nominal bonus.
 - **Poin plus/minus (owner):** `#poin Dena +20 bantu masak bumbu`, `#poin Dena -10 SOP tidak dikerjakan`, batalkan `#poinbatal K0001`.
 - **Lihat (owner):** `#kpi` (peringkat bulan terakhir), `#kpi Dena`, `#kpi 2026-09`. Karyawan nanti melihat nilainya sendiri lewat QR kartu + PIN.
 - **File KPI KARYAWAN** di Drive diperbarui otomatis: Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung.

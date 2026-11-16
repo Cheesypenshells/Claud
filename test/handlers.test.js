@@ -1183,6 +1183,51 @@ test('#gajian: mulai event Semarang; event sebelumnya sudah dibayar; bonus x KPI
   assert.match(lama[0].text, /sudah dibayar/);
 });
 
+test('rapor KPI: nilai harian PIC jadi dasar skor (attitude/karir/tim ikut), owner lihat ringkasan & kirim ke chat pribadi, karyawan #kpisaya', async () => {
+  const { store, kirim, ctx } = setup();
+  const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-15 Nov 2026');
+  await kirim(G_KELUAR, OWNER, `${blok}\nSenior: Adit, Alam, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event SMR26-11');
+  await store.append('Karyawan', { nama: 'Adit', nomor_wa: '081111111111' });
+  await store.append('Karyawan', { nama: 'Alam', nomor_wa: '082222222222' });
+  const nilai = (tanggal, nama, poin, catatan) => store.append('Nilai Harian', { tanggal, kode_event: 'SMR26-11', nama, poin, catatan, status: 'OK' });
+  await nilai('2026-11-14', 'Adit', 80, 'rahasia: sering main hp'); await nilai('2026-11-15', 'Adit', 90, '');
+  await nilai('2026-11-14', 'Alam', 40, ''); await nilai('2026-11-15', 'Alam', 60, '');
+  for (const [t, n, tel] of [['2026-11-14', 'Adit', 39], ['2026-11-14', 'Alam', 0], ['2026-11-15', 'Adit', 0], ['2026-11-15', 'Alam', 0]]) {
+    await store.append('Absensi', { tanggal: t, kode_event: 'SMR26-11', nama: n, telat_menit: tel, denda: tel ? 50000 : 0, status: 'OK' });
+  }
+  const { rincianGajian } = await import('../src/gajian.js');
+  const skor = (await rincianGajian({ store }, { kode: 'SMR26-11' })).orang;
+  assert.ok(skor.find((o) => o.nama === 'Adit').skor > skor.find((o) => o.nama === 'Alam').skor);
+  assert.equal(skor.find((o) => o.nama === 'Bima').skor, null); // belum ada penilaian
+  const w = { waktu: new Date('2026-11-17T10:00:00+07:00') };
+  // hanya owner
+  assert.match(await kirim(G_KELUAR, PIC, '#rapor', w), /hanya bisa dilihat dan dikirim owner/);
+  const ring = await kirim(G_KELUAR, OWNER, '#rapor', w);
+  assert.match(ring, /Rapor KPI SMR26-11.*Penilaian harian PIC terisi: 2 hari.*1\. \*Adit\*.*2\. \*Alam\*.*Belum ada nilai: Bima/s);
+  const adit = await kirim(G_KELUAR, OWNER, '#rapor Adit', w);
+  assert.match(adit, /Rapor KPI SMR26-11.*Adit.*Skor: [\d,]+ \/ 100.*klaim bonus.*Absen.*telat 1×.*Kinerja.*nilai harian PIC rata-rata 85 \(2 hari\).*Kelompok.*Yang bisa ditingkatkan/s);
+  assert.doesNotMatch(adit, /rahasia|main hp|Rp /); // tanpa catatan rahasia dan nominal
+  // kirim ke chat pribadi: Adit & Alam (Bima belum dinilai)
+  const hasil = await handlePesan(ctx, { id: 'r1', groupId: G_KELUAR, groupName: G_KELUAR, senderId: OWNER, senderName: 'George', text: '#rapor kirim', adaFoto: false, ...w });
+  assert.match(hasil[0].text, /dikirim ke chat pribadi: Adit, Alam.*Belum dinilai \(tidak dikirim\): Bima/s);
+  assert.deepEqual(hasil.slice(1).map((x) => x.nomor), ['6281111111111', '6282222222222']);
+  assert.match(hasil[1].text, /Rapor KPI SMR26-11\* – Adit/);
+  assert.doesNotMatch(hasil[2].text, /Adit|Skor: [\d,]+.*Adit/); // rapor Alam tidak memuat nilai orang lain
+  // karyawan lihat rapornya sendiri lewat chat pribadi; nomor tak dikenal ditolak
+  const dm = (senderId, text) => handlePesan(ctx, { id: `k${Math.random()}`, groupId: 'dm', pribadi: true, senderId, senderName: 'X', text, adaFoto: false, ...w }).then((r) => r.map((x) => x.text).join('\n'));
+  assert.match(await dm('6282222222222', '#kpisaya'), /Rapor KPI SMR26-11\* – Alam/);
+  assert.match(await dm('6289999999999', '#kpisaya'), /belum dikenal bot/);
+  assert.match(await kirim(G_TIM, KARYAWAN, '#kpisaya', w), /chat pribadi/);
+  // bot memberi tahu owner sekali saat rapor siap (sehari setelah event selesai, jam 12.00)
+  const { tugasRapor } = await import('../src/raporKpi.js');
+  assert.equal((await tugasRapor(ctx, new Date('2026-11-16T11:00:00+07:00'))).length, 0);
+  const siap = await tugasRapor(ctx, new Date('2026-11-16T12:00:00+07:00'));
+  assert.equal(siap[0].nomor, OWNER);
+  assert.match(siap[0].text, /Rapor KPI SMR26-11 siap.*#rapor kirim SMR26-11/s);
+  assert.equal((await tugasRapor(ctx, new Date('2026-11-16T12:10:00+07:00'))).length, 0);
+});
+
 test('#gajian: semua denda dipotong dari gaji pokok (bukan bonus); sisa melebihi gaji pokok dibawa ke event berikutnya', async () => {
   const { store, kirim } = setup();
   const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-22 Nov 2026');
