@@ -465,7 +465,7 @@ function buatPesanan(pin, kode, dataUrl) {
     var teks = ocr_(foto.blob);
     o.teks_struk = teks.slice(0, 2000);
     o.menu = bacaMenu_(teks);
-    o.total = bacaTotal_(teks);
+    o.total = bacaTotalStruk_(teks);
     o.sumber_total = o.total ? 'struk' : '';
     var baris = baca_(t).filter(function (x) { return x.id === id; })[0];
     if (baris) ubah_(t, baris._baris, { teks_struk: o.teks_struk, menu: o.menu, total: o.total || '', sumber_total: o.sumber_total });
@@ -475,21 +475,24 @@ function buatPesanan(pin, kode, dataUrl) {
   }
 }
 
-// "Rp 125.000", "125,000", "125.000,00" -> 125000 (rupiah utuh). 0 kalau bukan angka rupiah.
+// "Rp 125.000", "IDR 75,000.00", "125,000" -> rupiah utuh. 0 kalau bukan angka rupiah.
 function angkaRupiah_(s) {
-  var t = String(s).replace(/rp\.?/ig, '').replace(/\s/g, '');
+  var t = String(s).replace(/rp\.?|idr/ig, '').replace(/\s/g, '');
   t = t.replace(/[.,]00$/, '');
   t = t.replace(/[.,](?=\d{3}(\D|$))/g, '');
   var n = Number(t.replace(/[^\d]/g, ''));
   return isFinite(n) ? n : 0;
 }
-var POLA_ANGKA = /(?:rp\.?\s*)?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|rp\.?\s*\d{4,}|\b\d{4,}\b/ig;
+// Hanya angka berpemisah ribuan atau berawalan Rp/IDR (angka polos seperti tahun, nomor referensi, jam tidak dianggap uang).
+var POLA_ANGKA = /(?:(?:rp\.?|idr)\s*)?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|(?:rp\.?|idr)\s*\d{4,}/ig;
 function angkaDi_(s) {
   var m = String(s).match(POLA_ANGKA);
-  return m ? m.map(angkaRupiah_).filter(function (n) { return n >= 1000; }) : [];
+  return m ? m.map(angkaRupiah_).filter(function (n) { return n >= MIN_STRUK; }) : [];
 }
-// Total belanja dari teks struk: baris "Total / Grand Total / Total Bayar / Tagihan" (angka di baris itu atau baris berikutnya).
-// Tanpa kata total: 0 (tidak menebak; kasir mengisi manual).
+// Harga menu paling murah Rp 60.000: angka di bawah Rp 10.000 pasti bukan total belanja (nomor, jam, kode).
+var MIN_STRUK = 10000;
+// Total belanja dari teks struk: baris "Total / Grand Total / Total Bayar / Tagihan". Angkanya di baris itu, atau
+// dalam 6 baris sesudahnya, atau 6 baris sebelumnya (struk mesin EDC/cashUP menaruh "Rp ..." di luar baris TOTAL).
 function bacaTotal_(teks) {
   var baris = String(teks || '').split(/\r?\n/);
   var hasil = 0;
@@ -498,18 +501,44 @@ function bacaTotal_(teks) {
     if (/sub\s*total|kembali|change/.test(b)) continue;
     if (!/grand\s*total|\btotal\b|jumlah\s*(bayar|tagihan)|tagihan/.test(b)) continue;
     var a = angkaDi_(baris[i]);
-    if (!a.length && i + 1 < baris.length) a = angkaDi_(baris[i + 1]);
+    if (!a.length) {
+      var p = b.match(/total\s*[:=]?\s*(?:rp\.?|idr)?\s*(\d{4,})\b/);
+      if (p && Number(p[1]) >= MIN_STRUK) a = [Number(p[1])];
+    }
+    for (var j = i + 1; !a.length && j <= Math.min(baris.length - 1, i + 6); j++) a = angkaDi_(baris[j]);
+    for (var k = i - 1; !a.length && k >= Math.max(0, i - 6); k--) a = angkaDi_(baris[k]);
     if (a.length) hasil = a[a.length - 1];
   }
   return hasil;
 }
-// Nominal dari foto bukti transfer / QRIS: baris total, kalau tidak ada angka "Rp ..." pertama.
+// Nominal dari foto bukti transfer / QRIS: baris total, kalau tidak ada angka "Rp ..." / "IDR ..." pertama.
 function bacaNominalTrf_(teks) {
   var t = bacaTotal_(teks);
   if (t) return t;
-  var cari = String(teks || '').match(/rp\.?\s*\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|rp\.?\s*\d{4,}/ig) || [];
-  var a = cari.map(angkaRupiah_).filter(function (n) { return n >= 1000; });
+  var cari = String(teks || '').match(/(?:rp\.?|idr)\s*\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|(?:rp\.?|idr)\s*\d{4,}/ig) || [];
+  var a = cari.map(angkaRupiah_).filter(function (n) { return n >= MIN_STRUK; });
   return a.length ? a[0] : 0;
+}
+// Foto struk: baris total; kalau yang difoto ternyata layar bukti bayar (QRIS berhasil, transfer, OVO, dsb.), nominalnya.
+function bacaTotalStruk_(teks) {
+  var t = bacaTotal_(teks);
+  if (t) return t;
+  if (/berhasil|successful|diproses|bukti transaksi|pembayaran qris|qris payment/i.test(String(teks || ''))) return bacaNominalTrf_(teks);
+  return 0;
+}
+
+// Menjalankan ulang pembacaan total untuk pesanan yang totalnya masih kosong (dari "Teks Struk" yang sudah tersimpan).
+// Jalankan sekali dari editor Apps Script setelah parser diperbarui.
+function HITUNG_ULANG_TOTAL() {
+  var t = tab_('Antrian', KOLOM_ANTRIAN);
+  var terisi = 0;
+  baca_(t).forEach(function (o) {
+    if (Number(o.total) || !o.teks_struk) return;
+    var n = bacaTotalStruk_(o.teks_struk);
+    if (n) { ubah_(t, o._baris, { total: n, sumber_total: 'struk' }); terisi++; }
+  });
+  Logger.log('Total terisi untuk ' + terisi + ' pesanan.');
+  return terisi;
 }
 
 // Kasir memperbaiki / mengisi total belanja satu pesanan.

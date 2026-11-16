@@ -216,6 +216,21 @@ test('apps-script: total belanja dibaca dari teks struk / bukti trf, omzet sesi 
   assert.equal(c.bacaTotal_('Garlic 2x 50.000\nTunai 150.000'), 0); // tanpa kata total: tidak menebak
   assert.equal(c.bacaNominalTrf_('Transfer berhasil\nNominal Rp 245.000\nBiaya admin Rp 0\nTotal Rp 245.000'), 245000);
   assert.equal(c.bacaNominalTrf_('QRIS berhasil\nRp 99.500\nCheesy Pen Shells'), 99500);
+  // struk & bukti bayar asli dari kasir Semarang (hasil OCR Drive, apa adanya: berantakan)
+  const asli = {
+    cashup160: 'SALE\nMID: 20719\nTRX.TYPE: GRIS\nREF.NO: 000000000171\nBATCH: 000004\nINVOICE: 000192\nACQUIRER: CASHLEZ\nISSUER : BNI\nTOTAL:\nDATE TIME : 16 November 2026 11:12:11\nPowered by cashUP | V 3.2.1/4004\n--Salinan--\nRp 160.000',
+    cashup75: 'SALE\nREF.NO: 000000000175\nBATCH: 000004\nACQUIRER: CASHLEZ\nTRX.TYPE: CRIS APP.CODE: stn6up\nINVOICE: 000196\nISSUER BCA\nRp 75.000\nDATE TIME: 16 November 2026 13:23:47\nTOTAL:\nPowered by cashUP V 3.2.1/4004\nO\n--Salinan--\nb 32\'000\nDYLE LINE 5pse 1653:45\ncontate pe\n122',
+    cashup75b: 'ISSUER BCA\nDATE TIME: 16 November 2026 13:23:47\nTOTAL :\nRp 75.000\nPowered by\n3.2.1/4004',
+    qris100: 'Vell 72%\nPembayaran QRIS berhasil\nRp100.000\n16 Nov 2026 11:17:14 WIB.\nRef ID: 20261116111707000460\nBukti Transaksi\nPenerima\nKEPO ASIAN-Cheesy Pen S',
+    bca75: 'Financial Diary\nYou spent IDR 75,000.00 at Payment.\nPayment to\nQRIS Payment Successful\nBCA\n16 Nov 2026 12:56:01\nIDR 75,000.00\nKEPO ASIAN-Cheesy Pen S\nRRN\n267343766',
+    ovo100: 'Yay,\nPembayaran Diproses\nKEPO ASIAN-Ch\nTotal Transaksi\nOVO Cash Terpakai\nRp100.000\nRp100.000\nWaktu Transaksi Berhasil\n16 Nov 2026. 13:04',
+    nota_tulis: 'Tuan Toko\nSH\nNOTA NO.\nBANYAKNYA\nNAMA BARANG\nHARGA\nJUMLAH\n15 NOV 2016\nTanda Terima\nJumlah Rp.\nHormat kami,',
+    menu_saja: '9\nPILIHAN ISI:\nEAFOOD MIX\n25K\n/PCS\nOYSTER FRES\nNaturally Fresh, Pure Ocean Taste!\nO\nX\no 75.000',
+  };
+  assert.deepEqual(
+    ['cashup160', 'cashup75', 'cashup75b', 'qris100', 'bca75', 'ovo100', 'nota_tulis', 'menu_saja'].map((k) => c.bacaTotalStruk_(asli[k])),
+    [160000, 75000, 75000, 100000, 75000, 100000, 0, 0], // tulisan tangan / tanpa total: 0 (kasir isi manual)
+  );
   const tabel = {};
   let teks = 'Garlic 2x 50.000\nTOTAL 100.000';
   Object.assign(c, {
