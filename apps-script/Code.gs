@@ -77,6 +77,8 @@ function atur_(kunci) {
 
 // PIN kasir: Script Property / Konfig.gs, atau baris "pin_kasir" di tab Pengaturan (diisi bot / owner).
 function pinKasir_() { return prop_('KASIR_PIN') || atur_('pin_kasir'); }
+// PIN khusus PIC (Pengaturan: pin_pic): hanya PIC yang boleh membatalkan struk/pesanan, kasir senior maupun DW tidak.
+function pinPic_() { return prop_('PIC_PIN') || atur_('pin_pic'); }
 
 // ---------------------------------------------------------------- dasar
 
@@ -150,6 +152,12 @@ function ubah_(t, baris, o) {
 function cekPin_(pin) {
   var benar = pinKasir_();
   if (!benar || String(pin) !== benar) throw new Error('PIN kasir salah');
+}
+
+function cekPinPic_(pin) {
+  var benar = pinPic_();
+  if (!benar) throw new Error('PIN PIC belum diatur. Owner: isi Pengaturan pin_pic.');
+  if (String(pin || '') !== benar) throw new Error('PIN PIC salah. Pembatalan struk hanya boleh oleh PIC.');
 }
 
 function url_() { return ScriptApp.getService().getUrl(); }
@@ -547,8 +555,9 @@ var STATUS_BOLEH = {
 };
 var NAMA_STATUS = { MENUNGGU: 'menunggu', DIBAKAR: 'sedang dibakar', SIAP: 'dipanggil', DIAMBIL: 'sudah diambil', BATAL: 'dibatalkan' };
 
-function ubahStatus(pin, id, status, dataUrl) {
+function ubahStatus(pin, id, status, dataUrl, pinPic) {
   cekPin_(pin);
+  if (status === STATUS.BATAL) cekPinPic_(pinPic);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try { return ubahStatusTerkunci_(id, status, dataUrl); } finally { lock.releaseLock(); }
@@ -1093,7 +1102,7 @@ var HTML_KASIR =
   "}\n" +
   "function lihat(id, o) {\n" +
   "  o = o || cari(id); if (!o) return;\n" +
-  "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><div class=redup style=\\\"text-align:center\\\">Nomor antrian</div><div class=nomor>#\" + o.nomor + \"</div><p style=\\\"text-align:center\\\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\\\"display:flex;justify-content:center;margin:10px 0\\\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>\" + aman(o.menu) + \"</textarea><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanMenu('\" + o.id + \"')\\\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\\\"\" + (o.total || \"\") + \"\\\" placeholder=\\\"contoh: 125000\\\"><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanTotal('\" + o.id + \"')\\\">Simpan total</button> <button class=\\\"kecil biru\\\" onclick=\\\"buktiTrf('\" + o.id + \"')\\\">📷 Bukti trf</button>\" + (o.fotoTrf ? \" <a href=\\\"\" + o.fotoTrf + \"\\\" target=_blank>lihat bukti trf</a>\" : \"\") + \"<br><br> <button class=\\\"kecil merah\\\" onclick=\\\"if(confirm('Batalkan pesanan #\" + o.nomor + \"?'))status('\" + o.id + \"','BATAL')\\\">Batalkan</button><br><br><img class=foto src=\\\"\" + o.fotoStruk + \"\\\" alt=\\\"Struk\\\">\" + (o.fotoBakar ? \"<br><img class=foto src=\\\"\" + o.fotoBakar + \"\\\" alt=\\\"Foto dibakar\\\">\" : \"\") + \"<br><button onclick=\\\"tutup()\\\">Tutup</button></div></div>\";\n" +
+  "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><div class=redup style=\\\"text-align:center\\\">Nomor antrian</div><div class=nomor>#\" + o.nomor + \"</div><p style=\\\"text-align:center\\\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\\\"display:flex;justify-content:center;margin:10px 0\\\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>\" + aman(o.menu) + \"</textarea><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanMenu('\" + o.id + \"')\\\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\\\"\" + (o.total || \"\") + \"\\\" placeholder=\\\"contoh: 125000\\\"><br><br><button class=\\\"kecil hijau\\\" onclick=\\\"simpanTotal('\" + o.id + \"')\\\">Simpan total</button> <button class=\\\"kecil biru\\\" onclick=\\\"buktiTrf('\" + o.id + \"')\\\">📷 Bukti trf</button>\" + (o.fotoTrf ? \" <a href=\\\"\" + o.fotoTrf + \"\\\" target=_blank>lihat bukti trf</a>\" : \"\") + \"<br><br> <button class=\\\"kecil merah\\\" onclick=\\\"batalkan('\" + o.id + \"',\" + o.nomor + \")\\\">🔒 Batalkan (PIC)</button><br><br><img class=foto src=\\\"\" + o.fotoStruk + \"\\\" alt=\\\"Struk\\\">\" + (o.fotoBakar ? \"<br><img class=foto src=\\\"\" + o.fotoBakar + \"\\\" alt=\\\"Foto dibakar\\\">\" : \"\") + \"<br><button onclick=\\\"tutup()\\\">Tutup</button></div></div>\";\n" +
   "  var q = qrcode(0, \"L\"); q.addData(o.link); q.make();\n" +
   "  el(\"qr\").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace(\"<svg \", \"<svg style=\\\"width:min(86vw,380px);height:auto;background:#fff\\\" \");\n" +
   "}\n" +
@@ -1114,9 +1123,15 @@ var HTML_KASIR =
   "  i.click();\n" +
   "}\n" +
   "function simpanMenu(id) { google.script.run.withSuccessHandler(function () { tutup(); muat(); }).ubahMenu(PIN, id, el(\"menuEdit\").value); }\n" +
-  "function status(id, st, foto) {\n" +
+  "function status(id, st, foto, pinPic) {\n" +
   "  google.script.run.withSuccessHandler(function () { tutup(); muat(); })\n" +
-  "    .withFailureHandler(function (e) { tutup(); pesan(\"⚠️ \" + e.message); muat(); }).ubahStatus(PIN, id, st, foto || \"\");\n" +
+  "    .withFailureHandler(function (e) { tutup(); pesan(\"⚠️ \" + e.message); muat(); }).ubahStatus(PIN, id, st, foto || \"\", pinPic || \"\");\n" +
+  "}\n" +
+  "// Hanya PIC yang boleh membatalkan struk: PIN PIC ditanyakan setiap kali dan tidak disimpan di HP.\n" +
+  "function batalkan(id, nomor) {\n" +
+  "  var p = prompt(\"Batalkan pesanan #\" + nomor + \"?\\nHanya PIC yang boleh. Masukkan PIN PIC:\");\n" +
+  "  if (!p) return;\n" +
+  "  status(id, \"BATAL\", \"\", p);\n" +
   "}\n" +
   "function bakar(id) {\n" +
   "  var i = el(\"fotoBakar\");\n" +

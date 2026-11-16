@@ -144,7 +144,7 @@ function pesananBaru(inp) {
 }
 function lihat(id, o) {
   o = o || cari(id); if (!o) return;
-  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#" + o.nomor + "</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>" + aman(o.menu) + "</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('" + o.id + "')\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\"" + (o.total || "") + "\" placeholder=\"contoh: 125000\"><br><br><button class=\"kecil hijau\" onclick=\"simpanTotal('" + o.id + "')\">Simpan total</button> <button class=\"kecil biru\" onclick=\"buktiTrf('" + o.id + "')\">📷 Bukti trf</button>" + (o.fotoTrf ? " <a href=\"" + o.fotoTrf + "\" target=_blank>lihat bukti trf</a>" : "") + "<br><br> <button class=\"kecil merah\" onclick=\"if(confirm('Batalkan pesanan #" + o.nomor + "?'))status('" + o.id + "','BATAL')\">Batalkan</button><br><br><img class=foto src=\"" + o.fotoStruk + "\" alt=\"Struk\">" + (o.fotoBakar ? "<br><img class=foto src=\"" + o.fotoBakar + "\" alt=\"Foto dibakar\">" : "") + "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><div class=redup style=\"text-align:center\">Nomor antrian</div><div class=nomor>#" + o.nomor + "</div><p style=\"text-align:center\">Minta pelanggan <b>scan QR ini</b> untuk melihat pesanannya:</p><div id=qr style=\"display:flex;justify-content:center;margin:10px 0\"></div><label for=menuEdit>Menu (dari struk, bisa diperbaiki)</label><textarea id=menuEdit rows=4>" + aman(o.menu) + "</textarea><br><br><button class=\"kecil hijau\" onclick=\"simpanMenu('" + o.id + "')\">Simpan menu</button> <br><br><label for=totalEdit>Total belanja (Rp) – dari struk / bukti trf, bisa diperbaiki</label><input id=totalEdit inputmode=numeric value=\"" + (o.total || "") + "\" placeholder=\"contoh: 125000\"><br><br><button class=\"kecil hijau\" onclick=\"simpanTotal('" + o.id + "')\">Simpan total</button> <button class=\"kecil biru\" onclick=\"buktiTrf('" + o.id + "')\">📷 Bukti trf</button>" + (o.fotoTrf ? " <a href=\"" + o.fotoTrf + "\" target=_blank>lihat bukti trf</a>" : "") + "<br><br> <button class=\"kecil merah\" onclick=\"batalkan('" + o.id + "'," + o.nomor + ")\">🔒 Batalkan (PIC)</button><br><br><img class=foto src=\"" + o.fotoStruk + "\" alt=\"Struk\">" + (o.fotoBakar ? "<br><img class=foto src=\"" + o.fotoBakar + "\" alt=\"Foto dibakar\">" : "") + "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
   var q = qrcode(0, "L"); q.addData(o.link); q.make();
   el("qr").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace("<svg ", "<svg style=\"width:min(86vw,380px);height:auto;background:#fff\" ");
 }
@@ -165,9 +165,15 @@ function buktiTrf(id) {
   i.click();
 }
 function simpanMenu(id) { google.script.run.withSuccessHandler(function () { tutup(); muat(); }).ubahMenu(PIN, id, el("menuEdit").value); }
-function status(id, st, foto) {
+function status(id, st, foto, pinPic) {
   google.script.run.withSuccessHandler(function () { tutup(); muat(); })
-    .withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); muat(); }).ubahStatus(PIN, id, st, foto || "");
+    .withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); muat(); }).ubahStatus(PIN, id, st, foto || "", pinPic || "");
+}
+// Hanya PIC yang boleh membatalkan struk: PIN PIC ditanyakan setiap kali dan tidak disimpan di HP.
+function batalkan(id, nomor) {
+  var p = prompt("Batalkan pesanan #" + nomor + "?\nHanya PIC yang boleh. Masukkan PIN PIC:");
+  if (!p) return;
+  status(id, "BATAL", "", p);
 }
 function bakar(id) {
   var i = el("fotoBakar");

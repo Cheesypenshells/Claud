@@ -171,7 +171,15 @@ test('apps-script: mulai/tutup kasir, nomor mulai 1 tiap sesi, ringkasan & binta
   c.nilaiPesanan(tok(0), 5, 'ramah');
   c.ubahStatus('1', p3.id, 'SIAP');
   c.nilaiPesanan(tok(2), 2, 'lama');
-  c.ubahStatus('1', p2.id, 'BATAL');
+  // hanya PIC yang boleh membatalkan struk (PIN PIC terpisah dari PIN kasir)
+  c.pinPic_ = () => '9999';
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL'), /PIN PIC salah/);
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL', '', '1'), /PIN PIC salah/);
+  assert.equal(tabel.Antrian.rows[1].status, 'MENUNGGU');
+  c.pinPic_ = () => '';
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL', '', '9999'), /PIN PIC belum diatur/);
+  c.pinPic_ = () => '9999';
+  c.ubahStatus('1', p2.id, 'BATAL', '', '9999');
   const r = c.tutupKasir('1', 'SMR26-11');
   assert.equal(r.jumlah_struk, 2);
   assert.equal(r.diambil, 1);
