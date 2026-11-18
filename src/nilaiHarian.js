@@ -113,24 +113,38 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
     const tujuan = await tujuanPic(ctx, e);
     if (!tujuan) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    // Kemarin terlewat (mis. kasir lupa ditutup / bot mati)? Dinilai dulu, lalu hari ini.
-    const kemarin = tambahHari(tanggal, -1);
-    const daftarTgl = [];
-    if (kemarin >= e.mulai && !nilaiRows.some((r) => r.kode_event === e.kode && String(r.tanggal) === kemarin && r.status !== STATUS.BATAL)) {
-      daftarTgl.push(kemarin);
-      ctx.sesi.set(`nilaiharian-kirim:${e.kode}:${kemarin}`, { kirim: true });
-    }
+    // Hari-hari sebelumnya yang terlewat (mis. kasir lupa ditutup, bot mati, PIC belum menjawab)? Dinilai dulu, lalu hari ini.
+    const daftarTgl = hariBelumDinilai(e, tanggal, nilaiRows);
+    for (const t of daftarTgl) ctx.sesi.set(`nilaiharian-kirim:${e.kode}:${t}`, { kirim: true });
     daftarTgl.push(tanggal);
     keluar.push(...(await mulaiNilaiHarian(ctx, e, daftarTgl, tujuan)));
   }
   return keluar;
 }
 
+// Hari event (sebelum `sampai`) yang belum punya penilaian harian sama sekali, paling jauh 6 hari ke belakang.
+export function hariBelumDinilai(event, sampai, nilaiRows) {
+  const hasil = [];
+  for (let t = tambahHari(sampai, -6); t < sampai; t = tambahHari(t, 1)) {
+    if (t < event.mulai || (event.selesai && t > event.selesai)) continue;
+    if (!nilaiRows.some((r) => r.kode_event === event.kode && String(r.tanggal) === t && r.status !== STATUS.BATAL)) hasil.push(t);
+  }
+  return hasil;
+}
+
 // #nilaiharian (owner/PIC): mulai penilaian hari ini sekarang juga.
+//   #nilaiharian kemarin · #nilaiharian 2 hari · #nilaiharian semua (semua hari yang belum dinilai, lalu hari ini)
 export async function perintahNilaiHarian(ctx, pesan, event) {
   if (!event) return balas('⚠️ Sebutkan eventnya, contoh: *#nilaiharian SMR26-11*');
   const hariIni = tanggalClosing(pesan.waktu);
-  const tanggal = /\bkemarin\b/i.test(pesan.text || '') ? tambahHari(hariIni, -1) : /\b(2\s*hari|dua\s*hari)\b/i.test(pesan.text || '') ? [tambahHari(hariIni, -1), hariIni] : hariIni;
+  let tanggal = /\bkemarin\b/i.test(pesan.text || '') ? tambahHari(hariIni, -1) : /\b(2\s*hari|dua\s*hari)\b/i.test(pesan.text || '') ? [tambahHari(hariIni, -1), hariIni] : hariIni;
+  if (/\b(semua|susulan|lengkap)\b/i.test(pesan.text || '')) {
+    let nilaiRows = [];
+    try { nilaiRows = await ctx.store.all('Nilai Harian'); } catch { nilaiRows = []; }
+    const belum = hariBelumDinilai(event, hariIni, nilaiRows);
+    if (!belum.length) return balas(`✅ Semua hari event ${event.kode} sebelum hari ini sudah dinilai.${nilaiRows.some((r) => r.kode_event === event.kode && String(r.tanggal) === hariIni) ? '' : ' Hari ini: ketik *#nilaiharian*.'}`);
+    tanggal = [...belum, hariIni];
+  }
   const tujuan = pesan.pribadi ? { nomor: pesan.senderId } : { groupId: pesan.groupId };
   const k = await mulaiNilaiHarian(ctx, event, tanggal, tujuan);
   return k.length ? [{ text: k[0].text }] : balas('⚠️ Belum ada tim untuk dinilai.');

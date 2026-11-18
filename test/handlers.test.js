@@ -1603,6 +1603,28 @@ test('kasir lupa tutup: diingatkan tiap jam setelah jam tutup & pagi berikutnya;
   assert.deepEqual(rows.map((r) => [r.tanggal, r.nama, r.poin]), [['2026-11-02', 'Tiara', 80], ['2026-11-02', 'Bima', 70], ['2026-11-03', 'Tiara', 90], ['2026-11-03', 'Bima', 60]]);
 });
 
+test('penilaian harian susulan: bot menanyakan semua hari yang belum dinilai berurutan; #nilaiharian semua', async () => {
+  const { store, kirim, ctx } = setup();
+  const { tugasNilaiHarian } = await import('../src/nilaiHarian.js');
+  const blok = BLOK_EVENT.replace('Kode: JMB26-11', 'Kode: SMR26-11').replace('Tanggal: 2-8 Nov 2026', 'Tanggal: 14-22 Nov 2026');
+  await kirim(G_KELUAR, OWNER, `${blok}\nSenior: Tiara, Bima`);
+  await kirim(G_TIM, OWNER, '#daftar event SMR26-11');
+  await store.append('Karyawan', { nama: 'Budi', nomor_wa: '082222222222' });
+  for (const t of ['2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18']) {
+    await store.append('Tugas Harian', { tanggal: t, kode_event: 'SMR26-11', bagian: 'Kasir', nama: 'Tiara', status: 'OK' });
+    await store.append('Sesi Kasir', { id: `S${t}`, kode_event: 'SMR26-11', tanggal: t, status: 'TUTUP', dibuka: `${t} 10:00:00`, ditutup: `${t} 22:00:00` });
+  }
+  await store.append('Nilai Harian', { tanggal: '2026-11-15', kode_event: 'SMR26-11', nama: 'Tiara', poin: 80, status: 'OK' }); // hanya 15 Nov yang terisi
+  const n = await tugasNilaiHarian(ctx, new Date('2026-11-18T22:30:00+07:00'));
+  assert.match(n[0].text, /untuk \*4 hari\* \(14 Nov lalu 16 Nov lalu 17 Nov lalu 18 Nov\)/);
+  assert.match(n[0].text, /Penilaian harian SMR26-11\* – 14 Nov \(1\/1\)/);
+  const dm = (text) => handlePesan(ctx, { id: `d${Math.random()}`, groupId: 'dm', pribadi: true, senderId: PIC, senderName: 'Budi', text, adaFoto: false, waktu: new Date('2026-11-18T22:40:00+07:00') }).then((r) => r.map((x) => x.text).join('\n'));
+  await dm('70'); await dm('tidak');
+  assert.match(await dm('tidak'), /Lanjut penilaian 16 Nov/); // kejadian 14 Nov dijawab, lanjut 16 Nov
+  // perintah manual: setelah 14 Nov terisi, sisa yang belum = 16, 17 (18 Nov = hari ini)
+  assert.match(await kirim(G_KELUAR, PIC, '#nilaiharian semua', { waktu: new Date('2026-11-18T23:00:00+07:00') }), /\*3 hari\* \(16 Nov lalu 17 Nov lalu 18 Nov\)/);
+});
+
 test('catatan harian: #kejadian #beli #pr, kejadian/PR dari PIC di akhir penilaian, tampil di tugas pagi besoknya, #sudahbeli', async () => {
   const { store, kirim, ctx } = setup();
   const { bacaJawaban, mulaiNilaiHarian } = await import('../src/nilaiHarian.js');
