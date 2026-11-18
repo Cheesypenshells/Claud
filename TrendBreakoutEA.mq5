@@ -22,9 +22,14 @@ input int             InpEmaPeriod   = 200;       // EMA filter tren
 input int             InpAtrPeriod   = 14;        // Periode ATR
 input double          InpAtrSlMult   = 2.0;       // Jarak SL = ATR x ini
 input double          InpRewardRisk  = 2.0;       // TP = jarak SL x ini
-input int             InpStartHour   = 7;         // Jam mulai trading (jam server)
-input int             InpEndHour     = 20;        // Jam berhenti buka posisi (jam server)
 input int             InpMaxSpread   = 20;        // Spread maksimal (points)
+
+input group "Jam Trading (sesi London & New York)"
+input bool InpSessionFilter      = true; // Hanya buka posisi di sesi London & New York
+input int  InpSessionStartLondon = 8;    // Mulai buka posisi (jam LONDON) = 15:00 WIB / 14:00 WIB musim panas
+input int  InpSessionEndLondon   = 21;   // Stop buka posisi (jam LONDON) = 04:00 WIB / 03:00 WIB musim panas
+input int  InpServerGmtWinter    = 2;    // Zona waktu server saat musim dingin (GMT+), MetaQuotes = 2
+input bool InpServerEuDst        = true; // Server ikut perubahan jam musim panas Eropa
 
 input group "Manajemen Risiko"
 input double InpRiskPerTradeUSD   = 15.0; // Rugi maksimal per posisi ($)
@@ -110,8 +115,7 @@ void OnTick()
 //+------------------------------------------------------------------+
 int GetSignal()
   {
-   MqlDateTime t; TimeToStruct(TimeCurrent(), t);
-   if(t.hour < InpStartHour || t.hour >= InpEndHour) return 0;
+   if(!InLondonNySession()) return 0;
    if(SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) > InpMaxSpread) return 0;
 
    double ema[1];
@@ -127,6 +131,43 @@ int GetSignal()
    if(close1 > hh && close1 > ema[0]) return  1;  // breakout ke atas, searah tren naik
    if(close1 < ll && close1 < ema[0]) return -1;  // breakout ke bawah, searah tren turun
    return 0;
+  }
+
+//+------------------------------------------------------------------+
+//| Konversi waktu: server -> GMT -> London                          |
+//| Jam diatur dalam waktu London supaya otomatis ikut pergeseran    |
+//| jam musim panas/dingin, baik di backtest maupun akun live.       |
+//+------------------------------------------------------------------+
+datetime LastSundayUtc(int year, int mon)      // Maret & Oktober: 31 hari
+  {
+   MqlDateTime d; ZeroMemory(d);
+   d.year = year; d.mon = mon; d.day = 31; d.hour = 1;
+   datetime t = StructToTime(d);
+   TimeToStruct(t, d);
+   return t - d.day_of_week * 86400;
+  }
+
+bool IsEuDst(datetime gmt)
+  {
+   MqlDateTime d; TimeToStruct(gmt, d);
+   return gmt >= LastSundayUtc(d.year, 3) && gmt < LastSundayUtc(d.year, 10);
+  }
+
+datetime ServerToGmt(datetime srv)
+  {
+   datetime g = srv - InpServerGmtWinter * 3600;
+   if(InpServerEuDst && IsEuDst(g)) g -= 3600;
+   return g;
+  }
+
+bool InLondonNySession()
+  {
+   if(!InpSessionFilter) return true;
+   datetime gmt    = ServerToGmt(TimeCurrent());
+   datetime london = gmt + (IsEuDst(gmt) ? 3600 : 0);
+   MqlDateTime l; TimeToStruct(london, l);
+   if(l.day_of_week == 0 || l.day_of_week == 6) return false;
+   return l.hour >= InpSessionStartLondon && l.hour < InpSessionEndLondon;
   }
 
 //+------------------------------------------------------------------+
@@ -156,7 +197,8 @@ void OpenTrade(int dir, double riskUSD)
    bool ok = (dir > 0) ? trade.Buy(lot, _Symbol, price, sl, tp, "TrendBreakout")
                        : trade.Sell(lot, _Symbol, price, sl, tp, "TrendBreakout");
    if(ok)
-      PrintFormat("%s %.2f lot @ %.5f  SL %.5f  TP %.5f  (risiko maks $%.2f)",
+      PrintFormat("[%s WIB] %s %.2f lot @ %.5f  SL %.5f  TP %.5f  (risiko maks $%.2f)",
+                  TimeToString(ServerToGmt(TimeCurrent()) + 7 * 3600, TIME_DATE | TIME_MINUTES),
                   dir > 0 ? "BUY" : "SELL", lot, price, sl, tp, riskUSD);
    else
       Print("Gagal buka posisi: ", trade.ResultRetcodeDescription());

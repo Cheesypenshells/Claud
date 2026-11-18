@@ -9,6 +9,16 @@ File: `TrendBreakoutEA.mq5`, sebuah Expert Advisor untuk MetaTrader 5.
   - Sell jika ditutup di bawah harga terendah 20 candle **dan** di bawah EMA 200.
   - SL = 2 x ATR(14), TP = 2 x jarak SL (rasio risk:reward 1:2).
 
+## Jam buka posisi: sesi London & New York
+Robot hanya membuka posisi baru antara **08:00 dan 21:00 waktu London**, Senin sampai Jumat:
+
+| Periode | Jam WIB |
+|---|---|
+| Musim dingin Eropa (akhir Okt s/d akhir Mar) | 15:00 – 04:00 |
+| Musim panas Eropa (akhir Mar s/d akhir Okt) | 14:00 – 03:00 |
+
+Pergeseran jam ini dihitung otomatis. Posisi yang sudah terbuka tetap berjalan sampai kena SL atau TP.
+
 ## Aturan risiko (sudah terkunci di kode)
 | Aturan | Nilai |
 |---|---|
