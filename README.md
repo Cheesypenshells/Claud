@@ -37,3 +37,44 @@ Kalau jatah rugi harian tinggal $10, posisi berikutnya hanya boleh berisiko $10.
 4. **Backtest:** View, lalu Strategy Tester. Pilih TrendBreakoutEA dan EURUSD H1, modal awal 100 USD, mode "Every tick based on real ticks", periode minimal 3 tahun.
 5. **Uji demo:** tarik EA ke chart EURUSD H1 dan aktifkan *Algo Trading*. Jalankan 1 sampai 3 bulan.
 6. Hanya jika hasil demo bagus, baru pertimbangkan akun real.
+
+---
+
+# Versi tanpa laptop: robot Python di GitHub
+
+Robot yang sama ditulis ulang dalam Python (folder `robot/`). **GitHub Actions** menjalankannya otomatis setiap jam, gratis. Robot terhubung ke akun MT5 lewat **MetaApi**, jadi posisi yang dibuka robot langsung terlihat di aplikasi MT5 iPad/HP.
+
+| File | Isi |
+|---|---|
+| `robot/config.py` | **Semua setting** (risiko, jam, strategi) |
+| `robot/strategy.py` | Sinyal breakout + EMA 200 |
+| `robot/risk.py` | Jam sesi, SL $15, batas harian $25, jeda 3x kalah, hitung lot |
+| `robot/main.py` | Koneksi ke akun & eksekusi order |
+| `.github/workflows/robot.yml` | Jadwal: menit ke-3 tiap jam, Senin–Jumat |
+
+Pengaman tambahan:
+- Robot menolak akun REAL.
+- Default **mode simulasi**: robot hanya mencatat keputusan, tidak membuka posisi.
+- Setelah order dikirim, robot mengecek bahwa SL benar-benar terpasang.
+
+## Setup (bisa semua dari iPad/HP)
+1. **Daftar di metaapi.cloud**, lalu klik *Add account*:
+   - Platform MT5
+   - Login `5059089807`
+   - Password = password akun demo
+   - Server `MetaQuotes-Demo`
+2. Salin **Account ID** dari halaman akun tersebut, lalu buat **API token** di menu *API access token*.
+3. Di GitHub: buka repo ini, lalu **Settings → Secrets and variables → Actions → New repository secret**. Buat dua secret:
+   - `METAAPI_TOKEN` = token dari langkah 2
+   - `METAAPI_ACCOUNT_ID` = Account ID
+4. Pastikan kode ini sudah ada di branch utama (`main`). Jadwal otomatis GitHub hanya berjalan dari branch utama.
+5. Uji coba: tab **Actions → Robot EURUSD → Run workflow**, lalu buka hasilnya dan baca log.
+6. Kalau log sudah benar: **Settings → Secrets and variables → Actions → tab Variables**, buat variable `DRY_RUN` = `false`. Robot mulai trading sungguhan di akun demo.
+
+Untuk menghentikan robot: **Actions → Robot EURUSD → ⋯ → Disable workflow**.
+
+## Tes
+```
+pip install -r requirements.txt pytest
+python -m pytest -q
+```
