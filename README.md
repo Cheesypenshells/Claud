@@ -78,3 +78,13 @@ Untuk menghentikan robot: **Actions → Robot EURUSD → ⋯ → Disable workflo
 pip install -r requirements.txt pytest
 python -m pytest -q
 ```
+
+---
+
+# Backtest gratis di TradingView
+
+File: `tradingview/TrendBreakout.pine`. Strategi dan aturan risikonya sama dengan robot: SL $15, batas harian $25, jeda 3x kalah, sesi London–NY. Modal awal $100, dan biaya spread sudah diperhitungkan.
+
+1. Buka TradingView (aplikasi atau web), lalu buka chart **EURUSD** dengan timeframe **1 jam**.
+2. Buka **Pine Editor**, hapus isinya, tempel seluruh isi file, lalu klik **Add to chart**.
+3. Buka tab **Strategy Tester**. Hasil backtest ada di *Overview* dan *Performance Summary*.

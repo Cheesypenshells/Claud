@@ -1,0 +1,88 @@
+//@version=6
+// Trend Breakout EURUSD: strategi & aturan risiko yang sama dengan robot MT5/Python.
+// Pakai di chart FX:EURUSD (atau OANDA:EURUSD), timeframe 1 jam.
+strategy("Trend Breakout EURUSD", overlay = true,
+     initial_capital = 100, currency = currency.USD,
+     default_qty_type = strategy.fixed, pyramiding = 0,
+     margin_long = 1, margin_short = 1,                       // leverage 1:100
+     commission_type = strategy.commission.cash_per_contract,
+     commission_value = 0.00008)                               // perkiraan biaya spread ~0.8 pip
+
+// ---------- Input ----------
+grpS = "Strategi"
+donchLen  = input.int(20,  "Periode breakout (candle)", group = grpS)
+emaLen    = input.int(200, "EMA filter tren",           group = grpS)
+atrLen    = input.int(14,  "Periode ATR",               group = grpS)
+atrMult   = input.float(2.0, "Jarak SL = ATR x",        group = grpS)
+rr        = input.float(2.0, "TP = jarak SL x",         group = grpS)
+
+grpR = "Manajemen risiko"
+riskUsd   = input.float(15.0, "Rugi maks per posisi ($)", group = grpR)
+dailyMax  = input.float(25.0, "Rugi maks per hari WIB ($)", group = grpR)
+maxStreak = input.int(3,  "Kalah beruntun sebelum jeda", group = grpR)
+pauseHrs  = input.int(24, "Lama jeda (jam)",             group = grpR)
+
+grpT = "Jam trading (waktu London)"
+useSess   = input.bool(true, "Hanya sesi London & New York", group = grpT)
+sessStart = input.int(8,  "Mulai (jam London) = 15:00 WIB", group = grpT)
+sessEnd   = input.int(21, "Stop buka posisi (jam London) = 04:00 WIB", group = grpT)
+
+// ---------- Indikator ----------
+emaV  = ta.ema(close, emaLen)
+atrV  = ta.atr(atrLen)
+hh    = ta.highest(high, donchLen)[1]
+ll    = ta.lowest(low, donchLen)[1]
+
+// ---------- Jam sesi (dicek saat candle tutup = saat robot mengambil keputusan) ----------
+lHour = hour(time_close, "Europe/London")
+lDow  = dayofweek(time_close, "Europe/London")
+inSess = not useSess or (lDow >= dayofweek.monday and lDow <= dayofweek.friday and lHour >= sessStart and lHour < sessEnd)
+
+// ---------- Batas rugi harian (hari WIB) ----------
+var float dayStartNet = 0.0
+if ta.change(dayofmonth(time, "Asia/Jakarta")) != 0
+    dayStartNet := strategy.netprofit
+todayLoss = math.max(0.0, dayStartNet - strategy.netprofit)
+remaining = dailyMax - todayLoss
+
+// ---------- Jeda setelah kalah beruntun ----------
+var int   streak     = 0
+var int   seenClosed = 0
+var float pauseUntil = 0.0
+if strategy.closedtrades > seenClosed
+    for i = seenClosed to strategy.closedtrades - 1
+        if strategy.closedtrades.profit(i) < 0
+            streak += 1
+        else
+            streak := 0
+        if streak >= maxStreak
+            pauseUntil := strategy.closedtrades.exit_time(i) + pauseHrs * 3600000
+            streak := 0
+    seenClosed := strategy.closedtrades
+paused = time_close < pauseUntil
+
+// ---------- Sinyal & ukuran posisi ----------
+longSig  = close > hh and close > emaV
+shortSig = close < ll and close < emaV
+slDist   = atrV * atrMult
+riskNow  = math.min(riskUsd, remaining)
+// EURUSD: rugi per unit = jarak harga dalam USD. 1 lot = 100.000 unit, lot min 0.01 = 1.000 unit
+units    = math.floor(riskNow / slDist / 1000) * 1000
+slTicks  = math.round(slDist / syminfo.mintick)
+
+canTrade = strategy.position_size == 0 and inSess and not paused and remaining > 0.01 and units >= 1000
+
+if canTrade and longSig
+    strategy.entry("Buy", strategy.long, qty = units)
+    strategy.exit("Buy SL/TP", "Buy", loss = slTicks, profit = math.round(slTicks * rr))
+if canTrade and shortSig
+    strategy.entry("Sell", strategy.short, qty = units)
+    strategy.exit("Sell SL/TP", "Sell", loss = slTicks, profit = math.round(slTicks * rr))
+
+// ---------- Tampilan ----------
+plot(emaV, "EMA 200", color = color.orange, linewidth = 2)
+plot(hh, "Breakout atas", color = color.new(color.teal, 40), style = plot.style_stepline)
+plot(ll, "Breakout bawah", color = color.new(color.red, 40), style = plot.style_stepline)
+bgcolor(paused ? color.new(color.gray, 85) : na, title = "Jeda 24 jam")
+
+// Notifikasi ke HP: buat Alert dengan kondisi = "Trend Breakout EURUSD" (order fills).
