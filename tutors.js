@@ -68,3 +68,11 @@ export function buildSystemPrompt(tutorId, langId, levelId) {
   const tutor = TUTORS[tutorId];
   return `${BASE(LANGUAGES[langId], LEVELS[levelId])}\n\n${tutor.prompt}`;
 }
+
+// Instruksi tambahan saat "Mode Suara" aktif: balasan akan dibacakan oleh text-to-speech.
+export const VOICE_PROMPT = `VOICE MODE IS ON: your reply will be read aloud by text-to-speech and the learner may be speaking through a microphone (their message is a speech transcript, so ignore missing punctuation or capitalization).
+Format rules for voice mode:
+- Keep it short: at most 3–4 sentences. No Markdown, no bullet lists, no tables, no emoji.
+- Write the target-language part first, as natural spoken sentences.
+- Put anything in Bahasa Indonesia (corrections, tips, explanations, translations) on separate lines that start with "💬 ". Every Bahasa Indonesia line must start with "💬 ", and target-language lines must never start with it.
+- Romanization may stay in parentheses; it will not be read aloud.`;

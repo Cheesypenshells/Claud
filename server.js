@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
-import { TUTORS, LANGUAGES, LEVELS, buildSystemPrompt } from "./tutors.js";
+import { TUTORS, LANGUAGES, LEVELS, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(here, "public");
@@ -33,6 +33,7 @@ function validate(body) {
   if (!TUTORS[tutor]) return "Tutor tidak dikenal";
   if (!LANGUAGES[language]) return "Bahasa tidak dikenal";
   if (!LEVELS[level]) return "Level tidak dikenal";
+  if (body.voice !== undefined && typeof body.voice !== "boolean") return "Parameter voice tidak valid";
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) return "Riwayat pesan tidak valid";
   for (const [i, m] of messages.entries()) {
     const expected = i % 2 === 0 ? "user" : "assistant";
@@ -69,7 +70,10 @@ async function handleChat(req, res) {
     // Jika model menolak (refusal), server Anthropic otomatis mencoba model cadangan.
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-    system: [{ type: "text", text: buildSystemPrompt(body.tutor, body.language, body.level), cache_control: { type: "ephemeral" } }],
+    system: [
+      { type: "text", text: buildSystemPrompt(body.tutor, body.language, body.level), cache_control: { type: "ephemeral" } },
+      ...(body.voice ? [{ type: "text", text: VOICE_PROMPT }] : []),
+    ],
     messages: body.messages.map(({ role, content }) => ({ role, content })),
   });
 

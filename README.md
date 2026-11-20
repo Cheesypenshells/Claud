@@ -15,6 +15,19 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 Bahasa: Inggris, Jepang, Korea, Mandarin, Arab, Prancis, Jerman, Spanyol — dengan level Pemula / Menengah / Mahir.
 Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & menengah).
 
+## 🗣️ Bisa Teks, Bisa Ngobrol (Suara)
+
+- **🎤 Mikrofon** — tekan, lalu bicara. Ucapanmu otomatis jadi teks (bisa diedit dulu sebelum dikirim).
+- **Tombol EN / ID** di sebelah mikrofon — pilih bahasa yang kamu ucapkan: bahasa target atau Bahasa Indonesia.
+- **🔊 di setiap balasan AI** — dengarkan pengucapannya. Kalimat bahasa asing dibacakan dengan suara penutur bahasa itu, penjelasan Bahasa Indonesia dengan suara Indonesia.
+- **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
+- **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
+
+Fitur suara memakai Web Speech API bawaan browser — **gratis, tanpa API key tambahan**.
+Mikrofon berfungsi di **Chrome, Edge, dan Safari** (Firefox belum mendukung; di Firefox tetap bisa mendengar suara AI).
+Browser hanya mengizinkan mikrofon di `http://localhost` atau situs `https://`.
+Kualitas dan pilihan suara tergantung suara yang terpasang di perangkat/browser.
+
 ## Cara Menjalankan
 
 Butuh Node.js 20+ dan API key Anthropic (https://platform.claude.com).
@@ -30,6 +43,7 @@ npm start                 # buka http://localhost:3000
 - `server.js` — server Node (tanpa framework), endpoint `/api/chat` yang men-stream jawaban AI
 - `tutors.js` — definisi 5 mode tutor (system prompt). **Tambah/ubah tutor di sini.**
 - `public/` — tampilan web (HTML/CSS/JS biasa, mendukung mode gelap dan HP)
+- `public/voice.js` — fitur suara (ucapan → teks, teks → suara)
 
 ## Catatan Teknis
 

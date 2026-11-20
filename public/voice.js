@@ -1,0 +1,122 @@
+// Fitur suara memakai Web Speech API bawaan browser (gratis, tanpa API key).
+// - SpeechRecognition: ucapan → teks (Chrome, Edge, Safari; tidak didukung Firefox)
+// - speechSynthesis: teks → suara (semua browser modern)
+
+export const SPEECH_LANG = {
+  en: "en-US", ja: "ja-JP", ko: "ko-KR", zh: "zh-CN",
+  ar: "ar-SA", fr: "fr-FR", de: "de-DE", es: "es-ES", id: "id-ID",
+};
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+export const canListen = Boolean(Recognition);
+export const canSpeak = "speechSynthesis" in window;
+
+// ---------- Mendengar (mikrofon) ----------
+let recognizer = null;
+
+/** Mulai mendengarkan. onInterim(text) dipanggil saat bicara, resolve(text final) saat selesai. */
+export function listen(lang, onInterim) {
+  return new Promise((resolve, reject) => {
+    if (!canListen) return reject(new Error("Browser ini belum mendukung input suara. Coba Chrome atau Edge."));
+    stopListening();
+    recognizer = new Recognition();
+    recognizer.lang = SPEECH_LANG[lang] ?? lang;
+    recognizer.interimResults = true;
+    recognizer.continuous = false;
+    let finalText = "";
+    recognizer.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      onInterim?.((finalText + interim).trim());
+    };
+    recognizer.onerror = (e) => {
+      if (e.error === "no-speech" || e.error === "aborted") return; // ditangani di onend
+      const msg = e.error === "not-allowed"
+        ? "Izin mikrofon ditolak. Izinkan mikrofon di pengaturan browser."
+        : `Gagal mendengar suara (${e.error}).`;
+      reject(new Error(msg));
+    };
+    recognizer.onend = () => {
+      recognizer = null;
+      resolve(finalText.trim());
+    };
+    recognizer.start();
+  });
+}
+
+export function stopListening() {
+  if (recognizer) {
+    recognizer.onresult = null;
+    recognizer.stop();
+  }
+}
+
+// ---------- Berbicara (text-to-speech) ----------
+function pickVoice(langTag) {
+  const voices = speechSynthesis.getVoices();
+  const base = langTag.split("-")[0];
+  return voices.find((v) => v.lang === langTag) ||
+    voices.find((v) => v.lang.replace("_", "-").startsWith(base));
+}
+
+// Siapkan daftar suara (beberapa browser memuatnya secara async).
+if (canSpeak) speechSynthesis.getVoices();
+
+/**
+ * Pecah balasan AI jadi bagian-bagian: baris yang diawali "💬" dibaca dengan suara
+ * Bahasa Indonesia, sisanya dengan suara bahasa target.
+ */
+export function splitForSpeech(text, targetLang) {
+  const parts = [];
+  for (let line of text.split("\n")) {
+    const isIndo = line.trim().startsWith("💬");
+    line = line.replace(/💬/g, "").replace(/[*_`#>|]/g, ""); // sisa markdown
+    // Di kalimat bahasa target, isi kurung biasanya romanisasi → tidak dibaca
+    if (!isIndo) line = line.replace(/\([^)]*\)|（[^）]*）/g, "");
+    line = line(/[\p{Extended_Pictographic}]/gu, "") // emoji
+      .replace(/^\s*(\d+\.|-)\s*/, "")
+      .trim();
+    if (!line) continue;
+    const lang = isIndo ? "id" : targetLang;
+    const last = parts.at(-1);
+    if (last && last.lang === lang) last.text += " " + line;
+    else parts.push({ lang, text: line });
+  }
+  return parts;
+}
+
+let speakToken = 0;
+
+/** Bacakan teks. Resolve ketika selesai (atau dihentikan). */
+export function speak(text, targetLang, rate = 0.95) {
+  if (!canSpeak) return Promise.resolve();
+  stopSpeaking();
+  const token = ++speakToken;
+  const parts = splitForSpeech(text, targetLang);
+  return new Promise((resolve) => {
+    if (!parts.length) return resolve();
+    let i = 0;
+    const next = () => {
+      if (token !== speakToken || i >= parts.length) return resolve();
+      const { lang, text } = parts[i++];
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = SPEECH_LANG[lang];
+      const v = pickVoice(u.lang);
+      if (v) u.voice = v;
+      u.rate = rate;
+      u.onend = next;
+      u.onerror = next;
+      speechSynthesis.speak(u);
+    };
+    next();
+  });
+}
+
+export function stopSpeaking() {
+  speakToken++;
+  if (canSpeak) speechSynthesis.cancel();
+}

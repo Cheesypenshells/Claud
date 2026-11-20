@@ -26,14 +26,23 @@
       <h2>Pilih Tutor</h2>
       <nav id="tutors"></nav>
 
+      <h2>Suara</h2>
+      <label class="switch"><input type="checkbox" id="voice-mode" /> <span>🗣️ Mode Suara (ngobrol tanpa mengetik)</span></label>
+      <label>Kecepatan suara AI
+        <input type="range" id="rate" min="0.6" max="1.2" step="0.05" value="0.95" />
+      </label>
+      <p class="hint" id="voice-hint"></p>
+
       <button id="reset" class="ghost">🔄 Mulai ulang percakapan</button>
     </aside>
 
     <main class="chat">
-      <header id="chat-title"></header>
+      <header><span id="chat-title"></span><span id="status"></span></header>
       <div id="messages" aria-live="polite"></div>
       <form id="composer">
-        <textarea id="input" rows="1" placeholder="Tulis pesanmu..." maxlength="4000"></textarea>
+        <button type="button" id="mic-lang" class="icon-btn small" title="Bahasa yang kamu ucapkan">EN</button>
+        <button type="button" id="mic" class="icon-btn" title="Bicara (tekan lalu ucapkan)">🎤</button>
+        <textarea id="input" rows="1" placeholder="Tulis atau tekan 🎤 untuk bicara..." maxlength="4000"></textarea>
         <button type="submit" id="send">Kirim</button>
       </form>
     </main>
