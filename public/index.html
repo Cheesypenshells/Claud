@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LinguaTutor AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>🌏 LinguaTutor <span>AI</span></h1>
+      <p class="tagline">Tutor bahasa asing pribadimu, 24 jam.</p>
+
+      <label>Bahasa yang dipelajari
+        <select id="language"></select>
+      </label>
+      <label>Level
+        <select id="level">
+          <option value="beginner">Pemula</option>
+          <option value="intermediate" selected>Menengah</option>
+          <option value="advanced">Mahir</option>
+        </select>
+      </label>
+
+      <h2>Pilih Tutor</h2>
+      <nav id="tutors"></nav>
+
+      <button id="reset" class="ghost">🔄 Mulai ulang percakapan</button>
+    </aside>
+
+    <main class="chat">
+      <header id="chat-title"></header>
+      <div id="messages" aria-live="polite"></div>
+      <form id="composer">
+        <textarea id="input" rows="1" placeholder="Tulis pesanmu..." maxlength="4000"></textarea>
+        <button type="submit" id="send">Kirim</button>
+      </form>
+    </main>
+  </div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
