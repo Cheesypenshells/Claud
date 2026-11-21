@@ -9,7 +9,7 @@ const MAX_THREAD_MESSAGES = 2000; // riwayat lengkap per tutor+bahasa
 const MAX_PENDING = 60;
 const ID_RE = /^[0-9a-f-]{36}$/;
 
-const empty = () => ({ threads: {}, profile: null, pending: [], skills: {} });
+const empty = () => ({ threads: {}, profile: null, pending: [], skills: {}, dates: {} });
 const LEVEL_ORDER = ["Pre-A1", "A1", "A2", "B1", "B2", "C1", "C2"];
 const cache = new Map();   // userId -> data
 const writes = new Map();  // userId -> antrean tulis
@@ -51,11 +51,12 @@ export async function getThread(userId, key) {
 }
 
 /** Simpan satu pertukaran (pesan user + balasan AI) ke riwayat, XP, & antrean pembaruan ingatan. */
-export async function appendExchange(userId, key, meta, userText, assistantText) {
+export async function appendExchange(userId, key, meta, userText, assistantText, assistantMeta = null) {
   const d = await load(userId);
   const t = (d.threads[key] ??= []);
   const ts = new Date().toISOString();
-  t.push({ role: "user", content: userText, ts, ...(meta.voice ? { voice: true } : {}) }, { role: "assistant", content: assistantText, ts });
+  t.push({ role: "user", content: userText, ts, ...(meta.voice ? { voice: true } : {}) },
+    { role: "assistant", content: assistantText, ts, ...(assistantMeta ? { meta: assistantMeta } : {}) });
   // XP: 10 per obrolan, +5 kalau pesannya cukup panjang (usaha lebih)
   const sk = (d.skills[meta.langId] ??= { current: null, history: [], xp: 0, since: 0 });
   sk.xp += 10 + (userText.trim().split(/\s+/).length >= 8 ? 5 : 0);
@@ -125,5 +126,23 @@ export async function saveAssessment(userId, langId, a) {
     skills: Object.fromEntries(Object.entries(a.skills).map(([k, v]) => [k, v.level])) });
   if (sk.history.length > 100) sk.history.splice(0, sk.history.length - 100);
   sk.since = 0;
+  await save(userId);
+}
+
+// ----- mode Pendekatan -----
+export async function getDates(userId) {
+  return (await load(userId)).dates;
+}
+
+export async function setDate(userId, charId, value) {
+  const d = await load(userId);
+  d.dates[charId] = value;
+  await save(userId);
+}
+
+export async function addXp(userId, langId, amount) {
+  const d = await load(userId);
+  const sk = (d.skills[langId] ??= { current: null, history: [], xp: 0, since: 0 });
+  sk.xp += amount;
   await save(userId);
 }

@@ -1,5 +1,6 @@
 import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking } from "./voice.js";
 import { createRobot } from "./robot.js";
+import { createDating } from "./dating.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,7 +15,7 @@ const fetch = async (...args) => {
   return res;
 };
 const state = {
-  tutor: "conversation", busy: false, config: null,
+  tutor: "conversation", mode: "chat", busy: false, config: null,
   voiceMode: false, listening: false, micLang: "target", // "target" | "id"
   loadToken: 0,
 };
@@ -25,6 +26,14 @@ const setStatus = (t) => ($("status").textContent = t);
 const robot = createRobot({ onMic: robotMic, onClose: closeRobot });
 // Suara aktif jika Mode Suara dicentang atau sedang di Mode Robot
 const voiceOn = () => state.voiceMode || robot.isOpen;
+const dating = createDating({
+  $, fetch, escapeHtml, toast, speak, setStatus, voiceOn,
+  scrollDown: () => scrollDown(), stopAll: () => stopAll(),
+  addMessage: (r, t) => addMessage(r, t), setControlsDisabled: (d) => setControlsDisabled(d),
+  startListening: (o) => startListening(o), refreshSkills: (o) => refreshSkills(o), refreshMemory: () => refreshMemory(),
+  lang: () => lang(), rate: () => rate(), getLevel: () => $("level").value,
+  setLanguage: (l) => { $("language").value = l; savePrefs(); updateMicLangLabel(); refreshSkills(); },
+});
 
 // Pilihan disimpan di browser (opsional; aman bila storage tidak tersedia)
 const PREFS = ["language", "level", "style", "rate"];
@@ -100,6 +109,7 @@ function stopAll() {
 
 /** Muat riwayat percakapan tutor+bahasa ini dari server. */
 async function loadChat() {
+  if (state.mode === "date") return dating.showPicker();
   stopAll();
   const token = ++state.loadToken;
   const t = state.config.tutors[state.tutor];
@@ -132,6 +142,11 @@ async function loadChat() {
 
 // ---------- Kirim ke AI ----------
 async function send(text) {
+  if (state.mode === "date") {
+    if (!dating.active) toast("Pilih gebetan dulu 😉");
+    else dating.send(text);
+    return;
+  }
   stopAll();
   state.busy = true;
   setControlsDisabled(true);
@@ -488,13 +503,26 @@ async function init() {
   for (const k of PREFS) if (prefs[k] != null && [...($(k).options ?? [{ value: prefs[k] }])].some((o) => o.value === prefs[k])) $(k).value = prefs[k];
   if (state.config.tutors[prefs.tutor]) state.tutor = prefs.tutor;
 
+  const leaveDateMode = () => {
+    state.mode = "chat";
+    document.body.classList.remove("date-picking", "date-playing");
+    $("date-stage").hidden = true;
+    $("date-mode").classList.remove("active");
+  };
+  $("date-mode").onclick = () => {
+    if (state.busy || dating.busy) return;
+    state.mode = "date";
+    document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x.id === "date-mode"));
+    dating.showPicker();
+  };
   for (const [i, [id, t]] of Object.entries(state.config.tutors).entries()) {
     const b = document.createElement("button");
     b.dataset.kode = String(i + 1).padStart(2, "0");
     b.className = "tutor-btn" + (id === state.tutor ? " active" : "");
     b.textContent = t.name;
     b.onclick = () => {
-      if (state.busy) return;
+      if (state.busy || dating.busy) return;
+      leaveDateMode();
       state.tutor = id;
       document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x === b));
       loadChat();
@@ -542,7 +570,7 @@ async function init() {
   $("composer").onsubmit = (e) => {
     e.preventDefault();
     const text = $("input").value.trim();
-    if (!text || state.busy) return;
+    if (!text || state.busy || dating.busy) return;
     $("input").value = "";
     $("input").style.height = "auto";
     send(text);

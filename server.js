@@ -4,7 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples } from "./store.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp } from "./store.js";
+import { CHARACTERS, publicCharacters } from "./characters.js";
+import { startScene, playTurn, newState, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
 import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
 import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
@@ -163,6 +165,66 @@ async function serveStatic(req, res) {
   }
 }
 
+function dateLevelText(level, assessment) {
+  return level === "auto" || !LEVELS[level] ? autoLevelText(assessment) : LEVELS[level];
+}
+
+async function handleDate(req, res, user, charId, action) {
+  const c = CHARACTERS[charId];
+  const key = threadKey(`date-${charId}`, c.lang);
+  const lock = `${user.id}|${key}`;
+  const dates = await getDates(user.id);
+  const current = dates[charId] ?? null;
+
+  if (req.method === "GET" && !action) {
+    return json(res, 200, { state: current, messages: current ? await getThread(user.id, key) : [] });
+  }
+  if (req.method !== "POST" || !action) return json(res, 405, { error: "Metode tidak didukung" });
+  const body = await readJson(req);
+  if (busy.has(lock)) return json(res, 409, { error: "Tunggu balasan sebelumnya dulu." });
+  busy.add(lock);
+  try {
+    const assessment = (await getSkills(user.id))[c.lang]?.current ?? null;
+    const levelText = dateLevelText(body.level, assessment);
+
+    if (action === "start") {
+      const intro = await startScene(charId, levelText);
+      await clearThread(user.id, key);
+      const state = { ...newState(charId), intro, record: current?.record ?? { success: 0, walked_away: 0, left: 0 } };
+      await setDate(user.id, charId, state);
+      return json(res, 200, { state, messages: [] });
+    }
+
+    // action === "chat"
+    if (!current) return json(res, 409, { error: "Mulai adegannya dulu." });
+    if (current.status !== "active") return json(res, 409, { error: "Adegan sudah selesai. Tekan \"Mulai lagi\"." });
+    if (typeof body.message !== "string" || !body.message.trim() || body.message.length > 1000) return json(res, 400, { error: "Pesan kosong atau terlalu panjang" });
+    if (body.voice !== undefined && typeof body.voice !== "boolean") return json(res, 400, { error: "Parameter voice tidak valid" });
+    const message = body.message.trim();
+    const history = (await getThread(user.id, key)).slice(-40);
+    const { turn, state } = await playTurn(charId, levelText, current, history, message);
+
+    if (state.status !== "active") state.record = { ...state.record, [state.status]: (state.record?.[state.status] ?? 0) + 1 };
+    await setDate(user.id, charId, state);
+    const { reply, ...meta } = turn;
+    await appendExchange(user.id, key, { tutor: `date-${charId}`, language: LANGUAGES[c.lang], langId: c.lang, level: body.level ?? "auto", voice: !!body.voice },
+      message, reply || "(pergi tanpa bicara)", meta);
+    if (state.status === "success") await addXp(user.id, c.lang, 50);
+    maybeUpdateMemory(user.id, { accountName: user.name });
+    runAssessment(user.id, c.lang, LANGUAGES[c.lang]).catch(() => {});
+    return json(res, 200, { turn, state });
+  } catch (e) {
+    if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+    console.error(e);
+    let msg = "Karakter lagi bengong (server AI error). Coba lagi.";
+    if (e instanceof Anthropic.AuthenticationError) msg = "API key Anthropic tidak valid / belum diset.";
+    else if (e instanceof Anthropic.RateLimitError) msg = "Terlalu banyak permintaan, coba lagi sebentar.";
+    return json(res, 502, { error: msg });
+  } finally {
+    busy.delete(lock);
+  }
+}
+
 async function readJson(req) {
   if (!(req.headers["content-type"] ?? "").startsWith("application/json")) throw new AuthError("Content-Type harus application/json", 415);
   try {
@@ -265,6 +327,18 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { rows: rows.slice(0, 20), mine: rows.find((r) => r.me) ?? null, total: rows.length });
         }
       }
+
+      // ----- mode Pendekatan -----
+      if (req.method === "GET" && url.pathname === "/api/date/characters") {
+        const dates = await getDates(user.id);
+        return json(res, 200, {
+          characters: publicCharacters(),
+          states: Object.fromEntries(Object.entries(dates).map(([id, d]) => [id, { status: d.status, rapport: d.rapport, best: d.best, record: d.record }])),
+          rules: { maxTurns: MAX_TURNS, successMin: SUCCESS_MIN_RAPPORT },
+        });
+      }
+      const dm = url.pathname.match(/^\/api\/date\/([a-z]+)(?:\/(start|chat))?$/);
+      if (dm && CHARACTERS[dm[1]]) return await handleDate(req, res, user, dm[1], dm[2]);
 
       if (url.pathname === "/api/memory") {
         if (req.method === "GET") return json(res, 200, { profile: await getProfile(user.id) });

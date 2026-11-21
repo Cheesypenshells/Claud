@@ -20,6 +20,28 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - Tombol **Keluar** di kanan atas. "Lupakan semua" hanya menghapus data akun yang sedang login.
 - Kalau dipasang di internet, jalankan di belakang HTTPS (reverse proxy yang mengirim `X-Forwarded-Proto: https`) supaya cookie ditandai `Secure`.
 
+## 💘 Pendekatan — Latihan Kenalan & PDKT
+
+Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert**: kamu kenalan dengan karakter yang sedang jalan-jalan di kotanya.
+
+- **16 karakter orisinal (fiksi, semua dewasa 25–29 th)** — cewek & cowok untuk tiap bahasa, masing-masing dengan kepribadian, pekerjaan,
+  kota, latar adegan, dan tingkat kesulitan (Mudah/Sedang/Sulit). Contoh: Hannah (penyanyi-penulis lagu, Nashville), Yui (ilustrator, Tokyo),
+  Min-jun (barista & fotografer, Seoul), Camille (pastry chef, Paris), Mateo (pelukis mural, Mexico City), Layla (arsitek, Amman).
+  Data karakter: `characters.js` — tambah karakter baru di sana.
+- **Animasi:** karakter digambar SVG (`public/avatar.js`), berjalan di latar kota yang bergeser (taman, jalan kota, pantai, pasar, tepi sungai),
+  dengan 8 ekspresi wajah sesuai mood (senang, geli, malu, netral, penasaran, kesal, risih, pergi).
+- **Kamu yang menyapa duluan.** Cheesy-Bot memberi 3 contoh pembuka sesuai levelmu.
+- **💗 Meter ketertarikan (0–100):** naik kalau kamu sopan, lucu, penasaran pada dirinya, dan bahasamu bagus; turun kalau klise, sombong, memaksa.
+- **Batasan & consent:** rayuan yang melecehkan / komentar seksual / memaksa setelah ditolak → karakter **menolak** (halus atau tegas),
+  dan **pergi** kalau parah atau diulang. Percakapan dijaga setara PG-13.
+- **🧀 Wingman Cheesy-Bot** di setiap giliran: koreksi bahasa, penilaian langkahmu (🔥 mantap … 🙈 cringe … 🚫 melewati batas),
+  tips percaya diri, dan saran kalimat berikutnya (bisa diklik).
+- **Misi:** berhasil diajak ketemu lagi / dapat kontaknya (butuh ketertarikan ≥ 70, ditegakkan di server) → 💘 **+50 XP**.
+  Maksimal 30 giliran. Rekor berhasil/ditinggal tersimpan per karakter.
+- Bisa pakai suara: balasan karakter dibacakan (nada suara cewek/cowok berbeda) dan Mode Suara tetap berfungsi.
+- Obrolan di mode ini ikut dihitung untuk ingatan, XP, dan penilaian CEFR.
+- **Tidak memakai orang sungguhan** (selebriti, dll.): semua karakter fiksi, untuk menghindari penyalahgunaan citra seseorang tanpa izin.
+
 ## 📊 Level, Rapor & Peringkat (standar CEFR)
 
 Cheesy-Bot menilai kemampuanmu dari obrolan memakai **CEFR** (*Common European Framework of Reference for Languages*, Dewan Eropa) —
@@ -102,6 +124,8 @@ npm start                 # buka http://localhost:3000
 - `tutors.js` — kepribadian Cheesy-Bot, gaya ngajar, dan 5 mode tutor. **Ubah sifat/tutor di sini.**
 - `memory.js` — ingatan jangka panjang (profil murid)
 - `store.js` — penyimpanan riwayat chat & ingatan per pengguna (`data/users/`)
+- `characters.js`, `date.js` — karakter & mesin mode Pendekatan (structured output per giliran)
+- `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
 - `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar
 - `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login
 - `public/login.html`, `public/login.js` — halaman Masuk/Daftar

@@ -92,7 +92,7 @@ export function splitForSpeech(text, targetLang) {
 let speakToken = 0;
 
 /** Bacakan teks. Resolve ketika selesai (atau dihentikan). */
-export function speak(text, targetLang, rate = 0.95, onPart = null) {
+export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
   if (!canSpeak) return Promise.resolve();
   stopSpeaking();
   const token = ++speakToken;
@@ -109,6 +109,7 @@ export function speak(text, targetLang, rate = 0.95, onPart = null) {
       const v = pickVoice(u.lang);
       if (v) u.voice = v;
       u.rate = rate;
+      u.pitch = pitch;
       u.onend = next;
       u.onerror = next;
       speechSynthesis.speak(u);
