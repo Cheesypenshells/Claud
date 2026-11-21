@@ -20,6 +20,7 @@ export const TOPICS = {
   habits: { emoji: "🔁", label: "Kebiasaan", en: "habit formation, behaviour change, discipline" },
   communication: { emoji: "🗣️", label: "Komunikasi", en: "communication, persuasion, conversation, public speaking, negotiation" },
   leadership: { emoji: "🧭", label: "Kepemimpinan", en: "leadership, management, teams, decision making" },
+  economics: { emoji: "📊", label: "Ekonomi", en: "economics explained simply: supply and demand, inflation, interest rates, money and central banks, trade, growth, inequality, development, behavioral economics, history of economic thought, and the Indonesian economy (Rupiah, BI rate, UMKM, koperasi)" },
   money: { emoji: "💰", label: "Keuangan Pribadi", en: "personal finance, saving, investing basics, money psychology" },
   business: { emoji: "📈", label: "Bisnis & Marketing", en: "entrepreneurship, small business, marketing, sales, branding" },
   career: { emoji: "💼", label: "Karier", en: "career growth, skills, interviews, networking, side projects" },
@@ -47,6 +48,10 @@ export const JOURNEYS = {
   belajar: { topic: "learning", days: 7, title: "Belajar Cara Belajar (Termasuk Bahasa!)", desc: "Teknik belajar yang terbukti efektif." },
   negosiasi: { topic: "communication", days: 5, title: "Negosiasi Sehari-hari", desc: "Dari nawar harga sampai minta naik gaji." },
   booth: { topic: "business", days: 7, title: "Memulai Bisnis Booth Makanan", desc: "Belajar dari dunia booth & event — ala Cheesy Pen Shells." },
+  ekodasar: { topic: "economics", days: 10, title: "Ekonomi Dasar dalam 10 Hari", desc: "Kelangkaan, biaya peluang, permintaan-penawaran, pasar, sampai peran pemerintah." },
+  ekosejarah: { topic: "economics", days: 10, title: "Sejarah Pemikiran Ekonomi: dari Adam Smith ke Hari Ini", desc: "Smith, Ricardo, Marx, Marshall, Keynes, Hayek, Friedman, ekonomi perilaku." },
+  ekoperilaku: { topic: "economics", days: 7, title: "Ekonomi Perilaku: Kenapa Kita Tidak Rasional", desc: "Bias, nudge, dan keputusan uang sehari-hari." },
+  ekomakro: { topic: "economics", days: 7, title: "Makroekonomi untuk Orang Awam", desc: "Inflasi, suku bunga, Rupiah, APBN, resesi — dengan contoh Indonesia." },
   laut: { topic: "rare", days: 5, title: "Ilmu Langka: Rahasia Laut & Tiram", desc: "Ekosistem tiram, laut, dan hal-hal yang jarang diketahui." },
 };
 

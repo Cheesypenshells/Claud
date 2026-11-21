@@ -39,7 +39,7 @@ export function createWawasan(ctx) {
         <form id="wp-search" class="wp-search"><input id="wp-q" placeholder="🔍 Cari ilmu apa saja… (mis. negosiasi, black hole, tiram)" maxlength="80"></form>
       </div>
       <div class="wp-row wp-actions">
-        ${[["feed", "📰 Feed"], ["library", "📚 Perpustakaan"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
+        ${[["feed", "📰 Feed"], ["economics", "📊 Ekonomi"], ["library", "📚 Perpustakaan"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
           .map(([v, l]) => `<button type="button" class="wp-tab ${st.view === v ? "on" : ""}" data-view="${v}">${l}</button>`).join("")}
       </div>
       ${st.view === "feed" ? `<div class="wp-topics">
@@ -289,6 +289,47 @@ export function createWawasan(ctx) {
       st.offset = 0;
       return loadMore();
     }
+    if (view === "economics") {
+      setHead(`<h2 class="judul"><span>Ekonomi</span></h2><p class="hint">⟳ Memuat…</p>`);
+      try {
+        const d = await get("economics");
+        const journeys = Object.entries(st.home.journeys).filter(([, j]) => j.topic === "economics");
+        setHead(`<h2 class="judul"><span>Ekonomi</span></h2>
+          <p>Belajar ekonomi dari <b>para tokohnya langsung</b>: karya klasik yang sudah public domain bisa dibaca utuh & diambil idenya
+            (dengan kutipan asli), karya modern diringkas ide pokoknya. Setiap kartu bisa kamu <b>💬 tanyakan</b> sampai paham.</p>
+          <div class="chips"><button type="button" class="chip on" id="eco-feed">📊 Buka feed ide Ekonomi</button></div>
+          <h3>🧭 Jalur Belajar Ekonomi</h3>
+          <div class="journey-grid">${journeys.map(([k, j]) => `<button type="button" class="journey-card ${j.done ? "done" : ""}" data-j="${k}">
+            <b>${escapeHtml(j.title)}</b><span>${escapeHtml(j.desc)}</span>
+            <div class="meter"><i style="width:${Math.round((j.progress / j.days) * 100)}%"></i></div><span class="jp">${j.done ? "🎉 Selesai" : `${j.progress}/${j.days} hari`}</span></button>`).join("")}</div>
+          <h3>👤 Tokoh-Tokoh Ekonomi</h3>
+          <div class="eco-grid">${d.economists.map((e, k) => `<div class="eco-card">
+            <div class="eco-top"><b>${e.flag} ${escapeHtml(e.name)}</b><span>${escapeHtml(e.years)}</span></div>
+            <span class="idea-topic">${escapeHtml(e.school)}</span>
+            <p class="eco-bio">${escapeHtml(e.bio)}</p>
+            <ul>${e.ideas.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+            <div class="eco-works">${e.works.map((w) => w.lib
+              ? `<button type="button" class="chip" data-lib="${w.lib}">📚 ${escapeHtml(w.title)} <em>teks lengkap</em></button>`
+              : `<button type="button" class="chip" data-sum="${escapeHtml(w.title)}">📕 ${escapeHtml(w.title.split(" — ")[0])} <em>ringkasan</em></button>`).join("")}</div>
+            <button type="button" class="ghost" data-learn="${k}">🔍 Pelajari pemikirannya</button></div>`).join("")}</div>
+          <h3>📚 Karya Klasik Ekonomi (public domain, teks lengkap)</h3>
+          <div class="journey-grid">${Object.entries(d.books).map(([k, b]) => `<button type="button" class="journey-card lib-card" data-lib="${k}">
+            <b>${escapeHtml(b.title)}</b><span class="lib-author">✍️ ${escapeHtml(b.author)} · ${escapeHtml(yearText(b.year))}</span>
+            <span>${escapeHtml(b.bio)}</span><span class="jp">${b.saved ? "💾 tersimpan · " : ""}${b.ideas ? `💡 ${b.ideas} ide` : "belum dibuka"}</span></button>`).join("")}</div>
+          <h3>📕 Bacaan Modern yang Sering Direkomendasikan</h3>
+          <p class="hint">Masih berhak cipta — jadi yang tersedia adalah ringkasan ide pokok dengan kata-kata AI sendiri. Beli/pinjam bukunya untuk membaca utuh.</p>
+          <div class="chips">${d.modern.map((t) => `<button type="button" class="chip" data-sum="${escapeHtml(t)}">📕 ${escapeHtml(t)}</button>`).join("")}</div>`);
+        $("eco-feed").onclick = () => { st.topic = "economics"; openView("feed"); };
+        $("messages").querySelectorAll("[data-j]").forEach((b) => (b.onclick = () => openJourney(b.dataset.j)));
+        $("messages").querySelectorAll("[data-lib]").forEach((b) => (b.onclick = () => openLibBook(b.dataset.lib)));
+        $("messages").querySelectorAll("[data-sum]").forEach((b) => (b.onclick = () => { st.autoBook = b.dataset.sum; openView("books"); }));
+        $("messages").querySelectorAll("[data-learn]").forEach((b) => (b.onclick = () => {
+          const e = d.economists[Number(b.dataset.learn)];
+          search(`Pemikiran ekonomi ${e.name} (${e.school}): ${e.ideas.join("; ")}`.slice(0, 80));
+        }));
+      } catch (e) { setHead(`<p class="hint">⚠️ ${escapeHtml(e.message)}</p>`); }
+      return;
+    }
     if (view === "library") {
       setHead(`<h2 class="judul"><span>Perpustakaan Bebas</span></h2>
         <p>Buku-buku <b>public domain</b> (hak ciptanya sudah habis — legal & gratis) dari <b>Project Gutenberg</b>. Ide diambil langsung dari
@@ -343,6 +384,7 @@ export function createWawasan(ctx) {
         } catch (e) { out.innerHTML = `<p class="hint">⚠️ ${escapeHtml(e.message)}</p>`; }
       };
       $("bk-form").onsubmit = (e) => { e.preventDefault(); const t = $("bk-q").value.trim(); if (t.length >= 2) run(t); };
+      if (st.autoBook) { const t = st.autoBook; st.autoBook = null; $("bk-q").value = t; run(t); }
       $("messages").querySelectorAll("[data-book]").forEach((b) => (b.onclick = () => run(b.dataset.book)));
       return;
     }

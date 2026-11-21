@@ -172,6 +172,54 @@ Object.assign(LIBRARY, {
     bio: "Kakak-beradik ahli bahasa Jerman (1785–1863 & 1786–1859). Dongeng asli seperti Hänsel und Gretel dalam bahasa Jerman." },
 });
 
+// ---------- 📊 Ekonomi: karya klasik para ekonom (public domain) ----------
+Object.assign(LIBRARY, {
+  moralSentiments: { title: "The Theory of Moral Sentiments", author: "Adam Smith", year: 1759, topic: "economics", q: "Theory of Moral Sentiments", match: "Smith, Adam",
+    bio: "Buku pertama Adam Smith (1723–1790): manusia bukan cuma mengejar untung — kita juga punya simpati & ingin dihargai. Pasangan wajib 'Wealth of Nations'." },
+  ricardo: { title: "On the Principles of Political Economy and Taxation", author: "David Ricardo", year: 1817, topic: "economics", q: "Principles of Political Economy and Taxation", match: "Ricardo",
+    bio: "Ekonom & pialang saham Inggris (1772–1823). Memperkenalkan keunggulan komparatif — alasan negara (dan orang) sebaiknya berdagang & berspesialisasi." },
+  malthus: { title: "An Essay on the Principle of Population", author: "Thomas Robert Malthus", year: 1798, topic: "economics", q: "Essay on the Principle of Population", match: "Malthus",
+    bio: "Ekonom & pendeta Inggris (1766–1834). Khawatir populasi tumbuh lebih cepat dari pangan — prediksinya meleset karena teknologi, tapi debatnya masih hidup." },
+  millPolitical: { title: "Principles of Political Economy", author: "John Stuart Mill", year: 1848, topic: "economics", q: "Principles of Political Economy Mill", match: "Mill, John Stuart",
+    bio: "Filsuf & ekonom Inggris (1806–1873). Buku teks ekonomi paling berpengaruh di abad ke-19, menggabungkan pasar dengan keadilan sosial." },
+  manifesto: { title: "The Communist Manifesto", author: "Karl Marx & Friedrich Engels", year: 1848, topic: "economics", q: "Communist Manifesto", match: "Marx",
+    bio: "Karl Marx (1818–1883), filsuf & ekonom Jerman, bersama Friedrich Engels (1820–1895). Pamflet politik paling berpengaruh tentang kelas & kapitalisme — baca kritis untuk memahami sejarah abad ke-20." },
+  capital: { title: "Capital (Das Kapital), Volume I", author: "Karl Marx", year: 1867, topic: "economics", q: "Capital Marx", match: "Marx",
+    bio: "Karl Marx (1818–1883). Analisis besar tentang kapitalisme: komoditas, nilai, dan modal. Banyak dikritik ekonom modern, tapi penting untuk sejarah pemikiran." },
+  bastiatLaw: { title: "The Law", author: "Frédéric Bastiat", year: 1850, topic: "economics", q: "The Law Bastiat", match: "Bastiat",
+    bio: "Ekonom & penulis Prancis (1801–1850), terkenal dengan gaya satirnya. Esai tentang batas peran hukum & negara." },
+  bastiatSeen: { title: "Essays on Political Economy (That Which is Seen, and That Which is Not Seen)", author: "Frédéric Bastiat", year: 1850, topic: "economics", q: "Essays on Political Economy Bastiat", match: "Bastiat",
+    bio: "Frédéric Bastiat (1801–1850). Berisi 'jendela pecah' — pelajaran klasik tentang biaya peluang & efek yang tidak terlihat dari sebuah kebijakan." },
+  george: { title: "Progress and Poverty", author: "Henry George", year: 1879, topic: "economics", q: "Progress and Poverty", match: "George, Henry",
+    bio: "Jurnalis & ekonom Amerika (1839–1897). Bertanya: kenapa kemiskinan tetap ada di tengah kemajuan? Usulnya: pajak atas nilai tanah." },
+  marshall: { title: "Principles of Economics", author: "Alfred Marshall", year: 1890, topic: "economics", q: "Principles of Economics Marshall", match: "Marshall",
+    bio: "Ekonom Inggris (1842–1924), guru Keynes. Mempopulerkan kurva penawaran-permintaan, elastisitas, dan surplus konsumen — dasar buku teks modern." },
+  jevonsTheory: { title: "The Theory of Political Economy", author: "William Stanley Jevons", year: 1871, topic: "economics", q: "Theory of Political Economy Jevons", match: "Jevons",
+    bio: "Ekonom Inggris (1835–1882), salah satu pelopor 'revolusi marginal': nilai ditentukan kegunaan tambahan (marginal utility)." },
+  jevonsCoal: { title: "The Coal Question", author: "William Stanley Jevons", year: 1865, topic: "economics", q: "The Coal Question", match: "Jevons",
+    bio: "W. S. Jevons (1835–1882). Melahirkan 'Paradoks Jevons': mesin yang lebih hemat energi justru bisa membuat pemakaian energi naik." },
+  bohm: { title: "Capital and Interest", author: "Eugen von Böhm-Bawerk", year: 1884, topic: "economics", q: "Capital and Interest", match: "Böhm-Bawerk",
+    bio: "Ekonom Austria (1851–1914), tokoh Mazhab Austria & tiga kali menteri keuangan. Menjelaskan kenapa ada bunga: waktu punya nilai." },
+  veblenEngineers: { title: "The Engineers and the Price System", author: "Thorstein Veblen", year: 1921, topic: "economics", q: "Engineers and the Price System", match: "Veblen",
+    bio: "Thorstein Veblen (1857–1929), ekonom institusional Amerika. Kritik tajam terhadap bisnis yang mengejar untung lewat membatasi produksi." },
+  bagehot: { title: "Lombard Street: A Description of the Money Market", author: "Walter Bagehot", year: 1873, topic: "economics", q: "Lombard Street Bagehot", match: "Bagehot",
+    bio: "Jurnalis & editor The Economist (1826–1877). Merumuskan peran bank sentral sebagai 'lender of last resort' saat krisis — masih dipakai bank sentral sekarang." },
+  fisher: { title: "The Purchasing Power of Money", author: "Irving Fisher", year: 1911, topic: "economics", q: "Purchasing Power of Money", match: "Fisher, Irving",
+    bio: "Ekonom Amerika (1867–1947). Persamaan pertukaran MV=PT: hubungan jumlah uang beredar dengan harga (inflasi)." },
+  knight: { title: "Risk, Uncertainty and Profit", author: "Frank H. Knight", year: 1921, topic: "economics", q: "Risk, Uncertainty and Profit", match: "Knight",
+    bio: "Ekonom Amerika (1885–1972), pendiri Mazhab Chicago. Membedakan risiko (bisa dihitung) dan ketidakpastian (tidak bisa) — sumber laba pengusaha." },
+  keynesPeace: { title: "The Economic Consequences of the Peace", author: "John Maynard Keynes", year: 1919, topic: "economics", q: "Economic Consequences of the Peace", match: "Keynes",
+    bio: "Ekonom Inggris (1883–1946). Memprediksi bahwa hukuman ekonomi berat bagi Jerman setelah Perang Dunia I akan berakibat buruk — buku yang membuatnya terkenal." },
+  list: { title: "The National System of Political Economy", author: "Friedrich List", year: 1841, topic: "economics", q: "National System of Political Economy", match: "List",
+    bio: "Ekonom Jerman-Amerika (1789–1846). Membela proteksi 'industri bayi' agar negara berkembang bisa membangun industrinya — relevan untuk debat industrialisasi." },
+  hobson: { title: "Imperialism: A Study", author: "J. A. Hobson", year: 1902, topic: "economics", q: "Imperialism A Study Hobson", match: "Hobson",
+    bio: "Ekonom Inggris (1858–1940). Menganalisis akar ekonomi kolonialisme — konteks penting untuk memahami sejarah ekonomi Asia & Indonesia." },
+  lefevre: { title: "Reminiscences of a Stock Operator", author: "Edwin Lefèvre", year: 1923, topic: "economics", q: "Reminiscences of a Stock Operator", match: "Lef",
+    bio: "Jurnalis keuangan Amerika (1871–1943). Kisah trader legendaris (berdasarkan Jesse Livermore) — klasik psikologi pasar saham & spekulasi." },
+});
+LIBRARY.wealth.topic = "economics";
+LIBRARY.leisure.topic = "economics";
+
 const CHUNK_WORDS = 2200;
 
 function stripGutenberg(text) {

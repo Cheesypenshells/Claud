@@ -662,3 +662,16 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
 @media (hover: none) { .rd-act { opacity: 1; height: auto; margin-bottom: 10px; } }
 @media (prefers-color-scheme: dark) { .reader { background: #1E1A14; color: #EDE3D1; } .rd-p:hover { background: #2A241B; } .rd-tr { background: #13301A; color: #D7F5DC; } }
 @media (max-width: 760px) { .reader { padding: 12px 14px; font-size: 1rem; } }
+
+/* ---------- 📊 Ekonomi ---------- */
+.eco-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.eco-card { background: var(--panel); border: 2px solid var(--garis); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 3px 0 var(--garis); }
+.eco-card .idea-topic { align-self: flex-start; }
+.eco-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.eco-top b { font: 800 18px var(--judul); } .eco-top span { font: 12px var(--mono); color: var(--redup); }
+.eco-bio { margin: 0; font-size: .88rem; color: var(--redup); }
+.eco-card ul { margin: 0; padding-left: 18px; font-size: .88rem; }
+.eco-works { display: flex; flex-wrap: wrap; gap: 6px; }
+.eco-works .chip { font-size: 12px; padding: 4px 10px; text-align: left; }
+.eco-works .chip em { font-style: normal; font: 10px var(--mono); opacity: .7; margin-left: 4px; }
+.eco-card .ghost { padding: 6px; font-size: 13px; }

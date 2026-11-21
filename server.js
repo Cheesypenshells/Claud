@@ -8,6 +8,7 @@ import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } fr
 import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts, insightState, markRead, updateInsights, BADGE_LABELS } from "./store.js";
 import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported, libraryIdeas, libraryStatus, chatAboutIdea, translateText } from "./insights.js";
 import { LIBRARY, bookPart, downloadedSet, downloadAll, downloadStatus } from "./library.js";
+import { ECONOMISTS, MODERN_READS } from "./economics.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -397,6 +398,13 @@ async function handleInsights(req, res, user, action, url) {
       const saved = await downloadedSet();
       return json(res, 200, { download: downloadStatus(),
         books: Object.fromEntries(Object.entries(LIBRARY).map(([k, b]) => [k, { title: b.title, author: b.author, year: b.year, topic: b.topic, bio: b.bio, lang: b.lang ?? "en", saved: saved.has(k), ...status[k] }])) });
+    }
+    if (action === "economics") {
+      const status = await libraryStatus();
+      const saved = await downloadedSet();
+      return json(res, 200, { economists: ECONOMISTS, modern: MODERN_READS,
+        books: Object.fromEntries(Object.entries(LIBRARY).filter(([, b]) => b.topic === "economics")
+          .map(([k, b]) => [k, { title: b.title, author: b.author, year: b.year, bio: b.bio, saved: saved.has(k), ...status[k] }])) });
     }
     if (action === "libtext") {
       const slug = q.get("id");

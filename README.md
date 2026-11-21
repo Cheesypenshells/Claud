@@ -45,7 +45,20 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
   sehingga pustaka terus bertambah untuk semua pengguna.
 - **💡 Insightful**, **🔖 Stash** (koleksi buatan sendiri), **🔍 Cari** topik apa saja, **🔊 Dengarkan**, **✍️ Tulis ide sendiri**,
   **🔁 Ulas** (flashcard ide tersimpan).
-- **📚 Perpustakaan Bebas:** 71 buku **public domain** (hak cipta habis — legal & gratis) dari **Project Gutenberg**, dikelompokkan
+- **📊 Ekonomi (kategori baru):**
+  - **30 tokoh ekonomi** — Adam Smith, Ricardo, Malthus, J. S. Mill, Marx, Bastiat, Henry George, Jevons, Menger, Böhm-Bawerk, Marshall,
+    Veblen, Bagehot, Irving Fisher, Frank Knight, Keynes, Schumpeter, Hayek, Friedman, Samuelson, Galbraith, Benjamin Graham, Ostrom,
+    Amartya Sen, Muhammad Yunus, Kahneman, Thaler, Banerjee & Duflo, Piketty, **Mohammad Hatta** — dengan tahun hidup, aliran,
+    ide pokok, karya, dan tombol **🔍 Pelajari pemikirannya**. Data: `economics.js`.
+  - **23 karya klasik ekonomi public domain** (teks lengkap di Perpustakaan): The Wealth of Nations, Theory of Moral Sentiments,
+    Ricardo, Malthus, Mill, Communist Manifesto & Capital, Bastiat (The Law, That Which is Seen…), Progress and Poverty, Marshall,
+    Jevons, Böhm-Bawerk, Veblen, Lombard Street, Irving Fisher, Frank Knight, Keynes (Economic Consequences of the Peace),
+    Friedrich List, Hobson, Reminiscences of a Stock Operator.
+  - Karya modern yang masih berhak cipta (The General Theory, The Road to Serfdom, Capitalism and Freedom, Thinking Fast and Slow,
+    Poor Economics, Capital in the 21st Century, Freakonomics, dll.) → **ringkasan ide pokok dengan kata-kata AI sendiri**.
+  - **4 Jalur Belajar Ekonomi:** Ekonomi Dasar 10 Hari, Sejarah Pemikiran Ekonomi, Ekonomi Perilaku, Makroekonomi untuk Orang Awam.
+  - Topik **📊 Ekonomi** di feed (termasuk ekonomi Indonesia: Rupiah, BI rate, UMKM, koperasi).
+- **📚 Perpustakaan Bebas:** 92 buku **public domain** (hak cipta habis — legal & gratis) dari **Project Gutenberg**, dikelompokkan
   per topik: Marcus Aurelius, Seneca, Epictetus, Aristoteles, Plato, Lao Tzu, Konfusius, Sun Tzu, Machiavelli, Plutarch,
   Benjamin Franklin, William James, Samuel Smiles, Arnold Bennett, James Allen, Thoreau, Emerson, Adam Smith, P. T. Barnum,
   F. W. Taylor, Darwin, Einstein, Helen Keller, Booker T. Washington, Kahlil Gibran, W. K. Brooks (*The Oyster*), dll. — masing-masing
@@ -243,7 +256,7 @@ npm start                 # buka http://localhost:3000
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
 - `insights.js` + `public/wawasan.js` — kategori Wawasan (feed ide, stash, jalur belajar, streak, obrolan ide)
-- `library.js` — katalog buku public domain & pengunduh Project Gutenberg
+- `library.js` — katalog buku public domain & pengunduh Project Gutenberg · `economics.js` — tokoh ekonomi & bacaan modern
 - `ielts.js` + `public/ielts.js` — mode IELTS Speaking (alur Part 1–3, umpan balik & rapor band)
 - `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)
 - `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas
