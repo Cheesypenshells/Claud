@@ -88,3 +88,23 @@ File: `tradingview/TrendBreakout.pine`. Strategi dan aturan risikonya sama denga
 1. Buka TradingView (aplikasi atau web), lalu buka chart **EURUSD** dengan timeframe **1 jam**.
 2. Buka **Pine Editor**, hapus isinya, tempel seluruh isi file, lalu klik **Add to chart**.
 3. Buka tab **Strategy Tester**. Hasil backtest ada di *Overview* dan *Performance Summary*.
+
+---
+
+# MultiRobotEA: 4 robot dalam 1 file (MT5)
+
+File: `MultiRobotEA.mq5`. Pasang file yang sama di **4 chart H1** (chart boleh simbol apa saja), lalu pilih nomor robot di tab **Inputs**:
+
+| Robot | Cara kerja | Simbol |
+|---|---|---|
+| 1 - Candlestick | Bullish/bearish engulfing & pin bar, searah EMA50 | EURUSD |
+| 2 - Trader terkenal | Aturan Turtle Traders (Richard Dennis): breakout 20 candle + EMA200 | EURUSD |
+| 3 - Pemburu tren | Scan EURUSD, GBPUSD, USDJPY, XAUUSD, BTCUSD. Pilih tren terkuat, masuk saat pullback ke EMA20 | Daftar simbol |
+| 4 - Otak gabungan | Hitung sinyal robot 1–3, ikuti robot yang rata-rata hasil 20 transaksi terakhirnya terbaik. Robot yang sedang rugi tidak diikuti | Ikut robot terpilih |
+
+Aturan tiap robot dihitung **terpisah** (magic 20261101–20261104):
+- **Modal virtual $100.** Kalau habis, robot berhenti permanen.
+- **SL wajib**, dengan rugi maksimal $15 per posisi. Risikonya adaptif: ikut naik atau turun sesuai sisa modal robot.
+- **Batas rugi $25 per hari WIB.** Kalah 3x berturut-turut di hari yang sama, robot berhenti sampai besok.
+- **Trading harian:** hanya membuka posisi di sesi London–NY, dan posisi ditutup saat sesi selesai.
+- Status setiap robot tampil di pojok kiri atas chart.
