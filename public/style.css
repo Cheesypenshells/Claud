@@ -419,3 +419,32 @@ body.date-picking #composer { opacity: .5; pointer-events: none; }
   .stage-hud .who span { display: none; }
   .toast { top: 70px; }
 }
+
+/* ---------- Sifat, budaya & foto realistis ---------- */
+.persona-tag { align-self: flex-start; background: #FCE4EC; color: #AD1457; font-weight: 800; font-size: .72rem; border-radius: 999px; padding: 2px 8px; margin-bottom: 2px; }
+.chip.book { border-color: var(--kuning); background: var(--kuning-muda); color: var(--navy-tua); }
+.topic-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.topic-chips span { background: var(--kuning-muda); border: 1px solid var(--kuning); color: var(--navy-tua); border-radius: 999px; padding: 3px 10px; font-size: .8rem; font-weight: 700; }
+.msg.culture-card { align-self: center; max-width: 640px; width: 100%; white-space: normal; background: #E8F5E9; border: 2px solid #43A047; border-radius: 16px; padding: 10px 14px; color: #1B3A1E; }
+.msg.culture-card .tag { color: #2E7D32; }
+.msg.culture-card p { margin: 4px 0; }
+.msg.culture-card .saved { font: 11px var(--mono); color: #2E7D32; }
+.secret { text-align: left; background: var(--kuning-muda); border-radius: 12px; padding: 8px 12px; margin-top: 10px; color: var(--teks); }
+.secret p { margin: 4px 0; font-size: .9rem; }
+.char-card .portrait.is-photo { align-items: stretch; }
+.photo-portrait { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+.date-stage.photo-mode { height: 360px; }
+.photo-stage { position: absolute; inset: 0; z-index: 1; }
+.photo-stage .photo-img, .photo-stage .photo-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; opacity: 0; transition: opacity .5s; }
+.photo-stage .photo-img.on, .photo-stage .photo-video { opacity: 1; }
+.photo-stage .photo-video { z-index: 1; }
+.photo-mode.walking .photo-img.on { animation: breathe 7s ease-in-out infinite alternate; }
+@keyframes breathe { from { transform: scale(1); } to { transform: scale(1.04) translateY(-4px); } }
+.photo-stage .mood-bubble { top: auto; bottom: 56px; right: 16px; z-index: 2; }
+.photo-mode.left-scene .photo-stage { opacity: .15; filter: grayscale(1); transition: opacity 2.5s, filter 2.5s; }
+.photo-mode .stage-hud .who, .photo-mode .stage-hud .rapport { background: rgba(13,21,80,.7); }
+@media (prefers-color-scheme: dark) { .persona-tag { background: #4A1B2F; color: #FFB3CD; } .msg.culture-card { background: #13301A; color: #D7F5DC; } }
+@media (max-width: 760px) { .date-stage.photo-mode { height: 300px; } }
+.date-stage.scene-photo.walking { animation: pan-photo 30s ease-in-out infinite alternate; }
+.date-stage.photo-mode.walking { animation: none; }
+@keyframes pan-photo { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }

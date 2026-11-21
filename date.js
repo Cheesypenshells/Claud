@@ -29,6 +29,10 @@ const TurnSchema = z.object({
     try_saying: z.string().describe("A suggested next line in the character's language"),
     try_saying_id: z.string().describe("Indonesian meaning of try_saying"),
   }),
+  culture_note: z.object({
+    title: z.string().describe("Short Indonesian title of a cultural insight that came up THIS turn (custom, habit, etiquette, food, slang, taboo, or a comparison with Indonesia). Empty string if nothing cultural came up."),
+    note: z.string().describe("2-3 sentences in Indonesian explaining it accurately, with nuance (regional/individual variation), no stereotypes. Empty if title is empty."),
+  }),
   scene_end: z.enum(["none", "success", "walked_away", "left"]).describe("success = they agree to meet again / share contact; walked_away = they leave because of the learner's behaviour; left = they politely have to go"),
 });
 
@@ -38,14 +42,24 @@ const StartSchema = z.object({
     text: z.string().describe("An opener line in the character's language"),
     romanization: z.string(),
     meaning_id: z.string(),
-    style: z.string().describe("e.g. 'santai', 'lucu', 'nanya hal spesifik'"),
-  })).describe("Exactly 3 different respectful openers at the learner's level"),
+    style: z.string().describe("e.g. 'santai', 'lucu', 'nanya budaya'"),
+  })).describe("Exactly 3 different respectful openers at the learner's level; at least one asks about something cultural or local that the character would enjoy explaining"),
 });
 
 function characterSystem(c, levelText) {
   const roman = NON_LATIN.has(c.lang);
-  return `You are role-playing ${c.name}, a FICTIONAL adult character (${c.age} years old). ${c.persona}
+  return `You are role-playing ${c.name}, a FICTIONAL adult character (${c.age} years old) from ${c.city}. ${c.persona}
+Personality type: ${c.personality}. What wins you over: ${c.likes.join("; ")}. What turns you off: ${c.dislikes.join("; ")}.
 A stranger — an Indonesian person practising your language — approaches you. This is a light, social "getting to know you / flirting" practice scene, like a romantic comedy. You are NOT an AI assistant in this scene; stay fully in character.
+
+Your culture (you live it; share it like a local, with personal anecdotes and nuance — not like a textbook, and avoid stereotypes):
+${c.culture}
+
+Cultural exchange (a big part of this scene):
+- When they ask about your culture, habits, food, holidays, slang or etiquette, answer from your own life ("di keluargaku…", "here in ${c.city.split(",")[0]} we…"), and mention when it differs by region or person.
+- Be curious about Indonesia: ask how things are there, compare (e.g. holidays, food, family, manners), react with genuine interest to what they share. Real cultural curiosity and respect raise your interest a lot.
+- If they make a cultural faux pas from your culture's point of view, react like a real local would (surprised, amused or a bit offended depending on your personality) and lower interest slightly; the wingman explains it.
+- Fill culture_note whenever a cultural point came up this turn (from you OR from their question/comparison), so the learner collects it in their Culture Book.
 
 How to behave like a real person:
 - You are not easy to win over. Interest grows when they are respectful, genuinely curious about YOU, funny, confident (not arrogant), and make an effort in your language. It drops with clichés, generic compliments, bragging, interrogation-style questions, ignoring what you said, or being pushy.
@@ -104,7 +118,8 @@ export async function playTurn(charId, levelText, state, history, message) {
     // Pesan yang benar-benar tidak pantas: karakter pergi.
     return {
       turn: { reply: "", romanization: "", translation_id: "", mood: "leaving", rapport_delta: -100, boundary: "walk_away", move_rating: "inappropriate",
-        coach: { correction: "", tip: "Itu kelewatan banget. Ingat: PDKT itu soal bikin orang nyaman, bukan melecehkan.", try_saying: "", try_saying_id: "" }, scene_end: "walked_away" },
+        coach: { correction: "", tip: "Itu kelewatan banget. Ingat: PDKT itu soal bikin orang nyaman, bukan melecehkan.", try_saying: "", try_saying_id: "" },
+        culture_note: { title: "", note: "" }, scene_end: "walked_away" },
       state: { ...state, rapport: 0, turns: state.turns + 1, status: "walked_away" },
     };
   }

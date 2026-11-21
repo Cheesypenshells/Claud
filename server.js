@@ -1,11 +1,12 @@
 import http from "node:http";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp } from "./store.js";
-import { CHARACTERS, publicCharacters } from "./characters.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook } from "./store.js";
+import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
 import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
@@ -165,6 +166,30 @@ async function serveStatic(req, res) {
   }
 }
 
+// Foto realistis (opsional): public/characters/<id>/<mood>.(jpg|jpeg|png|webp), walk.mp4, dan public/scenes/<scene>.jpg
+const IMG_EXT = ["webp", "jpg", "jpeg", "png"];
+function findFile(dir, base, exts) {
+  for (const e of exts) {
+    try {
+      fsSync.accessSync(path.join(PUBLIC_DIR, dir, `${base}.${e}`));
+      return `/${dir}/${base}.${e}`;
+    } catch {}
+  }
+  return null;
+}
+function mediaFor(id) {
+  const dir = `characters/${id}`;
+  const moods = Object.fromEntries(MOOD_FILES.map((m) => [m, findFile(dir, m, IMG_EXT)]).filter(([, u]) => u));
+  return {
+    moods,
+    portrait: findFile(dir, "portrait", IMG_EXT) ?? moods.neutral ?? moods.happy ?? null,
+    video: findFile(dir, "walk", ["mp4", "webm"]),
+    scene: findFile("scenes", CHARACTERS[id].scene, IMG_EXT),
+  };
+}
+
+const secretOf = (c) => ({ likes: c.likes, dislikes: c.dislikes });
+
 function dateLevelText(level, assessment) {
   return level === "auto" || !LEVELS[level] ? autoLevelText(assessment) : LEVELS[level];
 }
@@ -177,7 +202,8 @@ async function handleDate(req, res, user, charId, action) {
   const current = dates[charId] ?? null;
 
   if (req.method === "GET" && !action) {
-    return json(res, 200, { state: current, messages: current ? await getThread(user.id, key) : [] });
+    return json(res, 200, { state: current, messages: current ? await getThread(user.id, key) : [],
+      secret: current && current.status !== "active" ? secretOf(c) : null });
   }
   if (req.method !== "POST" || !action) return json(res, 405, { error: "Metode tidak didukung" });
   const body = await readJson(req);
@@ -210,9 +236,12 @@ async function handleDate(req, res, user, charId, action) {
     await appendExchange(user.id, key, { tutor: `date-${charId}`, language: LANGUAGES[c.lang], langId: c.lang, level: body.level ?? "auto", voice: !!body.voice },
       message, reply || "(pergi tanpa bicara)", meta);
     if (state.status === "success") await addXp(user.id, c.lang, 50);
+    if (turn.culture_note?.title?.trim() && turn.culture_note.note?.trim()) {
+      await addCultureNote(user.id, { charId, name: c.name, flag: c.flag, city: c.city, lang: c.lang, title: turn.culture_note.title.trim(), note: turn.culture_note.note.trim() });
+    }
     maybeUpdateMemory(user.id, { accountName: user.name });
     runAssessment(user.id, c.lang, LANGUAGES[c.lang]).catch(() => {});
-    return json(res, 200, { turn, state });
+    return json(res, 200, { turn, state, secret: state.status !== "active" ? secretOf(c) : null });
   } catch (e) {
     if (e instanceof AuthError) return json(res, e.status, { error: e.message });
     console.error(e);
@@ -332,10 +361,13 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "GET" && url.pathname === "/api/date/characters") {
         const dates = await getDates(user.id);
         return json(res, 200, {
-          characters: publicCharacters(),
+          characters: publicCharacters(mediaFor),
           states: Object.fromEntries(Object.entries(dates).map(([id, d]) => [id, { status: d.status, rapport: d.rapport, best: d.best, record: d.record }])),
           rules: { maxTurns: MAX_TURNS, successMin: SUCCESS_MIN_RAPPORT },
         });
+      }
+      if (req.method === "GET" && url.pathname === "/api/date/culture") {
+        return json(res, 200, { notes: await getCultureBook(user.id) });
       }
       const dm = url.pathname.match(/^\/api\/date\/([a-z]+)(?:\/(start|chat))?$/);
       if (dm && CHARACTERS[dm[1]]) return await handleDate(req, res, user, dm[1], dm[2]);

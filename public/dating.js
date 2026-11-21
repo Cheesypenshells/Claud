@@ -6,6 +6,22 @@ const MOVE = {
   great: ["🔥 Mantap!", "great"], good: ["👍 Bagus", "good"], ok: ["😐 Biasa aja", "ok"],
   awkward: ["😬 Canggung", "awkward"], cringe: ["🙈 Cringe", "cringe"], inappropriate: ["🚫 Melewati batas", "bad"],
 };
+// Bila foto realistis tersedia (public/characters/<id>/<mood>.jpg), pakai foto; kalau tidak, avatar SVG.
+const MOOD_FALLBACK = { amused: ["happy"], shy: ["happy"], curious: ["neutral"], annoyed: ["uncomfortable", "neutral"], uncomfortable: ["annoyed", "neutral"], leaving: ["annoyed", "uncomfortable", "neutral"], happy: ["neutral"] };
+const hasPhoto = (c) => !!(c.media && Object.keys(c.media.moods).length);
+function photoFor(c, mood) {
+  const m = c.media.moods;
+  for (const k of [mood, ...(MOOD_FALLBACK[mood] ?? []), "neutral", "happy"]) if (m[k]) return m[k];
+  return Object.values(m)[0];
+}
+function portraitHtml(c) {
+  if (c.media?.portrait) return `<img class="photo-portrait" src="${c.media.portrait}" alt="" loading="lazy">`;
+  return renderAvatar(c.look, c.gender, "happy", { portrait: true });
+}
+function sceneCss(c) {
+  return c.media?.scene ? `background-image:url("${c.media.scene}");background-size:cover;background-position:center;` : sceneStyle(c.scene);
+}
+
 const feelLabel = (r) => (r < 15 ? "Dingin 🥶" : r < 35 ? "Sopan aja" : r < 55 ? "Mulai tertarik" : r < 75 ? "Suka ngobrol sama kamu" : "Naksir berat 💘");
 
 export function createDating(ctx) {
@@ -39,18 +55,21 @@ export function createDating(ctx) {
       <div class="date-intro">
         <h2 class="judul"><span>Pendekatan</span></h2>
         <p>Latihan kenalan &amp; PDKT pakai bahasa asing dengan karakter fiksi yang lagi jalan-jalan di kotanya.
-          <b>Kamu yang harus nyapa duluan</b> — Cheesy-Bot jadi wingman-mu. Bikin mereka nyaman, bikin ketawa, dan ajak ketemu lagi!
-          Tapi ingat: <b>mereka bisa menolak</b> — dan bakal pergi kalau kamu melecehkan.</p>
+          <b>Kamu yang harus nyapa duluan</b> — Cheesy-Bot jadi wingman-mu. Tiap orang punya <b>sifat beda</b>, jadi cara pendekatannya juga beda.
+          Tanya-tanya soal <b>budaya & kebiasaan</b> mereka, ceritakan budaya Indonesia, bikin mereka nyaman, lalu ajak ketemu lagi!
+          Ingat: <b>mereka bisa menolak</b> — dan bakal pergi kalau kamu melecehkan.</p>
         <div class="chips">
           ${[["all", "Semua"], ["F", "👩 Cewek"], ["M", "👨 Cowok"]].map(([v, l]) => `<button type="button" class="chip ${st.filter === v ? "on" : ""}" data-f="${v}">${l}</button>`).join("")}
+          <button type="button" class="chip book" id="culture-book">📚 Buku Budaya</button>
         </div>
       </div>
       <div class="char-grid">
         ${list.map((c) => `
           <button type="button" class="char-card ${c.lang === lang ? "same-lang" : ""}" data-id="${c.id}">
-            <div class="portrait" style="${sceneStyle(c.scene)}">${renderAvatar(c.look, c.gender, "happy", { portrait: true })}</div>
+            <div class="portrait ${c.media?.portrait ? "is-photo" : ""}" style="${sceneCss(c)}">${portraitHtml(c)}</div>
             <div class="char-info">
               <b>${escapeHtml(c.name)}</b>
+              <span class="persona-tag">${escapeHtml(c.personality)}</span>
               <span>${c.age} th · ${escapeHtml(c.job)}</span>
               <span>${c.flag} ${escapeHtml(c.city)}</span>
               <span class="diff d${c.difficulty}">${"●".repeat(c.difficulty)}${"○".repeat(3 - c.difficulty)} ${c.difficultyLabel}</span>
@@ -62,6 +81,7 @@ export function createDating(ctx) {
       <p class="hint center">Semua karakter adalah tokoh fiksi dewasa buatan Cheesy Pen Shells — bukan orang sungguhan.</p>`;
     $("messages").querySelectorAll(".chip").forEach((b) => (b.onclick = () => { st.filter = b.dataset.f; showPicker(); }));
     $("messages").querySelectorAll(".char-card").forEach((b) => (b.onclick = () => openCharacter(b.dataset.id)));
+    $("culture-book").onclick = showCultureBook;
     $("messages").scrollTop = 0;
   }
 
@@ -69,8 +89,9 @@ export function createDating(ctx) {
   function renderStage(c, state, mood = "neutral") {
     const s = stage();
     s.hidden = false;
-    s.style.cssText = sceneStyle(c.scene);
-    s.className = `date-stage scene-${c.scene}`;
+    const photo = hasPhoto(c);
+    s.style.cssText = sceneCss(c);
+    s.className = `date-stage scene-${c.scene} ${photo ? "photo-mode" : ""} ${c.media?.scene ? "scene-photo" : ""}`;
     s.innerHTML = `
       <div class="stage-hud">
         <div class="who"><b>${escapeHtml(c.name)}</b><span>${c.flag} ${escapeHtml(c.city)} · ${c.age} th</span></div>
@@ -78,10 +99,17 @@ export function createDating(ctx) {
           <div class="meter heart"><i id="rapport-bar" style="width:${state.rapport}%"></i><em style="left:${st.rules.successMin}%"></em></div>
           <span class="feel" id="rapport-feel">${feelLabel(state.rapport)}</span></div>
       </div>
+      ${photo ? `
+      <div class="photo-stage" id="walker">
+        ${c.media.video && state.turns === 0 ? `<video class="photo-video" src="${c.media.video}" autoplay muted loop playsinline></video>` : ""}
+        <img class="photo-img on" src="${photoFor(c, mood)}" alt="${escapeHtml(c.name)}">
+        <img class="photo-img" alt="">
+        <div class="mood-bubble" id="mood-bubble">${MOOD_EMOJI[mood]}</div>
+      </div>` : `
       <div class="walker" id="walker">
         <div class="mood-bubble" id="mood-bubble">${MOOD_EMOJI[mood]}</div>
         ${renderAvatar(c.look, c.gender, mood)}
-      </div>
+      </div>`}
       <div class="hearts" id="hearts"></div>
       <div class="stage-actions">
         <button type="button" class="mini" id="date-back">← Pilih gebetan</button>
@@ -109,7 +137,19 @@ export function createDating(ctx) {
   }
 
   function updateStage(c, state, mood) {
-    setMood($("walker"), c.look, mood);
+    if (hasPhoto(c)) {
+      const w = $("walker");
+      w.querySelector(".photo-video")?.remove();
+      const imgs = w.querySelectorAll(".photo-img");
+      const next = [...imgs].find((i) => !i.classList.contains("on"));
+      const src = photoFor(c, mood);
+      if (!imgs[0].src.endsWith(src) || !imgs[0].classList.contains("on")) {
+        next.src = src;
+        next.onload = () => { imgs.forEach((i) => i.classList.toggle("on", i === next)); };
+      }
+    } else {
+      setMood($("walker"), c.look, mood);
+    }
     $("mood-bubble").textContent = MOOD_EMOJI[mood] ?? "🙂";
     $("mood-bubble").classList.remove("pop");
     void $("mood-bubble").offsetWidth;
@@ -144,7 +184,10 @@ export function createDating(ctx) {
         <button type="button" class="opener" data-i="${i}">
           <b>${escapeHtml(o.text)}</b>${o.romanization ? `<i>${escapeHtml(o.romanization)}</i>` : ""}
           <span>${escapeHtml(o.meaning_id)} · <em>${escapeHtml(o.style)}</em></span></button>`).join("")}</div>
-      <p class="hint">Klik salah satu untuk dipakai (boleh diedit), atau tulis/ucapkan sapaanmu sendiri — lebih berani lebih bagus 😉</p>`, "msg scene-card");
+      <p class="hint">Klik salah satu untuk dipakai (boleh diedit), atau tulis/ucapkan sapaanmu sendiri — lebih berani lebih bagus 😉</p>
+      <div class="tag">🌏 TOPIK BUDAYA YANG BISA KAMU TANYAIN · ${escapeHtml(c.personality.toUpperCase())}</div>
+      <div class="topic-chips">${(c.topics ?? []).map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+      <p class="hint">Tanyakan pakai bahasa ${escapeHtml(c.flag)} — dan ceritakan juga kebiasaan di Indonesia. Pelajaran budayanya otomatis tersimpan di 📚 Buku Budaya.</p>`, "msg scene-card");
     el.querySelectorAll(".opener").forEach((b) => (b.onclick = () => fillInput(intro.openers[b.dataset.i].text)));
   }
 
@@ -169,8 +212,25 @@ export function createDating(ctx) {
         : meta.boundary === "firm_no" ? "🚫 Dia MENOLAK dengan tegas. Hormati batasannya — kalau diulang, dia pergi."
         : "🚶 Dia pergi. Pesanmu bikin dia tidak nyaman.", `msg boundary b-${meta.boundary}`);
     }
+    if (meta?.culture_note?.title) renderCulture(meta.culture_note, c);
     if (meta?.coach) renderCoach(meta);
     scrollDown();
+  }
+
+  function renderCulture(n, c) {
+    addCard(`<div class="tag">📚 CATATAN BUDAYA · ${c.flag} ${escapeHtml(c.city)}</div>
+      <b>${escapeHtml(n.title)}</b><p>${escapeHtml(n.note)}</p><span class="saved">✓ tersimpan di Buku Budaya</span>`, "msg culture-card");
+  }
+
+  async function showCultureBook() {
+    const { notes } = await (await fetch("/api/date/culture")).json();
+    const groups = {};
+    for (const n of notes) (groups[`${n.flag} ${n.name} · ${n.city}`] ??= []).push(n);
+    $("skill-dialog-title").textContent = `📚 Buku Budaya (${notes.length})`;
+    $("skill-body").innerHTML = !notes.length
+      ? `<p>Belum ada catatan. Ajak karakter ngobrol soal budaya, kebiasaan, makanan, atau hari raya mereka — setiap pelajaran budaya akan tersimpan di sini.</p>`
+      : Object.entries(groups).map(([g, list]) => `<h3>${escapeHtml(g)}</h3>${list.map((n) => `<div class="sk"><b>${escapeHtml(n.title)}</b><p class="ev">${escapeHtml(n.note)}</p></div>`).join("")}`).join("");
+    if (!$("skill-dialog").open) $("skill-dialog").showModal();
   }
 
   function renderCoach(meta) {
@@ -185,7 +245,7 @@ export function createDating(ctx) {
     el.querySelector(".opener")?.addEventListener("click", () => fillInput(k.try_saying));
   }
 
-  function renderEnd(c, state) {
+  function renderEnd(c, state, secret) {
     const text = {
       success: `💘 <b>BERHASIL!</b> ${escapeHtml(c.name.split(" ")[0])} mau ketemu lagi sama kamu. +50 XP!`,
       walked_away: `🚶 <b>${escapeHtml(c.name.split(" ")[0])} pergi.</b> PDKT itu soal bikin orang nyaman — bukan memaksa atau melecehkan. Coba lagi dengan cara yang lebih sopan.`,
@@ -193,6 +253,9 @@ export function createDating(ctx) {
     }[state.status];
     const el = addCard(`<p>${text}</p>
       <p class="hint">Ketertarikan tertinggi: ${state.best}/100 · ${state.turns} giliran</p>
+      ${secret ? `<div class="secret"><div class="tag">🔓 RAHASIA PENDEKATAN · ${escapeHtml(c.personality.toUpperCase())}</div>
+        <p>💚 <b>Dia suka:</b> ${secret.likes.map(escapeHtml).join(" · ")}</p>
+        <p>💔 <b>Dia nggak suka:</b> ${secret.dislikes.map(escapeHtml).join(" · ")}</p></div>` : ""}
       <div class="end-actions"><button type="button" class="btn-utama" data-a="again">↺ Coba lagi</button><button type="button" class="ghost" data-a="pick">Pilih gebetan lain</button></div>`, `msg end-card end-${state.status}`);
     el.querySelector('[data-a="again"]').onclick = () => startScene(c.id);
     el.querySelector('[data-a="pick"]').onclick = showPicker;
@@ -215,7 +278,7 @@ export function createDating(ctx) {
       if (m.role === "user") ctx.addMessage("user", m.content);
       else renderCharMsg(c, m.content, m.meta);
     }
-    if (data.state.status !== "active") renderEnd(c, data.state);
+    if (data.state.status !== "active") renderEnd(c, data.state, data.secret);
     refreshSkills();
   }
 
@@ -269,13 +332,13 @@ export function createDating(ctx) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       typing.remove();
-      const { turn, state } = data;
+      const { turn, state, secret } = data;
       reply = turn.reply;
       if (reply) renderCharMsg(c, reply, turn);
       else renderCoach(turn);
       updateStage(c, state, turn.mood);
       if (state.status !== "active") {
-        renderEnd(c, state);
+        renderEnd(c, state, secret);
         if (state.status === "success") toast(`💘 Berhasil PDKT sama ${c.name.split(" ")[0]}! +50 XP`);
       }
       refreshSkills({ announce: true });

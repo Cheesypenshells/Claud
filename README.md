@@ -24,12 +24,19 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 
 Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert**: kamu kenalan dengan karakter yang sedang jalan-jalan di kotanya.
 
-- **16 karakter orisinal (fiksi, semua dewasa 25–29 th)** — cewek & cowok untuk tiap bahasa, masing-masing dengan kepribadian, pekerjaan,
-  kota, latar adegan, dan tingkat kesulitan (Mudah/Sedang/Sulit). Contoh: Hannah (penyanyi-penulis lagu, Nashville), Yui (ilustrator, Tokyo),
-  Min-jun (barista & fotografer, Seoul), Camille (pastry chef, Paris), Mateo (pelukis mural, Mexico City), Layla (arsitek, Amman).
-  Data karakter: `characters.js` — tambah karakter baru di sana.
-- **Animasi:** karakter digambar SVG (`public/avatar.js`), berjalan di latar kota yang bergeser (taman, jalan kota, pantai, pasar, tepi sungai),
-  dengan 8 ekspresi wajah sesuai mood (senang, geli, malu, netral, penasaran, kesal, risih, pergi).
+- **24 karakter orisinal (fiksi, semua dewasa 25–29 th)** dari 8 bahasa & 17 kota — masing-masing dengan **tipe sifat berbeda**
+  (mis. pemalu tapi jahil, blak-blakan, anggun & tidak langsung, ambisius & sibuk, romantis & dramatis, intelektual & sarkas),
+  pekerjaan, kota, latar adegan, tingkat kesulitan, serta **hal yang disukai & tidak disukai** — jadi cara pendekatannya berbeda-beda.
+  Contoh: Wang Yutong (pemandu Museum Istana, **Beijing**), Aoi (guru upacara teh, Kyoto), Ji-ho (Busan), Priya (dokter, London),
+  Valentina (penari tango, Buenos Aires), Anna (Wina), Karim (koki, Beirut). Data karakter: `characters.js`.
+- **Pertukaran budaya:** tiap karakter membawa budaya kotanya (kebiasaan, makanan, hari raya, etika, tabu, logat). Tanyakan soal budaya mereka,
+  ceritakan budaya Indonesia — mereka penasaran & membandingkan. Rasa ingin tahu budaya menaikkan ketertarikan; salah etika diberi tahu wingman.
+  Setiap pelajaran budaya muncul sebagai kartu **📚 Catatan Budaya** dan tersimpan di **Buku Budaya** milikmu.
+- **🔓 Rahasia pendekatan** (apa yang dia suka/tidak suka) dibuka setelah adegan selesai.
+- **Tampilan:** bawaan berupa animasi SVG (`public/avatar.js`) yang berjalan di latar kota, dengan 8 ekspresi wajah sesuai mood.
+- **📸 Foto realistis (opsional):** taruh foto karakter fiksi di `public/characters/<id>/<mood>.jpg` (dan opsional `walk.mp4`,
+  `public/scenes/<scene>.jpg`) — panggung otomatis berganti ke foto dengan ekspresi sesuai mood. Prompt konsisten untuk membuat
+  foto tiap karakter & ekspresi dengan pembuat gambar AI ada di `docs/prompt-pack-karakter.md` (`npm run prompts`).
 - **Kamu yang menyapa duluan.** Cheesy-Bot memberi 3 contoh pembuka sesuai levelmu.
 - **💗 Meter ketertarikan (0–100):** naik kalau kamu sopan, lucu, penasaran pada dirinya, dan bahasamu bagus; turun kalau klise, sombong, memaksa.
 - **Batasan & consent:** rayuan yang melecehkan / komentar seksual / memaksa setelah ditolak → karakter **menolak** (halus atau tegas),
@@ -124,7 +131,8 @@ npm start                 # buka http://localhost:3000
 - `tutors.js` — kepribadian Cheesy-Bot, gaya ngajar, dan 5 mode tutor. **Ubah sifat/tutor di sini.**
 - `memory.js` — ingatan jangka panjang (profil murid)
 - `store.js` — penyimpanan riwayat chat & ingatan per pengguna (`data/users/`)
-- `characters.js`, `date.js` — karakter & mesin mode Pendekatan (structured output per giliran)
+- `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
+- `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
 - `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar
 - `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login

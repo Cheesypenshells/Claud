@@ -9,7 +9,7 @@ const MAX_THREAD_MESSAGES = 2000; // riwayat lengkap per tutor+bahasa
 const MAX_PENDING = 60;
 const ID_RE = /^[0-9a-f-]{36}$/;
 
-const empty = () => ({ threads: {}, profile: null, pending: [], skills: {}, dates: {} });
+const empty = () => ({ threads: {}, profile: null, pending: [], skills: {}, dates: {}, cultureBook: [] });
 const LEVEL_ORDER = ["Pre-A1", "A1", "A2", "B1", "B2", "C1", "C2"];
 const cache = new Map();   // userId -> data
 const writes = new Map();  // userId -> antrean tulis
@@ -145,4 +145,18 @@ export async function addXp(userId, langId, amount) {
   const sk = (d.skills[langId] ??= { current: null, history: [], xp: 0, since: 0 });
   sk.xp += amount;
   await save(userId);
+}
+
+// ----- Buku Budaya -----
+export async function addCultureNote(userId, entry) {
+  const d = await load(userId);
+  const book = (d.cultureBook ??= []);
+  if (book.some((n) => n.charId === entry.charId && n.title.toLowerCase() === entry.title.toLowerCase())) return;
+  book.push({ ...entry, ts: new Date().toISOString() });
+  if (book.length > 500) book.splice(0, book.length - 500);
+  await save(userId);
+}
+
+export async function getCultureBook(userId) {
+  return (await load(userId)).cultureBook ?? [];
 }
