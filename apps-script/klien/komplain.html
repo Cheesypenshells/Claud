@@ -1,0 +1,47 @@
+<header>
+<img src="__ASET__logo-putih.png" alt="Cheesy Pen Shells">
+<div class="merek">
+<b>CHEESY PEN SHELLS</b>
+<small>kami dengar, kami perbaiki</small>
+</div>
+</header>
+<main style="max-width:560px">
+<div class="kartu" id="form">
+<h2 class="judul">
+<span>Sampaikan keluhan</span>
+</h2>
+<p>Mohon maaf atas ketidaknyamanannya 🙏 Keluhan kamu langsung diterima pemilik Cheesy Pen Shells dan segera ditindaklanjuti.</p>
+<label>Keluhan tentang</label>
+<div class="pilihan" id="kat">
+</div>
+<label>Ceritakan detailnya</label>
+<textarea id="detail" rows="4" placeholder="Contoh: oyster yang saya terima berbau, pesanan nomor 12">
+</textarea>
+<label>Nama (opsional)</label>
+<input id="nama">
+<label>No. WhatsApp (opsional, kalau ingin kami hubungi)</label>
+<input id="kontak" inputmode="tel">
+<br>
+<br>
+<button class="kuning" onclick="kirim()">Kirim keluhan</button>
+<p id="pesan" style="color:var(--merah)">
+</p>
+</div>
+<a class="ig" href="https://www.instagram.com/cheesypenshells/" target="_blank" rel="noopener">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+<rect x="3" y="3" width="18" height="18" rx="5"/>
+<circle cx="12" cy="12" r="4"/>
+<circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>
+</svg>
+<span>
+<small>Follow kami di Instagram</small>
+<b>@cheesypenshells</b>
+</span>
+<em>Buka</em>
+</a>
+</main>
+<script>
+var KODE="__KODE__",KAT=__KATEGORI__;
+function el(i){return document.getElementById(i)}el("kat").innerHTML=KAT.map(function(k,i){return "<label><input type=radio name=kat value=\""+k+"\""+(i===0?" checked":"")+"> "+k+"</label>"}).join("");
+function kirim(){var k=document.querySelector("input[name=kat]:checked").value;el("pesan").textContent="Mengirim...";google.script.run.withSuccessHandler(function(){el("form").innerHTML="<h2 class=judul><span>Terima kasih 🙏</span></h2><p>Keluhan kamu sudah kami terima dan langsung diteruskan ke pemilik Cheesy Pen Shells.</p>"}).withFailureHandler(function(e){el("pesan").textContent=e.message}).kirimKomplain({kode:KODE,kategori:k,detail:el("detail").value,nama:el("nama").value,kontak:el("kontak").value})}
+</script>
