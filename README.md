@@ -45,6 +45,17 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
   sehingga pustaka terus bertambah untuk semua pengguna.
 - **💡 Insightful**, **🔖 Stash** (koleksi buatan sendiri), **🔍 Cari** topik apa saja, **🔊 Dengarkan**, **✍️ Tulis ide sendiri**,
   **🔁 Ulas** (flashcard ide tersimpan).
+- **📚 Perpustakaan Bebas:** 33 buku **public domain** (hak cipta habis — legal & gratis) dari **Project Gutenberg**, dikelompokkan
+  per topik: Marcus Aurelius, Seneca, Epictetus, Aristoteles, Plato, Lao Tzu, Konfusius, Sun Tzu, Machiavelli, Plutarch,
+  Benjamin Franklin, William James, Samuel Smiles, Arnold Bennett, James Allen, Thoreau, Emerson, Adam Smith, P. T. Barnum,
+  F. W. Taylor, Darwin, Einstein, Helen Keller, Booker T. Washington, Kahlil Gibran, W. K. Brooks (*The Oyster*), dll. — masing-masing
+  dengan **biodata singkat penulis**. Saat buku dibuka, server mengunduh **teks aslinya** (lewat katalog Gutendex), membaginya per bagian,
+  lalu AI mengambil ide **dari teks itu saja** — dengan **kutipan asli + terjemahan**, bab, penulis, tahun, dan tautan "baca teks asli".
+  Kutipan diverifikasi otomatis: kalau tidak benar-benar ada di teks, kutipan dibuang. Buku tersimpan di `data/library/`.
+  Katalog: `library.js` (tambah buku public domain lain di sana). Butuh koneksi internet ke gutendex.com & gutenberg.org.
+- **💬 Tanya / diskusi di setiap kartu:** ngobrol bolak-balik dengan Cheesy-Bot tentang ide itu sampai paham (tombol cepat:
+  "jelaskan lebih sederhana", "kasih contoh", "uji pemahamanku", "apa kata penulisnya persisnya?"…). Untuk ide dari Perpustakaan,
+  jawabannya berpegang pada **teks asli buku** dan memisahkan pendapat penulis dari pengetahuan modern.
 - **📕 Ringkas Buku:** ketik judul buku apa saja → 6 kartu ide pokok buku itu, ditulis ulang dengan kata-kata AI sendiri (bukan kutipan).
   Kalau AI tidak cukup kenal bukunya, ia bilang terus terang alih-alih mengarang.
 - **📥 Simpan dari mana saja:** tempel ide yang kamu baca sendiri (dari aplikasi lain, artikel, buku) + sumber/tautannya; opsional
@@ -226,7 +237,8 @@ npm start                 # buka http://localhost:3000
 - `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
-- `insights.js` + `public/wawasan.js` — kategori Wawasan (feed ide, stash, jalur belajar, streak)
+- `insights.js` + `public/wawasan.js` — kategori Wawasan (feed ide, stash, jalur belajar, streak, obrolan ide)
+- `library.js` — katalog buku public domain & pengunduh Project Gutenberg
 - `ielts.js` + `public/ielts.js` — mode IELTS Speaking (alur Part 1–3, umpan balik & rapor band)
 - `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)
 - `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas

@@ -616,3 +616,28 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
 .idea-orig { font-size: .85rem; color: var(--redup); } .idea-orig summary { cursor: pointer; font-weight: 800; color: #6A1B9A; } .idea-orig p { white-space: pre-wrap; }
 .idea-src a { color: #6A1B9A; font-weight: 700; }
 #bk-out h3 { margin: 8px 0; }
+
+/* ---------- 📚 Perpustakaan & 💬 tanya ide ---------- */
+.idea-quote { margin: 0; border-left: 4px solid #8E24AA; background: #FAF5FC; border-radius: 0 12px 12px 0; padding: 10px 14px; font-style: italic; color: #3A1F44; display: flex; flex-direction: column; gap: 6px; }
+.idea-quote span { font-style: normal; font-size: .9rem; color: #5B4566; }
+.idea-quote cite { font-style: normal; font: 12px var(--mono); color: #6A1B9A; }
+.lib-card .lib-author { font-weight: 800; color: #6A1B9A !important; }
+.book-head { background: #F3E5F5; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; color: #2A1433; }
+.book-head b { font: 800 24px var(--judul); } .book-head p { margin: 4px 0; } .book-head a { font-weight: 800; color: #6A1B9A; }
+#lb-list { display: flex; flex-direction: column; gap: 14px; }
+.idea-chat { border-top: 1px dashed var(--garis); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ic-log { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
+.ic-msg { padding: 8px 12px; border-radius: 14px; max-width: 88%; line-height: 1.5; white-space: pre-wrap; font-size: .95rem; }
+.ic-msg.bot { align-self: flex-start; background: #F3E5F5; color: #2A1433; border-bottom-left-radius: 4px; }
+.ic-msg.me { align-self: flex-end; background: var(--kuning); color: var(--navy-tua); font-weight: 700; border-bottom-right-radius: 4px; }
+.ic-msg.typing::after { content: "▍"; animation: led 1s steps(1) infinite; }
+.ic-sugg { display: flex; gap: 6px; flex-wrap: wrap; }
+.ic-sugg button { border: 1.5px solid #CE93D8; background: var(--panel); color: #6A1B9A; border-radius: 999px; padding: 4px 10px; font: 700 12px var(--isi); cursor: pointer; }
+.ic-form { display: flex; gap: 6px; }
+.ic-form input { flex: 1; font: 15px var(--isi); border: 2px solid var(--garis); border-radius: 12px; padding: 8px 10px; background: var(--panel); color: var(--teks); }
+.ic-form button { border: 0; border-radius: 12px; padding: 0 14px; font: 800 14px var(--isi); background: #6A1B9A; color: #fff; cursor: pointer; }
+.ic-form button:disabled { opacity: .5; }
+@media (prefers-color-scheme: dark) {
+  .idea-quote { background: #2A1A30; color: #EBD7F2; } .idea-quote span { color: #D4BDDD; }
+  .book-head { background: #2A1A30; color: #EBD7F2; } .ic-msg.bot { background: #2A1A30; color: #EBD7F2; }
+}

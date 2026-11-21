@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
 import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts, insightState, markRead, updateInsights, BADGE_LABELS } from "./store.js";
-import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported } from "./insights.js";
+import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported, libraryIdeas, libraryStatus, chatAboutIdea } from "./insights.js";
+import { LIBRARY } from "./library.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -391,6 +392,22 @@ async function handleInsights(req, res, user, action, url) {
       if (term.length < 2 || term.length > 80) return json(res, 400, { error: "Kata kunci 2–80 karakter" });
       return json(res, 200, { ideas: decorate(await searchIdeas(term)) });
     }
+    if (action === "library") {
+      const status = await libraryStatus();
+      return json(res, 200, { books: Object.fromEntries(Object.entries(LIBRARY).map(([k, b]) => [k, { title: b.title, author: b.author, year: b.year, topic: b.topic, bio: b.bio, ...status[k] }])) });
+    }
+    if (action === "libbook") {
+      const slug = q.get("id");
+      if (!LIBRARY[slug]) return json(res, 404, { error: "Buku tidak ada di katalog" });
+      const offset = Math.max(0, Math.min(2000, Number(q.get("offset")) || 0));
+      try {
+        const r = await libraryIdeas(slug, offset, 3);
+        return json(res, 200, { ...r, ideas: decorate(r.ideas), next: offset + r.ideas.length, book: { ...LIBRARY[slug], q: undefined, match: undefined } });
+      } catch (e) {
+        console.error(e);
+        return json(res, 502, { error: `${e.message}. Pastikan komputer server terhubung ke internet (Project Gutenberg).` });
+      }
+    }
     if (action === "book") {
       const title = (q.get("title") ?? "").trim();
       if (title.length < 2 || title.length > 100) return json(res, 400, { error: "Judul buku 2–100 karakter" });
@@ -477,6 +494,25 @@ async function handleInsights(req, res, user, action, url) {
     const stash = String(body.stash ?? "Dari Bacaan").trim().slice(0, 40) || "Dari Bacaan";
     const { newBadges } = await updateInsights(user.id, (st) => { st.mine.push(idea); (st.stashes[stash] ??= []).push(idea.id); });
     return json(res, 200, { idea, stash, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  if (action === "chat") {
+    const isMine = typeof body.id === "string" && body.id.startsWith("m_");
+    const idea = isMine ? mineById(body.id) : (await getIdeas([body.id]))[0];
+    if (!idea) return json(res, 400, { error: "Ide tidak dikenal" });
+    const hist = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+    if (!hist.length || hist.some((m) => !["user", "assistant"].includes(m?.role) || typeof m.content !== "string" || !m.content.trim() || m.content.length > 2000) || hist.at(-1).role !== "user" || hist[0].role !== "user")
+      return json(res, 400, { error: "Format percakapan tidak valid" });
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    try {
+      await chatAboutIdea(idea, hist.map(({ role, content }) => ({ role, content })), (t) => send("delta", { text: t }),
+        { fast: FAST_MODE, isRetryable: isRetryableFast, learnerLang: LANGUAGES[body.lang] ?? null });
+      send("done", {});
+    } catch (e) {
+      console.error(e);
+      send("error", { error: e instanceof Anthropic.AuthenticationError ? "API key Anthropic tidak valid / belum diset." : "Cheesy-Bot lagi bengong. Coba lagi." });
+    }
+    return res.end();
   }
   if (action === "translate") {
     if (!LANGUAGES[body.lang] || typeof body.id !== "string" || body.id.startsWith("m_")) return json(res, 400, { error: "Parameter tidak valid" });

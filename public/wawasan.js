@@ -5,6 +5,8 @@ import { speak } from "./voice.js";
 
 const SRC_ICON = { buku: "📕", riset: "🔬", konsep: "💡", sejarah: "📜", tokoh: "👤", pengalaman: "✍️" };
 const today = () => new Date().toLocaleDateString("en-CA");
+const yearText = (y) => (y == null ? "" : y < 0 ? `${-y} SM` : String(y));
+const CHAT_SUGGEST = ["Jelaskan lebih sederhana dong", "Kasih contoh di kehidupan sehari-hari", "Gimana nerapinnya di bisnis/kerja?", "Uji pemahamanku", "Apa kata penulisnya persisnya?", "Ada yang membantah ide ini?"];
 
 export function createWawasan(ctx) {
   const { $, fetch, escapeHtml, toast, stopAll, rate } = ctx;
@@ -37,7 +39,7 @@ export function createWawasan(ctx) {
         <form id="wp-search" class="wp-search"><input id="wp-q" placeholder="🔍 Cari ilmu apa saja… (mis. negosiasi, black hole, tiram)" maxlength="80"></form>
       </div>
       <div class="wp-row wp-actions">
-        ${[["feed", "📰 Feed"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
+        ${[["feed", "📰 Feed"], ["library", "📚 Perpustakaan"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
           .map(([v, l]) => `<button type="button" class="wp-tab ${st.view === v ? "on" : ""}" data-view="${v}">${l}</button>`).join("")}
       </div>
       ${st.view === "feed" ? `<div class="wp-topics">
@@ -70,17 +72,20 @@ export function createWawasan(ctx) {
       <div class="idea-main">
         <h3 class="idea-title">${escapeHtml(i.title)}</h3>
         <p class="idea-body">${escapeHtml(i.body)}</p>
+        ${i.quote ? `<blockquote class="idea-quote">“${escapeHtml(i.quote)}”<span>${escapeHtml(i.quote_id ?? "")}</span><cite>— ${escapeHtml(i.author ?? "")}${i.chapter ? `, ${escapeHtml(i.chapter)}` : ""}</cite></blockquote>` : ""}
         ${i.try_today ? `<p class="idea-try">🎯 <b>Coba hari ini:</b> <span>${escapeHtml(i.try_today)}</span></p>` : ""}
       </div>
       <div class="idea-tr" hidden></div>
       ${i.original ? `<details class="idea-orig"><summary>📄 Lihat teks asli yang kamu simpan</summary><p>${escapeHtml(i.original)}</p></details>` : ""}
-      <div class="idea-src">${SRC_ICON[i.source_type] ?? "💡"} ${/^https?:\/\//.test(i.source ?? "") ? `<a href="${escapeHtml(i.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.source.slice(0, 60))}</a>` : escapeHtml(i.source ?? "")}${i.tags?.length ? ` · ${i.tags.map((x) => `#${escapeHtml(x)}`).join(" ")}` : ""}</div>
+      <div class="idea-src">${i.library ? "📚" : SRC_ICON[i.source_type] ?? "💡"} ${i.library ? `<b>${escapeHtml(i.source)}</b> (${escapeHtml(yearText(i.year))})${i.chapter ? ` · ${escapeHtml(i.chapter)}` : ""}${i.gutenberg ? ` · <a href="${escapeHtml(i.gutenberg)}" target="_blank" rel="noopener noreferrer">baca teks asli (gratis)</a>` : ""}` : /^https?:\/\//.test(i.source ?? "") ? `<a href="${escapeHtml(i.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.source.slice(0, 60))}</a>` : escapeHtml(i.source ?? "")}${i.tags?.length ? ` · ${i.tags.map((x) => `#${escapeHtml(x)}`).join(" ")}` : ""}</div>
       <div class="idea-actions">
         <button type="button" data-a="like" class="${i.liked ? "on" : ""}">💡 <span>${i.liked ? "Insightful!" : "Insightful"}</span></button>
         <button type="button" data-a="save" class="${i.stashes?.length ? "on" : ""}">🔖 <span>${i.stashes?.length ? `Di ${escapeHtml(i.stashes[0])}` : "Simpan"}</span></button>
+        <button type="button" data-a="chat">💬 Tanya</button>
         <button type="button" data-a="listen">🔊</button>
         ${i.mine ? "" : `<button type="button" data-a="tr" title="Baca dalam ${escapeHtml(L ?? lang)}">🌐 ${escapeHtml((L ?? lang).split(" ")[0])}</button>`}
-      </div>`;
+      </div>
+      <div class="idea-chat" hidden></div>`;
   }
 
   function addCard(i, container = $("messages")) {
@@ -105,6 +110,7 @@ export function createWawasan(ctx) {
       } catch (err) { toast(`⚠️ ${err.message}`); }
     };
     el.querySelector('[data-a="save"]').onclick = (e) => stashPicker(i, e.currentTarget);
+    el.querySelector('[data-a="chat"]').onclick = () => toggleChat(el, i);
     el.querySelector('[data-a="listen"]').onclick = () => {
       stopAll();
       const tr = el.querySelector(".idea-tr");
@@ -128,6 +134,60 @@ export function createWawasan(ctx) {
       } catch (err) { toast(`⚠️ ${err.message}`); }
       finally { btn.disabled = false; }
     });
+  }
+
+  // ---------- 💬 ngobrol tentang ide ----------
+  function toggleChat(el, i) {
+    const box = el.querySelector(".idea-chat");
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false;
+    if (box.dataset.ready) { box.querySelector("input")?.focus(); return; }
+    box.dataset.ready = "1";
+    const hist = [];
+    box.innerHTML = `<div class="ic-log"><div class="ic-msg bot">Hai! Ada yang bikin bingung dari ide <b>"${escapeHtml(i.title)}"</b>? Tanya apa aja — atau pilih di bawah 👇</div></div>
+      <div class="ic-sugg">${CHAT_SUGGEST.filter((x) => i.library || !x.includes("penulisnya")).map((x) => `<button type="button">${escapeHtml(x)}</button>`).join("")}</div>
+      <form class="ic-form"><input maxlength="2000" placeholder="Tulis pertanyaanmu…"><button>Kirim</button></form>`;
+    const log = box.querySelector(".ic-log"), input = box.querySelector("input"), btn = box.querySelector(".ic-form button");
+    const add = (cls, text) => { const m = document.createElement("div"); m.className = `ic-msg ${cls}`; m.textContent = text; log.append(m); m.scrollIntoView({ block: "nearest" }); return m; };
+    const ask = async (q) => {
+      if (!q.trim() || btn.disabled) return;
+      add("me", q);
+      hist.push({ role: "user", content: q });
+      input.value = ""; btn.disabled = true;
+      const bubble = add("bot typing", "");
+      let reply = "";
+      try {
+        const res = await fetch("/api/insights/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: i.id, messages: hist, lang: ctx.lang() }) });
+        if (!res.ok) throw new Error((await res.json()).error ?? "Gagal");
+        const reader = res.body.getReader(), dec = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let k;
+          while ((k = buf.indexOf("\n\n")) !== -1) {
+            const chunk = buf.slice(0, k); buf = buf.slice(k + 2);
+            const ev = chunk.match(/^event: (.+)$/m)?.[1];
+            const data = JSON.parse(chunk.match(/^data: (.+)$/m)?.[1] ?? "{}");
+            if (ev === "delta") { reply += data.text; bubble.textContent = reply; bubble.scrollIntoView({ block: "nearest" }); }
+            else if (ev === "error") throw new Error(data.error);
+          }
+        }
+        if (!reply.trim()) throw new Error("Tidak ada jawaban.");
+        hist.push({ role: "assistant", content: reply });
+      } catch (e) {
+        hist.pop();
+        bubble.textContent = `⚠️ ${e.message}`;
+      } finally {
+        bubble.classList.remove("typing");
+        btn.disabled = false;
+        input.focus();
+      }
+    };
+    box.querySelector(".ic-form").onsubmit = (e) => { e.preventDefault(); ask(input.value); };
+    box.querySelectorAll(".ic-sugg button").forEach((b) => (b.onclick = () => ask(b.textContent)));
+    input.focus();
   }
 
   async function stashPicker(i, anchor) {
@@ -221,6 +281,25 @@ export function createWawasan(ctx) {
       setHead("");
       st.offset = 0;
       return loadMore();
+    }
+    if (view === "library") {
+      setHead(`<h2 class="judul"><span>Perpustakaan Bebas</span></h2>
+        <p>Buku-buku <b>public domain</b> (hak ciptanya sudah habis — legal & gratis) dari <b>Project Gutenberg</b>. Ide diambil langsung dari
+          <b>teks aslinya</b>, lengkap dengan penulis, bab, dan kutipan asli + terjemahan. Klik buku untuk mulai.</p><p class="hint">⟳ Memuat katalog…</p>`);
+      try {
+        const { books } = await get("library");
+        const byTopic = {};
+        for (const [k, b] of Object.entries(books)) (byTopic[b.topic] ??= []).push([k, b]);
+        setHead(`<h2 class="judul"><span>Perpustakaan Bebas</span></h2>
+          <p>Buku-buku <b>public domain</b> (hak ciptanya sudah habis — legal & gratis) dari <b>Project Gutenberg</b>. Ide diambil langsung dari
+          <b>teks aslinya</b>, lengkap dengan penulis, bab, dan kutipan asli + terjemahan. Klik buku untuk mulai.</p>
+          ${Object.entries(byTopic).map(([t, list]) => `<h3>${st.home.topics[t]?.emoji ?? ""} ${escapeHtml(st.home.topics[t]?.label ?? t)}</h3>
+            <div class="journey-grid">${list.map(([k, b]) => `<button type="button" class="journey-card lib-card" data-book="${k}">
+              <b>${escapeHtml(b.title)}</b><span class="lib-author">✍️ ${escapeHtml(b.author)} · ${escapeHtml(yearText(b.year))}</span>
+              <span>${escapeHtml(b.bio)}</span><span class="jp">${b.ideas ? `💡 ${b.ideas} ide${b.done ? " · selesai" : ""}` : "belum dibuka"}</span></button>`).join("")}</div>`).join("")}`);
+        $("messages").querySelectorAll("[data-book]").forEach((b) => (b.onclick = () => openLibBook(b.dataset.book)));
+      } catch (e) { setHead(`<p class="hint">⚠️ ${escapeHtml(e.message)}</p>`); }
+      return;
     }
     if (view === "books") {
       const ideas = ["Atomic Habits", "Thinking, Fast and Slow", "Deep Work", "The 7 Habits of Highly Effective People", "Sapiens", "Rich Dad Poor Dad",
@@ -365,6 +444,39 @@ export function createWawasan(ctx) {
         openView("feed");
       };
     }
+  }
+
+  async function openLibBook(slug) {
+    st.view = "libbook";
+    renderPanel();
+    setHead(`<button type="button" class="ghost" id="lb-back">← Perpustakaan</button><p class="hint">⟳ Membuka buku… (pertama kali: server mengunduh teks asli dari Project Gutenberg, bisa ±30 detik)</p>`);
+    $("lb-back").onclick = () => openView("library");
+    let offset = 0;
+    const more = async () => {
+      const btn = $("lb-more");
+      if (btn) { btn.disabled = true; btn.textContent = "⟳ Membaca bagian berikutnya…"; }
+      try {
+        const d = await get(`libbook?id=${slug}&offset=${offset}`);
+        if (offset === 0) {
+          const b = d.book;
+          setHead(`<button type="button" class="ghost" id="lb-back">← Perpustakaan</button>
+            <div class="book-head"><b>${escapeHtml(b.title)}</b><span>✍️ ${escapeHtml(b.author)} · ${escapeHtml(yearText(b.year))}</span>
+              <p>${escapeHtml(b.bio)}</p>${d.url ? `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener noreferrer">📖 Baca buku aslinya gratis di Project Gutenberg</a>` : ""}</div>
+            <div id="lb-list"></div><button type="button" class="btn-utama" id="lb-more">📖 Ambil 3 ide berikutnya dari buku</button>`);
+          $("lb-back").onclick = () => openView("library");
+          $("lb-more").onclick = more;
+        }
+        d.ideas.forEach((i) => addCard(i, $("lb-list")));
+        offset = d.next;
+        const btn2 = $("lb-more");
+        if (d.done && d.ideas.length < 3) { btn2.textContent = "🎉 Semua bagian buku sudah dibaca"; btn2.disabled = true; }
+        else { btn2.disabled = false; btn2.textContent = "📖 Ambil 3 ide berikutnya dari buku"; }
+      } catch (e) {
+        if (offset === 0) setHead(`<button type="button" class="ghost" id="lb-back">← Perpustakaan</button><p class="hint">⚠️ ${escapeHtml(e.message)}</p>`), ($("lb-back").onclick = () => openView("library"));
+        else { toast(`⚠️ ${e.message}`); const b3 = $("lb-more"); if (b3) { b3.disabled = false; b3.textContent = "📖 Coba lagi"; } }
+      }
+    };
+    more();
   }
 
   async function openJourney(jid) {

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { LIBRARY, loadBook, quoteInText } from "./library.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(here, "data", "insights.json");
@@ -219,6 +220,102 @@ export async function formatImported(text) {
   });
   if (!res.parsed_output) throw new Error("Gagal merapikan catatan");
   return res.parsed_output;
+}
+
+// ---------- 📚 Perpustakaan Bebas (public domain) ----------
+const LibIdea = z.object({
+  title: z.string().describe("Catchy Indonesian title, max ~70 chars"),
+  body: z.string().describe("80-140 words in clear Indonesian: what the AUTHOR says in this passage (attribute it: 'Menurut Seneca…'), then how to apply it today with a modern example. If the passage contains outdated science or views, say so briefly and fairly."),
+  try_today: z.string().describe("One small action to try today (Indonesian)"),
+  quote: z.string().describe("A short VERBATIM quote (10-45 words) copied exactly from the passage that best captures the idea"),
+  quote_id: z.string().describe("Indonesian translation of the quote"),
+  chapter: z.string().describe("Chapter/section name or number this comes from, based on the passage heading or content"),
+  tags: z.array(z.string()),
+});
+const LibBatch = z.object({ ideas: z.array(LibIdea).describe("0-3 genuinely useful ideas from THIS passage only; empty if the passage is front matter, an index, a list of contents or has nothing useful") });
+
+/** Ide dari buku public domain, diambil berurutan dari teks aslinya. */
+export async function libraryIdeas(slug, offset, count = 3) {
+  await load();
+  const b = LIBRARY[slug];
+  if (!b) throw new Error("Buku tidak ada di katalog");
+  const st = ((db.library ??= {})[slug] ??= { next: 0, ids: [], done: false });
+  if (st.ids.length < offset + count && !st.done) {
+    await once(`lib:${slug}:${st.ids.length}`, async () => {
+      const book = await loadBook(slug);
+      st.url = book.meta.url;
+      for (let tries = 0; tries < 4 && st.ids.length < offset + count; tries++) {
+        if (st.next >= book.chunks.length) { st.done = true; break; }
+        const idx = st.next++;
+        const ch = book.chunks[idx];
+        const res = await client.messages.parse({
+          model: MODEL, max_tokens: 5000, output_config: { effort: "low", format: zodOutputFormat(LibBatch) },
+          system: `You turn passages of a PUBLIC-DOMAIN book into learning cards for Indonesian readers, staying faithful to what the author actually wrote in THIS passage. Never invent content that isn't in the passage. Quotes must be copied exactly.`,
+          messages: [{ role: "user", content: `BOOK: ${b.title} — ${b.author} (${b.year < 0 ? `${-b.year} SM` : b.year})
+SECTION HEADING: ${ch.heading}
+Already covered: ${st.ids.slice(-12).map((id) => db.ideas[id]?.title).join(" | ") || "-"}
+
+PASSAGE:
+${ch.text}` }],
+        });
+        const ideas = (res.parsed_output?.ideas ?? []).slice(0, 3).map((x) => {
+          const ok = quoteInText(x.quote, ch.text);
+          return { title: x.title, body: x.body, try_today: x.try_today, tags: x.tags, chapter: x.chapter || ch.heading,
+            quote: ok ? x.quote : "", quote_id: ok ? x.quote_id : "", source_type: "buku",
+            source: `${b.title} — ${b.author}`, author: b.author, year: b.year, chunk: idx, gutenberg: book.meta.url };
+        });
+        st.ids.push(...storeIdeas(ideas, { topic: b.topic, library: slug }));
+      }
+      await save();
+    });
+  }
+  return { ideas: st.ids.slice(offset, offset + count).map((id) => db.ideas[id]), total: st.ids.length, done: st.done, url: st.url ?? null };
+}
+
+export async function libraryStatus() {
+  await load();
+  return Object.fromEntries(Object.keys(LIBRARY).map((k) => [k, { ideas: db.library?.[k]?.ids.length ?? 0, done: !!db.library?.[k]?.done, url: db.library?.[k]?.url ?? null }]));
+}
+
+/** Ngobrol (tanya-jawab) tentang satu ide; untuk ide dari buku bebas, berdasar pada teks aslinya. Streaming. */
+export async function chatAboutIdea(idea, history, onDelta, { fast = false, isRetryable = () => false, learnerLang = null } = {}) {
+  let passage = "";
+  if (idea.library && Number.isInteger(idea.chunk)) {
+    try { passage = (await loadBook(idea.library)).chunks[idea.chunk]?.text ?? ""; } catch {}
+  }
+  const params = {
+    model: MODEL, max_tokens: 2000, output_config: { effort: "low" },
+    system: [
+      { type: "text", text: `You are Cheesy-Bot, a warm, witty study buddy from Cheesy Pen Shells. The learner is reading a learning card and wants to talk it through until they really get it.
+- Reply in casual Indonesian (switch language only if they ask; ${learnerLang ? `they are also learning ${learnerLang}, so you may sprinkle a useful word or two` : ""}).
+- Short, conversational turns (2-6 sentences). Explain simply, use everyday Indonesian examples, check understanding with a question now and then, and give a mini-challenge when it fits.
+- If the card comes from a book, stay faithful to what the author actually said (use the passage); clearly separate the author's view from modern knowledge or your own opinion. If a claim is outdated, say so.
+- Don't invent quotes, facts or sources. If you don't know, say so.` },
+      { type: "text", text: `THE CARD:
+Title: ${idea.title}
+${idea.body}
+Try today: ${idea.try_today ?? "-"}
+Source: ${idea.source ?? "-"}${idea.chapter ? ` (${idea.chapter})` : ""}${idea.quote ? `
+Quote: "${idea.quote}"` : ""}${passage ? `
+
+ORIGINAL PASSAGE FROM THE BOOK (public domain):
+${passage.slice(0, 14000)}` : ""}`, cache_control: { type: "ephemeral" } },
+    ],
+    messages: history,
+  };
+  let text = "";
+  const run = async (useFast) => {
+    const stream = client.messages.stream(useFast ? { ...params, speed: "fast" } : params);
+    try {
+      for await (const ev of stream) if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") { text += ev.delta.text; onDelta(ev.delta.text); }
+      return await stream.finalMessage();
+    } catch (e) {
+      if (useFast && !text && isRetryable(e)) return run(false);
+      throw e;
+    }
+  };
+  await run(fast);
+  return text;
 }
 
 export async function getIdeas(ids) {
