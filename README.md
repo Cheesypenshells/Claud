@@ -33,6 +33,22 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - **Aktif bertanya & menyapa duluan:** saat kamu membuka chat untuk pertama kali atau setelah > 3 jam, Cheesy-Bot menyapa duluan
   sesuai situasi (jam, kondisi, cuaca, ingatan) dan bertanya.
 
+## 🎓 IELTS Speaking — Penguji AI yang Natural
+
+Latihan bahasa Inggris dengan penguji AI **Sarah** (fiktif) yang bicara British English natural — bereaksi seperti manusia
+("Oh, nice.", "Fair enough.", "Why's that?") dan bertanya lanjutan dari jawabanmu — mengikuti format resmi IELTS Speaking:
+- **Part 1** — 3 topik sehari-hari (9 pertanyaan). **Part 2** — kartu topik dengan **timer 1 menit persiapan + 2 menit bicara**,
+  lalu pertanyaan penutup. **Part 3** — 5 pertanyaan diskusi yang lebih abstrak.
+- **🏋️ Latihan:** setelah tiap jawaban ada umpan balik — perkiraan band **Fluency & Coherence / Lexical Resource / Grammatical Range
+  & Accuracy**, koreksi, **jawabanmu versi Band 8** (bisa didengar), frasa berguna, dan tip. Bisa mulai langsung dari Part 2 atau 3.
+- **🧪 Simulasi Ujian:** full test tanpa interupsi, lalu **rapor band** (dibulatkan ke 0,5 seperti IELTS), kekuatan, kelemahan,
+  rencana latihan minggu ini, dan upgrade jawaban terlemah. Riwayat band tersimpan.
+- **Jawab pakai suara:** mikrofon merekam jawaban panjang sampai kamu selesai (atau timer Part 2 habis), suara penguji British
+  (en-GB), dan mikrofon bisa menyala otomatis setelah penguji bertanya. Dihitung juga jumlah kata, kata/menit, dan filler (um, like, you know…).
+- Pengucapan tidak dinilai (yang dibaca hanya transkrip). Skor adalah **perkiraan latihan** berdasarkan deskriptor band publik, bukan skor resmi.
+- Bahasa Inggris di **semua mode** kini dibuat lebih luwes: contractions, phrasal verbs, idiom, reaksi natural, dan contoh
+  "cara native bilangnya".
+
 ## 💘 Pendekatan — Latihan Kenalan & PDKT
 
 Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert**: kamu kenalan dengan karakter yang sedang jalan-jalan di kotanya.
@@ -172,6 +188,7 @@ npm start                 # buka http://localhost:3000
 - `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
+- `ielts.js` + `public/ielts.js` — mode IELTS Speaking (alur Part 1–3, umpan balik & rapor band)
 - `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)
 - `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas
 - `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar

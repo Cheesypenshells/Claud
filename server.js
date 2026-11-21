@@ -5,7 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook } from "./store.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts } from "./store.js";
+import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
 import { weatherAt, localParts, ACTIVITIES, currentActivity } from "./context.js";
@@ -350,6 +351,93 @@ async function handleDate(req, res, user, charId, action) {
   }
 }
 
+// ---------- 🎓 IELTS Speaking ----------
+async function handleIelts(req, res, user, action) {
+  const lock = `${user.id}|ielts`;
+  if (req.method === "GET" && !action) {
+    const i = await getIelts(user.id);
+    return json(res, 200, { current: i.current, history: i.history });
+  }
+  if (req.method !== "POST") return json(res, 405, { error: "Metode tidak didukung" });
+  const body = await readJson(req);
+  if (busy.has(lock)) return json(res, 409, { error: "Tunggu penguji selesai bicara dulu." });
+  busy.add(lock);
+  try {
+    const store = await getIelts(user.id);
+    if (action === "start") {
+      const mode = body.mode === "mock" ? "mock" : "practice";
+      const s = newSession(mode, [1, 2, 3].includes(Number(body.startPart)) && mode === "practice" ? Number(body.startPart) : 1);
+      await saveIelts(user.id, s);
+      return json(res, 200, { current: s });
+    }
+    const s = store.current;
+    if (!s || s.status !== "active") return json(res, 409, { error: "Mulai sesi IELTS dulu." });
+
+    if (action === "end") {
+      const report = s.transcript.some((t) => t.role === "candidate") ? await finalReport(s) : null;
+      s.status = "done";
+      s.report = report;
+      await saveIelts(user.id, s, report);
+      return json(res, 200, { current: s, report });
+    }
+
+    // action === "turn" (SSE)
+    const answer = typeof body.answer === "string" ? body.answer.trim().slice(0, 4000) : "";
+    if (answer && s.transcript.at(-1)?.role === "candidate") return json(res, 409, { error: "Tunggu pertanyaan berikutnya." });
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    try {
+      let feedbackP = null;
+      if (answer) {
+        const metrics = answerMetrics(answer, Number(body.seconds));
+        const question = [...s.transcript].reverse().find((t) => t.role === "examiner")?.text ?? "";
+        s.transcript.push({ role: "candidate", part: s.part, text: answer, metrics, ts: new Date().toISOString() });
+        send("metrics", metrics);
+        if (s.mode === "practice") feedbackP = answerFeedback(question, answer, s.part, metrics).catch((e) => { console.error(e); return null; });
+      }
+      const step = nextStep(s, !!answer);
+      if (step?.cue) {
+        s.cue = await makeCue(s);
+        send("cue", s.cue);
+      }
+      const partBefore = s.part;
+      const said = await examinerTurn(s, step.say, (t) => send("delta", { text: t }), { fast: FAST_MODE, isRetryable: isRetryableFast });
+      step.advance(s);
+      s.transcript.push({ role: "examiner", part: partBefore, text: said, ts: new Date().toISOString() });
+      if (answer) {
+        await appendExchange(user.id, threadKey("ielts", "en"), { tutor: "ielts", language: LANGUAGES.en, langId: "en", level: "auto", voice: Number(body.seconds) > 0 }, answer, said);
+        maybeUpdateMemory(user.id, { accountName: user.name });
+        runAssessment(user.id, "en", LANGUAGES.en).catch(() => {});
+      }
+      if (feedbackP) {
+        const fb = await feedbackP;
+        if (fb) { s.feedback.push({ i: s.transcript.length - 2, ...fb }); send("feedback", fb); }
+      }
+      let report = null;
+      if (s.status === "done") {
+        send("status", { text: "Menyusun rapor band…" });
+        report = await finalReport(s);
+        s.report = report;
+        if (report) { await addXp(user.id, "en", 30 + Math.round(report.overall * 10)); send("report", report); }
+      }
+      await saveIelts(user.id, s, report);
+      send("done", { part: s.part, p2Stage: s.p2Stage, status: s.status, cue: s.cue, mode: s.mode });
+    } catch (e) {
+      console.error(e);
+      let msg = "Penguji lagi bermasalah (server AI error). Coba lagi.";
+      if (e instanceof Anthropic.AuthenticationError) msg = "API key Anthropic tidak valid / belum diset.";
+      else if (e instanceof Anthropic.RateLimitError) msg = "Terlalu banyak permintaan, coba lagi sebentar.";
+      // batalkan jawaban yang belum dibalas supaya bisa dikirim ulang
+      if (s.transcript.at(-1)?.role === "candidate") s.transcript.pop();
+      await saveIelts(user.id, s);
+      send("error", { error: msg });
+    }
+    return res.end();
+  } finally {
+    busy.delete(lock);
+  }
+}
+
 async function readJson(req) {
   if (!(req.headers["content-type"] ?? "").startsWith("application/json")) throw new AuthError("Content-Type harus application/json", 415);
   try {
@@ -452,6 +540,9 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, { rows: rows.slice(0, 20), mine: rows.find((r) => r.me) ?? null, total: rows.length });
         }
       }
+
+      const im = url.pathname.match(/^\/api\/ielts(?:\/(start|turn|end))?$/);
+      if (im) return await handleIelts(req, res, user, im[1]);
 
       // ----- mode Pendekatan -----
       if (req.method === "GET" && url.pathname === "/api/date/characters") {

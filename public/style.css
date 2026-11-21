@@ -484,3 +484,66 @@ body.date-picking #composer { opacity: .5; pointer-events: none; }
 .profile-head b { font: 800 20px var(--judul); color: var(--navy); }
 @media (prefers-color-scheme: dark) { .profile-head b { color: var(--kuning); } .profile-head { color: var(--teks); } .char-info .newlook { background: #3A2E10; color: #FFD36B; } }
 @media (max-width: 760px) { .stage-hud .outfit-now { max-width: 170px; font-size: 10.5px !important; } }
+
+/* =========================================================
+   🎓 IELTS Speaking
+   ========================================================= */
+.ielts-btn { border-color: #90CAF9; }
+.ielts-btn.active { background: #0D47A1; border-color: #0D47A1; color: #fff; box-shadow: 0 4px 0 #082F6B; }
+.ielts-btn.active::before { color: #BBDEFB; }
+body.ielts-on #robot-open, body.ielts-on #mic-lang { display: none; }
+.ielts-panel { margin: 0 24px 8px; background: var(--panel); border: 3px solid #0D47A1; border-radius: 18px; padding: 10px 14px; box-shadow: 0 4px 0 #082F6B; display: flex; flex-direction: column; gap: 8px; flex: none; }
+.ielts-panel[hidden] { display: none; }
+.ip-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ip-row b { font: 800 20px var(--judul); color: #0D47A1; text-transform: uppercase; }
+.ip-mode { font: 12px var(--mono); color: var(--redup); }
+.ip-toggle { flex-direction: row; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; }
+.ip-row .mini { margin-left: auto; border: 0; border-radius: 10px; padding: 6px 10px; font: 800 12px var(--isi); cursor: pointer; background: var(--garis); color: var(--teks); }
+.ip-row .mini.danger { background: #FDECEA; color: var(--merah); }
+.ip-steps { display: flex; gap: 6px; }
+.ip-steps span { flex: 1; text-align: center; border-radius: 999px; padding: 4px; font: 800 13px var(--isi); background: var(--garis); color: var(--redup); }
+.ip-steps span.on { background: #0D47A1; color: #fff; } .ip-steps span.done { background: #BBDEFB; color: #0D47A1; }
+.ip-now { font: 12px var(--mono); color: var(--redup); }
+.ip-rec { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rec-btn { border: 0; border-radius: 999px; padding: 10px 18px; font: 800 15px var(--isi); background: #0D47A1; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #082F6B; }
+.rec-btn.on { background: var(--merah); box-shadow: 0 4px 0 #9E1F16; animation: pulse 1.2s ease-in-out infinite; }
+.rec-btn:disabled { opacity: .5; }
+.ip-timer { font: 15px var(--mono); color: var(--teks); }
+.ip-timer b { font-size: 20px; color: #0D47A1; } .ip-timer b.warn { color: var(--merah); }
+.ip-timer .mini { border: 0; border-radius: 8px; padding: 4px 8px; font: 800 12px var(--isi); background: var(--kuning); cursor: pointer; }
+.cue-card { background: #FFFDF2; border: 2px dashed #0D47A1; border-radius: 14px; padding: 10px 14px; color: #1A2050; font-size: .95rem; }
+.cue-card b { font-size: 1.05rem; } .cue-card ul { margin: 2px 0 4px; } .cue-card p { margin: 4px 0; }
+.cue-tag { font: 11px var(--mono); letter-spacing: .12em; color: #0D47A1; }
+.msg.examiner-msg { border-left-color: #0D47A1; }
+.msg.examiner-msg::before { content: "▸ SARAH · IELTS EXAMINER"; color: #0D47A1; }
+.msg .metrics { font: 11px var(--mono); opacity: .75; margin-top: 4px; }
+.msg.ielts-fb, .msg.ielts-report { align-self: center; max-width: 680px; width: 100%; white-space: normal; background: var(--panel); border: 2px solid #90CAF9; border-radius: 16px; padding: 10px 14px; }
+.ielts-fb p { margin: 6px 0; }
+.bands { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.band { display: inline-flex; align-items: baseline; gap: 4px; border-radius: 10px; padding: 3px 9px; font: 800 16px var(--judul); background: var(--garis); color: var(--teks); }
+.band i { font: 11px var(--mono); font-style: normal; opacity: .8; }
+.band.hi { background: #C8E6C9; color: #1B5E20; } .band.mid { background: #FFF3C4; color: #7A5200; } .band.lo { background: #FFCDD2; color: #8E1C1C; }
+.fixes { margin: 4px 0; padding-left: 18px; font-size: .9rem; } .fixes s { color: var(--merah); } .fixes span { color: var(--redup); font-size: .82rem; }
+.ielts-fb details summary { cursor: pointer; font-weight: 800; color: #0D47A1; }
+.better { background: #E3F2FD; border-radius: 10px; padding: 8px 10px; color: #0D2B4E; }
+.phrases { display: flex; flex-direction: column; gap: 3px; font-size: .88rem; }
+.tip { font-weight: 700; }
+.rep-head { display: flex; gap: 14px; align-items: center; background: #0D47A1; color: #fff; border-radius: 14px; padding: 12px 14px; }
+.rep-head .overall { font: 800 44px var(--judul); background: #fff; color: #0D47A1; border-radius: 14px; padding: 2px 14px; }
+.rep-head .overall.hi { color: #1B5E20; } .rep-head .overall.lo { color: #8E1C1C; }
+.rep-head b { font: 800 20px var(--judul); text-transform: uppercase; display: block; } .rep-head span { font: 12px var(--mono); color: #BBDEFB; }
+.ielts-report h3 { margin: 12px 0 4px; }
+.ielts-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.mode-card { text-align: left; border: 2px solid var(--garis); background: var(--panel); color: var(--teks); border-radius: 14px; padding: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font: inherit; box-shadow: 0 3px 0 var(--garis); }
+.mode-card:hover { border-color: #0D47A1; } .mode-card b { font-size: 1.05rem; } .mode-card span { font-size: .85rem; color: var(--redup); }
+.startpart { flex-direction: row; align-items: center; gap: 8px; } .startpart select { width: auto; }
+@media (prefers-color-scheme: dark) {
+  .ip-row b, .ip-timer b, .msg.examiner-msg::before, .cue-tag, .ielts-fb details summary { color: #90CAF9; }
+  .ielts-panel { border-color: #90CAF9; } .better { background: #12283F; color: #D6E9FF; }
+}
+@media (max-width: 760px) { .ielts-panel { margin: 0 12px 8px; } .ielts-modes { grid-template-columns: 1fr; } }
+.ielts-report .sk { border: 2px solid var(--garis); border-radius: 14px; padding: 10px 12px; margin: 8px 0; display: grid; gap: 6px; }
+.ielts-report .sk-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+.ielts-report .ev { font-size: .88rem; color: var(--redup); margin: 0; }
+.ielts-report .quote { background: var(--kuning-muda); border-left: 5px solid var(--kuning); border-radius: 10px; padding: 10px 12px; margin: 12px 0; font-weight: 700; }
+.ielts-report .muted { color: var(--redup); font-size: .82rem; }

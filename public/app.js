@@ -1,6 +1,7 @@
 import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking, createSpeechQueue } from "./voice.js";
 import { createRobot } from "./robot.js";
 import { createDating } from "./dating.js";
+import { createIelts } from "./ielts.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -83,6 +84,13 @@ const dating = createDating({
   lang: () => lang(), rate: () => rate(), getLevel: () => $("level").value, getCtx: () => getCtx(),
   setLanguage: (l) => { $("language").value = l; savePrefs(); updateMicLangLabel(); refreshSkills(); },
 });
+const ielts = createIelts({
+  $, fetch, escapeHtml, toast, setStatus,
+  scrollDown: () => scrollDown(), stopAll: () => stopAll(), addMessage: (r, t) => addMessage(r, t),
+  setControlsDisabled: (d) => setControlsDisabled(d), rate: () => rate(),
+  refreshSkills: (o) => refreshSkills(o), refreshMemory: () => refreshMemory(),
+});
+const anyBusy = () => state.busy || dating.busy || ielts.busy;
 
 // Pilihan disimpan di browser (opsional; aman bila storage tidak tersedia)
 const PREFS = ["language", "level", "style", "rate"];
@@ -159,6 +167,7 @@ function stopAll() {
 /** Muat riwayat percakapan tutor+bahasa ini dari server. */
 async function loadChat() {
   if (state.mode === "date") return dating.showPicker();
+  if (state.mode === "ielts") return ielts.show();
   stopAll();
   const token = ++state.loadToken;
   const t = state.config.tutors[state.tutor];
@@ -205,6 +214,7 @@ function renderHistory(messages) {
 
 // ---------- Kirim ke AI ----------
 async function send(text, { proactive = false } = {}) {
+  if (state.mode === "ielts") return ielts.send(text);
   if (state.mode === "date") {
     if (!dating.active) toast("Pilih gebetan dulu 😉");
     else dating.send(text);
@@ -577,12 +587,23 @@ async function init() {
 
   const leaveDateMode = () => {
     state.mode = "chat";
-    document.body.classList.remove("date-picking", "date-playing");
+    document.body.classList.remove("date-picking", "date-playing", "ielts-on");
     $("date-stage").hidden = true;
+    ielts.hide();
     $("date-mode").classList.remove("active");
+    $("ielts-mode").classList.remove("active");
+  };
+  $("ielts-mode").onclick = () => {
+    if (anyBusy()) return;
+    leaveDateMode();
+    state.mode = "ielts";
+    document.body.classList.add("ielts-on");
+    document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x.id === "ielts-mode"));
+    ielts.show();
   };
   $("date-mode").onclick = () => {
-    if (state.busy || dating.busy) return;
+    if (anyBusy()) return;
+    leaveDateMode();
     state.mode = "date";
     document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x.id === "date-mode"));
     dating.showPicker();
@@ -593,7 +614,7 @@ async function init() {
     b.className = "tutor-btn" + (id === state.tutor ? " active" : "");
     b.textContent = t.name;
     b.onclick = () => {
-      if (state.busy || dating.busy) return;
+      if (anyBusy()) return;
       leaveDateMode();
       state.tutor = id;
       document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x === b));
@@ -601,7 +622,7 @@ async function init() {
     };
     $("tutors").append(b);
   }
-  $("language").onchange = () => !state.busy && loadChat();
+  $("language").onchange = () => !anyBusy() && state.mode !== "ielts" && loadChat();
   $("level").onchange = savePrefs;
   $("style").onchange = savePrefs;
   $("rate").onchange = savePrefs;
@@ -642,7 +663,7 @@ async function init() {
   $("composer").onsubmit = (e) => {
     e.preventDefault();
     const text = $("input").value.trim();
-    if (!text || state.busy || dating.busy) return;
+    if (!text || anyBusy()) return;
     $("input").value = "";
     $("input").style.height = "auto";
     send(text);

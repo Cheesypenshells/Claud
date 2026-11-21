@@ -162,3 +162,19 @@ export async function addCultureNote(userId, entry) {
 export async function getCultureBook(userId) {
   return (await load(userId)).cultureBook ?? [];
 }
+
+// ----- IELTS Speaking -----
+export async function getIelts(userId) {
+  const d = await load(userId);
+  return (d.ielts ??= { current: null, history: [] });
+}
+export async function saveIelts(userId, current, report = null) {
+  const d = await load(userId);
+  const i = (d.ielts ??= { current: null, history: [] });
+  i.current = current;
+  if (report) {
+    i.history.push({ at: report.at, mode: current.mode, overall: report.overall, fc: report.fc.band, lr: report.lr.band, gra: report.gra.band, answers: report.answers });
+    if (i.history.length > 50) i.history.splice(0, i.history.length - 50);
+  }
+  await save(userId);
+}

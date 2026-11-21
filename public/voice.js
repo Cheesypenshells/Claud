@@ -4,7 +4,7 @@
 
 export const SPEECH_LANG = {
   en: "en-US", ja: "ja-JP", ko: "ko-KR", zh: "zh-CN",
-  ar: "ar-SA", fr: "fr-FR", de: "de-DE", es: "es-ES", id: "id-ID",
+  ar: "ar-SA", fr: "fr-FR", de: "de-DE", es: "es-ES", id: "id-ID", "en-GB": "en-GB",
 };
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -15,14 +15,14 @@ export const canSpeak = "speechSynthesis" in window;
 let recognizer = null;
 
 /** Mulai mendengarkan. onInterim(text) dipanggil saat bicara, resolve(text final) saat selesai. */
-export function listen(lang, onInterim) {
+export function listen(lang, onInterim, { continuous = false } = {}) {
   return new Promise((resolve, reject) => {
     if (!canListen) return reject(new Error("Browser ini belum mendukung input suara. Coba Chrome atau Edge."));
     stopListening();
     recognizer = new Recognition();
     recognizer.lang = SPEECH_LANG[lang] ?? lang;
     recognizer.interimResults = true;
-    recognizer.continuous = false;
+    recognizer.continuous = continuous;
     let finalText = "";
     recognizer.onresult = (e) => {
       let interim = "";
