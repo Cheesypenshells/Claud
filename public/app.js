@@ -225,8 +225,8 @@ async function openRobot() {
   }
   // Robot menyapa dulu, lalu mulai mendengarkan
   robot.phase("speaking");
-  robot.captionAI("Halo! Aku Cheesy, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!");
-  await speak("💬 Halo! Aku Cheesy, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!", lang(), rate());
+  robot.captionAI("Halo! Aku Cheesy-Bot, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!");
+  await speak("💬 Halo! Aku Cheesy-Bot, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!", lang(), rate());
   if (robot.isOpen && !state.listening && !state.busy) startListening({ auto: true });
 }
 
@@ -249,8 +249,9 @@ async function init() {
   for (const [id, name] of Object.entries(state.config.languages)) {
     $("language").append(new Option(name, id));
   }
-  for (const [id, t] of Object.entries(state.config.tutors)) {
+  for (const [i, [id, t]] of Object.entries(state.config.tutors).entries()) {
     const b = document.createElement("button");
+    b.dataset.kode = String(i + 1).padStart(2, "0");
     b.className = "tutor-btn" + (id === state.tutor ? " active" : "");
     b.textContent = t.name;
     b.onclick = () => {

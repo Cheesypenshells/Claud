@@ -2,9 +2,14 @@
 
 Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 
-**Desain khas Cheesy Pen Shells:** logo kerang pena (pen shell) berbentuk kipas dengan lubang keju (`public/logo.svg`),
-warna kuning keju & oranye hangat, aksen "lubang keju", font bulat Fredoka + Nunito, serta maskot robot keju **Cheesy**.
-Mendukung mode terang dan gelap. Warna tema diatur lewat variabel di bagian atas `public/style.css`.
+**Desain mengikuti design system kasir Cheesy Pen Shells (oyster bakar mozzarella)**, dengan sentuhan robotik:
+- Logo resmi (kerang pena berbentuk hati + uap) di `public/img/`, diambil dari aset sistem kasir.
+- Warna navy `#22348C` + kuning `#F6B800`, latar kertas dengan pola teks "CHEESY PEN SHELLS · oyster bakar".
+- Font Barlow Condensed (judul kapital), Nunito (isi), Caveat (aksen tulisan tangan), Share Tech Mono (aksen robot).
+- Header navy dengan coretan kuas kuning, kartu & tombol tebal dengan bayangan bawah — sama seperti halaman kasir.
+- Sentuhan robotik: LED status "CHEESY-BOT ONLINE", label mono di balasan AI, kode 01–05 di tombol tutor,
+  dan Mode Robot dengan layar HUD (grid biru, bingkai sudut kuning).
+- Maskot **Cheesy-Bot**: robot metal navy, visor LED kuning, telinga kerang pena, uap mengepul seperti logo, logo CPS di dada.
 
 ## 5 Mode Tutor
 
@@ -27,11 +32,11 @@ Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & meneng
 - **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
 - **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
 
-### 🧀 Mode Robot "Cheesy" (simulasi ngobrol dengan AI)
+### 🤖 Mode Robot "Cheesy-Bot" (simulasi ngobrol dengan AI)
 
-Tekan **"🧀 Ngobrol dengan Cheesy"** di atas chat. Muncul robot keju "Cheesy" (antena pena, telinga kerang) layar penuh, seperti telepon dengan AI:
+Tekan **"🤖 Ngobrol dengan Cheesy-Bot"** di atas chat. Muncul robot "Cheesy-Bot" layar penuh, seperti telepon dengan AI:
 - Robot menyapa, lalu mikrofon otomatis menyala.
-- Robot **beranimasi sesuai keadaan**: cincin hijau saat mendengar, antena berkedip & mata melirik saat berpikir, mulut bergerak saat bicara.
+- Robot **beranimasi sesuai keadaan**: cincin & mata hijau saat mendengar, uap mengepul & mata melirik saat memproses, mulut LED bergerak saat bicara.
 - Ucapanmu dan ucapan robot tampil sebagai **subtitle**.
 - Tekan 🎤 untuk bicara / memotong robot, **📞 Akhiri** (atau Esc) untuk kembali ke chat. Riwayat percakapan tetap tersimpan di chat.
 - Mode Robot memakai tutor, bahasa, dan level yang sedang dipilih.

@@ -4,47 +4,61 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cheesy Pen Shells · Tutor Bahasa AI</title>
-  <link rel="icon" href="logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="img/logo.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Caveat:wght@700&family=Nunito:wght@400;700;800&family=Share+Tech+Mono&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <header class="kepala">
+    <img src="img/logo-putih.png" alt="Cheesy Pen Shells" />
+    <div class="merek">
+      <b>CHEESY PEN SHELLS</b>
+      <small>tutor bahasa AI</small>
+    </div>
+    <span class="sys-chip"><i></i> CHEESY-BOT ONLINE</span>
+  </header>
+
   <div class="app">
     <aside class="sidebar">
-      <div class="brand">
-        <img src="logo.svg" alt="" />
-        <h1>Cheesy Pen Shells <small>TUTOR BAHASA AI</small></h1>
-      </div>
-      <p class="tagline">Belajar bahasa asing jadi gurih &amp; seru — ngobrol kapan saja. 🧀</p>
+      <section class="panel">
+        <h2 class="judul"><span>Setelan</span></h2>
+        <label>Bahasa yang dipelajari
+          <select id="language"></select>
+        </label>
+        <label>Level
+          <select id="level">
+            <option value="beginner">Pemula</option>
+            <option value="intermediate" selected>Menengah</option>
+            <option value="advanced">Mahir</option>
+          </select>
+        </label>
+      </section>
 
-      <label>Bahasa yang dipelajari
-        <select id="language"></select>
-      </label>
-      <label>Level
-        <select id="level">
-          <option value="beginner">Pemula</option>
-          <option value="intermediate" selected>Menengah</option>
-          <option value="advanced">Mahir</option>
-        </select>
-      </label>
+      <section class="panel">
+        <h2 class="judul"><span>Pilih Tutor</span></h2>
+        <nav id="tutors"></nav>
+      </section>
 
-      <h2>Pilih Tutor</h2>
-      <nav id="tutors"></nav>
+      <section class="panel">
+        <h2 class="judul"><span>Suara</span></h2>
+        <label class="switch"><input type="checkbox" id="voice-mode" /> <span>🗣️ Mode Suara (ngobrol tanpa mengetik)</span></label>
+        <label>Kecepatan suara AI
+          <input type="range" id="rate" min="0.6" max="1.2" step="0.05" value="0.95" />
+        </label>
+        <p class="hint" id="voice-hint"></p>
+      </section>
 
-      <h2>Suara</h2>
-      <label class="switch"><input type="checkbox" id="voice-mode" /> <span>🗣️ Mode Suara (ngobrol tanpa mengetik)</span></label>
-      <label>Kecepatan suara AI
-        <input type="range" id="rate" min="0.6" max="1.2" step="0.05" value="0.95" />
-      </label>
-      <p class="hint" id="voice-hint"></p>
-
-      <button id="reset" class="ghost">🔄 Mulai ulang percakapan</button>
+      <button id="reset" class="ghost">↺ Mulai ulang percakapan</button>
+      <p class="tagar">#oysterbakarfavoritmu</p>
     </aside>
 
     <main class="chat">
-      <header><span id="chat-title"></span><span class="right"><span id="status"></span><button id="robot-open" type="button">🧀 Ngobrol dengan Cheesy</button></span></header>
+      <div class="chat-head">
+        <span id="chat-title"></span>
+        <span class="right"><span id="status"></span><button id="robot-open" type="button">🤖 Ngobrol dengan Cheesy-Bot</button></span>
+      </div>
       <div id="messages" aria-live="polite"></div>
       <form id="composer">
         <button type="button" id="mic-lang" class="icon-btn small" title="Bahasa yang kamu ucapkan">EN</button>
