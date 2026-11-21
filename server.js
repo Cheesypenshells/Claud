@@ -5,7 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts } from "./store.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts, insightState, markRead, updateInsights, BADGE_LABELS } from "./store.js";
+import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea } from "./insights.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -353,6 +354,133 @@ async function handleDate(req, res, user, charId, action) {
   }
 }
 
+// ---------- 🧠 Wawasan ----------
+const isDate = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
+async function handleInsights(req, res, user, action, url) {
+  const s = await insightState(user.id);
+  const decorate = (ideas) => ideas.map((i) => ({ ...i, read: !!s.read[i.id], liked: !!s.likes[i.id],
+    stashes: Object.entries(s.stashes).filter(([, ids]) => ids.includes(i.id)).map(([n]) => n) }));
+  const mineById = (id) => s.mine.find((m) => m.id === id);
+  const resolve = async (ids) => [...(await getIdeas(ids.filter((x) => !x.startsWith("m_")))), ...ids.filter((x) => x.startsWith("m_")).map(mineById).filter(Boolean)];
+  const summary = (date) => ({
+    follow: s.follow, goal: s.goal, today: s.daily[date] ?? 0, streak: s.streak, totalRead: Object.keys(s.read).length,
+    badges: s.badges.map((k) => BADGE_LABELS[k]), stashes: Object.fromEntries(Object.entries(s.stashes).map(([n, ids]) => [n, ids.length])),
+  });
+  const q = url.searchParams;
+
+  if (req.method === "GET") {
+    const date = isDate(q.get("date")) ? q.get("date") : new Date().toISOString().slice(0, 10);
+    if (action === "home") {
+      return json(res, 200, { topics: TOPICS, summary: summary(date),
+        journeys: Object.fromEntries(Object.entries(JOURNEYS).map(([k, j]) => [k, { ...j, progress: s.journeys[k]?.day ?? 0, done: !!s.journeys[k]?.done, last: s.journeys[k]?.last ?? null }])) });
+    }
+    if (action === "feed") {
+      const topic = q.get("topic") ?? "foryou";
+      const offset = Math.max(0, Math.min(5000, Number(q.get("offset")) || 0));
+      let ideas;
+      if (topic === "foryou") {
+        const pool = (s.follow.length ? s.follow : Object.keys(TOPICS)).filter((t) => TOPICS[t]);
+        const picks = Array.from({ length: 6 }, (_, i) => [pool[(offset + i) % pool.length], Math.floor((offset + i) / pool.length)]);
+        ideas = (await Promise.all(picks.map(([t, idx]) => topicIdeas(t, idx, 1)))).flat();
+      } else if (TOPICS[topic]) ideas = await topicIdeas(topic, offset, 6);
+      else return json(res, 400, { error: "Topik tidak dikenal" });
+      return json(res, 200, { ideas: decorate(ideas), next: offset + 6 });
+    }
+    if (action === "search") {
+      const term = (q.get("q") ?? "").trim();
+      if (term.length < 2 || term.length > 80) return json(res, 400, { error: "Kata kunci 2–80 karakter" });
+      return json(res, 200, { ideas: decorate(await searchIdeas(term)) });
+    }
+    if (action === "stash") {
+      const name = q.get("name");
+      if (!s.stashes[name]) return json(res, 404, { error: "Stash tidak ditemukan" });
+      return json(res, 200, { ideas: decorate(await resolve([...s.stashes[name]].reverse())) });
+    }
+    if (action === "review") {
+      const all = [...new Set(Object.values(s.stashes).flat())];
+      const pick = all.sort(() => Math.random() - 0.5).slice(0, 5);
+      return json(res, 200, { ideas: decorate(await resolve(pick)) });
+    }
+    if (action === "journey") {
+      const jid = q.get("id");
+      if (!JOURNEYS[jid]) return json(res, 404, { error: "Jalur tidak ditemukan" });
+      const p = s.journeys[jid] ?? { day: 0 };
+      const ideas = [];
+      for (let d = 0; d < p.day; d++) ideas.push(await journeyDay(jid, d));
+      return json(res, 200, { journey: JOURNEYS[jid], progress: p, ideas: decorate(ideas), canUnlock: !p.done && p.last !== date });
+    }
+    return json(res, 404, { error: "Tidak ditemukan" });
+  }
+
+  if (req.method !== "POST") return json(res, 405, { error: "Metode tidak didukung" });
+  const body = await readJson(req);
+  const date = isDate(body.date) ? body.date : new Date().toISOString().slice(0, 10);
+  const validId = async (id) => typeof id === "string" && (id.startsWith("m_") ? !!mineById(id) : await hasIdea(id));
+
+  if (action === "read") {
+    if (!(await validId(body.id))) return json(res, 400, { error: "Ide tidak dikenal" });
+    const r = await markRead(user.id, body.id, date);
+    return json(res, 200, { ...r, newBadges: r.newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  if (action === "like") {
+    if (!(await validId(body.id))) return json(res, 400, { error: "Ide tidak dikenal" });
+    const { out } = await updateInsights(user.id, (st) => { if (st.likes[body.id]) delete st.likes[body.id]; else st.likes[body.id] = 1; return !!st.likes[body.id]; });
+    return json(res, 200, { liked: out });
+  }
+  if (action === "save" || action === "unsave") {
+    const name = String(body.stash ?? "Favorit").trim().slice(0, 40) || "Favorit";
+    if (!(await validId(body.id))) return json(res, 400, { error: "Ide tidak dikenal" });
+    const { out, newBadges } = await updateInsights(user.id, (st) => {
+      if (Object.keys(st.stashes).length >= 30 && !st.stashes[name]) return false;
+      const list = (st.stashes[name] ??= []);
+      if (action === "save" && !list.includes(body.id)) list.push(body.id);
+      if (action === "unsave") st.stashes[name] = list.filter((x) => x !== body.id);
+      return true;
+    });
+    if (!out) return json(res, 400, { error: "Maksimal 30 stash" });
+    return json(res, 200, { ok: true, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  if (action === "stash-delete") {
+    await updateInsights(user.id, (st) => { if (body.name !== "Favorit") delete st.stashes[body.name]; });
+    return json(res, 200, { ok: true });
+  }
+  if (action === "prefs") {
+    const follow = Array.isArray(body.follow) ? body.follow.filter((t) => TOPICS[t]).slice(0, 19) : undefined;
+    const goal = [3, 5, 10, 15].includes(Number(body.goal)) ? Number(body.goal) : undefined;
+    await updateInsights(user.id, (st) => { if (follow) st.follow = follow; if (goal) st.goal = goal; });
+    return json(res, 200, { ok: true });
+  }
+  if (action === "mine") {
+    const title = String(body.title ?? "").trim(), text = String(body.body ?? "").trim();
+    if (title.length < 3 || title.length > 100 || text.length < 10 || text.length > 1500) return json(res, 400, { error: "Judul 3–100 karakter, isi 10–1500 karakter." });
+    const idea = { id: "m_" + Date.now().toString(36), title, body: text, try_today: String(body.try_today ?? "").trim().slice(0, 200),
+      source_type: "pengalaman", source: `Ide milik ${user.name}`, tags: [], topic: TOPICS[body.topic] ? body.topic : "rare", minutes: 1, mine: true, at: new Date().toISOString() };
+    const { newBadges } = await updateInsights(user.id, (st) => { st.mine.push(idea); (st.stashes["Ide Saya"] ??= []).push(idea.id); });
+    return json(res, 200, { idea, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  if (action === "translate") {
+    if (!LANGUAGES[body.lang] || typeof body.id !== "string" || body.id.startsWith("m_")) return json(res, 400, { error: "Parameter tidak valid" });
+    try {
+      return json(res, 200, await translateIdea(body.id, LANGUAGES[body.lang], body.lang));
+    } catch (e) { console.error(e); return json(res, 502, { error: "Terjemahan gagal. Coba lagi." }); }
+  }
+  if (action === "journey-next") {
+    const jid = body.id;
+    if (!JOURNEYS[jid]) return json(res, 404, { error: "Jalur tidak ditemukan" });
+    const p = s.journeys[jid] ?? { day: 0 };
+    if (p.done) return json(res, 409, { error: "Jalur ini sudah selesai 🎉" });
+    if (p.last === date) return json(res, 409, { error: "Hari ini sudah dibuka. Lanjut besok ya — biar jadi kebiasaan 😉" });
+    const idea = await journeyDay(jid, p.day);
+    const { newBadges } = await updateInsights(user.id, (st) => {
+      const j = (st.journeys[jid] ??= { day: 0 });
+      j.day++; j.last = date;
+      if (j.day >= JOURNEYS[jid].days) j.done = true;
+    });
+    return json(res, 200, { idea: decorate([idea])[0], newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  return json(res, 404, { error: "Tidak ditemukan" });
+}
+
 // ---------- 🎓 IELTS Speaking ----------
 async function handleIelts(req, res, user, action) {
   const lock = `${user.id}|ielts`;
@@ -545,6 +673,15 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      const wm = url.pathname.match(/^\/api\/insights\/([a-z-]+)$/);
+      if (wm) {
+        try { return await handleInsights(req, res, user, wm[1], url); }
+        catch (e) {
+          if (e instanceof AuthError) return json(res, e.status, { error: e.message });
+          console.error(e);
+          return json(res, 502, { error: e instanceof Anthropic.AuthenticationError ? "API key Anthropic tidak valid / belum diset." : "Gagal memuat ide. Coba lagi." });
+        }
+      }
       const im = url.pathname.match(/^\/api\/ielts(?:\/(start|turn|end))?$/);
       if (im) return await handleIelts(req, res, user, im[1]);
 

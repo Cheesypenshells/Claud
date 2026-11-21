@@ -2,6 +2,7 @@ import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking, create
 import { createRobot } from "./robot.js";
 import { createDating } from "./dating.js";
 import { createIelts } from "./ielts.js";
+import { createWawasan } from "./wawasan.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -95,6 +96,10 @@ const ielts = createIelts({
   refreshSkills: (o) => refreshSkills(o), refreshMemory: () => refreshMemory(),
   varieties: () => state.config?.varieties ?? {},
 });
+const wawasan = createWawasan({
+  $, fetch, escapeHtml, toast, stopAll: () => stopAll(), rate: () => rate(),
+  lang: () => lang(), ttsLang: () => ttsLang(), languages: () => state.config?.languages ?? {},
+});
 const anyBusy = () => state.busy || dating.busy || ielts.busy;
 
 // Pilihan disimpan di browser (opsional; aman bila storage tidak tersedia)
@@ -173,6 +178,7 @@ function stopAll() {
 async function loadChat() {
   if (state.mode === "date") return dating.showPicker();
   if (state.mode === "ielts") return ielts.show();
+  if (state.mode === "insights") return wawasan.show();
   stopAll();
   const token = ++state.loadToken;
   const t = state.config.tutors[state.tutor];
@@ -220,6 +226,7 @@ function renderHistory(messages) {
 // ---------- Kirim ke AI ----------
 async function send(text, { proactive = false } = {}) {
   if (state.mode === "ielts") return ielts.send(text);
+  if (state.mode === "insights") return;
   if (state.mode === "date") {
     if (!dating.active) toast("Pilih gebetan dulu 😉");
     else dating.send(text);
@@ -594,11 +601,21 @@ async function init() {
 
   const leaveDateMode = () => {
     state.mode = "chat";
-    document.body.classList.remove("date-picking", "date-playing", "ielts-on");
+    document.body.classList.remove("date-picking", "date-playing", "ielts-on", "insights-on");
     $("date-stage").hidden = true;
     ielts.hide();
+    wawasan.hide();
+    $("insights-mode").classList.remove("active");
     $("date-mode").classList.remove("active");
     $("ielts-mode").classList.remove("active");
+  };
+  $("insights-mode").onclick = () => {
+    if (anyBusy()) return;
+    leaveDateMode();
+    state.mode = "insights";
+    document.body.classList.add("insights-on");
+    document.querySelectorAll(".tutor-btn").forEach((x) => x.classList.toggle("active", x.id === "insights-mode"));
+    wawasan.show();
   };
   $("ielts-mode").onclick = () => {
     if (anyBusy()) return;
@@ -630,7 +647,7 @@ async function init() {
     $("tutors").append(b);
   }
   showVariety();
-  $("language").onchange = () => { showVariety(); if (!anyBusy() && state.mode !== "ielts") loadChat(); };
+  $("language").onchange = () => { showVariety(); if (!anyBusy() && !["ielts", "insights"].includes(state.mode)) loadChat(); };
   $("variety").onchange = () => {
     savePrefs();
     const v = state.config.varieties[variety()];

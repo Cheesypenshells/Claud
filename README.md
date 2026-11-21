@@ -33,6 +33,25 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - **Aktif bertanya & menyapa duluan:** saat kamu membuka chat untuk pertama kali atau setelah > 3 jam, Cheesy-Bot menyapa duluan
   sesuai situasi (jam, kondisi, cuaca, ingatan) dan bertanya.
 
+## 🧠 Wawasan — Feed Ide untuk Belajar Hal Baru
+
+Kategori untuk belajar ilmu pengetahuan & pengembangan diri lewat **kartu ide singkat yang bisa di-scroll** (±1 menit per kartu).
+Semua konten **orisinal ditulis AI** (bukan salinan aplikasi/buku lain): konsep dari buku, riset, sejarah, dan tokoh dijelaskan
+dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini** (satu langkah praktis).
+- **19 topik:** Produktivitas, Psikologi, Kebiasaan, Komunikasi, Kepemimpinan, Keuangan Pribadi, Bisnis & Marketing, Karier,
+  Kesehatan & Tidur, Mindfulness, Hubungan, Kreativitas, Filsafat, Sains, Teknologi & AI, Sejarah, Cara Belajar, Bahasa & Budaya,
+  dan **🦪 Ilmu Langka** (pengetahuan yang jarang dibahas). Ikuti topik → feed **✨ Untukmu**.
+- **Scroll tanpa ujung** — ide baru dibuat otomatis saat kamu sampai bawah, dan tersimpan di pustaka bersama (`data/insights.json`)
+  sehingga pustaka terus bertambah untuk semua pengguna.
+- **💡 Insightful**, **🔖 Stash** (koleksi buatan sendiri), **🔍 Cari** topik apa saja, **🔊 Dengarkan**, **✍️ Tulis ide sendiri**,
+  **🔁 Ulas** (flashcard ide tersimpan).
+- **🎯 Target harian** (3/5/10/15 ide) — ide dihitung "dibaca" otomatis setelah kartunya terlihat ±2,5 detik — **🔥 streak** harian,
+  dan **🏅 lencana** (streak 3/7/30 hari, 10/50/200 ide, dll).
+- **🧭 Jalur Belajar:** seri satu-ide-per-hari yang saling menyambung (7 Hari Lawan Prokrastinasi, 10 Model Mental, Bicara di Depan Umum,
+  Keuangan Anak Muda, Tidur Berkualitas, Kebiasaan, Cara Belajar, Negosiasi, **Memulai Bisnis Booth Makanan**, Rahasia Laut & Tiram).
+- **🌐 Ciri khas Cheesy Pen Shells:** setiap ide bisa dibaca dalam **bahasa yang sedang kamu pelajari** + 5 kosakata pentingnya
+  (klik untuk dengar) — belajar ilmu baru sekaligus belajar bahasa.
+
 ## 🌍 Varian & Aksen Bahasa Inggris
 
 Saat bahasa yang dipelajari **English**, pilih **Varian / aksen Inggris** di Setelan:
@@ -203,6 +222,7 @@ npm start                 # buka http://localhost:3000
 - `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
+- `insights.js` + `public/wawasan.js` — kategori Wawasan (feed ide, stash, jalur belajar, streak)
 - `ielts.js` + `public/ielts.js` — mode IELTS Speaking (alur Part 1–3, umpan balik & rapor band)
 - `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)
 - `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas

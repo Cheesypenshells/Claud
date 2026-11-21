@@ -178,3 +178,50 @@ export async function saveIelts(userId, current, report = null) {
   }
   await save(userId);
 }
+
+// ----- 🧠 Wawasan -----
+const DAY = 864e5;
+const prevDate = (d) => new Date(Date.parse(d + "T00:00:00Z") - DAY).toISOString().slice(0, 10);
+const BADGES = [
+  ["streak3", (s) => s.streak.count >= 3, "🔥 Streak 3 hari"], ["streak7", (s) => s.streak.count >= 7, "🔥 Streak 7 hari"],
+  ["streak30", (s) => s.streak.count >= 30, "🏆 Streak 30 hari"], ["read10", (s) => Object.keys(s.read).length >= 10, "📖 10 ide dibaca"],
+  ["read50", (s) => Object.keys(s.read).length >= 50, "📚 50 ide dibaca"], ["read200", (s) => Object.keys(s.read).length >= 200, "🧠 200 ide dibaca"],
+  ["stash10", (s) => Object.values(s.stashes).flat().length >= 10, "🔖 10 ide disimpan"], ["writer", (s) => s.mine.length >= 1, "✍️ Menulis ide pertama"],
+  ["journey", (s) => Object.values(s.journeys).some((j) => j.done), "🧭 Menyelesaikan jalur belajar"],
+];
+export const BADGE_LABELS = Object.fromEntries(BADGES.map(([k, , l]) => [k, l]));
+
+export async function insightState(userId) {
+  const d = await load(userId);
+  return (d.insights ??= { follow: [], goal: 5, read: {}, likes: {}, stashes: { Favorit: [] }, daily: {}, streak: { count: 0, last: null, best: 0 }, journeys: {}, mine: [], badges: [] });
+}
+function checkBadges(s) {
+  const fresh = [];
+  for (const [k, test] of BADGES) if (!s.badges.includes(k) && test(s)) { s.badges.push(k); fresh.push(k); }
+  return fresh;
+}
+/** Tandai ide dibaca (sekali per ide). Mengembalikan progres harian, streak, lencana baru. */
+export async function markRead(userId, id, date) {
+  const s = await insightState(userId);
+  let fresh = [];
+  if (!s.read[id]) {
+    s.read[id] = date;
+    s.daily[date] = (s.daily[date] ?? 0) + 1;
+    if (s.streak.last !== date) {
+      s.streak.count = s.streak.last === prevDate(date) ? s.streak.count + 1 : 1;
+      s.streak.last = date;
+      s.streak.best = Math.max(s.streak.best, s.streak.count);
+    }
+    fresh = checkBadges(s);
+    for (const k of Object.keys(s.daily).sort().slice(0, -60)) delete s.daily[k];
+    await save(userId);
+  }
+  return { today: s.daily[date] ?? 0, goal: s.goal, streak: s.streak, newBadges: fresh };
+}
+export async function updateInsights(userId, fn) {
+  const s = await insightState(userId);
+  const out = fn(s);
+  const fresh = checkBadges(s);
+  await save(userId);
+  return { out, newBadges: fresh };
+}
