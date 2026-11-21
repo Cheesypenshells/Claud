@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Masuk · Cheesy Pen Shells Tutor Bahasa AI</title>
+  <link rel="icon" href="img/logo.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Caveat:wght@700&family=Nunito:wght@400;700;800&family=Share+Tech+Mono&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="auth-page">
+  <header class="kepala">
+    <img src="img/logo-putih.png" alt="Cheesy Pen Shells" />
+    <div class="merek"><b>CHEESY PEN SHELLS</b><small>tutor bahasa AI</small></div>
+    <span class="sys-chip"><i></i> CHEESY-BOT ONLINE</span>
+  </header>
+
+  <main class="auth-wrap">
+    <section class="panel auth-card">
+      <img class="auth-logo" src="img/logo.png" alt="" />
+      <p class="auth-intro">Cheesy-Bot ingat semua obrolanmu — jadi bikin akun dulu ya, biar ingatan kamu nggak ketuker sama orang lain 😉</p>
+
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-login" aria-selected="true">Masuk</button>
+        <button type="button" role="tab" id="tab-register" aria-selected="false">Daftar</button>
+      </div>
+
+      <form id="auth-form" novalidate>
+        <label id="name-field" hidden>Nama panggilan
+          <input id="name" name="name" autocomplete="nickname" maxlength="40" placeholder="Biar Cheesy-Bot tahu manggil kamu apa" />
+        </label>
+        <label>Username
+          <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="30" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, titik, _" />
+        </label>
+        <label>Password
+          <input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="minimal 8 karakter" />
+        </label>
+        <p class="auth-error" id="error" role="alert"></p>
+        <button type="submit" id="submit" class="btn-utama">Masuk</button>
+      </form>
+    </section>
+    <p class="tagar">#oysterbakarfavoritmu</p>
+  </main>
+  <script src="login.js" type="module"></script>
+</body>
+</html>

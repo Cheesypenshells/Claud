@@ -11,9 +11,18 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
   dan Mode Robot dengan layar HUD (grid biru, bingkai sudut kuning).
 - Maskot **Cheesy-Bot**: robot metal navy, visor LED kuning, telinga kerang pena, uap mengepul seperti logo, logo CPS di dada.
 
+## 🔐 Akun — Ingatan Tiap Orang Terpisah
+
+- Saat membuka website, pengguna **Masuk** atau **Daftar** (nama panggilan, username, password minimal 8 karakter).
+- Setiap akun punya **riwayat chat dan ingatan Cheesy-Bot sendiri** (`data/users/<id>.json`) — tidak tercampur dengan orang lain.
+- Password disimpan sebagai hash **scrypt** (bukan teks asli) di `data/auth.json`; sesi login memakai cookie `HttpOnly` + `SameSite=Lax`, berlaku 30 hari.
+- Percobaan login/daftar yang gagal dibatasi: 10 kali per 15 menit per alamat IP.
+- Tombol **Keluar** di kanan atas. "Lupakan semua" hanya menghapus data akun yang sedang login.
+- Kalau dipasang di internet, jalankan di belakang HTTPS (reverse proxy yang mengirim `X-Forwarded-Proto: https`) supaya cookie ditandai `Secure`.
+
 ## 🧠 Cheesy-Bot Mengingat Kamu & Ngajar Seperti Manusia
 
-- **Ingat semua obrolan:** riwayat chat setiap tutor + bahasa disimpan di server (`data/store.json`), jadi tidak hilang saat halaman di-refresh atau server dimatikan.
+- **Ingat semua obrolan:** riwayat chat setiap tutor + bahasa disimpan di server per akun, jadi tidak hilang saat halaman di-refresh atau server dimatikan.
 - **Catatan tentang kamu (ingatan jangka panjang):** setiap 3 obrolan, AI memperbarui profilmu — nama, hal-hal tentang hidupmu,
   kesalahan yang sering diulang (dan yang sudah tidak lagi), kosakata yang sudah dipelajari, topik yang pernah dibahas,
   lelucon internal, dan **sikap belajarmu** (serius / santai / kurang serius). Catatan ini dipakai di semua tutor & bahasa.
@@ -75,7 +84,9 @@ npm start                 # buka http://localhost:3000
 - `server.js` — server Node (tanpa framework), endpoint `/api/chat` yang men-stream jawaban AI
 - `tutors.js` — kepribadian Cheesy-Bot, gaya ngajar, dan 5 mode tutor. **Ubah sifat/tutor di sini.**
 - `memory.js` — ingatan jangka panjang (profil murid)
-- `store.js` — penyimpanan riwayat chat & ingatan ke `data/store.json`
+- `store.js` — penyimpanan riwayat chat & ingatan per pengguna (`data/users/`)
+- `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login
+- `public/login.html`, `public/login.js` — halaman Masuk/Daftar
 - `public/` — tampilan web (HTML/CSS/JS biasa, mendukung mode gelap dan HP)
 - `public/voice.js` — fitur suara (ucapan → teks, teks → suara)
 - `public/robot.js` — karakter robot animasi untuk Mode Robot
@@ -86,4 +97,4 @@ npm start                 # buka http://localhost:3000
 - Fallback otomatis di sisi server Anthropic jika model menolak permintaan.
 - 60 pesan terakhir dikirim apa adanya ke AI; obrolan yang lebih lama diwakili oleh ingatan (profil murid).
 - Ingatan diperbarui di latar belakang dengan structured output (`memory.js`); penyimpanan di `store.js`.
-- Data disimpan lokal di folder `data/` (tidak ikut ke git). Website ini dirancang untuk satu pengguna per server.
+- Data disimpan di folder `data/` (tidak ikut ke git). **Backup folder ini** — isinya akun, riwayat, dan ingatan semua pengguna.

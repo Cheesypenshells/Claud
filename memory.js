@@ -36,15 +36,15 @@ Rules:
 - Only record what the conversation actually shows. Never invent facts.`;
 
 const client = new Anthropic();
-let running = null;
+const running = new Map(); // userId -> pembaruan yang sedang berjalan
 
-/** Jalankan pembaruan ingatan di latar belakang bila antrean sudah cukup (atau force). */
-export function maybeUpdateMemory({ force = false } = {}) {
-  if (running) return running;
-  running = (async () => {
-    const pending = await getPending();
+/** Jalankan pembaruan ingatan seorang pengguna di latar belakang bila antrean sudah cukup (atau force). */
+export function maybeUpdateMemory(userId, { force = false, accountName = "" } = {}) {
+  if (running.has(userId)) return running.get(userId);
+  const job = (async () => {
+    const pending = await getPending(userId);
     if (!pending.length || (!force && pending.length < UPDATE_EVERY)) return;
-    const current = await getProfile();
+    const current = await getProfile(userId);
     const transcript = pending.map((p) =>
       `[${p.ts} · tutor=${p.tutor} · bahasa=${p.language} · level=${p.level}]\nMURID: ${p.user}\nCHEESY-BOT: ${p.assistant}`
     ).join("\n\n");
@@ -56,28 +56,29 @@ export function maybeUpdateMemory({ force = false } = {}) {
       system: SYSTEM,
       messages: [{
         role: "user",
-        content: `CURRENT MEMORY:\n${current ? JSON.stringify(current) : "null"}\n\nNEW CONVERSATION TURNS:\n${transcript}`,
+        content: `${accountName ? `The learner's account name is "${accountName}".\n\n` : ""}CURRENT MEMORY:\n${current ? JSON.stringify(current) : "null"}\n\nNEW CONVERSATION TURNS:\n${transcript}`,
       }],
     });
     if (response.stop_reason === "refusal" || !response.parsed_output) {
       console.warn("Pembaruan ingatan dilewati:", response.stop_reason);
       return;
     }
-    await setProfile(response.parsed_output, pending.length);
-    console.log(`🧠 Ingatan diperbarui (${pending.length} pertukaran baru).`);
+    await setProfile(userId, response.parsed_output, pending.length);
+    console.log(`🧠 Ingatan pengguna ${userId.slice(0, 8)} diperbarui (${pending.length} pertukaran baru).`);
   })()
     .catch((e) => console.error("Gagal memperbarui ingatan:", e.message))
-    .finally(() => { running = null; });
-  return running;
+    .finally(() => running.delete(userId));
+  running.set(userId, job);
+  return job;
 }
 
 /** Ubah profil jadi teks untuk system prompt. */
-export function renderMemory(profile, language) {
-  if (!profile) return "MEMORY: This is a brand-new learner. You know nothing about them yet — get to know them naturally (name, why they're learning).";
+export function renderMemory(profile, language, accountName = "") {
+  if (!profile) return `MEMORY: This is a brand-new learner${accountName ? ` whose account name is "${accountName}"` : ""}. You know nothing else about them yet — get to know them naturally (what to call them, why they're learning).`;
   const lang = profile.languages?.find((l) => l.language.toLowerCase().includes(language.toLowerCase().split(" ")[0]));
   const list = (a) => (a?.length ? a.join("; ") : "-");
   return `MEMORY ABOUT THIS LEARNER (from all previous sessions — use it naturally, like a tutor who actually remembers them; call back to it, don't recite it):
-- Name: ${profile.name || "(unknown — ask casually at some point)"}
+- Name: ${profile.name || accountName || "(unknown — ask casually at some point)"}
 - About them: ${list(profile.about)}
 - Attitude so far: ${profile.attitude?.mode} — ${profile.attitude?.evidence}
 - Humor notes: ${profile.humor_notes || "-"}

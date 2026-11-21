@@ -2,6 +2,17 @@ import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking } from 
 import { createRobot } from "./robot.js";
 
 const $ = (id) => document.getElementById(id);
+
+// Semua panggilan API: kalau sesi habis (401), arahkan ke halaman masuk.
+const rawFetch = window.fetch.bind(window);
+const fetch = async (...args) => {
+  const res = await rawFetch(...args);
+  if (res.status === 401) {
+    location.replace("/login.html");
+    throw new Error("Sesi berakhir, silakan masuk lagi.");
+  }
+  return res;
+};
 const state = {
   tutor: "conversation", busy: false, config: null,
   voiceMode: false, listening: false, micLang: "target", // "target" | "id"
@@ -19,13 +30,13 @@ const voiceOn = () => state.voiceMode || robot.isOpen;
 const PREFS = ["language", "level", "style", "rate"];
 function savePrefs() {
   try {
-    localStorage.setItem("cps-prefs", JSON.stringify({
+    localStorage.setItem(`cps-prefs-${state.user?.id}`, JSON.stringify({
       tutor: state.tutor, ...Object.fromEntries(PREFS.map((k) => [k, $(k).value])),
     }));
   } catch {}
 }
 function loadPrefs() {
-  try { return JSON.parse(localStorage.getItem("cps-prefs") || "{}"); } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(`cps-prefs-${state.user?.id}`) || "{}"); } catch { return {}; }
 }
 
 function escapeHtml(s) {
@@ -214,7 +225,7 @@ async function refreshMemory() {
   const mistakes = p.languages?.reduce((n, l) => n + (l.recurring_mistakes?.length ?? 0), 0) ?? 0;
   const vocab = p.languages?.reduce((n, l) => n + (l.vocab_learned?.length ?? 0), 0) ?? 0;
   el.innerHTML = `
-    <div>${p.name ? `Halo, <b>${escapeHtml(p.name)}</b>! ` : ""}Sikap belajar: <span class="badge ${escapeHtml(p.attitude?.mode)}">${MODE_LABEL[p.attitude?.mode] ?? "-"}</span></div>
+    <div>${(p.name || state.user?.name) ? `Halo, <b>${escapeHtml(p.name || state.user.name)}</b>! ` : ""}Sikap belajar: <span class="badge ${escapeHtml(p.attitude?.mode)}">${MODE_LABEL[p.attitude?.mode] ?? "-"}</span></div>
     <div class="row"><span>Fakta tentangmu</span><b>${p.about?.length ?? 0}</b></div>
     <div class="row"><span>Kesalahan berulang</span><b>${mistakes}</b></div>
     <div class="row"><span>Kosakata dipelajari</span><b>${vocab}</b></div>`;
@@ -243,7 +254,7 @@ async function showMemory() {
 
 async function wipeMemory() {
   if (state.busy) return;
-  if (!confirm("Hapus SEMUA ingatan dan riwayat chat di semua tutor & bahasa? Ini tidak bisa dibatalkan.")) return;
+  if (!confirm("Hapus SEMUA ingatan dan riwayat chat akun ini di semua tutor & bahasa? Ini tidak bisa dibatalkan.")) return;
   await fetch("/api/memory", { method: "DELETE" });
   await refreshMemory();
   await loadChat();
@@ -308,7 +319,8 @@ async function openRobot() {
   }
   // Robot menyapa dulu (pakai nama kalau sudah ingat), lalu mulai mendengarkan
   const p = await fetchMemory();
-  const hi = p?.name ? `Eh, ${p.name}! Cheesy-Bot siap. Ayo ngobrol!` : "Halo! Aku Cheesy-Bot, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!";
+  const nama = p?.name || state.user?.name;
+  const hi = nama ? `Eh, ${nama}! Cheesy-Bot siap. Ayo ngobrol!` : "Halo! Aku Cheesy-Bot, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!";
   robot.phase("speaking");
   robot.captionAI(hi);
   await speak("💬 " + hi, lang(), rate());
@@ -330,6 +342,19 @@ function robotMic() {
 
 // ---------- Inisialisasi ----------
 async function init() {
+  let me;
+  try {
+    me = await fetch("/api/me");
+  } catch {
+    return; // diarahkan ke halaman masuk
+  }
+  state.user = (await me.json()).user;
+  $("user-name").textContent = `👤 ${state.user.name}`;
+  $("logout").onclick = async () => {
+    stopAll();
+    await rawFetch("/api/logout", { method: "POST" });
+    location.replace("/login.html");
+  };
   state.config = await (await fetch("/api/config")).json();
   for (const [id, name] of Object.entries(state.config.languages)) {
     $("language").append(new Option(name, id));

@@ -4,8 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeAll } from "./store.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser } from "./store.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
+import { register, login, logout, currentUser, allUserIds, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(here, "public");
@@ -15,7 +16,7 @@ const CONTEXT_MESSAGES = 60; // pesan terakhir yang dikirim apa adanya; sisanya 
 const MAX_CHARS = 4000;
 
 const client = new Anthropic(); // membaca ANTHROPIC_API_KEY dari environment
-const busy = new Set(); // satu permintaan per percakapan pada satu waktu
+const busy = new Set(); // satu permintaan per percakapan (per pengguna) pada satu waktu
 
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg" };
 
@@ -48,7 +49,7 @@ function validate(b) {
 
 const fmtTime = (iso) => new Date(iso).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
 
-async function handleChat(req, res) {
+async function handleChat(req, res, user) {
   let body;
   try {
     body = JSON.parse(await readBody(req));
@@ -59,18 +60,19 @@ async function handleChat(req, res) {
   if (err) return json(res, 400, { error: err });
 
   const key = threadKey(body.tutor, body.language);
-  if (busy.has(key)) return json(res, 409, { error: "Tunggu balasan sebelumnya selesai dulu." });
-  busy.add(key);
+  const lock = `${user.id}|${key}`;
+  if (busy.has(lock)) return json(res, 409, { error: "Tunggu balasan sebelumnya selesai dulu." });
+  busy.add(lock);
 
   const message = body.message.trim();
-  const thread = await getThread(key);
+  const thread = await getThread(user.id, key);
   let recent = thread.slice(-CONTEXT_MESSAGES);
   if (recent[0]?.role === "assistant") recent = recent.slice(1);
   const lastTs = thread.at(-1)?.ts;
-  const profile = await getProfile();
+  const profile = await getProfile(user.id);
 
   const context = [
-    renderMemory(profile, LANGUAGES[body.language]),
+    renderMemory(profile, LANGUAGES[body.language], user.name),
     `Now: ${fmtTime(new Date().toISOString())}. ${lastTs ? `Last message in this chat: ${fmtTime(lastTs)}.` : "This is the first message in this chat."}`,
     thread.length > recent.length ? `(Older messages of this chat are summarized in MEMORY.)` : "",
   ].filter(Boolean).join("\n\n");
@@ -129,11 +131,11 @@ async function handleChat(req, res) {
     try {
       // Simpan juga balasan yang terpotong, supaya riwayat tetap sama dengan yang dilihat murid.
       if (reply.trim()) {
-        await appendExchange(key, { tutor: body.tutor, language: LANGUAGES[body.language], level: body.level }, message, reply);
-        maybeUpdateMemory();
+        await appendExchange(user.id, key, { tutor: body.tutor, language: LANGUAGES[body.language], level: body.level }, message, reply);
+        maybeUpdateMemory(user.id, { accountName: user.name });
       }
     } finally {
-      busy.delete(key);
+      busy.delete(lock);
       if (!res.writableEnded) res.end();
     }
   }
@@ -156,36 +158,81 @@ async function serveStatic(req, res) {
   }
 }
 
+async function readJson(req) {
+  if (!(req.headers["content-type"] ?? "").startsWith("application/json")) throw new AuthError("Content-Type harus application/json", 415);
+  try {
+    return JSON.parse(await readBody(req));
+  } catch {
+    throw new AuthError("JSON tidak valid");
+  }
+}
+
+async function handleAuth(req, res, action) {
+  const ip = req.socket.remoteAddress ?? "?";
+  try {
+    if (action === "logout") {
+      await logout(req);
+      res.setHeader("Set-Cookie", sessionCookie(req, null));
+      return json(res, 200, { ok: true });
+    }
+    checkRateLimit(ip);
+    const body = await readJson(req);
+    const { user, token } = action === "register" ? await register(body) : await login(body);
+    res.setHeader("Set-Cookie", sessionCookie(req, token));
+    return json(res, 200, { user });
+  } catch (e) {
+    if (!(e instanceof AuthError)) throw e;
+    if (e.status === 401 || e.status === 409) recordFailure(ip);
+    return json(res, e.status, { error: e.message });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
-    if (req.method === "POST" && url.pathname === "/api/chat") return await handleChat(req, res);
+    // ----- akun (tanpa login) -----
+    if (req.method === "POST" && url.pathname === "/api/register") return await handleAuth(req, res, "register");
+    if (req.method === "POST" && url.pathname === "/api/login") return await handleAuth(req, res, "login");
+    if (req.method === "POST" && url.pathname === "/api/logout") return await handleAuth(req, res, "logout");
 
-    if (req.method === "GET" && url.pathname === "/api/config") {
-      return json(res, 200, {
-        tutors: Object.fromEntries(Object.entries(TUTORS).map(([id, t]) => [id, { name: t.name, greeting: t.greeting }])),
-        languages: LANGUAGES,
-      });
-    }
+    if (url.pathname.startsWith("/api/")) {
+      const user = await currentUser(req);
+      if (!user) return json(res, 401, { error: "Silakan masuk dulu." });
 
-    if (url.pathname === "/api/history") {
-      const tutor = url.searchParams.get("tutor"), language = url.searchParams.get("language");
-      if (!TUTORS[tutor] || !LANGUAGES[language]) return json(res, 400, { error: "Parameter tidak valid" });
-      const key = threadKey(tutor, language);
-      if (req.method === "GET") return json(res, 200, { messages: await getThread(key) });
-      if (req.method === "DELETE") {
-        if (busy.has(key)) return json(res, 409, { error: "Tunggu balasan selesai dulu." });
-        await clearThread(key);
-        return json(res, 200, { ok: true });
+      if (req.method === "GET" && url.pathname === "/api/me") return json(res, 200, { user });
+
+      if (req.method === "POST" && url.pathname === "/api/chat") {
+        if (!(req.headers["content-type"] ?? "").startsWith("application/json")) return json(res, 415, { error: "Content-Type harus application/json" });
+        return await handleChat(req, res, user);
       }
-    }
 
-    if (url.pathname === "/api/memory") {
-      if (req.method === "GET") return json(res, 200, { profile: await getProfile() });
-      if (req.method === "DELETE") {
-        await wipeAll();
-        return json(res, 200, { ok: true });
+      if (req.method === "GET" && url.pathname === "/api/config") {
+        return json(res, 200, {
+          tutors: Object.fromEntries(Object.entries(TUTORS).map(([id, t]) => [id, { name: t.name, greeting: t.greeting }])),
+          languages: LANGUAGES,
+        });
       }
+
+      if (url.pathname === "/api/history") {
+        const tutor = url.searchParams.get("tutor"), language = url.searchParams.get("language");
+        if (!TUTORS[tutor] || !LANGUAGES[language]) return json(res, 400, { error: "Parameter tidak valid" });
+        const key = threadKey(tutor, language);
+        if (req.method === "GET") return json(res, 200, { messages: await getThread(user.id, key) });
+        if (req.method === "DELETE") {
+          if (busy.has(`${user.id}|${key}`)) return json(res, 409, { error: "Tunggu balasan selesai dulu." });
+          await clearThread(user.id, key);
+          return json(res, 200, { ok: true });
+        }
+      }
+
+      if (url.pathname === "/api/memory") {
+        if (req.method === "GET") return json(res, 200, { profile: await getProfile(user.id) });
+        if (req.method === "DELETE") {
+          await wipeUser(user.id);
+          return json(res, 200, { ok: true });
+        }
+      }
+      return json(res, 404, { error: "Tidak ditemukan" });
     }
 
     if (req.method === "GET") return await serveStatic(req, res);
@@ -200,5 +247,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Cheesy Pen Shells · Tutor Bahasa AI berjalan di http://localhost:${PORT}`);
   if (!process.env.ANTHROPIC_API_KEY) console.warn("⚠️  ANTHROPIC_API_KEY belum diset — salin .env.example ke .env lalu isi API key-mu.");
-  maybeUpdateMemory({ force: true }); // proses sisa antrean ingatan dari sesi sebelumnya
+  // proses sisa antrean ingatan dari sesi sebelumnya, per pengguna
+  allUserIds().then((ids) => ids.forEach((id) => maybeUpdateMemory(id, { force: true }))).catch((e) => console.error(e));
 });
