@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
 import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts, insightState, markRead, updateInsights, BADGE_LABELS } from "./store.js";
-import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea } from "./insights.js";
+import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported } from "./insights.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -391,6 +391,12 @@ async function handleInsights(req, res, user, action, url) {
       if (term.length < 2 || term.length > 80) return json(res, 400, { error: "Kata kunci 2–80 karakter" });
       return json(res, 200, { ideas: decorate(await searchIdeas(term)) });
     }
+    if (action === "book") {
+      const title = (q.get("title") ?? "").trim();
+      if (title.length < 2 || title.length > 100) return json(res, 400, { error: "Judul buku 2–100 karakter" });
+      const b = await bookIdeas(title);
+      return json(res, 200, { ...b, ideas: decorate(b.ideas) });
+    }
     if (action === "stash") {
       const name = q.get("name");
       if (!s.stashes[name]) return json(res, 404, { error: "Stash tidak ditemukan" });
@@ -457,6 +463,20 @@ async function handleInsights(req, res, user, action, url) {
       source_type: "pengalaman", source: `Ide milik ${user.name}`, tags: [], topic: TOPICS[body.topic] ? body.topic : "rare", minutes: 1, mine: true, at: new Date().toISOString() };
     const { newBadges } = await updateInsights(user.id, (st) => { st.mine.push(idea); (st.stashes["Ide Saya"] ??= []).push(idea.id); });
     return json(res, 200, { idea, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  if (action === "import") {
+    const text = String(body.text ?? "").trim();
+    const source = String(body.source ?? "").trim().slice(0, 300);
+    if (text.length < 20 || text.length > 4000) return json(res, 400, { error: "Tempel teks 20–4000 karakter." });
+    let card;
+    if (body.tidy) {
+      try { card = await formatImported(text); } catch (e) { console.error(e); return json(res, 502, { error: "AI gagal merapikan. Coba lagi atau matikan opsi rapikan." }); }
+    } else card = { title: text.split(/[.!?\n]/)[0].slice(0, 90), body: text, try_today: "", tags: [] };
+    const idea = { id: "m_" + Date.now().toString(36), ...card, source_type: "pengalaman", source: source || "Catatan pribadi", original: body.tidy ? text : undefined,
+      topic: TOPICS[body.topic] ? body.topic : "rare", minutes: Math.max(1, Math.round(card.body.split(/\s+/).length / 180)), mine: true, at: new Date().toISOString() };
+    const stash = String(body.stash ?? "Dari Bacaan").trim().slice(0, 40) || "Dari Bacaan";
+    const { newBadges } = await updateInsights(user.id, (st) => { st.mine.push(idea); (st.stashes[stash] ??= []).push(idea.id); });
+    return json(res, 200, { idea, stash, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
   }
   if (action === "translate") {
     if (!LANGUAGES[body.lang] || typeof body.id !== "string" || body.id.startsWith("m_")) return json(res, 400, { error: "Parameter tidak valid" });

@@ -57,6 +57,17 @@ const Idea = z.object({
   tags: z.array(z.string()).describe("2-3 short lowercase tags"),
 });
 const Batch = z.object({ ideas: z.array(Idea).describe("Distinct ideas, no overlap with the titles to avoid") });
+const BookSchema = z.object({
+  known: z.boolean().describe("true ONLY if you genuinely know this book's content well enough to summarise its key ideas accurately"),
+  book_title: z.string(), author: z.string(),
+  ideas: z.array(Idea).describe("6 key ideas of the book in your OWN words (no quotations), each with a practical example; source = 'Title — Author'. Empty if known is false."),
+});
+const Imported = z.object({
+  title: z.string().describe("Short catchy Indonesian title"),
+  body: z.string().describe("The idea rewritten as a clear 60-130 word Indonesian card (keep the meaning faithful)"),
+  try_today: z.string(),
+  tags: z.array(z.string()),
+});
 const Translation = z.object({
   title: z.string(), body: z.string(), try_today: z.string(),
   vocab: z.array(z.object({ word: z.string(), romanization: z.string(), meaning_id: z.string() })).describe("5 useful words from the translation"),
@@ -173,6 +184,41 @@ export async function translateIdea(id, langName, langId) {
     await save();
     return res.parsed_output;
   });
+}
+
+/** Ringkasan buku: ide-ide pokok sebuah buku dalam kata-kata AI sendiri (bukan salinan). */
+export async function bookIdeas(title) {
+  await load();
+  const key = title.toLowerCase().trim().slice(0, 100);
+  db.books ??= {};
+  if (!db.books[key]) {
+    await once(`b:${key}`, async () => {
+      const res = await client.messages.parse({
+        model: MODEL, max_tokens: 8000, output_config: { effort: "low", format: zodOutputFormat(BookSchema) },
+        system: SYSTEM + "\nNow you summarise a BOOK: give its key ideas in your own words. Never quote passages. If you don't reliably know the book, set known=false and return no ideas.",
+        messages: [{ role: "user", content: `Book: "${key}"` }],
+      });
+      const b = res.parsed_output;
+      if (!b) throw new Error("Ringkasan gagal dibuat");
+      db.books[key] = b.known && b.ideas.length
+        ? { known: true, book_title: b.book_title, author: b.author, ids: storeIdeas(b.ideas.slice(0, 8), { topic: "book", book: b.book_title }) }
+        : { known: false, book_title: b.book_title || title, author: b.author || "" };
+      await save();
+    });
+  }
+  const b = db.books[key];
+  return { ...b, ideas: (b.ids ?? []).map((id) => db.ideas[id]) };
+}
+
+/** Rapikan teks yang ditempel pengguna jadi kartu ide (untuk disimpan pribadi). */
+export async function formatImported(text) {
+  const res = await client.messages.parse({
+    model: MODEL, max_tokens: 2000, output_config: { effort: "low", format: zodOutputFormat(Imported) },
+    system: "Turn the user's personal note (something they read or learned, any language) into one clear learning card in Indonesian. Stay faithful to its meaning; do not add facts.",
+    messages: [{ role: "user", content: text }],
+  });
+  if (!res.parsed_output) throw new Error("Gagal merapikan catatan");
+  return res.parsed_output;
 }
 
 export async function getIdeas(ids) {

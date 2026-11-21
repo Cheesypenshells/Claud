@@ -613,3 +613,6 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
   body.insights-on .sidebar { max-height: 22dvh; }
 }
 @media (max-width: 760px) { body.insights-on .chat-head { display: none; } body.insights-on .insights-panel { margin-top: 10px; } }
+.idea-orig { font-size: .85rem; color: var(--redup); } .idea-orig summary { cursor: pointer; font-weight: 800; color: #6A1B9A; } .idea-orig p { white-space: pre-wrap; }
+.idea-src a { color: #6A1B9A; font-weight: 700; }
+#bk-out h3 { margin: 8px 0; }

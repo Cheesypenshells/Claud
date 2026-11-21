@@ -45,6 +45,10 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
   sehingga pustaka terus bertambah untuk semua pengguna.
 - **💡 Insightful**, **🔖 Stash** (koleksi buatan sendiri), **🔍 Cari** topik apa saja, **🔊 Dengarkan**, **✍️ Tulis ide sendiri**,
   **🔁 Ulas** (flashcard ide tersimpan).
+- **📕 Ringkas Buku:** ketik judul buku apa saja → 6 kartu ide pokok buku itu, ditulis ulang dengan kata-kata AI sendiri (bukan kutipan).
+  Kalau AI tidak cukup kenal bukunya, ia bilang terus terang alih-alih mengarang.
+- **📥 Simpan dari mana saja:** tempel ide yang kamu baca sendiri (dari aplikasi lain, artikel, buku) + sumber/tautannya; opsional
+  dirapikan AI jadi kartu berbahasa Indonesia (teks asli tetap tersimpan). Tersimpan **pribadi** di stash pilihanmu.
 - **🎯 Target harian** (3/5/10/15 ide) — ide dihitung "dibaca" otomatis setelah kartunya terlihat ±2,5 detik — **🔥 streak** harian,
   dan **🏅 lencana** (streak 3/7/30 hari, 10/50/200 ide, dll).
 - **🧭 Jalur Belajar:** seri satu-ide-per-hari yang saling menyambung (7 Hari Lawan Prokrastinasi, 10 Model Mental, Bicara di Depan Umum,

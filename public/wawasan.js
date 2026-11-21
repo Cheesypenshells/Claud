@@ -37,7 +37,7 @@ export function createWawasan(ctx) {
         <form id="wp-search" class="wp-search"><input id="wp-q" placeholder="🔍 Cari ilmu apa saja… (mis. negosiasi, black hole, tiram)" maxlength="80"></form>
       </div>
       <div class="wp-row wp-actions">
-        ${[["feed", "📰 Feed"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis Ide"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
+        ${[["feed", "📰 Feed"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
           .map(([v, l]) => `<button type="button" class="wp-tab ${st.view === v ? "on" : ""}" data-view="${v}">${l}</button>`).join("")}
       </div>
       ${st.view === "feed" ? `<div class="wp-topics">
@@ -65,7 +65,7 @@ export function createWawasan(ctx) {
     const t = st.home.topics[i.topic];
     const lang = ctx.lang(), L = ctx.languages()[lang];
     return `
-      <div class="idea-top">${t ? `<span class="idea-topic">${t.emoji} ${escapeHtml(t.label)}</span>` : i.journey ? `<span class="idea-topic">🧭 Hari ${i.day + 1}</span>` : ""}
+      <div class="idea-top">${t ? `<span class="idea-topic">${t.emoji} ${escapeHtml(t.label)}</span>` : i.journey ? `<span class="idea-topic">🧭 Hari ${i.day + 1}</span>` : i.book ? `<span class="idea-topic">📕 ${escapeHtml(i.book)}</span>` : i.query ? `<span class="idea-topic">🔍 ${escapeHtml(i.query)}</span>` : ""}
         <span class="idea-min">${i.minutes ?? 1} mnt baca</span>${i.read ? `<span class="idea-read">✓ dibaca</span>` : ""}</div>
       <div class="idea-main">
         <h3 class="idea-title">${escapeHtml(i.title)}</h3>
@@ -73,7 +73,8 @@ export function createWawasan(ctx) {
         ${i.try_today ? `<p class="idea-try">🎯 <b>Coba hari ini:</b> <span>${escapeHtml(i.try_today)}</span></p>` : ""}
       </div>
       <div class="idea-tr" hidden></div>
-      <div class="idea-src">${SRC_ICON[i.source_type] ?? "💡"} ${escapeHtml(i.source ?? "")}${i.tags?.length ? ` · ${i.tags.map((x) => `#${escapeHtml(x)}`).join(" ")}` : ""}</div>
+      ${i.original ? `<details class="idea-orig"><summary>📄 Lihat teks asli yang kamu simpan</summary><p>${escapeHtml(i.original)}</p></details>` : ""}
+      <div class="idea-src">${SRC_ICON[i.source_type] ?? "💡"} ${/^https?:\/\//.test(i.source ?? "") ? `<a href="${escapeHtml(i.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(i.source.slice(0, 60))}</a>` : escapeHtml(i.source ?? "")}${i.tags?.length ? ` · ${i.tags.map((x) => `#${escapeHtml(x)}`).join(" ")}` : ""}</div>
       <div class="idea-actions">
         <button type="button" data-a="like" class="${i.liked ? "on" : ""}">💡 <span>${i.liked ? "Insightful!" : "Insightful"}</span></button>
         <button type="button" data-a="save" class="${i.stashes?.length ? "on" : ""}">🔖 <span>${i.stashes?.length ? `Di ${escapeHtml(i.stashes[0])}` : "Simpan"}</span></button>
@@ -210,7 +211,7 @@ export function createWawasan(ctx) {
     catch (e) { loader.textContent = `⚠️ ${e.message}`; }
   }
 
-  async function openView(view) {
+  async function openView(view, selectStash = null) {
     stopAll();
     st.view = view;
     st.timers.forEach(clearTimeout); st.timers.clear();
@@ -220,6 +221,29 @@ export function createWawasan(ctx) {
       setHead("");
       st.offset = 0;
       return loadMore();
+    }
+    if (view === "books") {
+      const ideas = ["Atomic Habits", "Thinking, Fast and Slow", "Deep Work", "The 7 Habits of Highly Effective People", "Sapiens", "Rich Dad Poor Dad",
+        "How to Win Friends and Influence People", "Man's Search for Meaning", "The Psychology of Money", "Never Split the Difference", "Start With Why", "Ikigai"];
+      setHead(`<h2 class="judul"><span>Ringkas Buku</span></h2>
+        <p>Ketik judul buku apa saja — AI menuliskan <b>ide-ide pokoknya dengan kata-katanya sendiri</b> jadi kartu yang bisa kamu baca, simpan, dengarkan, dan terjemahkan.</p>
+        <form id="bk-form" class="wp-search"><input id="bk-q" maxlength="100" placeholder="📕 Judul buku (dan penulis kalau tahu)…"></form>
+        <div class="chips">${ideas.map((t) => `<button type="button" class="chip" data-book="${escapeHtml(t)}">📕 ${escapeHtml(t)}</button>`).join("")}</div>
+        <p class="hint">Bukan kutipan isi buku — ringkasan ide dengan bahasa sendiri. Kalau AI tidak cukup kenal bukunya, ia akan bilang terus terang.</p>
+        <div id="bk-out"></div>`);
+      const run = async (t) => {
+        const out = $("bk-out");
+        out.innerHTML = `<p class="msg error wp-loading">⟳ Meringkas "${escapeHtml(t)}"…</p>`;
+        try {
+          const d = await get(`book?title=${encodeURIComponent(t)}`);
+          if (!d.known) { out.innerHTML = `<p class="hint">🤔 AI tidak cukup yakin mengenal isi buku "${escapeHtml(t)}", jadi tidak mengarang ringkasan. Coba tulis judul lengkap + penulisnya.</p>`; return; }
+          out.innerHTML = `<h3>📕 ${escapeHtml(d.book_title)} — ${escapeHtml(d.author)}</h3>`;
+          d.ideas.forEach((i) => addCard(i, out));
+        } catch (e) { out.innerHTML = `<p class="hint">⚠️ ${escapeHtml(e.message)}</p>`; }
+      };
+      $("bk-form").onsubmit = (e) => { e.preventDefault(); const t = $("bk-q").value.trim(); if (t.length >= 2) run(t); };
+      $("messages").querySelectorAll("[data-book]").forEach((b) => (b.onclick = () => run(b.dataset.book)));
+      return;
     }
     if (view === "stash") {
       const names = Object.entries(st.home.summary.stashes);
@@ -242,7 +266,7 @@ export function createWawasan(ctx) {
           }
         } catch (e) { box.innerHTML = `<p class="hint">⚠️ ${escapeHtml(e.message)}</p>`; }
       }));
-      $("messages").querySelector("[data-stash]")?.click();
+      ([...$("messages").querySelectorAll("[data-stash]")].find((b) => b.dataset.stash === selectStash) ?? $("messages").querySelector("[data-stash]"))?.click();
       return;
     }
     if (view === "journeys") {
@@ -265,7 +289,27 @@ export function createWawasan(ctx) {
           <label>Topik<select id="ww-topic">${Object.entries(st.home.topics).map(([k, t]) => `<option value="${k}">${t.emoji} ${escapeHtml(t.label)}</option>`).join("")}</select></label>
           <button class="btn-utama">✍️ Simpan ide</button>
           <p class="hint">Ide kamu disimpan di stash "Ide Saya" (pribadi).</p>
+        </form>
+        <h2 class="judul"><span>Simpan dari Mana Saja</span></h2>
+        <form id="wp-import" class="wp-write">
+          <p>Baca sesuatu yang bagus di aplikasi lain, artikel, atau buku? Tempel di sini supaya tersimpan rapi di stash pribadimu.</p>
+          <label>Teks yang mau disimpan<textarea id="wi-text" rows="6" maxlength="4000" placeholder="Tempel ide / kutipan / catatanmu di sini…"></textarea></label>
+          <label>Sumber (opsional)<input id="wi-src" maxlength="300" placeholder="Judul, penulis, atau tautan"></label>
+          <label>Simpan ke stash<input id="wi-stash" maxlength="40" value="Dari Bacaan"></label>
+          <label class="switch"><input type="checkbox" id="wi-tidy" checked> <span>✨ Rapikan dengan AI jadi kartu ide berbahasa Indonesia (teks aslinya tetap disimpan)</span></label>
+          <button class="btn-utama">📥 Simpan</button>
         </form>`);
+      $("wp-import").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = e.submitter; btn.disabled = true; btn.textContent = "⟳ Menyimpan…";
+        try {
+          const r = await post("import", { text: $("wi-text").value, source: $("wi-src").value, stash: $("wi-stash").value, tidy: $("wi-tidy").checked });
+          toast(`📥 Tersimpan di "${r.stash}"`);
+          badgeToast(r.newBadges);
+          await refreshHome();
+          openView("stash", r.stash);
+        } catch (err) { toast(`⚠️ ${err.message}`); btn.disabled = false; btn.textContent = "📥 Simpan"; }
+      };
       $("wp-write").onsubmit = async (e) => {
         e.preventDefault();
         try {
@@ -273,7 +317,7 @@ export function createWawasan(ctx) {
           toast("✍️ Ide tersimpan di \"Ide Saya\"");
           badgeToast(r.newBadges);
           await refreshHome();
-          openView("stash");
+          openView("stash", "Ide Saya");
         } catch (err) { toast(`⚠️ ${err.message}`); }
       };
       return;
