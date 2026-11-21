@@ -225,8 +225,8 @@ async function openRobot() {
   }
   // Robot menyapa dulu, lalu mulai mendengarkan
   robot.phase("speaking");
-  robot.captionAI("Halo! Aku Robo, tutor bahasamu. Silakan bicara!");
-  await speak("💬 Halo! Aku Robo, tutor bahasamu. Silakan bicara!", lang(), rate());
+  robot.captionAI("Halo! Aku Cheesy, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!");
+  await speak("💬 Halo! Aku Cheesy, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!", lang(), rate());
   if (robot.isOpen && !state.listening && !state.busy) startListening({ auto: true });
 }
 

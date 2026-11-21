@@ -1,6 +1,10 @@
-# 🌏 LinguaTutor AI
+# 🧀 Cheesy Pen Shells — Tutor Bahasa AI
 
 Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
+
+**Desain khas Cheesy Pen Shells:** logo kerang pena (pen shell) berbentuk kipas dengan lubang keju (`public/logo.svg`),
+warna kuning keju & oranye hangat, aksen "lubang keju", font bulat Fredoka + Nunito, serta maskot robot keju **Cheesy**.
+Mendukung mode terang dan gelap. Warna tema diatur lewat variabel di bagian atas `public/style.css`.
 
 ## 5 Mode Tutor
 
@@ -23,9 +27,9 @@ Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & meneng
 - **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
 - **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
 
-### 🤖 Mode Robot (simulasi ngobrol dengan AI)
+### 🧀 Mode Robot "Cheesy" (simulasi ngobrol dengan AI)
 
-Tekan **"🤖 Ngobrol dengan Robot"** di atas chat. Muncul karakter robot "Robo" layar penuh, seperti telepon dengan AI:
+Tekan **"🧀 Ngobrol dengan Cheesy"** di atas chat. Muncul robot keju "Cheesy" (antena pena, telinga kerang) layar penuh, seperti telepon dengan AI:
 - Robot menyapa, lalu mikrofon otomatis menyala.
 - Robot **beranimasi sesuai keadaan**: cincin hijau saat mendengar, antena berkedip & mata melirik saat berpikir, mulut bergerak saat bicara.
 - Ucapanmu dan ucapan robot tampil sebagai **subtitle**.
