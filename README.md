@@ -85,6 +85,25 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
 - **🌐 Ciri khas Cheesy Pen Shells:** setiap ide bisa dibaca dalam **bahasa yang sedang kamu pelajari** + 5 kosakata pentingnya
   (klik untuk dengar) — belajar ilmu baru sekaligus belajar bahasa.
 
+## 🗞️ Berita Harian & 💬 Ngobrol Bebas
+
+Di **08 🧠 Wawasan** ada dua tab baru:
+
+- **🗞️ Berita** — rangkuman berita terkini **Indonesia & dunia**, diperbarui **otomatis setiap hari** (WIB) dalam 7 kategori: 🇮🇩 Indonesia, 🌍 Dunia, 📊 Ekonomi & Bisnis, 🤖 Teknologi & AI, 🔬 Sains & Kesehatan, ⚽ Olahraga, 🎬 Hiburan & Budaya.
+  - Dicari lewat **web search** dari media tepercaya (Kompas, Tempo, Antara, CNBC Indonesia, Reuters, BBC, AP, dll.).
+  - **Anti-hoaks:** berita hanya ditampilkan kalau tautannya benar-benar muncul di hasil pencarian — berita karangan otomatis dibuang. Setiap kartu punya tautan ke berita aslinya.
+  - Tiap kartu: ringkasan, **📌 Kenapa penting**, 💬 **Diskusikan** (tanya-jawab, bot bisa cari update terbaru + menampilkan 🔗 sumber), 🔊 dibacakan, 🌐 **baca dalam bahasa yang kamu pelajari** (latihan membaca berita), 🔖 simpan ke stash "Berita".
+  - Kalau edisi hari ini belum siap, edisi terakhir ditampilkan sambil diperbarui di belakang.
+- **💬 Ngobrol** — diskusi bebas dengan Cheesy-Bot: berita hari ini, ekonomi, topik yang kamu ikuti, ide yang kamu simpan, atau apa saja. Bot proaktif menawarkan topik yang relevan dan bisa mencari di web.
+
+Cheesy-Bot di mode tutor biasa juga tahu **judul berita hari ini**, jadi bisa mengajak ngobrol hal yang sedang ramai.
+
+Pengaturan di `.env`:
+- `NEWS_AUTO=false` — matikan update otomatis (berita hanya dibuat saat tab Berita dibuka).
+- `NEWS_CATEGORIES=indonesia,dunia,ekonomi` — batasi kategori yang diperbarui otomatis (hemat biaya).
+
+> 💸 Web search berbayar per pencarian (selain token). Update harian 7 kategori ≈ 7 riset/hari; diskusi berita memakai maks. 2–3 pencarian per pesan.
+
 ## 🌍 Varian & Aksen Bahasa Inggris
 
 Saat bahasa yang dipelajari **English**, pilih **Varian / aksen Inggris** di Setelan:
@@ -256,6 +275,7 @@ npm start                 # buka http://localhost:3000
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
 - `insights.js` + `public/wawasan.js` — kategori Wawasan (feed ide, stash, jalur belajar, streak, obrolan ide)
+- `news.js` — berita harian (web search + verifikasi sumber) & obrolan dengan pencarian web
 - `library.js` — katalog buku public domain & pengunduh Project Gutenberg · `economics.js` — tokoh ekonomi & bacaan modern
 - `ielts.js` + `public/ielts.js` — mode IELTS Speaking (alur Part 1–3, umpan balik & rapor band)
 - `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)

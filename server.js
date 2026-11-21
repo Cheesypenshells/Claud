@@ -9,6 +9,7 @@ import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser
 import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported, libraryIdeas, libraryStatus, chatAboutIdea, translateText } from "./insights.js";
 import { LIBRARY, bookPart, downloadedSet, downloadAll, downloadStatus } from "./library.js";
 import { ECONOMISTS, MODERN_READS } from "./economics.js";
+import { NEWS_CATEGORIES, getNews, getNewsItem, topHeadlines, startDailyNews, chatWithSearch, jakartaDate } from "./news.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -128,6 +129,10 @@ async function handleChat(req, res, user) {
     renderMemory(profile, LANGUAGES[body.language], user.name),
     renderSkills(assessment),
     `SITUATION (be perceptive about it, but don't recite it): the learner's ${await learnerSituation(ctx, lastTs)}`,
+    await (async () => {
+      const h = await topHeadlines(6);
+      return h.length ? `TODAY'S NEWS HEADLINES (real, from today's news digest — use only when natural: as a conversation starter, for vocabulary practice, or if the learner asks "what's new"; don't force it, don't invent details beyond the headline):\n${h.map((x) => `- ${x}`).join("\n")}` : "";
+    })(),
     thread.length > recent.length ? `(Older messages of this chat are summarized in MEMORY.)` : "",
   ].filter(Boolean).join("\n\n");
 
@@ -521,7 +526,8 @@ async function handleInsights(req, res, user, action, url) {
   if (action === "translate-text") {
     const text = String(body.text ?? "").trim();
     if (text.length < 2 || text.length > 6000) return json(res, 400, { error: "Teks 2–6000 karakter" });
-    try { return json(res, 200, { text: await translateText(text) }); }
+    const to = LANGUAGES[body.to] ? LANGUAGES[body.to] : "Indonesian";
+    try { return json(res, 200, { text: await translateText(text, to) }); }
     catch (e) { console.error(e); return json(res, 502, { error: "Terjemahan gagal. Coba lagi." }); }
   }
   if (action === "chat") {
@@ -571,6 +577,63 @@ async function handleInsights(req, res, user, action, url) {
       if (j.day >= JOURNEYS[jid].days) j.done = true;
     });
     return json(res, 200, { idea: decorate([idea])[0], newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
+  }
+  return json(res, 404, { error: "Tidak ditemukan" });
+}
+
+// ---------- 🗞️ Berita & 💬 Ngobrol bebas ----------
+function validHistory(hist) {
+  return Array.isArray(hist) && hist.length > 0 && hist.length <= 30 && hist[0].role === "user" && hist.at(-1).role === "user" &&
+    hist.every((m, i) => ["user", "assistant"].includes(m?.role) && typeof m.content === "string" && m.content.trim() && m.content.length <= 3000 && (i === 0 || m.role !== hist[i - 1].role));
+}
+async function streamChat(res, system, hist, maxUses) {
+  res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  try {
+    const { sources } = await chatWithSearch(system, hist.map(({ role, content }) => ({ role, content })), (t) => send("delta", { text: t }), { maxUses, fast: FAST_MODE, isRetryable: isRetryableFast });
+    if (sources.length) send("sources", { sources });
+    send("done", {});
+  } catch (e) {
+    console.error(e);
+    send("error", { error: e instanceof Anthropic.AuthenticationError ? "API key Anthropic tidak valid / belum diset." : "Cheesy-Bot lagi bengong. Coba lagi." });
+  }
+  res.end();
+}
+const BUDDY = `You are Cheesy-Bot from Cheesy Pen Shells: a warm, witty, well-read discussion buddy for an Indonesian learner.
+- Talk in casual Indonesian (switch language only if asked). Short conversational turns (2-6 sentences), ask the learner's opinion, connect topics to their life, Indonesia, economics, their work or studies.
+- Use web search when you need up-to-date facts, and say where info comes from. Never invent news, numbers or quotes; if unsure, say so. Present different viewpoints fairly on political or controversial topics.`;
+
+async function handleNews(req, res, user, action, url) {
+  if (req.method === "GET" && !action) {
+    const cat = url.searchParams.get("cat") ?? "indonesia";
+    if (!NEWS_CATEGORIES[cat]) return json(res, 400, { error: "Kategori tidak dikenal" });
+    try {
+      return json(res, 200, { categories: NEWS_CATEGORIES, cat, today: jakartaDate(), ...(await getNews(cat)) });
+    } catch (e) {
+      console.error(e);
+      return json(res, 502, { error: e instanceof Anthropic.AuthenticationError ? "API key Anthropic tidak valid / belum diset." : `Berita belum bisa dimuat: ${e.message}` });
+    }
+  }
+  if (req.method !== "POST") return json(res, 405, { error: "Metode tidak didukung" });
+  const body = await readJson(req);
+  if (!validHistory(body.messages)) return json(res, 400, { error: "Format percakapan tidak valid" });
+  const learnLang = LANGUAGES[body.lang] ?? null;
+  if (action === "chat") {
+    const item = await getNewsItem(String(body.date ?? ""), String(body.cat ?? ""), Number(body.idx));
+    if (!item) return json(res, 404, { error: "Berita tidak ditemukan" });
+    const system = `${BUDDY}\nThe learner wants to discuss this news story (from today's digest). Explain context, background and impact simply; search for the latest updates if useful.${learnLang ? ` They're learning ${learnLang}: when helpful, teach 1-2 useful words about this story in that language.` : ""}\n\nNEWS: ${item.headline}\n${item.summary}\nWhy it matters: ${item.why}\nSource: ${item.source} — ${item.url} (${item.published})`;
+    return streamChat(res, system, body.messages, 2);
+  }
+  if (action === "discuss") {
+    const s = await insightState(user.id);
+    const profile = await getProfile(user.id);
+    const recent = (await getIdeas(Object.values(s.stashes).flat().filter((x) => !x.startsWith("m_")).slice(-8))).map((i) => i.title);
+    const heads = await topHeadlines(10);
+    const system = `${BUDDY}
+This is a free discussion. Be proactive: if the learner has no topic, offer 2-3 relevant ones (today's news, their interests, something they saved), and keep the discussion going with good follow-up questions.
+LEARNER: ${user.name}${profile?.about?.length ? `; about them: ${profile.about.slice(0, 8).join("; ")}` : ""}${s.follow.length ? `; follows topics: ${s.follow.join(", ")}` : ""}${recent.length ? `; recently saved ideas: ${recent.join(" | ")}` : ""}${learnLang ? `; learning ${learnLang}` : ""}.
+TODAY (${jakartaDate()}, WIB) HEADLINES:\n${heads.map((h) => `- ${h}`).join("\n") || "- (belum ada)"}`;
+    return streamChat(res, system, body.messages, 3);
   }
   return json(res, 404, { error: "Tidak ditemukan" });
 }
@@ -767,6 +830,11 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      const nm = url.pathname.match(/^\/api\/news(?:\/(chat|discuss))?$/);
+      if (nm) {
+        try { return await handleNews(req, res, user, nm[1], url); }
+        catch (e) { if (e instanceof AuthError) return json(res, e.status, { error: e.message }); throw e; }
+      }
       const wm = url.pathname.match(/^\/api\/insights\/([a-z-]+)$/);
       if (wm) {
         try { return await handleInsights(req, res, user, wm[1], url); }
@@ -833,6 +901,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Cheesy Pen Shells · Tutor Bahasa AI berjalan di http://localhost:${PORT}`);
   if (!process.env.ANTHROPIC_API_KEY) console.warn("⚠️  ANTHROPIC_API_KEY belum diset — salin .env.example ke .env lalu isi API key-mu.");
+  startDailyNews(); // berita terkini harian (bisa dimatikan dengan NEWS_AUTO=false)
   // proses sisa antrean ingatan dari sesi sebelumnya, per pengguna
   allUserIds().then((ids) => ids.forEach((id) => maybeUpdateMemory(id, { force: true }))).catch((e) => console.error(e));
 });

@@ -675,3 +675,10 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
 .eco-works .chip { font-size: 12px; padding: 4px 10px; text-align: left; }
 .eco-works .chip em { font-style: normal; font: 10px var(--mono); opacity: .7; margin-left: 4px; }
 .eco-card .ghost { padding: 6px; font-size: 13px; }
+
+/* Berita & Ngobrol */
+.news-card .idea-title { font-size: 1.05rem; }
+.ic-sources { font-size: .75rem; color: var(--redup); margin: -2px 0 8px 4px; }
+.ic-sources a { color: #6A1B9A; font-weight: 700; }
+.discuss-chat { margin-top: 10px; }
+.discuss-chat .ic-log { max-height: 55vh; }

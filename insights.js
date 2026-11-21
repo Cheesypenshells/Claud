@@ -325,15 +325,15 @@ ${passage.slice(0, 14000)}` : ""}`, cache_control: { type: "ephemeral" } },
 }
 
 /** Terjemahkan satu paragraf (mis. dari buku) ke Bahasa Indonesia; disimpan supaya tidak diulang. */
-export async function translateText(text) {
+export async function translateText(text, toLang = "Indonesian") {
   await load();
-  const key = crypto.createHash("sha1").update(text).digest("base64url");
+  const key = crypto.createHash("sha1").update(`${toLang}|${text}`).digest("base64url");
   db.paraTr ??= {};
   if (db.paraTr[key]) return db.paraTr[key];
   return once(`pt:${key}`, async () => {
     const res = await client.messages.create({
       model: MODEL, max_tokens: 3000, output_config: { effort: "low" },
-      system: "Translate the passage into natural, easy-to-read Indonesian. Keep the meaning faithful (it is an old public-domain text). Output only the translation.",
+      system: `Translate the passage into natural, easy-to-read ${toLang}${toLang === "Indonesian" ? "" : " suitable for an intermediate learner"}. Keep the meaning faithful. Output only the translation.`,
       messages: [{ role: "user", content: text }],
     });
     const out = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();

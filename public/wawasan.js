@@ -10,7 +10,7 @@ const CHAT_SUGGEST = ["Jelaskan lebih sederhana dong", "Kasih contoh di kehidupa
 
 export function createWawasan(ctx) {
   const { $, fetch, escapeHtml, toast, stopAll, rate } = ctx;
-  const st = { home: null, topic: "foryou", offset: 0, loading: false, view: "feed", observer: null, timers: new Map(), ideas: new Map() };
+  const st = { newsCat: "indonesia", discussHist: [], home: null, topic: "foryou", offset: 0, loading: false, view: "feed", observer: null, timers: new Map(), ideas: new Map() };
   const panel = () => $("insights-panel");
   const post = async (path, body) => {
     const res = await fetch(`/api/insights/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: today(), ...body }) });
@@ -39,7 +39,7 @@ export function createWawasan(ctx) {
         <form id="wp-search" class="wp-search"><input id="wp-q" placeholder="🔍 Cari ilmu apa saja… (mis. negosiasi, black hole, tiram)" maxlength="80"></form>
       </div>
       <div class="wp-row wp-actions">
-        ${[["feed", "📰 Feed"], ["economics", "📊 Ekonomi"], ["library", "📚 Perpustakaan"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
+        ${[["feed", "✨ Feed"], ["news", "🗞️ Berita"], ["discuss", "💬 Ngobrol"], ["economics", "📊 Ekonomi"], ["library", "📚 Perpustakaan"], ["books", "📕 Ringkas Buku"], ["stash", "🔖 Stash"], ["journeys", "🧭 Jalur Belajar"], ["write", "✍️ Tulis / Simpan"], ["review", "🔁 Ulas"], ["settings", "⚙️ Topik & Target"]]
           .map(([v, l]) => `<button type="button" class="wp-tab ${st.view === v ? "on" : ""}" data-view="${v}">${l}</button>`).join("")}
       </div>
       ${st.view === "feed" ? `<div class="wp-topics">
@@ -148,10 +148,9 @@ export function createWawasan(ctx) {
   }
 
   /** Kotak obrolan tanya-jawab (dipakai di kartu ide & pembaca buku). payload = { id } atau { book, part, paragraph } */
-  function makeChat(box, introHtml, payload, suggestions = CHAT_SUGGEST) {
+  function makeChat(box, introHtml, payload, suggestions = CHAT_SUGGEST, endpoint = "/api/insights/chat", hist = []) {
     box.dataset.ready = "1";
-    const hist = [];
-    box.innerHTML = `<div class="ic-log"><div class="ic-msg bot">${introHtml}</div></div>
+    box.innerHTML = `<div class="ic-log"><div class="ic-msg bot">${introHtml}</div>${hist.map((m) => `<div class="ic-msg ${m.role === "user" ? "me" : "bot"}">${escapeHtml(m.content)}</div>`).join("")}</div>
       <div class="ic-sugg">${suggestions.map((x) => `<button type="button">${escapeHtml(x)}</button>`).join("")}</div>
       <form class="ic-form"><input maxlength="2000" placeholder="Tulis pertanyaanmu…"><button>Kirim</button></form>`;
     const log = box.querySelector(".ic-log"), input = box.querySelector("input"), btn = box.querySelector(".ic-form button");
@@ -164,7 +163,7 @@ export function createWawasan(ctx) {
       const bubble = add("bot typing", "");
       let reply = "";
       try {
-        const res = await fetch("/api/insights/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, messages: hist, lang: ctx.lang() }) });
+        const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, messages: hist, lang: ctx.lang() }) });
         if (!res.ok) throw new Error((await res.json()).error ?? "Gagal");
         const reader = res.body.getReader(), dec = new TextDecoder();
         let buf = "";
@@ -178,6 +177,7 @@ export function createWawasan(ctx) {
             const ev = chunk.match(/^event: (.+)$/m)?.[1];
             const data = JSON.parse(chunk.match(/^data: (.+)$/m)?.[1] ?? "{}");
             if (ev === "delta") { reply += data.text; bubble.textContent = reply; bubble.scrollIntoView({ block: "nearest" }); }
+            else if (ev === "sources") bubble.insertAdjacentHTML("afterend", `<div class="ic-sources">🔗 Sumber: ${data.sources.map((x) => `<a href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml((x.title || x.url).slice(0, 60))}</a>`).join(" · ")}</div>`);
             else if (ev === "error") throw new Error(data.error);
           }
         }
@@ -288,6 +288,67 @@ export function createWawasan(ctx) {
       setHead("");
       st.offset = 0;
       return loadMore();
+    }
+    if (view === "news") {
+      setHead(`<h2 class="judul"><span>Berita Hari Ini</span></h2><p class="hint">⟳ Memuat berita…</p>`);
+      let d;
+      try { const r = await fetch(`/api/news?cat=${st.newsCat}`); d = await r.json(); if (!r.ok) throw new Error(d.error || "Gagal memuat berita"); }
+      catch (e) { setHead(`<h2 class="judul"><span>Berita Hari Ini</span></h2><p class="hint">⚠️ ${escapeHtml(e.message)}</p>`); return; }
+      const dateText = new Date(d.date + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      setHead(`<h2 class="judul"><span>Berita Hari Ini</span></h2>
+        <div class="chips">${Object.entries(d.categories).map(([k, c]) => `<button type="button" class="chip ${k === st.newsCat ? "on" : ""}" data-ncat="${k}">${c.emoji} ${escapeHtml(c.label)}</button>`).join("")}</div>
+        <p class="hint">🗓️ ${escapeHtml(dateText)} · diperbarui otomatis setiap hari lewat pencarian web, dengan sumber asli.${!d.fresh ? " ⟳ Edisi hari ini sedang disiapkan — sementara ini edisi terakhir." : ""}</p>
+        <div id="news-list"></div>`);
+      $("messages").querySelectorAll("[data-ncat]").forEach((b) => (b.onclick = () => { st.newsCat = b.dataset.ncat; openView("news"); }));
+      const list = $("news-list");
+      if (!d.items?.length) list.innerHTML = `<p class="hint">Belum ada berita untuk kategori ini. Coba lagi beberapa menit lagi.</p>`;
+      d.items.forEach((it, idx) => {
+        const el = document.createElement("article");
+        el.className = "idea-card news-card";
+        el.innerHTML = `<div class="idea-top"><span class="idea-topic">${d.categories[d.cat].emoji} ${escapeHtml(d.categories[d.cat].label)}</span>${it.published ? `<span class="idea-min">${escapeHtml(it.published)}</span>` : ""}</div>
+          <div class="idea-main"><h3 class="idea-title">${escapeHtml(it.headline)}</h3><p class="idea-body">${escapeHtml(it.summary)}</p>
+          <p class="idea-try">📌 <b>Kenapa penting:</b> ${escapeHtml(it.why)}</p></div>
+          <div class="idea-tr" hidden></div>
+          <div class="idea-src">📰 <a href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.source)} — baca berita aslinya</a></div>
+          <div class="idea-actions"><button type="button" data-n="chat">💬 Diskusikan</button><button type="button" data-n="say">🔊</button>
+            <button type="button" data-n="tr">🌐 ${escapeHtml((ctx.languages()[ctx.lang()] ?? "").split(" ")[0])}</button><button type="button" data-n="save">🔖 Simpan</button></div>
+          <div class="idea-chat" hidden></div>`;
+        el.querySelector('[data-n="chat"]').onclick = () => {
+          const box = el.querySelector(".idea-chat");
+          if (!box.hidden) { box.hidden = true; return; }
+          box.hidden = false;
+          if (!box.dataset.ready) makeChat(box, `Mau bahas berita ini? Aku bisa jelasin latar belakangnya, dampaknya buat kita, atau cari update terbarunya 🔍`,
+            { date: d.date, cat: d.cat, idx }, ["Jelaskan latar belakangnya", "Apa dampaknya buat orang biasa?", "Ada update terbaru?", "Menurutmu gimana?", "Ajari kosakatanya"], "/api/news/chat");
+        };
+        el.querySelector('[data-n="say"]').onclick = () => { stopAll(); speak(`💬 ${it.headline}. ${it.summary}`, "id", rate()); };
+        el.querySelector('[data-n="tr"]').onclick = async (e) => {
+          const tr = el.querySelector(".idea-tr"), main = el.querySelector(".idea-main");
+          if (!tr.hidden) { tr.hidden = true; main.hidden = false; return; }
+          const btn = e.currentTarget; btn.disabled = true;
+          try {
+            const r = await post("translate-text", { text: `${it.headline}\n\n${it.summary}`, to: ctx.lang() });
+            tr.innerHTML = `<p class="idea-body">${escapeHtml(r.text)}</p><p class="hint">Latihan membaca berita dalam bahasa yang kamu pelajari. Klik 🌐 lagi untuk kembali.</p>`;
+            tr.querySelector("p").onclick = () => speak(r.text, ctx.ttsLang(), rate());
+            tr.hidden = false; main.hidden = true;
+          } catch (err) { toast(`⚠️ ${err.message}`); } finally { btn.disabled = false; }
+        };
+        el.querySelector('[data-n="save"]').onclick = async () => {
+          try { await post("import", { text: `${it.headline}. ${it.summary} ${it.why}`, source: it.url, stash: "Berita", tidy: false }); toast('🔖 Disimpan ke stash "Berita"'); refreshHome(); }
+          catch (err) { toast(`⚠️ ${err.message}`); }
+        };
+        list.append(el);
+      });
+      return;
+    }
+    if (view === "discuss") {
+      setHead(`<h2 class="judul"><span>Ngobrol Bebas</span></h2>
+        <p>Diskusi apa saja dengan Cheesy-Bot — berita hari ini, ekonomi, ide yang kamu simpan, atau hal random. Ia bisa <b>mencari di web</b> untuk info terbaru dan menunjukkan sumbernya.</p>
+        <div class="idea-chat discuss-chat"></div>
+        ${st.discussHist.length ? `<button type="button" class="ghost" id="dc-reset">🧹 Mulai obrolan baru</button>` : ""}`);
+      makeChat($("messages").querySelector(".discuss-chat"), "Hai! Mau ngobrolin apa hari ini? Kalau bingung, pilih salah satu di bawah — atau tanya aku soal berita terbaru 🗞️",
+        {}, ["Ada berita penting apa hari ini?", "Bahas dampak berita ekonomi hari ini ke kita", "Ajak aku diskusi topik yang aku ikuti", "Kasih aku hal menarik yang jarang orang tahu", "Bantu aku pahami inflasi dengan contoh"], "/api/news/discuss", st.discussHist);
+      $("dc-reset")?.addEventListener("click", () => { st.discussHist = []; openView("discuss"); });
+      return;
     }
     if (view === "economics") {
       setHead(`<h2 class="judul"><span>Ekonomi</span></h2><p class="hint">⟳ Memuat…</p>`);
