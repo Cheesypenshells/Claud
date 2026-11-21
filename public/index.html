@@ -34,6 +34,14 @@
             <option value="advanced">Mahir</option>
           </select>
         </label>
+        <label>Gaya ngajar
+          <select id="style">
+            <option value="lembut">😇 Lembut — sabar &amp; menyemangati</option>
+            <option value="santai" selected>😏 Santai — suka ngeledek dikit</option>
+            <option value="pedas">🌶️ Pedas — roasting tanpa ampun</option>
+          </select>
+        </label>
+        <p class="hint">Kadar ledekan juga otomatis naik kalau kamu belajarnya asal-asalan 😉</p>
       </section>
 
       <section class="panel">
@@ -50,7 +58,16 @@
         <p class="hint" id="voice-hint"></p>
       </section>
 
-      <button id="reset" class="ghost">↺ Mulai ulang percakapan</button>
+      <section class="panel">
+        <h2 class="judul"><span>Ingatan</span></h2>
+        <div id="memory-summary" class="mem">Belum ada ingatan. Ayo ngobrol dulu!</div>
+        <div class="mem-actions">
+          <button id="memory-view" class="ghost" type="button">🧠 Lihat ingatan</button>
+          <button id="memory-wipe" class="ghost danger" type="button">Lupakan semua</button>
+        </div>
+      </section>
+
+      <button id="reset" class="ghost">↺ Hapus chat tutor ini</button>
       <p class="tagar">#oysterbakarfavoritmu</p>
     </aside>
 
@@ -68,6 +85,13 @@
       </form>
     </main>
   </div>
+  <dialog id="memory-dialog">
+    <div class="dlg-head">
+      <h2 class="judul"><span>Ingatan Cheesy-Bot</span></h2>
+      <button type="button" class="robot-x dlg-x" id="memory-close" title="Tutup">✕</button>
+    </div>
+    <div id="memory-body"></div>
+  </dialog>
   <script src="app.js" type="module"></script>
 </body>
 </html>

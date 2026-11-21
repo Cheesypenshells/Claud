@@ -204,3 +204,24 @@ button.ghost:hover { border-color: var(--navy); color: var(--navy); }
   .msg { max-width: 92%; }
 }
 @media (prefers-reduced-motion: reduce) { .robot-overlay *, .sys-chip i { animation-duration: 0s !important; } }
+
+/* ---------- Ingatan ---------- */
+.mem { font-size: .88rem; color: var(--teks); display: flex; flex-direction: column; gap: 6px; }
+.mem .row { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: .8rem; color: var(--redup); }
+.mem .row b { color: var(--navy); font-weight: 400; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 800 .78rem var(--isi); color: #fff; }
+.badge.serius { background: var(--hijau); } .badge.santai { background: var(--navy); }
+.badge.tidak_serius { background: var(--merah); } .badge.belum_jelas { background: var(--abu); }
+.mem-actions { display: flex; gap: 6px; }
+.mem-actions button { flex: 1; padding: 8px; font-size: 13px; }
+button.ghost.danger:hover { border-color: var(--merah); color: var(--merah); }
+dialog#memory-dialog { width: min(640px, calc(100vw - 32px)); max-height: 85vh; border: 3px solid var(--navy); border-radius: 22px; padding: 18px 20px 20px;
+  background: var(--panel); color: var(--teks); box-shadow: 0 8px 0 var(--navy); }
+dialog#memory-dialog::backdrop { background: rgba(22, 34, 106, .7); }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.dlg-x { background: var(--garis); color: var(--teks); }
+#memory-body h3 { font-size: 18px; margin: 14px 0 4px; }
+#memory-body ul { margin: 0; padding-left: 20px; }
+#memory-body p { margin: 4px 0; }
+#memory-body .muted { color: var(--redup); font-size: .85rem; }
+@media (prefers-color-scheme: dark) { .mem .row b { color: var(--kuning); } dialog#memory-dialog { border-color: var(--kuning); box-shadow: 0 8px 0 var(--kuning-tua); } }
