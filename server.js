@@ -14,6 +14,7 @@ import { outfitFor, localDate } from "./outfit.js";
 import { ensureLife, lifeToday, lifeWithin } from "./life.js";
 import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
+import { ENGLISH_VARIETIES } from "./accents.js";
 import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -85,6 +86,7 @@ function validate(b) {
   if (!LEVELS[b.level] && b.level !== "auto") return "Level tidak dikenal";
   if (!STYLES[b.style]) return "Gaya ngajar tidak dikenal";
   if (b.voice !== undefined && typeof b.voice !== "boolean") return "Parameter voice tidak valid";
+  if (b.variety !== undefined && !ENGLISH_VARIETIES[b.variety]) return "Varian bahasa Inggris tidak dikenal";
   if (b.proactive !== undefined && typeof b.proactive !== "boolean") return "Parameter proactive tidak valid";
   if (!b.proactive && (typeof b.message !== "string" || !b.message.trim() || b.message.length > MAX_CHARS)) return "Pesan kosong atau terlalu panjang";
   return null;
@@ -139,7 +141,7 @@ async function handleChat(req, res, user) {
     fallbacks: "default",
     cache_control: { type: "ephemeral" },
     system: [
-      { type: "text", text: buildSystemPrompt(body.tutor, body.language, levelText, body.style) },
+      { type: "text", text: buildSystemPrompt(body.tutor, body.language, levelText, body.style, body.variety) },
       { type: "text", text: context },
       ...(body.voice ? [{ type: "text", text: VOICE_PROMPT }] : []),
     ],
@@ -367,6 +369,7 @@ async function handleIelts(req, res, user, action) {
     if (action === "start") {
       const mode = body.mode === "mock" ? "mock" : "practice";
       const s = newSession(mode, [1, 2, 3].includes(Number(body.startPart)) && mode === "practice" ? Number(body.startPart) : 1);
+      s.variety = ENGLISH_VARIETIES[body.variety] ? body.variety : "gb";
       await saveIelts(user.id, s);
       return json(res, 200, { current: s });
     }
@@ -490,6 +493,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, {
           tutors: Object.fromEntries(Object.entries(TUTORS).map(([id, t]) => [id, { name: t.name, greeting: t.greeting }])),
           languages: LANGUAGES,
+          varieties: Object.fromEntries(Object.entries(ENGLISH_VARIETIES).map(([k, v]) => [k, { label: v.label, flag: v.flag, tts: v.tts, stt: v.stt }])),
         });
       }
 

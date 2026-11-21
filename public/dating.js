@@ -387,7 +387,7 @@ export function createDating(ctx) {
   async function say(c, text) {
     stopAll();
     setStatus(`🔊 ${c.name.split(" ")[0]} berbicara…`);
-    await speak(text, c.lang, ctx.rate(), null, c.gender === "F" ? 1.15 : 0.85);
+    await speak(text, c.voice ?? c.lang, ctx.rate(), null, c.gender === "F" ? 1.15 : 0.85);
     setStatus("");
   }
 
@@ -404,7 +404,7 @@ export function createDating(ctx) {
     bubble.classList.add("typing");
     scrollDown();
     setStatus(`💭 ${c.name.split(" ")[0]} lagi ngetik…`);
-    const queue = voiceOn() ? createSpeechQueue(c.lang, ctx.rate(), null, c.gender === "F" ? 1.15 : 0.85) : null;
+    const queue = voiceOn() ? createSpeechQueue(c.voice ?? c.lang, ctx.rate(), null, c.gender === "F" ? 1.15 : 0.85) : null;
     let streamed = "";
     let result = null;
     try {

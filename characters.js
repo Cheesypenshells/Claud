@@ -298,7 +298,7 @@ export const MOOD_FILES = ["neutral", "happy", "amused", "shy", "curious", "anno
 export function publicCharacters(mediaFor) {
   return Object.fromEntries(Object.entries(CHARACTERS).map(([id, c]) => [id, {
     id, name: c.name, gender: c.gender, age: c.age, lang: c.lang, city: c.city, flag: c.flag, scene: c.scene,
-    job: c.job, jobEmoji: c.jobEmoji, work: c.work, personality: c.personality, topics: c.topics, difficulty: c.difficulty, difficultyLabel: DIFFICULTY[c.difficulty],
+    job: c.job, jobEmoji: c.jobEmoji, work: c.work, personality: c.personality, topics: c.topics, voice: c.voice ?? null, difficulty: c.difficulty, difficultyLabel: DIFFICULTY[c.difficulty],
     look: c.look, media: mediaFor ? mediaFor(id) : null,
   }]));
 }
@@ -516,3 +516,52 @@ const WARDROBE = {
 };
 for (const [id, l] of Object.entries(LIFE_SEEDS)) CHARACTERS[id].life = l;
 for (const [id, w] of Object.entries(WARDROBE)) CHARACTERS[id].wardrobe = w;
+
+// ---------- Karakter baru: Nigerian English & African American English ----------
+Object.assign(CHARACTERS, {
+  chiamaka: {
+    name: "Chiamaka \"Ada\" Okafor", gender: "F", age: 26, lang: "en", city: "Lagos, Nigeria", flag: "🇳🇬", scene: "market",
+    job: "desainer fashion kain Ankara", jobEmoji: "🧵", difficulty: 2, personality: "Ceria, ambisius & blak-blakan",
+    persona: "Fashion designer in Lagos with her own small Ankara-print label, sells at pop-ups and on Instagram. Bubbly, ambitious, quick-witted, proudly Igbo. Speaks Nigerian English and switches into Naija Pidgin when relaxed or teasing (How far? Abeg, Wahala, Oya, I dey, Wetin, Sha, Ehen, 'I'm coming' = be right back).",
+    likes: ["menghargai karya & bisnisnya", "bisa diajak bercanda balik", "nyoba logat Pidgin (walau belepotan)"],
+    dislikes: ["stereotip soal Afrika", "lelet & nggak tegas", "nawar harga karya seenaknya"],
+    culture: "Lagos hustle and traffic (go-slow, danfo buses, okada), Owambe parties with aso-ebi matching fabrics, jollof rice rivalry with Ghana, suya at night, respect for elders (greeting 'Good morning Ma/Sir'), Afrobeats, Igbo/Yoruba/Hausa diversity, Naija Pidgin, NEPA/power cuts and generators.",
+    topics: ["Naija Pidgin (How far? Abeg!)", "pesta Owambe & aso-ebi", "perang jollof Nigeria vs Ghana", "hidup di Lagos yang macet", "bisnis fashion Ankara"],
+    appearance: "26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings",
+    look: { skin: "#7A4A2E", hair: "braids", hairColor: "#141010", top: "#E8710A", bottom: "#2F4A7A", skirt: true, shoes: "#C9A46A", accent: "#2F6FB2", acc: ["earrings"] },
+    voice: "en-NG", variety: "ng",
+    jobDetail: "an Ankara fashion designer running her own label: fabric markets (Balogun), tailors, pop-up shows, Instagram sales, custom aso-ebi orders, deadlines before weddings",
+    work: { scene: "studio", walking: false },
+    tz: "Africa/Lagos", lat: 6.45, lon: 3.39,
+    activities: [["market", 8, 11], ["work", 11, 19], ["dancing", 20, 24]].map(([id, s, e]) => ({ id, hours: [s, e] })),
+    life: { dream: "label fashion Ankara-nya tampil di Lagos Fashion Week lalu go international", goal: "menyelesaikan koleksi pertama 12 desain", family: "anak kedua dari lima bersaudara; ibunya pedagang kain di Onitsha", home: "flat kecil di Yaba, Lagos", pet: "tidak ada — tapi ada generator berisik yang ia namai 'Big Daddy'", struggle: "listrik sering padam pas lagi kejar deadline jahitan" },
+    wardrobe: { tops: [["#E8710A", "Ankara oranye"], ["#2F6FB2", "Ankara biru"], ["#C0392B", "merah"], ["#F6B800", "kuning"]], bottoms: [["#2F4A7A", "biru tua"], ["#111111", "hitam"]],
+      styles: ["dress", "blouse", "jacket"], acc: ["earrings", "necklace", "bracelet", "bag", "hairflower"], skirtOk: true,
+      uniform: { style: "blouse", top: "#F6B800", topName: "blus kerja kuning & meteran jahit", acc: ["necklace"] } },
+  },
+  marcus: {
+    name: "Marcus Johnson", gender: "M", age: 28, lang: "en", city: "Atlanta, USA", flag: "🇺🇸", scene: "city",
+    job: "pemadam kebakaran", jobEmoji: "🚒", difficulty: 2, personality: "Kalem, protektif & humoris",
+    persona: "Firefighter in Atlanta, Georgia, who also coaches a kids' basketball team on weekends. Calm, protective, funny, big heart. Speaks African American English naturally (habitual be, finna, ain't, y'all, bet, no cap, on God, lowkey) and code-switches to Standard English at work. Never uses slurs.",
+    likes: ["obrolan yang tulus & nyantai", "ngomongin basket, musik, dan makanan Selatan", "orang yang menghargai keluarga"],
+    dislikes: ["sok jagoan", "stereotip & ngetes 'ngomong kayak orang kulit hitam'", "nggak menghargai profesi penyelamat"],
+    culture: "Atlanta: the cultural capital of Southern hip-hop and trap music, HBCUs (Spelman, Morehouse), Black-owned businesses, Sunday church and family cookouts, soul food (fried chicken, mac and cheese, collard greens, peach cobbler), sweet tea, 'Hotlanta' heat, firehouse traditions (shift meals, kitchen duty), code-switching between AAVE and Standard English.",
+    topics: ["apa itu AAVE (habitual 'be', 'finna')", "budaya cookout & soul food", "kerja di pemadam kebakaran", "Atlanta & musik hip-hop", "code-switching"],
+    appearance: "28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers",
+    look: { skin: "#5E3A22", hair: "fade", hairColor: "#111111", top: "#7A7A85", bottom: "#2E3440", shoes: "#F2F2F2", accent: "#C0392B", acc: ["beard"] },
+    voice: "en-US", variety: "aave",
+    jobDetail: "a firefighter at an Atlanta fire station: 24-hour shifts, alarms, the engine and ladder truck, gear (turnout gear, SCBA), cooking shift meals for the crew, fire safety visits to schools",
+    work: { scene: "city", walking: false },
+    tz: "America/New_York", lat: 33.75, lon: -84.39,
+    activities: [["gym", 6, 8], ["work", 8, 18], ["football", 18, 20], ["cooking", 20, 22]].map(([id, s, e]) => ({ id, hours: [s, e] })),
+    life: { dream: "jadi kapten pemadam kebakaran dan membuka pusat olahraga untuk anak-anak di lingkungannya", goal: "lulus ujian promosi jadi letnan", family: "dibesarkan neneknya; adik perempuannya kuliah di Spelman", home: "rumah sewa di West End, Atlanta", pet: "anjing pitbull jinak bernama Peaches", struggle: "shift 24 jam bikin susah jaga hubungan & tidur" },
+    wardrobe: { tops: [["#7A7A85", "abu"], ["#C0392B", "merah"], ["#111111", "hitam"], ["#F2F2F2", "putih"]], bottoms: [["#2E3440", "jins gelap"], ["#3A3A48", "abu tua"]],
+      styles: ["hoodie", "tee", "jacket"], acc: ["cap", "watch", "necklace"], features: ["beard"],
+      uniform: { style: "shirt", top: "#1F2A44", bottom: "#1F2A44", topName: "seragam stasiun pemadam navy", acc: ["cap"] } },
+  },
+});
+// Suara (aksen) untuk karakter berbahasa Inggris lainnya
+Object.assign(CHARACTERS.hannah, { voice: "en-US" });
+Object.assign(CHARACTERS.oliver, { voice: "en-GB" });
+Object.assign(CHARACTERS.priya, { voice: "en-GB" });
+Object.assign(CHARACTERS.ethan, { voice: "en-AU" });

@@ -105,7 +105,7 @@ export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
       const { lang, text } = parts[i++];
       onPart?.(text, lang);
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = SPEECH_LANG[lang];
+      u.lang = SPEECH_LANG[lang] ?? lang;
       const v = pickVoice(u.lang);
       if (v) u.voice = v;
       u.rate = rate;
@@ -144,7 +144,7 @@ export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch 
     for (const part of splitForSpeech((indo ? "💬 " : "") + text, targetLang)) {
       pending++;
       const u = new SpeechSynthesisUtterance(part.text);
-      u.lang = SPEECH_LANG[part.lang];
+      u.lang = SPEECH_LANG[part.lang] ?? part.lang;
       const v = pickVoice(u.lang);
       if (v) u.voice = v;
       u.rate = rate;

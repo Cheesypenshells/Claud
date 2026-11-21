@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { ENGLISH_VARIETIES } from "./accents.js";
 
 const client = new Anthropic();
 const MODEL = "claude-opus-5-5";
@@ -124,6 +125,7 @@ export async function examinerTurn(s, instruction, onDelta, { fast = false, isRe
     model: MODEL, max_tokens: 800, output_config: { effort: "low" },
     system: [
       { type: "text", text: EXAMINER, cache_control: { type: "ephemeral" } },
+      ...(s.variety && s.variety !== "gb" ? [{ type: "text", text: `YOUR ACCENT/VARIETY: IELTS examiners come from many English-speaking countries — you are from the ${ENGLISH_VARIETIES[s.variety].label} background. Speak clear, educated English of that variety (its natural expressions and rhythm, lightly), not British. Keep slang/dialect minimal because this is a test.` }] : []),
       { type: "text", text: `INSTRUCTION FOR YOUR NEXT TURN: ${instruction}${s.cue && s.part === 2 && s.p2Stage === "card" ? `\nThe cue card topic is: ${s.cue.topic}` : ""}` },
     ],
     messages,

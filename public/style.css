@@ -547,3 +547,4 @@ body.ielts-on #robot-open, body.ielts-on #mic-lang { display: none; }
 .ielts-report .ev { font-size: .88rem; color: var(--redup); margin: 0; }
 .ielts-report .quote { background: var(--kuning-muda); border-left: 5px solid var(--kuning); border-radius: 10px; padding: 10px 12px; margin: 12px 0; font-weight: 700; }
 .ielts-report .muted { color: var(--redup); font-size: .82rem; }
+label[hidden] { display: none !important; }

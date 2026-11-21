@@ -1,4 +1,5 @@
 // Kepribadian Cheesy-Bot + lima mode tutor.
+import { varietyPrompt } from "./accents.js";
 
 export const LANGUAGES = {
   en: "English", ja: "Japanese (日本語)", ko: "Korean (한국어)", zh: "Mandarin Chinese (中文)",
@@ -107,6 +108,7 @@ Your English must sound like a real native speaker chatting, not a textbook:
 - Stay level-appropriate: for beginners use simple natural English (short sentences, common words) — natural doesn't mean complicated.
 - When you correct them, also show "how a native would actually say it", not just the grammatically correct version.`;
 
-export function buildSystemPrompt(tutorId, langId, levelText, styleId) {
-  return `${PERSONA(LANGUAGES[langId], levelText, STYLES[styleId])}\n\n${langId === "en" ? ENGLISH_STYLE + "\n\n" : ""}${TUTORS[tutorId].prompt}`;
+export function buildSystemPrompt(tutorId, langId, levelText, styleId, variety = "us") {
+  const english = langId === "en" ? `${ENGLISH_STYLE}\n\n${varietyPrompt(variety)}\n\n` : "";
+  return `${PERSONA(LANGUAGES[langId], levelText, STYLES[styleId])}\n\n${english}${TUTORS[tutorId].prompt}`;
 }

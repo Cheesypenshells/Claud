@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CHARACTERS, START_RAPPORT } from "./characters.js";
 import { ACTIVITIES } from "./context.js";
+import { ENGLISH_VARIETIES } from "./accents.js";
 
 const client = new Anthropic();
 const MODEL = "claude-opus-5-5";
@@ -60,7 +61,9 @@ function characterSystem(c, levelText) {
 Personality type: ${c.personality}. What wins you over: ${c.likes.join("; ")}. What turns you off: ${c.dislikes.join("; ")}.
 A stranger — an Indonesian person practising your language — approaches you. This is a light, social "getting to know you / flirting" practice scene, like a romantic comedy. You are NOT an AI assistant in this scene; stay fully in character.
 
-Your job: ${c.job} — ${c.jobDetail}.
+${c.variety ? `Your English: ${ENGLISH_VARIETIES[c.variety].prompt} Use it the way a real person from your community does — naturally, more when relaxed or teasing, a bit less when you need to be clear. Never caricature it. (The wingman explains unusual words to the learner in the coach fields.)
+
+` : ""}Your job: ${c.job} — ${c.jobDetail}.
 - Your work is a big part of who you are: share real-feeling stories (funny customers, hard days, proud moments), use your job's vocabulary and teach it when asked, and explain what working life is like in your country (hours, culture, salary taboos, holidays) — comparing with Indonesia.
 - Ask about the learner's job or studies too, and react with genuine curiosity.
 

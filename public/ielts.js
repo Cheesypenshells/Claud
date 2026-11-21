@@ -8,6 +8,8 @@ const bandClass = (b) => (b >= 7 ? "hi" : b >= 5.5 ? "mid" : "lo");
 export function createIelts(ctx) {
   const { $, fetch, escapeHtml, scrollDown, toast, stopAll, setStatus, setControlsDisabled, rate, refreshSkills, refreshMemory } = ctx;
   const st = { session: null, history: [], busy: false, recording: false, timer: null, voice: true, autoRecord: true };
+  const tts = () => ctx.varieties()[st.session?.variety ?? "gb"]?.tts ?? "en-GB";
+  const stt = () => ctx.varieties()[st.session?.variety ?? "gb"]?.stt ?? "en-GB";
 
   const panel = () => $("ielts-panel");
 
@@ -26,7 +28,7 @@ export function createIelts(ctx) {
     el.querySelector(".body").textContent = text;
     const b = document.createElement("button");
     b.className = "speak-btn"; b.title = "Dengarkan"; b.textContent = "🔊";
-    b.onclick = () => speak(el.querySelector(".body").textContent, "en-GB", rate());
+    b.onclick = () => speak(el.querySelector(".body").textContent, tts(), rate());
     el.append(b);
     $("messages").append(el);
     return el;
@@ -43,7 +45,7 @@ export function createIelts(ctx) {
     }
     p.innerHTML = `
       <div class="ip-row">
-        <b>🎓 IELTS Speaking</b><span class="ip-mode">${s.mode === "mock" ? "🧪 Simulasi ujian" : "🏋️ Latihan + umpan balik"}</span>
+        <b>🎓 IELTS Speaking</b><span class="ip-mode">${s.mode === "mock" ? "🧪 Simulasi ujian" : "🏋️ Latihan + umpan balik"} · penguji ${ctx.varieties()[s.variety ?? "gb"]?.flag ?? "🇬🇧"}</span>
         <label class="ip-toggle"><input type="checkbox" id="ip-voice" ${st.voice ? "checked" : ""}> 🔈 Suara penguji</label>
         <label class="ip-toggle"><input type="checkbox" id="ip-auto" ${st.autoRecord ? "checked" : ""}> 🎙️ Rekam otomatis</label>
         <button type="button" class="mini danger" id="ip-end">⏹ Akhiri & rapor</button>
@@ -114,7 +116,7 @@ export function createIelts(ctx) {
     const t0 = performance.now();
     setStatus("🎙️ Merekam jawabanmu…");
     try {
-      const text = await listen("en", (t) => { $("input").value = (before ? before + " " : "") + t; }, { continuous: true });
+      const text = await listen(stt(), (t) => { $("input").value = (before ? before + " " : "") + t; }, { continuous: true });
       const seconds = (performance.now() - t0) / 1000;
       const full = $("input").value.trim();
       if (!text && !before) { setStatus("Tidak ada suara terdengar"); return; }
@@ -145,7 +147,7 @@ export function createIelts(ctx) {
     const bubble = examinerBubble();
     bubble.classList.add("typing");
     setStatus("Sarah sedang bicara…");
-    const queue = st.voice ? createSpeechQueue("en-GB", rate()) : null;
+    const queue = st.voice ? createSpeechQueue(tts(), rate()) : null;
     let said = "", done = null, report = null, cue = null;
     try {
       const res = await fetch("/api/ielts/turn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer: text ?? undefined, seconds }) });
@@ -214,7 +216,7 @@ export function createIelts(ctx) {
       <details open><summary>✨ Jawabanmu versi Band 8</summary><p class="better">${escapeHtml(f.better_answer)}</p><button type="button" class="mini" data-say>🔊 Dengarkan</button></details>
       ${f.useful_phrases?.length ? `<div class="phrases">${f.useful_phrases.map((p) => `<span><b>${escapeHtml(p.phrase)}</b> — ${escapeHtml(p.meaning_id)}</span>`).join("")}</div>` : ""}
       <p class="tip">💡 ${escapeHtml(f.tip_id)}</p>`, "msg ielts-fb");
-    el.querySelector("[data-say]").onclick = () => speak(f.better_answer, "en-GB", rate());
+    el.querySelector("[data-say]").onclick = () => speak(f.better_answer, tts(), rate());
   }
 
   function renderReport(r) {
@@ -273,16 +275,19 @@ export function createIelts(ctx) {
         <button type="button" class="mode-card" data-mode="practice"><b>🏋️ Latihan</b><span>Umpan balik setelah tiap jawaban: band per kriteria, koreksi, jawaban versi Band 8, frasa berguna.</span></button>
         <button type="button" class="mode-card" data-mode="mock"><b>🧪 Simulasi Ujian</b><span>Full test ±12 menit tanpa interupsi seperti ujian asli, rapor band lengkap di akhir.</span></button>
       </div>
+      <label class="startpart">Aksen penguji:
+        <select id="ip-accent">${Object.entries(ctx.varieties()).filter(([k]) => ["gb", "us", "au", "ie", "sc", "in", "ng", "za", "sg"].includes(k))
+          .map(([k, v]) => `<option value="${k}" ${k === "gb" ? "selected" : ""}>${v.flag} ${escapeHtml(v.label)}</option>`).join("")}</select></label>
       <label class="startpart">Latihan mulai dari:
         <select id="ip-startpart"><option value="1">Part 1</option><option value="2">Part 2 (kartu topik)</option><option value="3">Part 3 (diskusi)</option></select></label>
       ${hist.length ? `<h3>📈 Riwayat band</h3><div class="hist">${hist.map((h) => `<span>${new Date(h.at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} · ${h.mode === "mock" ? "🧪" : "🏋️"} <b>${h.overall.toFixed(1)}</b></span>`).join("")}</div>` : ""}
       <p class="hint">Skor adalah perkiraan latihan berdasarkan deskriptor band IELTS publik (Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy). Pengucapan tidak bisa dinilai dari teks.</p>`, "msg scene-card ielts-start");
-    el.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => start(b.dataset.mode, Number($("ip-startpart").value))));
+    el.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => start(b.dataset.mode, Number($("ip-startpart").value), $("ip-accent").value)));
   }
 
-  async function start(mode, startPart) {
+  async function start(mode, startPart, variety) {
     if (st.busy) return;
-    const res = await fetch("/api/ielts/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, startPart }) });
+    const res = await fetch("/api/ielts/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, startPart, variety }) });
     const data = await res.json();
     if (!res.ok) return toast(`⚠️ ${data.error}`);
     st.session = data.current;

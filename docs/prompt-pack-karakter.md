@@ -404,3 +404,35 @@ Folder: `public/characters/mateo/`
 - **annoyed.jpg** — `29-year-old Mexican man, black hair styled up, short beard, warm brown skin, blue denim shirt with paint stains, black jeans, in a busy colourful street market in Mexico City, unimpressed annoyed expression, slight frown, arms crossed`
 - **uncomfortable.jpg** — `29-year-old Mexican man, black hair styled up, short beard, warm brown skin, blue denim shirt with paint stains, black jeans, in a busy colourful street market in Mexico City, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
 - **leaving.jpg** — `29-year-old Mexican man, black hair styled up, short beard, warm brown skin, blue denim shirt with paint stains, black jeans, in a busy colourful street market in Mexico City, turning away and walking off, looking back over the shoulder with a disapproving look`
+
+---
+
+## 🇳🇬 Chiamaka "Ada" Okafor — `chiamaka`
+26 th · desainer fashion kain Ankara · Lagos, Nigeria · Ceria, ambisius & blak-blakan
+
+Folder: `public/characters/chiamaka/`
+
+- **neutral.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `26-year-old Nigerian woman, long black box braids, deep brown skin, radiant smile, colourful orange-and-blue Ankara print dress, gold hoop earrings, in a busy colourful street market in Lagos, turning away and walking off, looking back over the shoulder with a disapproving look`
+
+---
+
+## 🇺🇸 Marcus Johnson — `marcus`
+28 th · pemadam kebakaran · Atlanta, USA · Kalem, protektif & humoris
+
+Folder: `public/characters/marcus/`
+
+- **neutral.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `28-year-old African American man, short black fade haircut, neat beard, deep brown skin, warm confident smile, grey hoodie, dark jeans, white sneakers, on a lively city street in Atlanta, turning away and walking off, looking back over the shoulder with a disapproving look`

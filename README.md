@@ -33,6 +33,21 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - **Aktif bertanya & menyapa duluan:** saat kamu membuka chat untuk pertama kali atau setelah > 3 jam, Cheesy-Bot menyapa duluan
   sesuai situasi (jam, kondisi, cuaca, ingatan) dan bertanya.
 
+## 🌍 Varian & Aksen Bahasa Inggris
+
+Saat bahasa yang dipelajari **English**, pilih **Varian / aksen Inggris** di Setelan:
+🇺🇸 Amerika · 🇬🇧 British (London/RP) · 🇦🇺 Australia · 🇮🇪 Irlandia · 🏴 Skotlandia · 🇮🇳 India · 🇳🇬 Nigeria (+ Pidgin) ·
+🇺🇸 African American English (AAVE) · 🇸🇬 Singapura (Singlish) · 🇿🇦 Afrika Selatan · 🇯🇲 Jamaika (+ Patois).
+- Cheesy-Bot bicara dengan kosakata, slang, dan tata bahasa khas varian itu secara autentik (bukan karikatur), menjelaskan
+  ciri khasnya dalam Bahasa Indonesia, dan menunjukkan padanan Inggris standarnya (mis. Pidgin "How far?" = how are you;
+  AAVE "she be working" = she usually works).
+- **Suara AI & mikrofon** memakai kode aksen negara itu (en-GB, en-AU, en-IN, en-NG, en-ZA, …) — tersedia/tidaknya suara
+  tergantung perangkat & browser; kalau tidak ada, dipakai suara Inggris lain.
+- **IELTS:** pilih **aksen penguji** (British, Amerika, Australia, Irlandia, Skotlandia, India, Nigeria, Afrika Selatan, Singapura).
+- **Pendekatan:** karakter berbahasa Inggris bicara dengan aksennya masing-masing, plus dua karakter baru —
+  **Chiamaka "Ada" Okafor** (desainer fashion Ankara, Lagos 🇳🇬, Nigerian English + Pidgin) dan
+  **Marcus Johnson** (pemadam kebakaran, Atlanta 🇺🇸, AAVE). Data varian: `accents.js`.
+
 ## 🎓 IELTS Speaking — Penguji AI yang Natural
 
 Latihan bahasa Inggris dengan penguji AI **Sarah** (fiktif) yang bicara British English natural — bereaksi seperti manusia
@@ -53,12 +68,12 @@ Latihan bahasa Inggris dengan penguji AI **Sarah** (fiktif) yang bicara British 
 
 Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert**: kamu kenalan dengan karakter yang sedang jalan-jalan di kotanya.
 
-- **24 karakter orisinal (fiksi, semua dewasa 25–29 th)** dari 8 bahasa & 17 kota — masing-masing dengan **tipe sifat berbeda**
+- **26 karakter orisinal (fiksi, semua dewasa 25–29 th)** dari 8 bahasa & 17 kota — masing-masing dengan **tipe sifat berbeda**
   (mis. pemalu tapi jahil, blak-blakan, anggun & tidak langsung, ambisius & sibuk, romantis & dramatis, intelektual & sarkas),
   pekerjaan, kota, latar adegan, tingkat kesulitan, serta **hal yang disukai & tidak disukai** — jadi cara pendekatannya berbeda-beda.
   Contoh: Wang Yutong (pemandu Museum Istana, **Beijing**), Aoi (guru upacara teh, Kyoto), Ji-ho (Busan), Priya (dokter, London),
   Valentina (penari tango, Buenos Aires), Anna (Wina), Karim (koki, Beirut). Data karakter: `characters.js`.
-- **24 pekerjaan yang semuanya berbeda:** penyanyi & penjaga toko piringan hitam, pustakawan, dokter muda NHS, lifeguard, ilustrator,
+- **26 pekerjaan yang semuanya berbeda:** penyanyi & penjaga toko piringan hitam, pustakawan, dokter muda NHS, lifeguard, ilustrator,
   guru upacara teh, koki ramen, instruktur dance K-pop, dokter hewan, pedagang pasar ikan, pemandu Kota Terlarang, pengacara,
   game developer, arsitek, pilot, penyiar radio & DJ, pastry chef, instruktur selancar layar, kurir sepeda, pemandu gunung,
   pelayan kafe tradisional Wina, ahli biologi laut, psikolog, pelukis mural. Mereka bercerita soal pekerjaannya, mengajarkan

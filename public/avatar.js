@@ -14,6 +14,8 @@ function hairBack(style, c) {
     case "ponytail": return `<path d="M124 34 Q166 52 152 124 Q142 84 118 46 Z" fill="${c}"/>`;
     case "bun": return `<circle cx="100" cy="20" r="17" fill="${c}"/>`;
     case "hijab": return `<path d="M58 72 Q56 14 100 14 Q144 14 142 72 L150 136 Q100 158 50 136 Z" fill="${c}"/>`;
+    case "braids": return `<path d="M64 60 Q60 16 100 16 Q140 16 136 60 L144 176 Q100 186 56 176 Z" fill="${c}"/>` +
+      Array.from({ length: 9 }, (_, i) => `<path d="M${62 + i * 9.5} 70 L${58 + i * 10.5} 176" stroke="#3A2A20" stroke-width="2" opacity=".55"/>`).join("");
     default: return "";
   }
 }
@@ -29,6 +31,9 @@ function hairFront(style, c) {
     case "wavyshort": return `<path d="M68 64 Q62 24 100 24 Q138 24 132 64 Q128 48 120 46 Q112 54 104 46 Q96 54 88 46 Q78 52 68 64 Z" fill="${c}"/>`;
     case "quiff": return `<path d="M68 64 Q64 30 100 28 Q136 30 132 64 Q130 48 118 44 Q100 50 82 44 Q70 48 68 64 Z" fill="${c}"/><path d="M76 42 Q96 4 134 32 Q116 26 98 36 Z" fill="${c}"/>`;
     case "curtain": return `<path d="M66 68 Q60 24 100 24 Q140 24 134 68 Q128 44 104 40 L100 54 L96 40 Q72 44 66 68 Z" fill="${c}"/>`;
+    case "braids": return `<path d="M66 60 Q68 24 100 24 Q132 24 134 60 Q120 40 100 40 Q80 40 66 60 Z" fill="${c}"/>` +
+      [76, 88, 100, 112, 124].map((x) => `<path d="M${x} 28 L${x} 46" stroke="#3A2A20" stroke-width="2" opacity=".5"/>`).join("");
+    case "fade": return `<path d="M68 58 Q66 30 100 30 Q134 30 132 58 Q128 44 100 42 Q72 44 68 58 Z" fill="${c}"/><path d="M68 58 Q67 66 68 72 M132 58 Q133 66 132 72" stroke="${c}" stroke-width="4" opacity=".55"/>`;
     case "hijab": return `<path d="M70 54 Q100 30 130 54 Q100 42 70 54 Z" fill="${c}" opacity=".9"/><path d="M70 96 Q74 116 100 120 Q126 116 130 96 L134 112 Q100 134 66 112 Z" fill="${c}"/>`;
     default: return bangs;
   }

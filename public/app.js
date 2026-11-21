@@ -71,6 +71,10 @@ function setupContextUI() {
 }
 
 const lang = () => $("language").value;
+// Bahasa Inggris: suara & mikrofon mengikuti varian/aksen yang dipilih (mis. en-GB, en-NG, en-AU)
+const variety = () => (state.config?.varieties?.[$("variety").value] ? $("variety").value : "us");
+const ttsLang = () => (lang() === "en" ? state.config?.varieties?.[variety()]?.tts ?? "en-US" : lang());
+const sttLang = () => (lang() === "en" ? state.config?.varieties?.[variety()]?.stt ?? "en-US" : lang());
 const rate = () => Number($("rate").value);
 const setStatus = (t) => ($("status").textContent = t);
 const robot = createRobot({ onMic: robotMic, onClose: closeRobot });
@@ -89,11 +93,12 @@ const ielts = createIelts({
   scrollDown: () => scrollDown(), stopAll: () => stopAll(), addMessage: (r, t) => addMessage(r, t),
   setControlsDisabled: (d) => setControlsDisabled(d), rate: () => rate(),
   refreshSkills: (o) => refreshSkills(o), refreshMemory: () => refreshMemory(),
+  varieties: () => state.config?.varieties ?? {},
 });
 const anyBusy = () => state.busy || dating.busy || ielts.busy;
 
 // Pilihan disimpan di browser (opsional; aman bila storage tidak tersedia)
-const PREFS = ["language", "level", "style", "rate"];
+const PREFS = ["language", "variety", "level", "style", "rate"];
 function savePrefs() {
   try {
     localStorage.setItem(`cps-prefs-${state.user?.id}`, JSON.stringify({
@@ -133,7 +138,7 @@ function addMessage(role, text, speechLang = null) {
     btn.className = "speak-btn";
     btn.title = "Dengarkan";
     btn.textContent = "🔊";
-    btn.onclick = () => playBubble(el, speechLang ?? lang());
+    btn.onclick = () => playBubble(el, speechLang ?? ttsLang());
     el.append(btn);
   }
   $("messages").append(el);
@@ -228,7 +233,7 @@ async function send(text, { proactive = false } = {}) {
   let reply = "";
   setStatus(proactive ? "👋 Cheesy-Bot nyapa kamu…" : "✍️ AI sedang menjawab…");
   // Mode suara: bacakan per kalimat begitu selesai ditulis (tidak menunggu seluruh balasan)
-  const queue = voiceOn() ? createSpeechQueue(lang(), rate(), (part) => { robot.captionAI(part); robot.phase("speaking"); }) : null;
+  const queue = voiceOn() ? createSpeechQueue(ttsLang(), rate(), (part) => { robot.captionAI(part); robot.phase("speaking"); }) : null;
   robot.captionUser(text ?? "");
   robot.captionAI("");
   robot.phase("thinking");
@@ -239,7 +244,7 @@ async function send(text, { proactive = false } = {}) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tutor: state.tutor, language: lang(), level: $("level").value, style: $("style").value,
-        voice: voiceOn(), message: text ?? undefined, proactive, ctx: getCtx(),
+        voice: voiceOn(), message: text ?? undefined, proactive, ctx: getCtx(), ...(lang() === "en" ? { variety: variety() } : {}),
       }),
     });
     if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menghubungi server");
@@ -501,7 +506,7 @@ async function startListening({ auto = false } = {}) {
   robot.captionUser("");
   const before = $("input").value;
   try {
-    const text = await listen(state.micLang === "id" ? "id" : lang(), (t) => {
+    const text = await listen(state.micLang === "id" ? "id" : sttLang(), (t) => {
       $("input").value = (before ? before + " " : "") + t;
       robot.captionUser(t);
     });
@@ -545,7 +550,7 @@ async function openRobot() {
   const hi = nama ? `Eh, ${nama}! Cheesy-Bot siap. Ayo ngobrol!` : "Halo! Aku Cheesy-Bot, tutor bahasamu dari Cheesy Pen Shells. Silakan bicara!";
   robot.phase("speaking");
   robot.captionAI(hi);
-  await speak("💬 " + hi, lang(), rate());
+  await speak("💬 " + hi, ttsLang(), rate());
   if (robot.isOpen && !state.listening && !state.busy) startListening({ auto: true });
 }
 
@@ -581,6 +586,8 @@ async function init() {
   for (const [id, name] of Object.entries(state.config.languages)) {
     $("language").append(new Option(name, id));
   }
+  for (const [id, v] of Object.entries(state.config.varieties ?? {})) $("variety").append(new Option(`${v.flag} ${v.label}`, id));
+  const showVariety = () => { $("variety-field").hidden = lang() !== "en"; };
   const prefs = loadPrefs();
   for (const k of PREFS) if (prefs[k] != null && [...($(k).options ?? [{ value: prefs[k] }])].some((o) => o.value === prefs[k])) $(k).value = prefs[k];
   if (state.config.tutors[prefs.tutor]) state.tutor = prefs.tutor;
@@ -622,7 +629,13 @@ async function init() {
     };
     $("tutors").append(b);
   }
-  $("language").onchange = () => !anyBusy() && state.mode !== "ielts" && loadChat();
+  showVariety();
+  $("language").onchange = () => { showVariety(); if (!anyBusy() && state.mode !== "ielts") loadChat(); };
+  $("variety").onchange = () => {
+    savePrefs();
+    const v = state.config.varieties[variety()];
+    toast(`${v.flag} Sekarang Cheesy-Bot pakai bahasa Inggris ${v.label}. Suara: ${v.tts} (tergantung suara yang terpasang di perangkatmu).`);
+  };
   $("level").onchange = savePrefs;
   $("style").onchange = savePrefs;
   $("rate").onchange = savePrefs;
