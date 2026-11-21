@@ -45,7 +45,7 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
   sehingga pustaka terus bertambah untuk semua pengguna.
 - **💡 Insightful**, **🔖 Stash** (koleksi buatan sendiri), **🔍 Cari** topik apa saja, **🔊 Dengarkan**, **✍️ Tulis ide sendiri**,
   **🔁 Ulas** (flashcard ide tersimpan).
-- **📚 Perpustakaan Bebas:** 33 buku **public domain** (hak cipta habis — legal & gratis) dari **Project Gutenberg**, dikelompokkan
+- **📚 Perpustakaan Bebas:** 71 buku **public domain** (hak cipta habis — legal & gratis) dari **Project Gutenberg**, dikelompokkan
   per topik: Marcus Aurelius, Seneca, Epictetus, Aristoteles, Plato, Lao Tzu, Konfusius, Sun Tzu, Machiavelli, Plutarch,
   Benjamin Franklin, William James, Samuel Smiles, Arnold Bennett, James Allen, Thoreau, Emerson, Adam Smith, P. T. Barnum,
   F. W. Taylor, Darwin, Einstein, Helen Keller, Booker T. Washington, Kahlil Gibran, W. K. Brooks (*The Oyster*), dll. — masing-masing
@@ -53,6 +53,11 @@ dengan kata-kata sendiri plus sumbernya, contoh nyata, dan **🎯 Coba hari ini*
   lalu AI mengambil ide **dari teks itu saja** — dengan **kutipan asli + terjemahan**, bab, penulis, tahun, dan tautan "baca teks asli".
   Kutipan diverifikasi otomatis: kalau tidak benar-benar ada di teks, kutipan dibuang. Buku tersimpan di `data/library/`.
   Katalog: `library.js` (tambah buku public domain lain di sana). Butuh koneksi internet ke gutendex.com & gutenberg.org.
+  - Termasuk **📖 Sastra Klasik** (Aesop, Alice in Wonderland, Sherlock Holmes, Pride and Prejudice, A Christmas Carol, Frankenstein)
+    dan **bacaan berbahasa asli** untuk pelajar bahasa: Fabel La Fontaine (FR), Don Quijote (ES), Dongeng Grimm (DE).
+  - **📖 Baca buku lengkap di aplikasi:** per bagian dengan daftar isi; setiap paragraf bisa **🌐 diterjemahkan** ke Bahasa Indonesia,
+    **🔖 disimpan** ke stash (dengan sumber), **💬 ditanyakan** ke Cheesy-Bot, atau **🔊 dibacakan**. Ada juga kotak tanya untuk seluruh bagian.
+  - **⬇️ Simpan semua buku ke server** — satu tombol untuk mengunduh seluruh katalog ke `data/library/` (berurutan, sopan ke Gutenberg).
 - **💬 Tanya / diskusi di setiap kartu:** ngobrol bolak-balik dengan Cheesy-Bot tentang ide itu sampai paham (tombol cepat:
   "jelaskan lebih sederhana", "kasih contoh", "uji pemahamanku", "apa kata penulisnya persisnya?"…). Untuk ide dari Perpustakaan,
   jawabannya berpegang pada **teks asli buku** dan memisahkan pendapat penulis dari pengetahuan modern.

@@ -33,6 +33,7 @@ export const TOPICS = {
   history: { emoji: "📜", label: "Sejarah", en: "history lessons and turning points that teach something useful today" },
   learning: { emoji: "📚", label: "Cara Belajar", en: "learning how to learn, memory, spaced repetition, language learning" },
   culture: { emoji: "🌏", label: "Bahasa & Budaya", en: "languages, cultures, etiquette around the world, linguistics" },
+  literature: { emoji: "📖", label: "Sastra Klasik", en: "classic literature: stories, characters and the life lessons inside them" },
   rare: { emoji: "🦪", label: "Ilmu Langka", en: "rare, niche, little-known knowledge: mental models, oceanography and oysters, urban design, ecology, odd economics, forgotten inventions, obscure skills" },
 };
 
@@ -316,6 +317,26 @@ ${passage.slice(0, 14000)}` : ""}`, cache_control: { type: "ephemeral" } },
   };
   await run(fast);
   return text;
+}
+
+/** Terjemahkan satu paragraf (mis. dari buku) ke Bahasa Indonesia; disimpan supaya tidak diulang. */
+export async function translateText(text) {
+  await load();
+  const key = crypto.createHash("sha1").update(text).digest("base64url");
+  db.paraTr ??= {};
+  if (db.paraTr[key]) return db.paraTr[key];
+  return once(`pt:${key}`, async () => {
+    const res = await client.messages.create({
+      model: MODEL, max_tokens: 3000, output_config: { effort: "low" },
+      system: "Translate the passage into natural, easy-to-read Indonesian. Keep the meaning faithful (it is an old public-domain text). Output only the translation.",
+      messages: [{ role: "user", content: text }],
+    });
+    const out = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+    if (!out) throw new Error("Terjemahan gagal");
+    db.paraTr[key] = out;
+    await save();
+    return out;
+  });
 }
 
 export async function getIdeas(ids) {

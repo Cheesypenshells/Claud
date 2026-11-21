@@ -85,6 +85,93 @@ export const LIBRARY = {
     bio: "Ahli biologi laut Amerika (1848–1908) di Johns Hopkins. Buku populernya tentang biologi & budidaya tiram — 'ilmu langka' yang pas untuk Cheesy Pen Shells 🦪." },
 };
 
+// ---------- Tambahan katalog ----------
+Object.assign(LIBRARY, {
+  // 🔁 Kebiasaan & 💼 Karier
+  smilesCharacter: { title: "Character", author: "Samuel Smiles", year: 1871, topic: "habits", q: "Character Samuel Smiles", match: "Smiles",
+    bio: "Penulis Skotlandia (1812–1904), pengarang 'Self-Help'. Di buku ini ia membahas karakter sebagai hasil kebiasaan kecil sehari-hari." },
+  smilesThrift: { title: "Thrift", author: "Samuel Smiles", year: 1875, topic: "money", q: "Thrift Samuel Smiles", match: "Smiles",
+    bio: "Penulis Skotlandia (1812–1904). 'Thrift' membahas hemat, menabung, dan kemandirian finansial untuk pekerja biasa." },
+  garcia: { title: "A Message to Garcia", author: "Elbert Hubbard", year: 1899, topic: "career", q: "Message to Garcia", match: "Hubbard",
+    bio: "Penulis & penerbit Amerika (1856–1915). Esai pendeknya tentang inisiatif — 'kerjakan saja tanpa banyak tanya' — dibagikan jutaan kali ke karyawan." },
+  wayToWealth: { title: "The Way to Wealth", author: "Benjamin Franklin", year: 1758, topic: "money", q: "Way to Wealth Franklin", match: "Franklin",
+    bio: "Penemu & negarawan Amerika (1706–1790). Kumpulan nasihat hemat & kerja keras dari almanak 'Poor Richard' — banyak peribahasanya masih dipakai." },
+  // 🧠 Psikologi & 💰 Keuangan
+  delusions: { title: "Extraordinary Popular Delusions and the Madness of Crowds", author: "Charles Mackay", year: 1841, topic: "psychology", q: "Extraordinary Popular Delusions Madness of Crowds", match: "Mackay",
+    bio: "Jurnalis Skotlandia (1814–1889). Mencatat kegilaan massal seperti 'Tulip Mania' — pelajaran klasik tentang gelembung investasi & ikut-ikutan." },
+  crowd: { title: "The Crowd: A Study of the Popular Mind", author: "Gustave Le Bon", year: 1895, topic: "psychology", q: "The Crowd Study of the Popular Mind", match: "Le Bon",
+    bio: "Ilmuwan sosial Prancis (1841–1931). Analisis awal tentang psikologi massa — dikutip di bidang politik, marketing, dan media sosial." },
+  leisure: { title: "The Theory of the Leisure Class", author: "Thorstein Veblen", year: 1899, topic: "money", q: "Theory of the Leisure Class", match: "Veblen",
+    bio: "Ekonom Amerika (1857–1929). Memperkenalkan 'konsumsi pamer' (conspicuous consumption) — kenapa orang beli barang demi gengsi." },
+  emotions: { title: "The Expression of the Emotions in Man and Animals", author: "Charles Darwin", year: 1872, topic: "psychology", q: "Expression of the Emotions in Man and Animals", match: "Darwin",
+    bio: "Naturalis Inggris (1809–1882). Meneliti ekspresi wajah & emosi pada manusia dan hewan — fondasi psikologi emosi modern." },
+  // 🏛️ Filsafat & 🧘 Mindfulness & 🌏 Budaya
+  montaigne: { title: "Essays of Michel de Montaigne", author: "Michel de Montaigne (terj. Charles Cotton)", year: 1580, topic: "philosophy", q: "Essays of Michel de Montaigne", match: "Montaigne",
+    bio: "Filsuf Prancis (1533–1592), penemu bentuk 'esai'. Menulis jujur tentang dirinya — kematian, persahabatan, kebiasaan, pendidikan." },
+  bacon: { title: "Essays", author: "Francis Bacon", year: 1625, topic: "philosophy", q: "Essays Francis Bacon", match: "Bacon, Francis",
+    bio: "Filsuf & negarawan Inggris (1561–1626), pelopor metode ilmiah. Esai-esainya padat: tentang belajar, ambisi, persahabatan, uang." },
+  boethius: { title: "The Consolation of Philosophy", author: "Boethius", year: 524, topic: "philosophy", q: "Consolation of Philosophy", match: "Boethius",
+    bio: "Filsuf Romawi (±477–524 M), menulis buku ini di penjara menunggu eksekusi — tentang nasib, kebahagiaan sejati, dan ketenangan." },
+  schopenhauer: { title: "The Wisdom of Life", author: "Arthur Schopenhauer", year: 1851, topic: "philosophy", q: "Wisdom of Life Schopenhauer", match: "Schopenhauer",
+    bio: "Filsuf Jerman (1788–1860). Esai praktis tentang kebahagiaan: apa yang kita punya, siapa kita, dan bagaimana orang lain melihat kita." },
+  mill: { title: "On Liberty", author: "John Stuart Mill", year: 1859, topic: "philosophy", q: "On Liberty Mill", match: "Mill, John Stuart",
+    bio: "Filsuf & ekonom Inggris (1806–1873). Pembelaan klasik untuk kebebasan berpendapat & individualitas." },
+  russell: { title: "The Problems of Philosophy", author: "Bertrand Russell", year: 1912, topic: "philosophy", q: "Problems of Philosophy Russell", match: "Russell",
+    bio: "Filsuf & matematikawan Inggris (1872–1970), peraih Nobel Sastra. Pengantar filsafat yang jernih untuk pemula." },
+  lubbock: { title: "The Pleasures of Life", author: "John Lubbock", year: 1887, topic: "mindfulness", q: "Pleasures of Life Lubbock", match: "Lubbock",
+    bio: "Bankir, ilmuwan, & politisi Inggris (1834–1913). Esai hangat tentang buku, persahabatan, waktu, dan kebahagiaan sederhana." },
+  bookOfTea: { title: "The Book of Tea", author: "Okakura Kakuzō", year: 1906, topic: "culture", q: "Book of Tea Okakura", match: "Okakura",
+    bio: "Sarjana seni Jepang (1862–1913). Menjelaskan upacara teh & estetika Jepang ke dunia Barat — pas untuk ngobrol dengan Aoi & Xiaoyu 🍵." },
+  bushido: { title: "Bushido: The Soul of Japan", author: "Inazō Nitobe", year: 1899, topic: "culture", q: "Bushido Soul of Japan", match: "Nitobe",
+    bio: "Pendidik & diplomat Jepang (1862–1933), wajahnya pernah ada di uang 5000 yen. Menjelaskan nilai-nilai samurai & etika Jepang." },
+  tagore: { title: "Sadhana: The Realisation of Life", author: "Rabindranath Tagore", year: 1913, topic: "mindfulness", q: "Sadhana Realisation of Life", match: "Tagore",
+    bio: "Penyair & filsuf India (1861–1941), orang Asia pertama peraih Nobel Sastra. Ceramah tentang jiwa, alam, dan cinta." },
+  // 🧭 Kepemimpinan & 📜 Sejarah & 🗣️ Komunikasi
+  shackleton: { title: "South", author: "Ernest Shackleton", year: 1919, topic: "leadership", q: "South Shackleton", match: "Shackleton",
+    bio: "Penjelajah kutub Inggris-Irlandia (1874–1922). Kisah nyata menyelamatkan seluruh awaknya setelah kapal Endurance hancur di Antartika — studi kepemimpinan krisis." },
+  douglass: { title: "Narrative of the Life of Frederick Douglass", author: "Frederick Douglass", year: 1845, topic: "history", q: "Narrative of the Life of Frederick Douglass", match: "Douglass",
+    bio: "Mantan budak, orator, & penulis Amerika (±1818–1895). Belajar membaca diam-diam lalu menjadi salah satu tokoh terpenting gerakan anti-perbudakan." },
+  wollstonecraft: { title: "A Vindication of the Rights of Woman", author: "Mary Wollstonecraft", year: 1792, topic: "history", q: "Vindication of the Rights of Woman", match: "Wollstonecraft",
+    bio: "Penulis & filsuf Inggris (1759–1797), pelopor feminisme. Berargumen bahwa perempuan berhak atas pendidikan yang sama." },
+  paine: { title: "Common Sense", author: "Thomas Paine", year: 1776, topic: "communication", q: "Common Sense Paine", match: "Paine",
+    bio: "Penulis politik Inggris-Amerika (1737–1809). Pamflet paling laris di zamannya — contoh tulisan persuasif yang sederhana & kuat." },
+  // 📚 Belajar & 🫀 Kesehatan & 🔬 Sains & 🦪 Ilmu Langka
+  dewey: { title: "How We Think", author: "John Dewey", year: 1910, topic: "learning", q: "How We Think Dewey", match: "Dewey",
+    bio: "Filsuf & pendidik Amerika (1859–1952). Menjelaskan berpikir reflektif & cara melatihnya — dasar pembelajaran kritis." },
+  montessori: { title: "The Montessori Method", author: "Maria Montessori", year: 1912, topic: "learning", q: "Montessori Method", match: "Montessori",
+    bio: "Dokter & pendidik Italia (1870–1952). Metode belajar mandiri lewat praktik yang dipakai sekolah di seluruh dunia." },
+  hazlitt: { title: "Thinking as a Science", author: "Henry Hazlitt", year: 1916, topic: "learning", q: "Thinking as a Science", match: "Hazlitt",
+    bio: "Jurnalis & ekonom Amerika (1894–1993). Menulis buku ini di usia 21: cara berpikir lebih jernih dan teratur." },
+  nursing: { title: "Notes on Nursing", author: "Florence Nightingale", year: 1859, topic: "health", q: "Notes on Nursing", match: "Nightingale",
+    bio: "Perawat & ahli statistik Inggris (1820–1910), pendiri keperawatan modern. Nasihat soal udara segar, kebersihan, & istirahat — sebagian masih relevan." },
+  candle: { title: "The Chemical History of a Candle", author: "Michael Faraday", year: 1861, topic: "science", q: "Chemical History of a Candle", match: "Faraday",
+    bio: "Ilmuwan Inggris (1791–1867), penemu induksi elektromagnetik. Ceramah legendaris untuk anak-anak: seluruh sains dijelaskan dari sebatang lilin." },
+  worms: { title: "The Formation of Vegetable Mould through the Action of Worms", author: "Charles Darwin", year: 1881, topic: "rare", q: "Vegetable Mould Action of Worms", match: "Darwin",
+    bio: "Naturalis Inggris (1809–1882). Buku terakhirnya: cacing tanah ternyata mengubah wajah bumi — 'ilmu langka' yang bikin takjub." },
+  spider: { title: "The Life of the Spider", author: "Jean-Henri Fabre", year: 1912, topic: "rare", q: "Life of the Spider Fabre", match: "Fabre",
+    bio: "Entomolog Prancis (1823–1915), 'Homer-nya serangga'. Mengamati laba-laba dengan sabar dan menulisnya seperti cerita." },
+  // 📖 Sastra Klasik (bagus juga untuk latihan membaca bahasa Inggris)
+  aesop: { title: "Aesop's Fables", author: "Aesop", year: -560, topic: "literature", q: "Aesop's Fables", match: "Aesop",
+    bio: "Pendongeng Yunani kuno (±620–564 SM). Fabel pendek dengan pesan moral — sempurna untuk pemula belajar bahasa Inggris." },
+  alice: { title: "Alice's Adventures in Wonderland", author: "Lewis Carroll", year: 1865, topic: "literature", q: "Alice's Adventures in Wonderland", match: "Carroll",
+    bio: "Matematikawan & penulis Inggris (1832–1898). Petualangan absurd penuh permainan kata — klasik untuk belajar bahasa Inggris." },
+  sherlock: { title: "The Adventures of Sherlock Holmes", author: "Arthur Conan Doyle", year: 1892, topic: "literature", q: "Adventures of Sherlock Holmes", match: "Doyle",
+    bio: "Dokter & penulis Skotlandia (1859–1930). Detektif paling terkenal di dunia — sekaligus pelajaran berpikir deduktif." },
+  pride: { title: "Pride and Prejudice", author: "Jane Austen", year: 1813, topic: "literature", q: "Pride and Prejudice", match: "Austen",
+    bio: "Novelis Inggris (1775–1817). Komedi romantis tentang gengsi, prasangka, dan cinta — dialognya tajam & lucu." },
+  carol: { title: "A Christmas Carol", author: "Charles Dickens", year: 1843, topic: "literature", q: "A Christmas Carol", match: "Dickens",
+    bio: "Novelis Inggris (1812–1870). Kisah si pelit Scrooge yang berubah — tentang uang, kebahagiaan, dan kebaikan." },
+  frankenstein: { title: "Frankenstein", author: "Mary Shelley", year: 1818, topic: "literature", q: "Frankenstein Shelley", match: "Shelley, Mary",
+    bio: "Penulis Inggris (1797–1851), menulisnya di usia 18. Fiksi ilmiah pertama — tentang sains, tanggung jawab, dan kesepian." },
+  // 🌍 Bacaan bahasa asli (untuk yang belajar bahasa lain)
+  lafontaine: { title: "Fables (Livre I–XII)", author: "Jean de La Fontaine", year: 1668, topic: "literature", lang: "fr", q: "Fables La Fontaine", match: "La Fontaine",
+    bio: "Penyair Prancis (1621–1695). Fabel berima dalam bahasa Prancis asli — 'Le Corbeau et le Renard' dihafal anak-anak Prancis sampai sekarang." },
+  quijote: { title: "Don Quijote de la Mancha", author: "Miguel de Cervantes", year: 1605, topic: "literature", lang: "es", q: "Don Quijote", match: "Cervantes",
+    bio: "Penulis Spanyol (1547–1616). Novel modern pertama, dalam bahasa Spanyol asli — tantangan seru untuk pelajar tingkat lanjut." },
+  grimm: { title: "Kinder- und Hausmärchen", author: "Jacob & Wilhelm Grimm", year: 1812, topic: "literature", lang: "de", q: "Kinder- und Hausmärchen Grimm", match: "Grimm",
+    bio: "Kakak-beradik ahli bahasa Jerman (1785–1863 & 1786–1859). Dongeng asli seperti Hänsel und Gretel dalam bahasa Jerman." },
+});
+
 const CHUNK_WORDS = 2200;
 
 function stripGutenberg(text) {
@@ -127,7 +214,7 @@ export async function loadBook(slug) {
     const res = await fetch(`${GUTENDEX}?search=${encodeURIComponent(b.q)}`, { signal: AbortSignal.timeout(20000) });
     if (!res.ok) throw new Error(`Katalog Gutenberg tidak bisa diakses (${res.status})`);
     const results = (await res.json()).results ?? [];
-    const book = results.find((r) => (r.languages ?? []).includes("en") && (!b.match || r.authors?.some((a) => a.name.includes(b.match)))) ?? null;
+    const book = results.find((r) => (r.languages ?? []).includes(b.lang ?? "en") && (!b.match || r.authors?.some((a) => a.name.includes(b.match)))) ?? null;
     if (!book) throw new Error("Buku tidak ditemukan di Project Gutenberg");
     const fmt = Object.entries(book.formats ?? {}).find(([k, v]) => k.startsWith("text/plain") && !v.endsWith(".zip"));
     if (!fmt) throw new Error("Teks polos buku tidak tersedia");
@@ -150,4 +237,35 @@ export function quoteInText(quote, text) {
   const norm = (s) => s.toLowerCase().replace(/[“”"‘’'`]/g, "").replace(/\s+/g, " ").trim();
   const q = norm(quote);
   return q.length >= 12 && norm(text).includes(q);
+}
+
+/** Status unduhan (sudah tersimpan di server atau belum). */
+export async function downloadedSet() {
+  try { return new Set((await fs.readdir(DIR)).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5))); } catch { return new Set(); }
+}
+
+/** Satu bagian teks buku untuk dibaca di aplikasi. */
+export async function bookPart(slug, part) {
+  const data = await loadBook(slug);
+  const i = Math.max(0, Math.min(data.chunks.length - 1, part));
+  return { part: i, total: data.chunks.length, heading: data.chunks[i].heading, text: data.chunks[i].text, url: data.meta.url,
+    toc: data.chunks.map((c, k) => ({ part: k, heading: c.heading })).filter((c, k, arr) => k === 0 || c.heading !== arr[k - 1].heading) };
+}
+
+// Unduh semua buku katalog ke server (berurutan, sopan ke server Gutenberg)
+const dl = { running: false, done: 0, failed: [], total: 0 };
+export function downloadStatus() { return { ...dl }; }
+export function downloadAll() {
+  if (dl.running) return downloadStatus();
+  Object.assign(dl, { running: true, done: 0, failed: [], total: Object.keys(LIBRARY).length });
+  (async () => {
+    for (const slug of Object.keys(LIBRARY)) {
+      try { await loadBook(slug); } catch (e) { dl.failed.push({ slug, error: e.message }); }
+      dl.done++;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    dl.running = false;
+    console.log(`📚 Unduh semua selesai: ${dl.done - dl.failed.length}/${dl.total} berhasil.`);
+  })();
+  return downloadStatus();
 }

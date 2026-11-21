@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
 import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook, getIelts, saveIelts, insightState, markRead, updateInsights, BADGE_LABELS } from "./store.js";
-import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported, libraryIdeas, libraryStatus, chatAboutIdea } from "./insights.js";
-import { LIBRARY } from "./library.js";
+import { TOPICS, JOURNEYS, topicIdeas, searchIdeas, journeyDay, translateIdea, getIdeas, hasIdea, bookIdeas, formatImported, libraryIdeas, libraryStatus, chatAboutIdea, translateText } from "./insights.js";
+import { LIBRARY, bookPart, downloadedSet, downloadAll, downloadStatus } from "./library.js";
 import { newSession, nextStep, makeCue, examinerTurn, answerFeedback, finalReport, answerMetrics } from "./ielts.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
@@ -394,7 +394,21 @@ async function handleInsights(req, res, user, action, url) {
     }
     if (action === "library") {
       const status = await libraryStatus();
-      return json(res, 200, { books: Object.fromEntries(Object.entries(LIBRARY).map(([k, b]) => [k, { title: b.title, author: b.author, year: b.year, topic: b.topic, bio: b.bio, ...status[k] }])) });
+      const saved = await downloadedSet();
+      return json(res, 200, { download: downloadStatus(),
+        books: Object.fromEntries(Object.entries(LIBRARY).map(([k, b]) => [k, { title: b.title, author: b.author, year: b.year, topic: b.topic, bio: b.bio, lang: b.lang ?? "en", saved: saved.has(k), ...status[k] }])) });
+    }
+    if (action === "libtext") {
+      const slug = q.get("id");
+      if (!LIBRARY[slug]) return json(res, 404, { error: "Buku tidak ada di katalog" });
+      try {
+        const part = await bookPart(slug, Math.max(0, Number(q.get("part")) || 0));
+        const b = LIBRARY[slug];
+        return json(res, 200, { ...part, book: { title: b.title, author: b.author, year: b.year, bio: b.bio, lang: b.lang ?? "en" } });
+      } catch (e) {
+        console.error(e);
+        return json(res, 502, { error: `${e.message}. Pastikan komputer server terhubung ke internet (Project Gutenberg).` });
+      }
     }
     if (action === "libbook") {
       const slug = q.get("id");
@@ -495,9 +509,25 @@ async function handleInsights(req, res, user, action, url) {
     const { newBadges } = await updateInsights(user.id, (st) => { st.mine.push(idea); (st.stashes[stash] ??= []).push(idea.id); });
     return json(res, 200, { idea, stash, newBadges: newBadges.map((k) => BADGE_LABELS[k]) });
   }
+  if (action === "lib-download-all") return json(res, 200, downloadAll());
+  if (action === "translate-text") {
+    const text = String(body.text ?? "").trim();
+    if (text.length < 2 || text.length > 6000) return json(res, 400, { error: "Teks 2–6000 karakter" });
+    try { return json(res, 200, { text: await translateText(text) }); }
+    catch (e) { console.error(e); return json(res, 502, { error: "Terjemahan gagal. Coba lagi." }); }
+  }
   if (action === "chat") {
     const isMine = typeof body.id === "string" && body.id.startsWith("m_");
-    const idea = isMine ? mineById(body.id) : (await getIdeas([body.id]))[0];
+    let idea;
+    if (body.book) {
+      // ngobrol tentang bagian buku yang sedang dibaca
+      const b = LIBRARY[body.book];
+      if (!b) return json(res, 400, { error: "Buku tidak dikenal" });
+      const part = Math.max(0, Number(body.part) || 0);
+      const para = String(body.paragraph ?? "").slice(0, 3000);
+      idea = { title: `${b.title} (bagian ${part + 1})`, body: para ? `Paragraf yang ditanyakan: ${para}` : "Pembaca sedang membaca bagian ini dan ingin berdiskusi.",
+        source: `${b.title} — ${b.author}`, library: body.book, chunk: part, chapter: "" };
+    } else idea = isMine ? mineById(body.id) : (await getIdeas([body.id]))[0];
     if (!idea) return json(res, 400, { error: "Ide tidak dikenal" });
     const hist = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
     if (!hist.length || hist.some((m) => !["user", "assistant"].includes(m?.role) || typeof m.content !== "string" || !m.content.trim() || m.content.length > 2000) || hist.at(-1).role !== "user" || hist[0].role !== "user")

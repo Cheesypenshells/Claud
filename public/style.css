@@ -641,3 +641,24 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
   .idea-quote { background: #2A1A30; color: #EBD7F2; } .idea-quote span { color: #D4BDDD; }
   .book-head { background: #2A1A30; color: #EBD7F2; } .ic-msg.bot { background: #2A1A30; color: #EBD7F2; }
 }
+
+/* ---------- 📖 pembaca buku ---------- */
+.dl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dl-row .btn-utama { padding: 8px 14px; font-size: 14px; }
+.lang-badge { font: 800 11px var(--mono); font-style: normal; background: #6A1B9A; color: #fff; border-radius: 6px; padding: 1px 6px; vertical-align: middle; }
+.rd-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rd-nav .ghost { padding: 6px 12px; } .rd-nav .ghost:disabled { opacity: .4; }
+.rd-toc { flex: 1; min-width: 180px; font: 14px var(--isi); padding: 6px 8px; border: 2px solid var(--garis); border-radius: 10px; background: var(--panel); color: var(--teks); }
+.reader { background: #FFFDF7; color: #2A2116; border: 2px solid var(--garis); border-radius: 18px; padding: 18px 22px; font-family: Georgia, "Times New Roman", serif; font-size: 1.08rem; line-height: 1.8; }
+.rd-p { border-radius: 10px; padding: 2px 8px; margin: 0 -8px; }
+.rd-p:hover { background: #F6EEDC; }
+.rd-p p { margin: 0 0 4px; }
+.rd-act { display: flex; gap: 6px; opacity: 0; height: 0; overflow: hidden; transition: opacity .15s; }
+.rd-p:hover .rd-act, .rd-p:focus-within .rd-act { opacity: 1; height: auto; margin-bottom: 10px; }
+.rd-act button { border: 1.5px solid #D8C7A8; background: #fff; color: #5C4630; border-radius: 999px; padding: 2px 10px; font: 700 12px var(--isi); cursor: pointer; }
+.rd-tr { font-family: var(--isi); font-size: .95rem; background: #EEF6EE; border-left: 4px solid #43A047; border-radius: 0 8px 8px 0; padding: 6px 10px; color: #1B3A1E; }
+.rd-chat-wrap { background: var(--panel); border: 2px solid #CE93D8; border-radius: 16px; padding: 10px 14px; }
+.rd-chat-wrap h3 { margin: 0 0 6px; }
+@media (hover: none) { .rd-act { opacity: 1; height: auto; margin-bottom: 10px; } }
+@media (prefers-color-scheme: dark) { .reader { background: #1E1A14; color: #EDE3D1; } .rd-p:hover { background: #2A241B; } .rd-tr { background: #13301A; color: #D7F5DC; } }
+@media (max-width: 760px) { .reader { padding: 12px 14px; font-size: 1rem; } }
