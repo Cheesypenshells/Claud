@@ -55,12 +55,14 @@ export async function appendExchange(userId, key, meta, userText, assistantText,
   const d = await load(userId);
   const t = (d.threads[key] ??= []);
   const ts = new Date().toISOString();
-  t.push({ role: "user", content: userText, ts, ...(meta.voice ? { voice: true } : {}) },
+  t.push({ role: "user", content: userText, ts, ...(meta.voice ? { voice: true } : {}), ...(meta.hidden ? { hidden: true } : {}) },
     { role: "assistant", content: assistantText, ts, ...(assistantMeta ? { meta: assistantMeta } : {}) });
   // XP: 10 per obrolan, +5 kalau pesannya cukup panjang (usaha lebih)
   const sk = (d.skills[meta.langId] ??= { current: null, history: [], xp: 0, since: 0 });
-  sk.xp += 10 + (userText.trim().split(/\s+/).length >= 8 ? 5 : 0);
-  sk.since += 1;
+  if (!meta.hidden) {
+    sk.xp += 10 + (userText.trim().split(/\s+/).length >= 8 ? 5 : 0);
+    sk.since += 1;
+  }
   if (t.length > MAX_THREAD_MESSAGES) t.splice(0, t.length - MAX_THREAD_MESSAGES);
   const { tutor, language, level } = meta;
   d.pending.push({ tutor, language, level, user: userText, assistant: assistantText, ts });
@@ -107,7 +109,7 @@ export async function getLearnerSamples(userId, langId, limit) {
     const [tutor, lang] = key.split(":");
     if (lang !== langId) continue;
     msgs.forEach((m, i) => {
-      if (m.role === "user") out.push({ tutor, ts: m.ts, text: m.content, voice: !!m.voice, context: msgs[i - 1]?.content ?? "" });
+      if (m.role === "user" && !m.hidden) out.push({ tutor, ts: m.ts, text: m.content, voice: !!m.voice, context: msgs[i - 1]?.content ?? "" });
     });
   }
   return out.sort((a, b) => a.ts.localeCompare(b.ts)).slice(-limit);

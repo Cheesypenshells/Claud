@@ -168,6 +168,29 @@ const SCENES = {
     <rect y="190" width="600" height="46" fill="#5C83B5"/><path d="M0 200 q30 -6 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" stroke="#A9C8F0" stroke-width="2" fill="none"/>
     <path d="M300 236 Q380 150 460 236" stroke="#8D8A84" stroke-width="10" fill="none"/>
     <rect y="236" width="600" height="64" fill="#B9B6AE"/><rect y="232" width="600" height="5" fill="#2B2B2B"/>${Array.from({ length: 30 }, (_, i) => `<rect x="${i * 20}" y="214" width="3" height="20" fill="#2B2B2B"/>`).join("")}<rect y="212" width="600" height="4" fill="#2B2B2B"/>` },
+  lake: { sky: "linear-gradient(#BFE3F7, #F4EEDC)", tile: `
+    <path d="M0 150 L80 90 L150 140 L230 70 L320 140 L400 95 L480 150 L560 100 L600 130 L600 170 L0 170 Z" fill="#7C9A8A"/>
+    <rect y="160" width="600" height="80" fill="#4F8FB8"/>${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${i * 100 + 10} 190 q20 -6 40 0" stroke="#A9D4EE" stroke-width="2" fill="none"/>`).join("")}
+    <rect y="236" width="600" height="64" fill="#7CAF6B"/><path d="M0 236 q300 -14 600 0" fill="#7CAF6B"/>
+    <rect x="360" y="196" width="160" height="10" fill="#8A5A34"/>${[370, 420, 470, 510].map((x) => `<rect x="${x}" y="206" width="6" height="40" fill="#5C3A1E"/>`).join("")}
+    ${[60, 150, 250].map((x) => `<path d="M${x} 236 l6 -26 l6 26z" fill="#4E7A3A"/>`).join("")}` },
+  pool: { sky: "linear-gradient(#9FD8F5, #EAF7FF)", tile: `
+    <rect y="120" width="600" height="60" fill="#E9E4DA"/>${Array.from({ length: 12 }, (_, i) => `<rect x="${i * 50}" y="120" width="2" height="60" fill="#D4CEC2"/>`).join("")}
+    <rect y="180" width="600" height="70" fill="#38B6E8"/>${[195, 215, 235].map((y) => `<path d="M0 ${y} h600" stroke="#fff" stroke-width="2" stroke-dasharray="14 10" opacity=".7"/>`).join("")}
+    ${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${i * 100 + 20} 200 q15 -5 30 0" stroke="#BDEBFF" stroke-width="2" fill="none"/>`).join("")}
+    <rect y="250" width="600" height="50" fill="#F1EDE4"/><rect x="420" y="130" width="6" height="50" fill="#BDBDBD"/><rect x="450" y="130" width="6" height="50" fill="#BDBDBD"/>
+    ${[140, 156, 172].map((y) => `<rect x="420" y="${y}" width="36" height="3" fill="#BDBDBD"/>`).join("")}` },
+  gym: { sky: "linear-gradient(#3A3F55, #555B75)", tile: `
+    <rect y="0" width="600" height="230" fill="#4A4F66"/>${[0, 1, 2].map((i) => `<rect x="${i * 200 + 20}" y="30" width="160" height="90" fill="#7FA7D9" opacity=".35" stroke="#2B2F40" stroke-width="4"/>`).join("")}
+    <rect y="230" width="600" height="70" fill="#2B2B2B"/>${Array.from({ length: 12 }, (_, i) => `<rect x="${i * 50}" y="230" width="48" height="70" fill="#333"/>`).join("")}
+    <rect x="40" y="200" width="10" height="34" fill="#888"/><rect x="20" y="196" width="70" height="6" fill="#999"/>${[16, 86].map((x) => `<rect x="${x}" y="186" width="10" height="26" rx="2" fill="#111"/>`).join("")}
+    <rect x="300" y="170" width="120" height="60" rx="6" fill="#222"/><rect x="310" y="150" width="8" height="30" fill="#555"/><rect x="300" y="146" width="40" height="8" rx="3" fill="#555"/>
+    ${[480, 510, 540].map((x, i) => `<rect x="${x}" y="${200 - i * 6}" width="22" height="${34 + i * 6}" rx="3" fill="${["#C0392B", "#F6B800", "#2F6FB2"][i]}"/>`).join("")}` },
+  cafe: { sky: "linear-gradient(#F3E3CF, #FBF3E8)", tile: `
+    <rect y="0" width="600" height="300" fill="#EADBC6"/>${[0, 1, 2].map((i) => `<rect x="${i * 200 + 30}" y="40" width="140" height="110" rx="6" fill="#BFD8EA" stroke="#8A5A34" stroke-width="6"/><path d="M${i * 200 + 100} 40 v110 M${i * 200 + 30} 95 h140" stroke="#8A5A34" stroke-width="4"/>`).join("")}
+    ${[0, 1, 2, 3, 4].map((i) => `<path d="M${i * 120 + 20} 10 v20" stroke="#5C3A1E" stroke-width="2"/><path d="M${i * 120 + 8} 30 h24 l-6 12 h-12z" fill="#F6B800"/>`).join("")}
+    <rect y="230" width="600" height="70" fill="#B98A5E"/>${Array.from({ length: 10 }, (_, i) => `<rect x="${i * 60}" y="230" width="58" height="70" fill="#C49668"/>`).join("")}
+    ${[110, 330, 520].map((x) => `<ellipse cx="${x}" cy="205" rx="40" ry="8" fill="#6B4A2E"/><rect x="${x - 3}" y="205" width="6" height="30" fill="#5C3A1E"/><rect x="${x - 12}" y="190" width="12" height="14" rx="2" fill="#fff"/><path d="M${x} 193 q6 0 6 5 q0 5 -6 5" stroke="#fff" stroke-width="2" fill="none"/>`).join("")}` },
 };
 
 export function sceneStyle(scene) {

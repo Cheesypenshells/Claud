@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CHARACTERS, START_RAPPORT } from "./characters.js";
+import { ACTIVITIES } from "./context.js";
 
 const client = new Anthropic();
 const MODEL = "claude-opus-5-5";
@@ -29,6 +30,11 @@ const TurnSchema = z.object({
     try_saying: z.string().describe("A suggested next line in the character's language"),
     try_saying_id: z.string().describe("Indonesian meaning of try_saying"),
   }),
+  activity_vocab: z.array(z.object({
+    word: z.string().describe("Word/phrase in the character's language related to the current activity or environment"),
+    romanization: z.string(),
+    meaning_id: z.string().describe("Indonesian meaning"),
+  })).describe("0-3 useful words from THIS turn about the current activity/surroundings (or that the learner asked about). Empty array if none."),
   culture_note: z.object({
     title: z.string().describe("Short Indonesian title of a cultural insight that came up THIS turn (custom, habit, etiquette, food, slang, taboo, or a comparison with Indonesia). Empty string if nothing cultural came up."),
     note: z.string().describe("2-3 sentences in Indonesian explaining it accurately, with nuance (regional/individual variation), no stereotypes. Empty if title is empty."),
@@ -43,7 +49,9 @@ const StartSchema = z.object({
     romanization: z.string(),
     meaning_id: z.string(),
     style: z.string().describe("e.g. 'santai', 'lucu', 'nanya budaya'"),
-  })).describe("Exactly 3 different respectful openers at the learner's level; at least one asks about something cultural or local that the character would enjoy explaining"),
+  })).describe("Exactly 3 different respectful openers at the learner's level; one about what they're doing right now (the activity), one cultural/local"),
+  vocab: z.array(z.object({ word: z.string(), romanization: z.string(), meaning_id: z.string() }))
+    .describe("6-8 essential words/phrases for the current activity in the character's language (e.g. for fishing: rod, bait, to catch, a bite...)"),
 });
 
 function characterSystem(c, levelText) {
@@ -67,6 +75,13 @@ How to behave like a real person:
 - Speak ONLY your language (you don't understand Indonesian; if they write Indonesian, react confused in your language). Match the learner's level: ${levelText}. Keep it simple for beginners (short, common words, slower), natural for advanced.
 ${roman ? "- Fill romanization for beginner/intermediate learners." : "- romanization must be an empty string."}
 
+Being proactive, perceptive and flirty (like a real person, not a quiz machine):
+- Read the learner: their mood, energy and condition (see SITUATION), how long their messages are, whether they seem nervous, tired, bored or excited — and react to it ("you look sleepy — it's late there, isn't it?").
+- Be aware of the real world in SITUATION: your local time and weather, what you're doing right now, the learner's local time and weather. Mention them naturally (it's raining, you're sweaty from the gym, the fish aren't biting, it's 2am for them…).
+- Keep the conversation alive: usually ask something back, share small details of your life, suggest things ("want me to teach you how to cast the line?"). Don't just answer.
+- Your current activity is a great topic: use its vocabulary naturally and teach words when they ask "what's this called?". Put useful new words in activity_vocab.
+- Flirting: as your interest grows (roughly 45+), start flirting back on your own in your personality's style — playful teasing, compliments on their effort, humour or personality, light romantic banter, inside jokes, a bit of push-and-pull. Shy characters flirt shyly, confident ones boldly. Below that, stay friendly but reserved. Always PG-13.
+
 Boundaries & consent (very important):
 - Light flirting, playful banter and respectful compliments (style, smile, laugh, taste, what they do) are fine.
 - Sexual remarks, comments objectifying your body, crude pickup lines, asking for intimate things, insults, or continuing after you said no = harassment. Respond in character: soft_no for mildly awkward/too-forward, firm_no for clearly inappropriate (rapport_delta -15 to -40, mood "uncomfortable" or "annoyed"), and walk_away (scene_end "walked_away", mood "leaving") if it's severe or repeated after a firm_no.
@@ -80,29 +95,81 @@ Ending the scene:
 Wingman coach (the "coach" fields) is a separate voice: Cheesy-Bot, the learner's funny Indonesian wingman from Cheesy Pen Shells. In casual Indonesian it corrects their language, rates the move honestly (tease cringe moves, praise good ones), gives one confidence tip to help them be more outgoing/extroverted, and suggests a natural next line.`;
 }
 
-function stateNote(state) {
+function stateNote(state, situation) {
   const r = state.rapport;
   const feel = r < 15 ? "you're cold / want to leave" : r < 35 ? "polite but not very interested" : r < 55 ? "somewhat interested" : r < 75 ? "you like talking to them" : "you're really into them";
-  return `CURRENT STATE: your interest in the learner = ${r}/100 (${feel}). Turn ${state.turns + 1} of max ${MAX_TURNS}.${state.softNos ? ` You already pushed back ${state.softNos} time(s).` : ""}`;
+  return `CURRENT STATE: your interest in the learner = ${r}/100 (${feel}). Turn ${state.turns + 1} of max ${MAX_TURNS}.${state.softNos ? ` You already pushed back ${state.softNos} time(s).` : ""}
+${situation}`;
 }
 
-export async function startScene(charId, levelText) {
+export async function startScene(charId, levelText, situation) {
   const c = CHARACTERS[charId];
   const res = await client.messages.parse({
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low", format: zodOutputFormat(StartSchema) },
-    system: characterSystem(c, levelText) + "\n\nTASK NOW: the learner hasn't spoken yet. Write the scene narration and 3 openers the learner could use. Do not speak as the character yet.",
+    system: characterSystem(c, levelText) + `\n\n${situation}\n\nTASK NOW: the learner hasn't spoken yet. Write the scene narration (mention your local time, weather and what you're doing) and 3 openers the learner could use, plus key vocabulary for your current activity. Do not speak as the character yet.`,
     messages: [{ role: "user", content: "Set the scene." }],
   });
   if (!res.parsed_output) throw new Error("Gagal menyiapkan adegan");
   return res.parsed_output;
 }
 
-/** Satu giliran: kembalikan hasil terstruktur + state baru. */
-export async function playTurn(charId, levelText, state, history, message) {
+/**
+ * Mengambil isi field "reply" dari JSON yang masih mengalir, supaya teks balasan bisa
+ * ditampilkan & dibacakan sebelum seluruh JSON selesai.
+ */
+class ReplyStreamer {
+  constructor() { this.raw = ""; this.pos = -1; this.done = false; }
+  push(chunk) {
+    this.raw += chunk;
+    if (this.done) return "";
+    if (this.pos < 0) {
+      const m = this.raw.match(/"reply"\s*:\s*"/);
+      if (!m) return "";
+      this.pos = m.index + m[0].length;
+    }
+    let out = "";
+    while (this.pos < this.raw.length) {
+      const ch = this.raw[this.pos];
+      if (ch === '"') { this.done = true; break; }
+      if (ch === "\\") {
+        const nx = this.raw[this.pos + 1];
+        if (nx === undefined) break;
+        if (nx === "u") {
+          const hex = this.raw.slice(this.pos + 2, this.pos + 6);
+          if (hex.length < 4) break;
+          out += String.fromCharCode(parseInt(hex, 16));
+          this.pos += 6;
+          continue;
+        }
+        out += { n: "\n", t: "\t", r: "", b: "", f: "" }[nx] ?? nx;
+        this.pos += 2;
+        continue;
+      }
+      out += ch;
+      this.pos++;
+    }
+    return out;
+  }
+}
+
+function refusalTurn(state) {
+  return {
+    turn: { reply: "", romanization: "", translation_id: "", mood: "leaving", rapport_delta: -100, boundary: "walk_away", move_rating: "inappropriate",
+      coach: { correction: "", tip: "Itu kelewatan banget. Ingat: PDKT itu soal bikin orang nyaman, bukan melecehkan.", try_saying: "", try_saying_id: "" },
+      activity_vocab: [], culture_note: { title: "", note: "" }, scene_end: "walked_away" },
+    state: { ...state, rapport: 0, turns: state.turns + 1, status: "walked_away" },
+  };
+}
+
+/**
+ * Satu giliran (streaming). onDelta(text) dipanggil saat teks balasan karakter mengalir.
+ * opts.fast = pakai fast mode (lebih cepat, harga 2x); otomatis dicoba ulang tanpa fast bila ditolak.
+ */
+export async function playTurn(charId, levelText, state, history, message, situation, onDelta = () => {}, opts = {}) {
   const c = CHARACTERS[charId];
-  const res = await client.beta.messages.parse({
+  const params = {
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low", format: zodOutputFormat(TurnSchema) },
@@ -110,21 +177,37 @@ export async function playTurn(charId, levelText, state, history, message) {
     fallbacks: "default",
     system: [
       { type: "text", text: characterSystem(c, levelText), cache_control: { type: "ephemeral" } },
-      { type: "text", text: stateNote(state) },
+      { type: "text", text: stateNote(state, situation) },
     ],
     messages: [...history.map(({ role, content }) => ({ role, content })), { role: "user", content: message }],
-  });
-  if (res.stop_reason === "refusal") {
-    // Pesan yang benar-benar tidak pantas: karakter pergi.
-    return {
-      turn: { reply: "", romanization: "", translation_id: "", mood: "leaving", rapport_delta: -100, boundary: "walk_away", move_rating: "inappropriate",
-        coach: { correction: "", tip: "Itu kelewatan banget. Ingat: PDKT itu soal bikin orang nyaman, bukan melecehkan.", try_saying: "", try_saying_id: "" },
-        culture_note: { title: "", note: "" }, scene_end: "walked_away" },
-      state: { ...state, rapport: 0, turns: state.turns + 1, status: "walked_away" },
-    };
+  };
+
+  async function run(fast) {
+    const streamer = new ReplyStreamer();
+    let emitted = false;
+    const stream = client.beta.messages.stream(fast ? { ...params, speed: "fast" } : params);
+    try {
+      for await (const ev of stream) {
+        if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+          const t = streamer.push(ev.delta.text);
+          if (t) { emitted = true; onDelta(t); }
+        }
+      }
+      return { final: await stream.finalMessage(), raw: streamer.raw };
+    } catch (e) {
+      if (fast && !emitted && e instanceof Anthropic.APIError && [400, 429, 529].includes(e.status)) return run(false);
+      throw e;
+    }
   }
-  const t = res.parsed_output;
-  if (!t) throw new Error("Balasan karakter tidak terbaca");
+
+  const { final, raw } = await run(!!opts.fast);
+  if (final.stop_reason === "refusal") return refusalTurn(state);
+  let t;
+  try {
+    t = TurnSchema.parse(JSON.parse(raw));
+  } catch {
+    throw new Error("Balasan karakter tidak terbaca");
+  }
 
   // Aturan permainan ditegakkan di server (tidak hanya mengandalkan model)
   const delta = Math.max(-40, Math.min(15, Math.round(t.rapport_delta)));
@@ -136,7 +219,11 @@ export async function playTurn(charId, levelText, state, history, message) {
   if (end === "walked_away") t.mood = "leaving";
   t.rapport_delta = delta;
   t.scene_end = end;
-  if (!NON_LATIN.has(c.lang)) t.romanization = "";
+  t.activity_vocab = (t.activity_vocab ?? []).slice(0, 4);
+  if (!NON_LATIN.has(c.lang)) {
+    t.romanization = "";
+    t.activity_vocab.forEach((v) => (v.romanization = ""));
+  }
 
   return {
     turn: t,
@@ -151,7 +238,16 @@ export async function playTurn(charId, levelText, state, history, message) {
   };
 }
 
-export function newState(charId) {
+/** Teks situasi dunia nyata untuk prompt karakter. */
+export function characterSituation(c, { local, weather, activityId, learner }) {
+  const act = ACTIVITIES[activityId] ?? ACTIVITIES.walk;
+  return `SITUATION RIGHT NOW:
+- Your local time in ${c.city}: ${local.text} (${local.part}). Weather where you are: ${weather ?? "unknown"}.
+- What you're doing: ${act.desc} (${act.label}). Stay in this activity/setting and let it shape the conversation.
+- The learner: ${learner}`;
+}
+
+export function newState(charId, activity) {
   const r = START_RAPPORT[CHARACTERS[charId].difficulty];
-  return { status: "active", rapport: r, best: r, turns: 0, softNos: 0, startedAt: new Date().toISOString() };
+  return { status: "active", rapport: r, best: r, turns: 0, softNos: 0, activity, startedAt: new Date().toISOString() };
 }

@@ -448,3 +448,26 @@ body.date-picking #composer { opacity: .5; pointer-events: none; }
 .date-stage.scene-photo.walking { animation: pan-photo 30s ease-in-out infinite alternate; }
 .date-stage.photo-mode.walking { animation: none; }
 @keyframes pan-photo { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+
+/* ---------- Kondisi kamu, aktivitas & kosakata ---------- */
+.condition-bar { display: flex; gap: 6px; align-items: center; padding: 8px 24px 0; overflow-x: auto; scrollbar-width: none; background: var(--panel); border-top: 2px solid var(--garis); flex: none; }
+.condition-bar::-webkit-scrollbar { display: none; }
+.condition-bar .lbl { font: 12px var(--mono); color: var(--redup); white-space: nowrap; }
+.cond { border: 1.5px solid var(--garis); background: var(--panel); color: var(--teks); border-radius: 999px; padding: 4px 10px; font: 700 12.5px var(--isi); cursor: pointer; white-space: nowrap; }
+.cond.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+#composer { border-top: 0; }
+.char-info .now { font: 11.5px var(--mono); color: var(--navy); }
+.stage-hud .act-now { font: 12px var(--isi) !important; font-weight: 800 !important; color: #fff !important; }
+.stage-actions select.mini { max-width: 46%; }
+.vocab { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.vchip { display: flex; flex-direction: column; align-items: flex-start; border: 2px solid #90CAF9; background: #E3F2FD; color: #0D2B4E; border-radius: 12px; padding: 5px 10px; cursor: pointer; font: inherit; text-align: left; }
+.vchip b { font-size: .95rem; } .vchip i { font-size: .78rem; color: #45627E; } .vchip span { font-size: .78rem; }
+.msg.vocab-card { align-self: center; max-width: 640px; width: 100%; white-space: normal; background: #F3F9FF; border: 2px solid #90CAF9; border-radius: 16px; padding: 8px 12px; }
+.idle .walker .avatar-body { animation: sway 3.2s ease-in-out infinite; }
+@keyframes sway { 50% { transform: translateY(-3px) rotate(-1deg); } }
+@media (prefers-color-scheme: dark) {
+  .char-info .now { color: var(--kuning); }
+  .vchip { background: #12283F; border-color: #2F5F8F; color: #D6E9FF; } .vchip i { color: #9FBCD8; }
+  .msg.vocab-card { background: #0F1F33; border-color: #2F5F8F; }
+}
+@media (max-width: 760px) { .condition-bar { padding: 6px 12px 0; } }

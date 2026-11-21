@@ -302,3 +302,34 @@ export function publicCharacters(mediaFor) {
     look: c.look, media: mediaFor ? mediaFor(id) : null,
   }]));
 }
+
+// ---------- Zona waktu, lokasi (untuk cuaca), dan jadwal aktivitas (jam lokal, [mulai, selesai)) ----------
+const LIFE = {
+  hannah: { tz: "America/Chicago", lat: 36.16, lon: -86.78, activities: [["running", 6, 9], ["coffee", 9, 12], ["market", 12, 17], ["music", 18, 24]] },
+  oliver: { tz: "Europe/London", lat: 51.51, lon: -0.13, activities: [["running", 7, 9], ["reading", 9, 13], ["coffee", 13, 17], ["walk", 17, 22]] },
+  priya: { tz: "Europe/London", lat: 51.51, lon: -0.13, activities: [["gym", 6, 8], ["coffee", 8, 11], ["swimming", 18, 20], ["walk", 20, 23]] },
+  ethan: { tz: "Australia/Sydney", lat: -33.89, lon: 151.27, activities: [["surfing", 5, 9], ["swimming", 9, 12], ["gym", 15, 18], ["fishing", 18, 21]] },
+  yui: { tz: "Asia/Tokyo", lat: 35.66, lon: 139.67, activities: [["coffee", 10, 14], ["sketching", 14, 18], ["walk", 18, 22], ["night", 22, 2]] },
+  aoi: { tz: "Asia/Tokyo", lat: 35.0, lon: 135.78, activities: [["yoga", 6, 9], ["tea", 9, 13], ["walk", 13, 18], ["cooking", 18, 21]] },
+  ren: { tz: "Asia/Tokyo", lat: 34.67, lon: 135.51, activities: [["fishing", 5, 7], ["market", 7, 11], ["cooking", 11, 15], ["baseball", 18, 22]] },
+  seoyeon: { tz: "Asia/Seoul", lat: 37.55, lon: 126.92, activities: [["running", 6, 9], ["dancing", 10, 14], ["gym", 14, 17], ["night", 21, 2]] },
+  minjun: { tz: "Asia/Seoul", lat: 37.54, lon: 127.05, activities: [["coffee", 8, 15], ["photography", 16, 19], ["cycling", 19, 22]] },
+  jiho: { tz: "Asia/Seoul", lat: 35.1, lon: 129.03, activities: [["market", 5, 13], ["football", 14, 17], ["swimming", 17, 19], ["baseball", 19, 23]] },
+  yutong: { tz: "Asia/Shanghai", lat: 39.93, lon: 116.4, activities: [["taichi", 6, 8], ["walk", 8, 9], ["photography", 12, 14], ["walk", 17, 20], ["market", 20, 22]] },
+  xiaoyu: { tz: "Asia/Shanghai", lat: 31.24, lon: 121.49, activities: [["running", 7, 9], ["tea", 10, 18], ["walk", 19, 23]] },
+  hao: { tz: "Asia/Shanghai", lat: 30.66, lon: 104.06, activities: [["fishing", 7, 10], ["tea", 13, 17], ["cooking", 18, 21], ["gym", 21, 23]] },
+  layla: { tz: "Asia/Amman", lat: 31.95, lon: 35.93, activities: [["coffee", 8, 10], ["photography", 13, 16], ["market", 16, 19], ["walk", 19, 22]] },
+  omar: { tz: "Africa/Cairo", lat: 30.04, lon: 31.23, activities: [["fishing", 6, 9], ["coffee", 10, 13], ["football", 16, 19], ["walk", 19, 23]] },
+  karim: { tz: "Asia/Beirut", lat: 33.89, lon: 35.51, activities: [["market", 7, 11], ["cooking", 11, 16], ["swimming", 16, 19], ["coffee", 20, 23]] },
+  camille: { tz: "Europe/Paris", lat: 48.86, lon: 2.36, activities: [["cooking", 5, 10], ["yoga", 10, 12], ["coffee", 14, 17], ["walk", 18, 23]] },
+  lucas: { tz: "Europe/Paris", lat: 43.3, lon: 5.37, activities: [["fishing", 6, 8], ["swimming", 8, 12], ["football", 17, 20], ["walk", 20, 23]] },
+  lena: { tz: "Europe/Berlin", lat: 52.52, lon: 13.4, activities: [["cycling", 7, 10], ["coffee", 11, 14], ["photography", 15, 19], ["gym", 19, 21]] },
+  jonas: { tz: "Europe/Berlin", lat: 48.15, lon: 11.59, activities: [["hiking", 6, 12], ["coffee", 13, 16], ["gym", 17, 20], ["walk", 20, 23]] },
+  anna: { tz: "Europe/Vienna", lat: 48.21, lon: 16.37, activities: [["swimming", 7, 9], ["coffee", 10, 17], ["reading", 17, 20], ["walk", 20, 24]] },
+  sofia: { tz: "Europe/Madrid", lat: 41.38, lon: 2.19, activities: [["swimming", 8, 11], ["surfing", 11, 14], ["market", 17, 20], ["dancing", 22, 2]] },
+  valentina: { tz: "America/Argentina/Buenos_Aires", lat: -34.62, lon: -58.37, activities: [["running", 7, 9], ["coffee", 10, 13], ["reading", 14, 18], ["dancing", 21, 3]] },
+  mateo: { tz: "America/Mexico_City", lat: 19.35, lon: -99.16, activities: [["market", 9, 13], ["cooking", 13, 16], ["football", 17, 20], ["music", 21, 24]] },
+};
+for (const [id, l] of Object.entries(LIFE)) {
+  Object.assign(CHARACTERS[id], { tz: l.tz, lat: l.lat, lon: l.lon, activities: l.activities.map(([a, s, e]) => ({ id: a, hours: [s, e] })) });
+}

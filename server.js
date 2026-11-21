@@ -7,7 +7,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
 import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples, getDates, setDate, addXp, addCultureNote, getCultureBook } from "./store.js";
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
-import { startScene, playTurn, newState, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
+import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
+import { weatherAt, localParts, ACTIVITIES, currentActivity } from "./context.js";
 import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
 import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
@@ -18,6 +19,40 @@ const PORT = Number(process.env.PORT) || 3000;
 const MODEL = "claude-opus-5-5";
 const CONTEXT_MESSAGES = 60; // pesan terakhir yang dikirim apa adanya; sisanya diwakili ingatan
 const MAX_CHARS = 4000;
+// Fast mode: output hingga ~2,5x lebih cepat dengan harga 2x. Atur FAST_MODE=true di .env.
+const FAST_MODE = process.env.FAST_MODE === "true";
+
+// ---------- Kondisi & situasi pengguna ----------
+const CONDITIONS = {
+  semangat: "feeling energetic and motivated", capek: "tired / exhausted", sedih: "sad / down", stres: "stressed",
+  lapar: "hungry", sakit: "feeling sick", kerja: "currently at work / busy", dijalan: "on the way / commuting",
+  santai: "relaxing, free time", ngantuk: "sleepy",
+};
+function cleanCtx(ctx) {
+  const c = ctx && typeof ctx === "object" ? ctx : {};
+  const lat = Number(c.lat), lon = Number(c.lon);
+  return {
+    tz: typeof c.tz === "string" && c.tz.length < 64 ? c.tz : "Asia/Jakarta",
+    condition: CONDITIONS[c.condition] ? c.condition : null,
+    lat: Number.isFinite(lat) && Math.abs(lat) <= 90 ? Math.round(lat * 100) / 100 : null,
+    lon: Number.isFinite(lon) && Math.abs(lon) <= 180 ? Math.round(lon * 100) / 100 : null,
+  };
+}
+function gapText(lastTs) {
+  if (!lastTs) return "this is your first conversation in this chat";
+  const min = (Date.now() - new Date(lastTs).getTime()) / 60e3;
+  if (min < 3) return "they replied right away (conversation is flowing)";
+  if (min < 60) return `last message was ${Math.round(min)} minutes ago`;
+  if (min < 48 * 60) return `they've been away for about ${Math.round(min / 60)} hours`;
+  return `they've been away for ${Math.round(min / 1440)} days — notice that`;
+}
+async function learnerSituation(ctx, lastTs) {
+  const local = localParts(ctx.tz);
+  const weather = ctx.lat != null && ctx.lon != null ? await weatherAt(ctx.lat, ctx.lon) : null;
+  return `local time ${local.text} (${local.part}, timezone ${local.zone})${weather ? `, weather where they are: ${weather}` : ""}; ` +
+    `condition: ${ctx.condition ? CONDITIONS[ctx.condition] : "not stated — infer it from how they write and ask if unsure"}; ${gapText(lastTs)}.`;
+}
+const isRetryableFast = (e) => e instanceof Anthropic.APIError && [400, 429, 529].includes(e.status);
 
 const client = new Anthropic(); // membaca ANTHROPIC_API_KEY dari environment
 const busy = new Set(); // satu permintaan per percakapan (per pengguna) pada satu waktu
@@ -47,7 +82,8 @@ function validate(b) {
   if (!LEVELS[b.level] && b.level !== "auto") return "Level tidak dikenal";
   if (!STYLES[b.style]) return "Gaya ngajar tidak dikenal";
   if (b.voice !== undefined && typeof b.voice !== "boolean") return "Parameter voice tidak valid";
-  if (typeof b.message !== "string" || !b.message.trim() || b.message.length > MAX_CHARS) return "Pesan kosong atau terlalu panjang";
+  if (b.proactive !== undefined && typeof b.proactive !== "boolean") return "Parameter proactive tidak valid";
+  if (!b.proactive && (typeof b.message !== "string" || !b.message.trim() || b.message.length > MAX_CHARS)) return "Pesan kosong atau terlalu panjang";
   return null;
 }
 
@@ -68,8 +104,11 @@ async function handleChat(req, res, user) {
   if (busy.has(lock)) return json(res, 409, { error: "Tunggu balasan sebelumnya selesai dulu." });
   busy.add(lock);
 
-  const message = body.message.trim();
+  const ctx = cleanCtx(body.ctx);
   const thread = await getThread(user.id, key);
+  const message = body.proactive
+    ? `[SYSTEM NOTE — not typed by the learner: they just opened this chat; ${gapText(thread.at(-1)?.ts)}. Greet them FIRST like a friend who noticed they're back: react to their time of day / condition / weather, call back something from memory if you can, and ask them a question to get the conversation going. Keep it short.]`
+    : body.message.trim();
   let recent = thread.slice(-CONTEXT_MESSAGES);
   if (recent[0]?.role === "assistant") recent = recent.slice(1);
   const lastTs = thread.at(-1)?.ts;
@@ -80,14 +119,14 @@ async function handleChat(req, res, user) {
   const context = [
     renderMemory(profile, LANGUAGES[body.language], user.name),
     renderSkills(assessment),
-    `Now: ${fmtTime(new Date().toISOString())}. ${lastTs ? `Last message in this chat: ${fmtTime(lastTs)}.` : "This is the first message in this chat."}`,
+    `SITUATION (be perceptive about it, but don't recite it): the learner's ${await learnerSituation(ctx, lastTs)}`,
     thread.length > recent.length ? `(Older messages of this chat are summarized in MEMORY.)` : "",
   ].filter(Boolean).join("\n\n");
 
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
   const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
-  const stream = client.beta.messages.stream({
+  const chatParams = {
     model: MODEL,
     max_tokens: 4000,
     // Chat butuh respons cepat; effort "low" cukup untuk percakapan.
@@ -102,25 +141,36 @@ async function handleChat(req, res, user) {
       ...(body.voice ? [{ type: "text", text: VOICE_PROMPT }] : []),
     ],
     messages: [...recent.map(({ role, content }) => ({ role, content })), { role: "user", content: message }],
-  });
+  };
 
   let reply = "";
   let aborted = false;
+  let stream = null;
   res.on("close", () => {
     if (!res.writableFinished) {
       aborted = true;
-      stream.abort();
+      stream?.abort();
     }
   });
 
-  try {
-    for await (const event of stream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        reply += event.delta.text;
-        send("delta", { text: event.delta.text });
+  async function runStream(fast) {
+    stream = client.beta.messages.stream(fast ? { ...chatParams, speed: "fast" } : chatParams);
+    try {
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          reply += event.delta.text;
+          send("delta", { text: event.delta.text });
+        }
       }
+      return await stream.finalMessage();
+    } catch (e) {
+      if (fast && !reply && !aborted && isRetryableFast(e)) return runStream(false); // fast mode ditolak → mode standar
+      throw e;
     }
-    const final = await stream.finalMessage();
+  }
+
+  try {
+    const final = await runStream(FAST_MODE);
     if (final.stop_reason === "refusal") {
       send("error", { error: "Maaf, permintaan ini tidak bisa dijawab. Coba topik lain." });
     }
@@ -138,7 +188,7 @@ async function handleChat(req, res, user) {
     try {
       // Simpan juga balasan yang terpotong, supaya riwayat tetap sama dengan yang dilihat murid.
       if (reply.trim()) {
-        await appendExchange(user.id, key, { tutor: body.tutor, language: LANGUAGES[body.language], langId: body.language, level: body.level, voice: !!body.voice }, message, reply);
+        await appendExchange(user.id, key, { tutor: body.tutor, language: LANGUAGES[body.language], langId: body.language, level: body.level, voice: !!body.voice, hidden: !!body.proactive }, message, reply);
         maybeUpdateMemory(user.id, { accountName: user.name });
         runAssessment(user.id, body.language, LANGUAGES[body.language]).catch(() => {});
       }
@@ -213,10 +263,19 @@ async function handleDate(req, res, user, charId, action) {
     const assessment = (await getSkills(user.id))[c.lang]?.current ?? null;
     const levelText = dateLevelText(body.level, assessment);
 
+    const ctx = cleanCtx(body.ctx);
+    const local = localParts(c.tz);
+    const situationFor = async (activity, lastTs) => characterSituation(c, {
+      local, weather: await weatherAt(c.lat, c.lon), activityId: activity,
+      learner: await learnerSituation(ctx, lastTs),
+    });
+
     if (action === "start") {
-      const intro = await startScene(charId, levelText);
+      const allowed = ["walk", "night", ...c.activities.map((a) => a.id)];
+      const activity = allowed.includes(body.activity) ? body.activity : currentActivity(c, local.hour);
+      const intro = await startScene(charId, levelText, await situationFor(activity, null));
       await clearThread(user.id, key);
-      const state = { ...newState(charId), intro, record: current?.record ?? { success: 0, walked_away: 0, left: 0 } };
+      const state = { ...newState(charId, activity), intro, record: current?.record ?? { success: 0, walked_away: 0, left: 0 } };
       await setDate(user.id, charId, state);
       return json(res, 200, { state, messages: [] });
     }
@@ -227,8 +286,23 @@ async function handleDate(req, res, user, charId, action) {
     if (typeof body.message !== "string" || !body.message.trim() || body.message.length > 1000) return json(res, 400, { error: "Pesan kosong atau terlalu panjang" });
     if (body.voice !== undefined && typeof body.voice !== "boolean") return json(res, 400, { error: "Parameter voice tidak valid" });
     const message = body.message.trim();
-    const history = (await getThread(user.id, key)).slice(-40);
-    const { turn, state } = await playTurn(charId, levelText, current, history, message);
+    const thread = await getThread(user.id, key);
+    const history = thread.slice(-40);
+    const situation = await situationFor(current.activity ?? "walk", thread.at(-1)?.ts);
+    // Streaming: teks balasan dikirim sambil ditulis (SSE), data lengkap di akhir.
+    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    let turn, state;
+    try {
+      ({ turn, state } = await playTurn(charId, levelText, current, history, message, situation, (t) => send("delta", { text: t }), { fast: FAST_MODE }));
+    } catch (e) {
+      console.error(e);
+      let msg = "Karakter lagi bengong (server AI error). Coba lagi.";
+      if (e instanceof Anthropic.AuthenticationError) msg = "API key Anthropic tidak valid / belum diset.";
+      else if (e instanceof Anthropic.RateLimitError) msg = "Terlalu banyak permintaan, coba lagi sebentar.";
+      send("error", { error: msg });
+      return res.end();
+    }
 
     if (state.status !== "active") state.record = { ...state.record, [state.status]: (state.record?.[state.status] ?? 0) + 1 };
     await setDate(user.id, charId, state);
@@ -241,8 +315,10 @@ async function handleDate(req, res, user, charId, action) {
     }
     maybeUpdateMemory(user.id, { accountName: user.name });
     runAssessment(user.id, c.lang, LANGUAGES[c.lang]).catch(() => {});
-    return json(res, 200, { turn, state, secret: state.status !== "active" ? secretOf(c) : null });
+    send("done", { turn, state, secret: state.status !== "active" ? secretOf(c) : null });
+    return res.end();
   } catch (e) {
+    if (res.headersSent) { console.error(e); if (!res.writableEnded) res.end(); return; }
     if (e instanceof AuthError) return json(res, e.status, { error: e.message });
     console.error(e);
     let msg = "Karakter lagi bengong (server AI error). Coba lagi.";
@@ -360,8 +436,20 @@ const server = http.createServer(async (req, res) => {
       // ----- mode Pendekatan -----
       if (req.method === "GET" && url.pathname === "/api/date/characters") {
         const dates = await getDates(user.id);
+        const chars = publicCharacters(mediaFor);
+        for (const [id, pc] of Object.entries(chars)) {
+          const c = CHARACTERS[id];
+          const local = localParts(c.tz);
+          const act = currentActivity(c, local.hour);
+          pc.now = { time: local.text.split("pukul ")[1] ?? local.text, part: local.part, activity: act };
+          pc.activities = [...new Set(["walk", ...c.activities.map((a) => a.id)])];
+          weatherAt(c.lat, c.lon).catch(() => {}); // panaskan cache cuaca di latar belakang
+        }
         return json(res, 200, {
-          characters: publicCharacters(mediaFor),
+          characters: chars,
+          scenePhotos: Object.fromEntries(["city", "park", "beach", "market", "riverside", "lake", "pool", "gym", "cafe"]
+            .map((sc) => [sc, findFile("scenes", sc, IMG_EXT)]).filter(([, u]) => u)),
+          activities: Object.fromEntries(Object.entries(ACTIVITIES).map(([k, a]) => [k, { emoji: a.emoji, label: a.label, scene: a.scene ?? null, walking: !!a.walking }])),
           states: Object.fromEntries(Object.entries(dates).map(([id, d]) => [id, { status: d.status, rapport: d.rapport, best: d.best, record: d.record }])),
           rules: { maxTurns: MAX_TURNS, successMin: SUCCESS_MIN_RAPPORT },
         });

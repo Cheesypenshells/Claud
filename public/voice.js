@@ -122,3 +122,70 @@ export function stopSpeaking() {
   speakToken++;
   if (canSpeak) speechSynthesis.cancel();
 }
+
+/**
+ * Antrean bicara untuk teks yang masih mengalir (streaming): kalimat dibacakan begitu selesai ditulis,
+ * tanpa menunggu seluruh balasan. Baris yang diawali "💬" dibaca dengan suara Bahasa Indonesia.
+ *   const q = createSpeechQueue("en", 0.95, onPart, 1);  q.push(delta) …  await q.end();
+ */
+export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch = 1) {
+  const token = ++speakToken; // membatalkan bacaan sebelumnya
+  if (canSpeak) speechSynthesis.cancel();
+  let buf = "";
+  let lineIndo = null; // bahasa baris yang sedang ditulis (null = belum diketahui)
+  let pending = 0;
+  let finished = false;
+  let resolveEnd;
+  const ended = new Promise((r) => (resolveEnd = r));
+  const check = () => { if (finished && pending === 0) resolveEnd(); };
+
+  function say(text, indo) {
+    if (!canSpeak || token !== speakToken) return;
+    for (const part of splitForSpeech((indo ? "💬 " : "") + text, targetLang)) {
+      pending++;
+      const u = new SpeechSynthesisUtterance(part.text);
+      u.lang = SPEECH_LANG[part.lang];
+      const v = pickVoice(u.lang);
+      if (v) u.voice = v;
+      u.rate = rate;
+      u.pitch = pitch;
+      u.onstart = () => onPart?.(part.text, part.lang);
+      u.onend = u.onerror = () => { pending--; check(); };
+      speechSynthesis.speak(u);
+    }
+  }
+
+  function drain(final) {
+    for (;;) {
+      if (lineIndo === null) {
+        const t = buf.replace(/^\s+/, "");
+        if (!t) return;
+        if (t.length < 2 && !final) return; // tunggu untuk tahu apakah baris diawali 💬
+        lineIndo = t.startsWith("💬");
+      }
+      const nl = buf.indexOf("\n");
+      const m = buf.match(/[.!?。！？…](?=\s)|[。！？]/);
+      const cut = nl >= 0 && (!m || nl <= m.index) ? nl : m ? m.index + 1 : -1;
+      if (cut < 0) {
+        if (final && buf.trim()) { say(buf, lineIndo); buf = ""; }
+        return;
+      }
+      const piece = buf.slice(0, cut);
+      if (piece.trim()) say(piece, lineIndo);
+      buf = buf.slice(cut).replace(/^[ \t]+/, "");
+      if (buf.startsWith("\n")) { buf = buf.slice(1); lineIndo = null; }
+    }
+  }
+
+  return {
+    push(text) { if (token === speakToken) { buf += text; drain(false); } },
+    async end() {
+      if (token === speakToken) drain(true);
+      finished = true;
+      check();
+      if (!canSpeak || token !== speakToken) return;
+      // berhenti juga bila dibatalkan (stopSpeaking) di tengah jalan
+      await Promise.race([ended, new Promise((r) => { const iv = setInterval(() => { if (token !== speakToken) { clearInterval(iv); r(); } }, 200); ended.then(() => clearInterval(iv)); })]);
+    },
+  };
+}

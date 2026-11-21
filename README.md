@@ -20,6 +20,19 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - Tombol **Keluar** di kanan atas. "Lupakan semua" hanya menghapus data akun yang sedang login.
 - Kalau dipasang di internet, jalankan di belakang HTTPS (reverse proxy yang mengirim `X-Forwarded-Proto: https`) supaya cookie ditandai `Secure`.
 
+## ⚡ Lancar, Cepat & Peka
+
+- **Respons cepat:** balasan tutor dan karakter **mengalir kata per kata** (streaming). Di mode suara, AI mulai bicara begitu
+  kalimat pertama selesai ditulis — tidak menunggu seluruh balasan.
+- **Fast mode Claude** (`FAST_MODE=true` di `.env`, aktif di `.env.example`): output hingga ±2,5× lebih cepat dengan harga per token 2×.
+  Kalau fast mode ditolak/penuh, server otomatis memakai mode standar. Set `FAST_MODE=false` untuk hemat biaya.
+- **Tahu kondisimu:** pilih **Kondisi kamu** di atas kotak ketik (😊 semangat, 😴 capek, 🥱 ngantuk, 😢 sedih, 😤 stres, 🍜 lapar, 🤒 sakit,
+  💼 lagi kerja, 🚌 di jalan, 🛋️ santai). Kalau tidak dipilih, AI menebak dari caramu menulis dan bertanya.
+- **Peka waktu & lingkungan:** AI tahu jam, hari, dan zona waktumu, berapa lama kamu menghilang, dan (opsional, centang
+  **📍 Pakai cuaca di lokasiku**) cuaca di tempatmu — data cuaca dari Open-Meteo (gratis, tanpa API key); lokasi dibulatkan ±1 km.
+- **Aktif bertanya & menyapa duluan:** saat kamu membuka chat untuk pertama kali atau setelah > 3 jam, Cheesy-Bot menyapa duluan
+  sesuai situasi (jam, kondisi, cuaca, ingatan) dan bertanya.
+
 ## 💘 Pendekatan — Latihan Kenalan & PDKT
 
 Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert**: kamu kenalan dengan karakter yang sedang jalan-jalan di kotanya.
@@ -32,6 +45,14 @@ Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert*
 - **Pertukaran budaya:** tiap karakter membawa budaya kotanya (kebiasaan, makanan, hari raya, etika, tabu, logat). Tanyakan soal budaya mereka,
   ceritakan budaya Indonesia — mereka penasaran & membandingkan. Rasa ingin tahu budaya menaikkan ketertarikan; salah etika diberi tahu wingman.
   Setiap pelajaran budaya muncul sebagai kartu **📚 Catatan Budaya** dan tersimpan di **Buku Budaya** milikmu.
+- **Hidup di zona waktunya sendiri:** tiap karakter tahu jam lokal & cuaca asli di kotanya, dan punya **aktivitas harian** sesuai jam
+  (🎣 memancing, 🏊 berenang, 🏋️ gym, 🏃 lari, 🏄 selancar, 🚴 bersepeda, ⛰️ mendaki, 🧘 yoga, 🥋 tai chi, ☕ ngopi, 🍵 minum teh,
+  🛒 ke pasar, 🎸 main musik, 📷 hunting foto, 💃 dance, ⚽ main bola, ⚾ nonton baseball, dll). Kartu karakter menunjukkan
+  "🕗 20.21 di sana · 🛒 ke pasar"; aktivitas bisa diganti dari panggung. Latar berganti sesuai aktivitas (danau, kolam renang, gym, kafe, …).
+- **Kosakata aktivitas:** di awal adegan muncul 6–8 kata penting untuk aktivitas itu, dan setiap kata baru selama ngobrol muncul
+  sebagai kartu 🧩 (klik untuk mendengar pengucapannya). Tanya saja "ini namanya apa?" dalam bahasa mereka.
+- **Peka & menggoda balik:** karakter membaca kondisimu & jam di tempatmu ("udah malam di sana kan?"), aktif bertanya, mengajakmu
+  mencoba aktivitasnya, dan **mulai flirting balik** saat ketertarikannya naik — sesuai sifatnya (yang pemalu malu-malu, yang percaya diri terang-terangan), tetap PG-13.
 - **🔓 Rahasia pendekatan** (apa yang dia suka/tidak suka) dibuka setelah adegan selesai.
 - **Tampilan:** bawaan berupa animasi SVG (`public/avatar.js`) yang berjalan di latar kota, dengan 8 ekspresi wajah sesuai mood.
 - **📸 Foto realistis (opsional):** taruh foto karakter fiksi di `public/characters/<id>/<mood>.jpg` (dan opsional `walk.mp4`,
@@ -134,6 +155,7 @@ npm start                 # buka http://localhost:3000
 - `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
+- `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas
 - `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar
 - `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login
 - `public/login.html`, `public/login.js` — halaman Masuk/Daftar

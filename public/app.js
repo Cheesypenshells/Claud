@@ -1,4 +1,4 @@
-import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking } from "./voice.js";
+import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking, createSpeechQueue } from "./voice.js";
 import { createRobot } from "./robot.js";
 import { createDating } from "./dating.js";
 
@@ -17,8 +17,57 @@ const fetch = async (...args) => {
 const state = {
   tutor: "conversation", mode: "chat", busy: false, config: null,
   voiceMode: false, listening: false, micLang: "target", // "target" | "id"
-  loadToken: 0,
+  loadToken: 0, condition: null, coords: null,
 };
+const greeted = new Set(); // percakapan yang sudah disapa proaktif di sesi ini
+
+// ---------- Konteks pengguna (jam, kondisi, lokasi/cuaca) ----------
+const CONDITIONS = [["semangat", "😊 Semangat"], ["capek", "😴 Capek"], ["ngantuk", "🥱 Ngantuk"], ["sedih", "😢 Sedih"], ["stres", "😤 Stres"],
+  ["lapar", "🍜 Lapar"], ["sakit", "🤒 Sakit"], ["kerja", "💼 Lagi kerja"], ["dijalan", "🚌 Di jalan"], ["santai", "🛋️ Santai"]];
+function getCtx() {
+  let tz = "Asia/Jakarta";
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch {}
+  return { tz, condition: state.condition, ...(state.coords ?? {}) };
+}
+function saveCtxPrefs() {
+  try { localStorage.setItem(`cps-ctx-${state.user?.id}`, JSON.stringify({ condition: state.condition, coords: state.coords })); } catch {}
+}
+function setupContextUI() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`cps-ctx-${state.user?.id}`) || "{}");
+    state.condition = saved.condition ?? null;
+    state.coords = saved.coords ?? null;
+  } catch {}
+  const bar = $("condition-bar");
+  for (const [id, label] of CONDITIONS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cond" + (state.condition === id ? " on" : "");
+    b.textContent = label;
+    b.onclick = () => {
+      state.condition = state.condition === id ? null : id;
+      bar.querySelectorAll(".cond").forEach((x) => x.classList.toggle("on", x === b && !!state.condition));
+      saveCtxPrefs();
+      if (state.condition) toast(`Oke, Cheesy-Bot & karakter tahu kamu lagi ${label.slice(2).trim().toLowerCase()}.`);
+    };
+    bar.append(b);
+  }
+  const loc = $("use-location");
+  loc.checked = !!state.coords;
+  loc.onchange = () => {
+    if (!loc.checked) { state.coords = null; saveCtxPrefs(); return; }
+    if (!navigator.geolocation) { loc.checked = false; toast("Browser ini tidak mendukung lokasi."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        state.coords = { lat: Math.round(p.coords.latitude * 100) / 100, lon: Math.round(p.coords.longitude * 100) / 100 };
+        saveCtxPrefs();
+        toast("📍 Cuaca lokal aktif.");
+      },
+      () => { loc.checked = false; toast("Izin lokasi ditolak — cuaca lokal tidak dipakai."); },
+      { maximumAge: 30 * 60e3, timeout: 10e3 },
+    );
+  };
+}
 
 const lang = () => $("language").value;
 const rate = () => Number($("rate").value);
@@ -31,7 +80,7 @@ const dating = createDating({
   scrollDown: () => scrollDown(), stopAll: () => stopAll(),
   addMessage: (r, t) => addMessage(r, t), setControlsDisabled: (d) => setControlsDisabled(d),
   startListening: (o) => startListening(o), refreshSkills: (o) => refreshSkills(o), refreshMemory: () => refreshMemory(),
-  lang: () => lang(), rate: () => rate(), getLevel: () => $("level").value,
+  lang: () => lang(), rate: () => rate(), getLevel: () => $("level").value, getCtx: () => getCtx(),
   setLanguage: (l) => { $("language").value = l; savePrefs(); updateMicLangLabel(); refreshSkills(); },
 });
 
@@ -127,21 +176,35 @@ async function loadChat() {
   }
   if (token !== state.loadToken) return; // pengguna sudah pindah tutor/bahasa
   $("messages").innerHTML = "";
+  const key = `${state.tutor}:${lang()}`;
+  const lastTs = messages.at(-1)?.ts;
+  const away = !lastTs || Date.now() - new Date(lastTs).getTime() > 3 * 3600e3;
+  if (away && !greeted.has(key)) {
+    // Sapa duluan: baru pertama kali, atau sudah lama tidak ngobrol
+    greeted.add(key);
+    if (messages.length) renderHistory(messages);
+    send(null, { proactive: true });
+    return;
+  }
   if (!messages.length) {
     const greet = addMessage("assistant", t.greeting, "id");
     if (state.voiceMode && !robot.isOpen) playBubble(greet, "id");
   } else {
-    const older = document.createElement("div");
-    older.className = "msg error";
-    older.style.color = "var(--redup)";
-    older.textContent = `— ${messages.length / 2 | 0} obrolan sebelumnya —`;
-    $("messages").append(older);
-    for (const m of messages) addMessage(m.role, m.content);
+    renderHistory(messages);
   }
 }
 
+function renderHistory(messages) {
+  const older = document.createElement("div");
+  older.className = "msg error";
+  older.style.color = "var(--redup)";
+  older.textContent = `— ${messages.filter((m) => m.role === "user" && !m.hidden).length} obrolan sebelumnya —`;
+  $("messages").append(older);
+  for (const m of messages) if (!m.hidden) addMessage(m.role, m.content);
+}
+
 // ---------- Kirim ke AI ----------
-async function send(text) {
+async function send(text, { proactive = false } = {}) {
   if (state.mode === "date") {
     if (!dating.active) toast("Pilih gebetan dulu 😉");
     else dating.send(text);
@@ -150,11 +213,13 @@ async function send(text) {
   stopAll();
   state.busy = true;
   setControlsDisabled(true);
-  addMessage("user", text);
+  if (!proactive) addMessage("user", text);
   const bubble = addMessage("assistant typing", "");
   let reply = "";
-  setStatus("✍️ AI sedang menjawab…");
-  robot.captionUser(text);
+  setStatus(proactive ? "👋 Cheesy-Bot nyapa kamu…" : "✍️ AI sedang menjawab…");
+  // Mode suara: bacakan per kalimat begitu selesai ditulis (tidak menunggu seluruh balasan)
+  const queue = voiceOn() ? createSpeechQueue(lang(), rate(), (part) => { robot.captionAI(part); robot.phase("speaking"); }) : null;
+  robot.captionUser(text ?? "");
   robot.captionAI("");
   robot.phase("thinking");
 
@@ -164,7 +229,7 @@ async function send(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tutor: state.tutor, language: lang(), level: $("level").value, style: $("style").value,
-        voice: voiceOn(), message: text,
+        voice: voiceOn(), message: text ?? undefined, proactive, ctx: getCtx(),
       }),
     });
     if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menghubungi server");
@@ -185,6 +250,7 @@ async function send(text) {
         if (event === "delta") {
           reply += data.text;
           setBubbleText(bubble, reply);
+          queue?.push(data.text);
           scrollDown();
         } else if (event === "error") {
           throw new Error(data.error);
@@ -194,7 +260,9 @@ async function send(text) {
     if (!reply.trim()) throw new Error("Tidak ada balasan dari AI.");
   } catch (e) {
     if (!reply.trim()) bubble.remove();
-    addMessage("error", `⚠️ ${e.message}`);
+    if (proactive && !reply.trim()) {
+      addMessage("assistant", state.config.tutors[state.tutor].greeting, "id"); // sapaan cadangan
+    } else addMessage("error", `⚠️ ${e.message}`);
     if (robot.isOpen) robot.phase("idle", `⚠️ ${e.message}`);
     reply = "";
   } finally {
@@ -213,8 +281,12 @@ async function send(text) {
   }
 
   // Mode suara: bacakan balasan, lalu otomatis dengarkan lagi (ngobrol tanpa tangan)
-  if (voiceOn() && reply) {
-    await playBubble(bubble, lang());
+  if (queue && reply) {
+    setStatus("🔊 AI berbicara…");
+    robot.phase("speaking");
+    await queue.end();
+    setStatus("");
+    if (robot.isOpen) robot.phase("idle");
     if (voiceOn() && !state.busy && !state.listening) startListening({ auto: true });
   } else {
     $("input").focus();
@@ -582,6 +654,7 @@ async function init() {
     e.target.style.height = "auto";
     e.target.style.height = e.target.scrollHeight + "px";
   });
+  setupContextUI();
   refreshMemory();
   loadChat();
 }

@@ -55,6 +55,8 @@
           </select>
         </label>
         <p class="hint">Kadar ledekan juga otomatis naik kalau kamu belajarnya asal-asalan 😉</p>
+        <label class="switch"><input type="checkbox" id="use-location" /> <span>📍 Pakai cuaca di lokasiku</span></label>
+        <p class="hint" id="location-hint">Supaya Cheesy-Bot & karakter tahu cuaca di tempatmu. Lokasi dibulatkan (±1 km) dan hanya dipakai untuk cek cuaca.</p>
       </section>
 
       <section class="panel">
@@ -92,6 +94,9 @@
       </div>
       <div id="date-stage" class="date-stage" hidden></div>
       <div id="messages" aria-live="polite"></div>
+      <div id="condition-bar" class="condition-bar" aria-label="Kondisi kamu sekarang">
+        <span class="lbl">Kondisi kamu:</span>
+      </div>
       <form id="composer">
         <button type="button" id="mic-lang" class="icon-btn small" title="Bahasa yang kamu ucapkan">EN</button>
         <button type="button" id="mic" class="icon-btn" title="Bicara (tekan lalu ucapkan)">🎤</button>
