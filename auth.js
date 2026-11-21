@@ -115,6 +115,11 @@ export async function logout(req) {
   }
 }
 
+export async function allUsers() {
+  await load();
+  return Object.values(db.users).map(publicUser);
+}
+
 export async function allUserIds() {
   await load();
   return Object.values(db.users).map((u) => u.id);

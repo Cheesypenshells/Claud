@@ -4,9 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TUTORS, LANGUAGES, LEVELS, STYLES, VOICE_PROMPT, buildSystemPrompt } from "./tutors.js";
-import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser } from "./store.js";
+import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser, getSkills, getLearnerSamples } from "./store.js";
+import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
-import { register, login, logout, currentUser, allUserIds, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
+import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(here, "public");
@@ -40,7 +41,7 @@ function readBody(req) {
 function validate(b) {
   if (!TUTORS[b?.tutor]) return "Tutor tidak dikenal";
   if (!LANGUAGES[b.language]) return "Bahasa tidak dikenal";
-  if (!LEVELS[b.level]) return "Level tidak dikenal";
+  if (!LEVELS[b.level] && b.level !== "auto") return "Level tidak dikenal";
   if (!STYLES[b.style]) return "Gaya ngajar tidak dikenal";
   if (b.voice !== undefined && typeof b.voice !== "boolean") return "Parameter voice tidak valid";
   if (typeof b.message !== "string" || !b.message.trim() || b.message.length > MAX_CHARS) return "Pesan kosong atau terlalu panjang";
@@ -70,9 +71,12 @@ async function handleChat(req, res, user) {
   if (recent[0]?.role === "assistant") recent = recent.slice(1);
   const lastTs = thread.at(-1)?.ts;
   const profile = await getProfile(user.id);
+  const assessment = (await getSkills(user.id))[body.language]?.current ?? null;
+  const levelText = body.level === "auto" ? autoLevelText(assessment) : LEVELS[body.level];
 
   const context = [
     renderMemory(profile, LANGUAGES[body.language], user.name),
+    renderSkills(assessment),
     `Now: ${fmtTime(new Date().toISOString())}. ${lastTs ? `Last message in this chat: ${fmtTime(lastTs)}.` : "This is the first message in this chat."}`,
     thread.length > recent.length ? `(Older messages of this chat are summarized in MEMORY.)` : "",
   ].filter(Boolean).join("\n\n");
@@ -90,7 +94,7 @@ async function handleChat(req, res, user) {
     fallbacks: "default",
     cache_control: { type: "ephemeral" },
     system: [
-      { type: "text", text: buildSystemPrompt(body.tutor, body.language, body.level, body.style) },
+      { type: "text", text: buildSystemPrompt(body.tutor, body.language, levelText, body.style) },
       { type: "text", text: context },
       ...(body.voice ? [{ type: "text", text: VOICE_PROMPT }] : []),
     ],
@@ -131,8 +135,9 @@ async function handleChat(req, res, user) {
     try {
       // Simpan juga balasan yang terpotong, supaya riwayat tetap sama dengan yang dilihat murid.
       if (reply.trim()) {
-        await appendExchange(user.id, key, { tutor: body.tutor, language: LANGUAGES[body.language], level: body.level }, message, reply);
+        await appendExchange(user.id, key, { tutor: body.tutor, language: LANGUAGES[body.language], langId: body.language, level: body.level, voice: !!body.voice }, message, reply);
         maybeUpdateMemory(user.id, { accountName: user.name });
+        runAssessment(user.id, body.language, LANGUAGES[body.language]).catch(() => {});
       }
     } finally {
       busy.delete(lock);
@@ -222,6 +227,42 @@ const server = http.createServer(async (req, res) => {
           if (busy.has(`${user.id}|${key}`)) return json(res, 409, { error: "Tunggu balasan selesai dulu." });
           await clearThread(user.id, key);
           return json(res, 200, { ok: true });
+        }
+      }
+
+      if (["/api/skills", "/api/assess", "/api/leaderboard"].includes(url.pathname)) {
+        const langId = url.searchParams.get("language");
+        if (!LANGUAGES[langId]) return json(res, 400, { error: "Bahasa tidak dikenal" });
+
+        if (req.method === "GET" && url.pathname === "/api/skills") {
+          const sk = (await getSkills(user.id))[langId] ?? { current: null, history: [], xp: 0, since: 0 };
+          const samples = (await getLearnerSamples(user.id, langId, 1000)).length;
+          return json(res, 200, {
+            ...sk, samples, ranks: RANKS, skillNames: SKILLS, levels: CEFR,
+            nextIn: sk.current ? Math.max(0, ASSESS_EVERY - sk.since) : Math.max(0, MIN_MESSAGES - samples),
+          });
+        }
+        if (req.method === "POST" && url.pathname === "/api/assess") {
+          try {
+            const a = await runAssessment(user.id, langId, LANGUAGES[langId], { force: true });
+            if (!a) return json(res, 400, { error: `Ngobrol dulu minimal ${MIN_MESSAGES} pesan dalam bahasa ini biar bisa dinilai.` });
+            return json(res, 200, { assessment: a });
+          } catch {
+            return json(res, 502, { error: "Penilaian gagal. Coba lagi sebentar." });
+          }
+        }
+        if (req.method === "GET" && url.pathname === "/api/leaderboard") {
+          const rows = [];
+          for (const u of await allUsers()) {
+            const sk = (await getSkills(u.id))[langId];
+            if (!sk?.xp) continue;
+            rows.push({ name: u.name, me: u.id === user.id, level: sk.current?.overall ?? null,
+              score: sk.current?.overall_score ?? 0, rank: sk.current ? RANKS[sk.current.overall] : "Belum dinilai", xp: sk.xp });
+          }
+          const order = (r) => (r.level ? CEFR.indexOf(r.level) : -1);
+          rows.sort((a, b) => order(b) - order(a) || b.score - a.score || b.xp - a.xp);
+          rows.forEach((r, i) => (r.pos = i + 1));
+          return json(res, 200, { rows: rows.slice(0, 20), mine: rows.find((r) => r.me) ?? null, total: rows.length });
         }
       }
 

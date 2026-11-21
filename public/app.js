@@ -106,6 +106,7 @@ async function loadChat() {
   $("chat-title").textContent = `${t.name} · ${state.config.languages[lang()]}`;
   updateMicLangLabel();
   savePrefs();
+  refreshSkills();
   $("messages").innerHTML = "";
   let messages = [];
   try {
@@ -192,6 +193,8 @@ async function send(text) {
   if (reply) {
     refreshMemory();
     setTimeout(refreshMemory, 25000); // ingatan diperbarui di latar belakang
+    refreshSkills({ announce: true });
+    for (const ms of [20000, 45000]) setTimeout(() => refreshSkills({ announce: true }), ms); // penilaian berjalan di latar belakang
   }
 
   // Mode suara: bacakan balasan, lalu otomatis dengarkan lagi (ngobrol tanpa tangan)
@@ -258,6 +261,128 @@ async function wipeMemory() {
   await fetch("/api/memory", { method: "DELETE" });
   await refreshMemory();
   await loadChat();
+}
+
+// ---------- Level & peringkat (CEFR) ----------
+const lastLevel = {}; // bahasa -> level terakhir yang diketahui (untuk notifikasi naik level)
+const levelIdx = (lv, levels) => levels.indexOf(lv);
+const scalePct = (lv, score, levels) => Math.min(100, ((levelIdx(lv, levels) + score / 100) / levels.length) * 100);
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.hidden = true), 6000);
+}
+
+async function fetchSkills(langId = lang()) {
+  try { return await (await fetch(`/api/skills?language=${langId}`)).json(); } catch { return null; }
+}
+
+function skillRowsHtml(a, sk) {
+  return Object.entries(sk.skillNames).map(([k, label]) => {
+    const v = a.skills[k];
+    return `<div class="skill-row"><span>${escapeHtml(label)}</span>
+      <div class="meter navy"><i style="width:${scalePct(v.level, v.score, sk.levels)}%"></i></div>
+      <span class="cefr sm">${escapeHtml(v.level)}</span></div>`;
+  }).join("");
+}
+
+async function refreshSkills({ announce = false } = {}) {
+  const langId = lang();
+  const sk = await fetchSkills(langId);
+  if (!sk || langId !== lang()) return;
+  const el = $("skill-card");
+  const a = sk.current;
+  if (!a) {
+    el.innerHTML = `<div class="rank-line"><span class="rank-title">Belum dinilai</span><span class="cefr">?</span></div>
+      <p class="hint">Ngobrol ${sk.nextIn} pesan lagi dalam ${escapeHtml(state.config.languages[langId])} — Cheesy-Bot akan menilai levelmu pakai standar <b>CEFR</b> (A1–C2).</p>
+      <div class="xp">XP ${sk.xp}</div>`;
+    lastLevel[langId] ??= null;
+    return;
+  }
+  const next = sk.levels[levelIdx(a.overall, sk.levels) + 1];
+  el.innerHTML = `
+    <div class="rank-line"><span class="rank-title">${escapeHtml(sk.ranks[a.overall])}</span><span class="cefr">${escapeHtml(a.overall)}</span></div>
+    <div class="meter"><i style="width:${a.overall_score}%"></i></div>
+    <div class="meter-label"><span>${a.overall_score}% ${next ? `menuju ${next}` : "level tertinggi"}</span><span>XP ${sk.xp}</span></div>
+    <div class="skill-rows">${skillRowsHtml(a, sk)}</div>
+    <div class="scale"><span>Pre-A1</span><span>A1</span><span>A2</span><span>B1</span><span>B2</span><span>C1</span><span>C2</span></div>
+    <p class="hint">Dinilai ulang dalam ${sk.nextIn} obrolan lagi.</p>`;
+  const prev = lastLevel[langId];
+  if (announce && prev !== undefined) {
+    if (prev === null) toast(`📊 Penilaian pertama selesai: kamu ${a.overall} — ${sk.ranks[a.overall]}!`);
+    else if (levelIdx(a.overall, sk.levels) > levelIdx(prev, sk.levels)) toast(`🎉 NAIK LEVEL! ${prev} → ${a.overall} · ${sk.ranks[a.overall]} (+100 XP)`);
+    else if (levelIdx(a.overall, sk.levels) < levelIdx(prev, sk.levels)) toast(`😬 Turun ke ${a.overall}… Cheesy-Bot kecewa. Ayo serius lagi!`);
+  }
+  lastLevel[langId] = a.overall;
+}
+
+async function showReport() {
+  const sk = await fetchSkills();
+  const a = sk?.current;
+  $("skill-dialog-title").textContent = `Rapor CEFR · ${state.config.languages[lang()]}`;
+  const ul = (x) => (x?.length ? `<ul>${x.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : `<p class="muted">—</p>`);
+  $("skill-body").innerHTML = !a
+    ? `<p>Belum ada penilaian untuk bahasa ini. Kamu sudah menulis <b>${sk?.samples ?? 0}</b> pesan; butuh minimal ${(sk?.samples ?? 0) + (sk?.nextIn ?? 0)} pesan.</p>
+       <p class="muted">Penilaian memakai standar <b>CEFR</b> (Common European Framework of Reference for Languages) — standar internasional A1–C2 yang menjadi acuan IELTS, TOEFL, DELF, Goethe, DELE, dan lainnya.</p>
+       <div class="actions"><button class="btn-utama" id="assess-now" type="button">⚡ Nilai sekarang</button></div>`
+    : `
+      <div class="rapor-head"><span class="cefr">${escapeHtml(a.overall)}</span>
+        <div><b>${escapeHtml(sk.ranks[a.overall])}</b><small>${a.overall_score}% menuju level berikutnya · XP ${sk.xp} · dari ${a.samples} pesan</small></div></div>
+      <div class="quote">🤖 ${escapeHtml(a.summary)}</div>
+      ${a.enough_evidence ? "" : `<p class="muted">⚠️ Datanya masih sedikit — nilai ini perkiraan. Tulis lebih banyak dalam bahasa target biar akurat.</p>`}
+      <h3>5 aspek CEFR</h3>
+      ${Object.entries(sk.skillNames).map(([k, label]) => {
+        const v = a.skills[k];
+        return `<div class="sk"><div class="sk-top"><span>${escapeHtml(label)}</span><span class="cefr sm">${escapeHtml(v.level)}</span></div>
+          <div class="meter navy"><i style="width:${scalePct(v.level, v.score, sk.levels)}%"></i></div>
+          <p class="ev">${escapeHtml(v.evidence)}</p></div>`;
+      }).join("")}
+      <h3>💪 Kekuatan</h3>${ul(a.strengths)}
+      <h3>🩹 Kelemahan</h3>${ul(a.weaknesses)}
+      <h3>🎯 Fokus berikutnya</h3>${ul(a.next_focus)}
+      <h3>📈 Riwayat level</h3>
+      <div class="hist">${sk.history.map((h) => `<span>${new Date(h.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} · ${escapeHtml(h.overall)}</span>`).join("")}</div>
+      <p class="muted">Standar: <b>CEFR</b> (Dewan Eropa) — acuan IELTS, TOEFL, DELF, Goethe, DELE, dll. Aspek: Range, Accuracy, Fluency, Interaction, Coherence.
+        Pengucapan belum dinilai karena yang dibaca hanya teks/transkrip. Dinilai: ${new Date(a.ts).toLocaleString("id-ID")}.</p>
+      <div class="actions"><button class="btn-utama" id="assess-now" type="button">⚡ Nilai ulang sekarang</button></div>`;
+  $("assess-now").onclick = assessNow;
+  if (!$("skill-dialog").open) $("skill-dialog").showModal();
+}
+
+async function assessNow() {
+  const btn = $("assess-now");
+  btn.disabled = true;
+  btn.textContent = "⟳ Cheesy-Bot sedang menilai… (bisa ±30 detik)";
+  try {
+    const res = await fetch(`/api/assess?language=${lang()}`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    await refreshSkills({ announce: true });
+    await showReport();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = "⚡ Coba lagi";
+    toast(`⚠️ ${e.message}`);
+  }
+}
+
+async function showBoard() {
+  let data;
+  try { data = await (await fetch(`/api/leaderboard?language=${lang()}`)).json(); } catch { return; }
+  $("skill-dialog-title").textContent = `Peringkat · ${state.config.languages[lang()]}`;
+  $("skill-body").innerHTML = !data.rows.length
+    ? `<p>Belum ada yang belajar bahasa ini. Jadilah yang pertama! 🦪</p>`
+    : `<table class="board"><thead><tr><th>#</th><th>Nama</th><th>Level</th><th>XP</th></tr></thead><tbody>
+        ${data.rows.map((r) => `<tr class="${r.me ? "me" : ""}"><td class="pos">${r.pos}</td>
+          <td>${escapeHtml(r.name)}${r.me ? " (kamu)" : ""}<br><span class="muted">${escapeHtml(r.rank)}</span></td>
+          <td>${r.level ? `<span class="cefr sm">${escapeHtml(r.level)}</span> ${r.score}%` : "—"}</td><td>${r.xp}</td></tr>`).join("")}
+       </tbody></table>
+       ${data.mine && data.mine.pos > 20 ? `<p class="muted">Posisimu: #${data.mine.pos} dari ${data.total}.</p>` : ""}
+       <p class="muted">Urutan: level CEFR → progress dalam level → XP. Yang tampil hanya nama panggilan.</p>`;
+  if (!$("skill-dialog").open) $("skill-dialog").showModal();
 }
 
 // ---------- Mikrofon ----------
@@ -389,6 +514,9 @@ async function init() {
   $("memory-view").onclick = showMemory;
   $("memory-wipe").onclick = wipeMemory;
   $("memory-close").onclick = () => $("memory-dialog").close();
+  $("report-view").onclick = showReport;
+  $("board-view").onclick = showBoard;
+  $("skill-close").onclick = () => $("skill-dialog").close();
 
   // Suara
   $("robot-open").onclick = openRobot;

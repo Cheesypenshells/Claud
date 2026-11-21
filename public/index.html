@@ -25,6 +25,15 @@
 
   <div class="app">
     <aside class="sidebar">
+      <section class="panel skill-panel">
+        <h2 class="judul"><span>Level &amp; Peringkat</span></h2>
+        <div id="skill-card" class="skill-card">Memuat…</div>
+        <div class="mem-actions">
+          <button id="report-view" class="ghost" type="button">📊 Lihat rapor</button>
+          <button id="board-view" class="ghost" type="button">🏆 Peringkat</button>
+        </div>
+      </section>
+
       <section class="panel">
         <h2 class="judul"><span>Setelan</span></h2>
         <label>Bahasa yang dipelajari
@@ -32,8 +41,9 @@
         </label>
         <label>Level
           <select id="level">
+            <option value="auto" selected>🤖 Otomatis — sesuai hasil penilaian</option>
             <option value="beginner">Pemula</option>
-            <option value="intermediate" selected>Menengah</option>
+            <option value="intermediate">Menengah</option>
             <option value="advanced">Mahir</option>
           </select>
         </label>
@@ -88,13 +98,21 @@
       </form>
     </main>
   </div>
-  <dialog id="memory-dialog">
+  <dialog id="memory-dialog" class="cps-dialog">
     <div class="dlg-head">
       <h2 class="judul"><span>Ingatan Cheesy-Bot</span></h2>
       <button type="button" class="robot-x dlg-x" id="memory-close" title="Tutup">✕</button>
     </div>
     <div id="memory-body"></div>
   </dialog>
+  <dialog id="skill-dialog" class="cps-dialog">
+    <div class="dlg-head">
+      <h2 class="judul"><span id="skill-dialog-title">Rapor</span></h2>
+      <button type="button" class="robot-x dlg-x" id="skill-close" title="Tutup">✕</button>
+    </div>
+    <div id="skill-body"></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
   <script src="app.js" type="module"></script>
 </body>
 </html>

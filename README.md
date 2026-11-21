@@ -20,6 +20,23 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 - Tombol **Keluar** di kanan atas. "Lupakan semua" hanya menghapus data akun yang sedang login.
 - Kalau dipasang di internet, jalankan di belakang HTTPS (reverse proxy yang mengirim `X-Forwarded-Proto: https`) supaya cookie ditandai `Secure`.
 
+## 📊 Level, Rapor & Peringkat (standar CEFR)
+
+Cheesy-Bot menilai kemampuanmu dari obrolan memakai **CEFR** (*Common European Framework of Reference for Languages*, Dewan Eropa) —
+standar kemampuan bahasa yang paling luas dipakai di dunia (A1 → C2) dan menjadi acuan IELTS, TOEFL, DELF/DALF, Goethe, DELE, dan lainnya.
+
+- **Kapan dinilai:** otomatis setelah 4 pesan pertama dalam suatu bahasa, lalu dinilai ulang setiap 6 pesan baru. Bisa juga dipicu manual: **📊 Lihat rapor → ⚡ Nilai ulang sekarang**.
+- **Apa yang dinilai:** 5 aspek kualitatif CEFR — *Range* (ragam & kosakata), *Accuracy* (ketepatan grammar), *Fluency* (kelancaran),
+  *Interaction* (interaksi), *Coherence* (koherensi) — masing-masing diberi level A1–C2 plus bukti kutipan dari pesanmu.
+  Penilai diinstruksikan ketat seperti ujian sungguhan (tidak menaikkan nilai). Pengucapan belum dinilai karena yang dibaca hanya teks/transkrip.
+- **Rapor:** level keseluruhan, % progress menuju level berikutnya, kekuatan, kelemahan, fokus latihan berikutnya, dan riwayat level.
+- **Gelar peringkat:** Pre-A1 🦪 Kerang Mentah · A1 🧂 Kerang Dicuci · A2 🧄 Kerang Berbumbu · B1 🧀 Kerang Bermozzarella ·
+  B2 🔥 Kerang Dibakar · C1 ⭐ Kerang Juara Grill · C2 👑 Grand Master Oyster.
+- **XP:** +10 per obrolan, +5 kalau pesannya panjang (≥ 8 kata), +100 saat naik level. Ada notifikasi saat naik/turun level.
+- **🏆 Papan peringkat** per bahasa antar-pengguna (urut level → progress → XP; hanya nama panggilan yang ditampilkan).
+- **Jadi patokan mengajar:** pilih Level **🤖 Otomatis** (default) — Cheesy-Bot mengajar di level hasil penilaianmu + sedikit di atasnya,
+  dan fokus melatih aspek terlemahmu.
+
 ## 🧠 Cheesy-Bot Mengingat Kamu & Ngajar Seperti Manusia
 
 - **Ingat semua obrolan:** riwayat chat setiap tutor + bahasa disimpan di server per akun, jadi tidak hilang saat halaman di-refresh atau server dimatikan.
@@ -85,6 +102,7 @@ npm start                 # buka http://localhost:3000
 - `tutors.js` — kepribadian Cheesy-Bot, gaya ngajar, dan 5 mode tutor. **Ubah sifat/tutor di sini.**
 - `memory.js` — ingatan jangka panjang (profil murid)
 - `store.js` — penyimpanan riwayat chat & ingatan per pengguna (`data/users/`)
+- `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar
 - `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login
 - `public/login.html`, `public/login.js` — halaman Masuk/Daftar
 - `public/` — tampilan web (HTML/CSS/JS biasa, mendukung mode gelap dan HP)

@@ -93,6 +93,6 @@ Talk like a real spoken conversation: short (2–4 sentences), lively, with natu
 Write the target-language part first. Put anything in Bahasa Indonesia (corrections, teasing, tips, translations) on separate lines that start with "💬 ". Every Bahasa Indonesia line must start with "💬 "; target-language lines must never start with it.
 Romanization may stay in parentheses; it will not be read aloud.`;
 
-export function buildSystemPrompt(tutorId, langId, levelId, styleId) {
-  return `${PERSONA(LANGUAGES[langId], LEVELS[levelId], STYLES[styleId])}\n\n${TUTORS[tutorId].prompt}`;
+export function buildSystemPrompt(tutorId, langId, levelText, styleId) {
+  return `${PERSONA(LANGUAGES[langId], levelText, STYLES[styleId])}\n\n${TUTORS[tutorId].prompt}`;
 }
