@@ -8,11 +8,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { LIBRARY, loadBook, quoteInText } from "./library.js";
+import { MODEL } from "./model.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(here, "data", "insights.json");
 const client = new Anthropic();
-const MODEL = "claude-opus-5-5";
 
 export const TOPICS = {
   productivity: { emoji: "⏱️", label: "Produktivitas", en: "productivity, focus, time management, deep work" },

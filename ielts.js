@@ -5,9 +5,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { ENGLISH_VARIETIES } from "./accents.js";
+import { MODEL } from "./model.js";
 
 const client = new Anthropic();
-const MODEL = "claude-opus-5-5";
 
 export const P1_TOPICS = ["hometown", "your home", "hobbies", "music", "food and cooking", "the weather", "technology and phones", "travel",
   "friends", "sport and exercise", "reading", "shopping", "weekends", "public transport", "social media", "sleep", "birthdays",

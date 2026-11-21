@@ -24,8 +24,8 @@ Website tutor bahasa asing berbasis AI (Claude) untuk penutur Bahasa Indonesia.
 
 - **Respons cepat:** balasan tutor dan karakter **mengalir kata per kata** (streaming). Di mode suara, AI mulai bicara begitu
   kalimat pertama selesai ditulis — tidak menunggu seluruh balasan.
-- **Fast mode Claude** (`FAST_MODE=true` di `.env`, aktif di `.env.example`): output hingga ±2,5× lebih cepat dengan harga per token 2×.
-  Kalau fast mode ditolak/penuh, server otomatis memakai mode standar. Set `FAST_MODE=false` untuk hemat biaya.
+- **Model hemat secara default:** `CLAUDE_MODEL=claude-haiku-5-5` (±40× lebih murah dari Opus). Ganti ke `claude-opus-5-5` di `.env` kalau ingin obrolan lebih pintar & luwes.
+- **Fast mode** (`FAST_MODE=true`, hanya untuk `claude-opus-5-5`): output hingga ±2,5× lebih cepat dengan harga per token 2×. Kalau ditolak/penuh, otomatis kembali ke mode standar.
 - **Tahu kondisimu:** pilih **Kondisi kamu** di atas kotak ketik (😊 semangat, 😴 capek, 🥱 ngantuk, 😢 sedih, 😤 stres, 🍜 lapar, 🤒 sakit,
   💼 lagi kerja, 🚌 di jalan, 🛋️ santai). Kalau tidak dipilih, AI menebak dari caramu menulis dan bertanya.
 - **Peka waktu & lingkungan:** AI tahu jam, hari, dan zona waktumu, berapa lama kamu menghilang, dan (opsional, centang
@@ -99,7 +99,7 @@ Di **08 🧠 Wawasan** ada dua tab baru:
 Cheesy-Bot di mode tutor biasa juga tahu **judul berita hari ini**, jadi bisa mengajak ngobrol hal yang sedang ramai.
 
 Pengaturan di `.env`:
-- `NEWS_AUTO=false` — matikan update otomatis (berita hanya dibuat saat tab Berita dibuka).
+- `NEWS_AUTO=true` — nyalakan update otomatis tiap hari (default `false`: berita baru dicari saat tab Berita dibuka, supaya hemat).
 - `NEWS_CATEGORIES=indonesia,dunia,ekonomi` — batasi kategori yang diperbarui otomatis (hemat biaya).
 
 > 💸 Web search berbayar per pencarian (selain token). Update harian 7 kategori ≈ 7 riset/hari; diskusi berita memakai maks. 2–3 pencarian per pesan.
@@ -289,7 +289,7 @@ npm start                 # buka http://localhost:3000
 
 ## Catatan Teknis
 
-- Model: `claude-opus-5-5` dengan `effort: "low"` supaya balasan chat cepat.
+- Model: diatur di `model.js` / `CLAUDE_MODEL` (default `claude-haiku-5-5`), dengan `effort: "low"` supaya balasan chat cepat.
 - Fallback otomatis di sisi server Anthropic jika model menolak permintaan.
 - 60 pesan terakhir dikirim apa adanya ke AI; obrolan yang lebih lama diwakili oleh ingatan (profil murid).
 - Ingatan diperbarui di latar belakang dengan structured output (`memory.js`); penyimpanan di `store.js`.

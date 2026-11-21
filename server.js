@@ -20,15 +20,15 @@ import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
 import { ENGLISH_VARIETIES } from "./accents.js";
 import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
+import { MODEL, fallbackParams, SUPPORTS_FAST } from "./model.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(here, "public");
 const PORT = Number(process.env.PORT) || 3000;
-const MODEL = "claude-opus-5-5";
 const CONTEXT_MESSAGES = 60; // pesan terakhir yang dikirim apa adanya; sisanya diwakili ingatan
 const MAX_CHARS = 4000;
 // Fast mode: output hingga ~2,5x lebih cepat dengan harga 2x. Atur FAST_MODE=true di .env.
-const FAST_MODE = process.env.FAST_MODE === "true";
+const FAST_MODE = process.env.FAST_MODE === "true" && SUPPORTS_FAST;
 
 // ---------- Kondisi & situasi pengguna ----------
 const CONDITIONS = {
@@ -145,8 +145,7 @@ async function handleChat(req, res, user) {
     // Chat butuh respons cepat; effort "low" cukup untuk percakapan.
     output_config: { effort: "low" },
     // Jika model menolak (refusal), server Anthropic otomatis mencoba model cadangan.
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
+    ...fallbackParams(),
     cache_control: { type: "ephemeral" },
     system: [
       { type: "text", text: buildSystemPrompt(body.tutor, body.language, levelText, body.style, body.variety) },

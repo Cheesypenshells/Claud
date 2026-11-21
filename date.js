@@ -7,9 +7,9 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CHARACTERS, START_RAPPORT } from "./characters.js";
 import { ACTIVITIES } from "./context.js";
 import { ENGLISH_VARIETIES } from "./accents.js";
+import { MODEL, fallbackParams } from "./model.js";
 
 const client = new Anthropic();
-const MODEL = "claude-opus-5-5";
 export const MAX_TURNS = 30;
 export const SUCCESS_MIN_RAPPORT = 70;
 
@@ -188,8 +188,7 @@ export async function playTurn(charId, levelText, state, history, message, situa
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low", format: zodOutputFormat(TurnSchema) },
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
+    ...fallbackParams(),
     system: [
       { type: "text", text: characterSystem(c, levelText), cache_control: { type: "ephemeral" } },
       { type: "text", text: stateNote(state, situation) },

@@ -7,11 +7,11 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { MODEL, WEB_SEARCH_TYPE } from "./model.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(here, "data", "news.json");
 const client = new Anthropic();
-const MODEL = "claude-opus-5-5";
 const KEEP_DAYS = 7;
 
 export const NEWS_CATEGORIES = {
@@ -70,7 +70,7 @@ function searchUrls(content) {
 
 /** Panggil model dengan web search, ulangi saat pause_turn. Kembalikan { text, urls }. */
 async function researchWithSearch(system, prompt, { maxUses = 6, local = false } = {}) {
-  const tools = [{ type: "web_search_20260209", name: "web_search", max_uses: maxUses,
+  const tools = [{ type: WEB_SEARCH_TYPE, name: "web_search", max_uses: maxUses,
     ...(local ? { user_location: { type: "approximate", country: "ID", timezone: "Asia/Jakarta" } } : {}) }];
   const messages = [{ role: "user", content: prompt }];
   const urls = new Map();
@@ -164,7 +164,7 @@ export function startDailyNews() {
 
 /** Obrolan dengan web search (streaming), untuk diskusi berita & ngobrol bebas. Mengirim teks & daftar sumber. */
 export async function chatWithSearch(system, history, onDelta, { maxUses = 3, fast = false, isRetryable = () => false } = {}) {
-  const tools = [{ type: "web_search_20260209", name: "web_search", max_uses: maxUses }];
+  const tools = [{ type: WEB_SEARCH_TYPE, name: "web_search", max_uses: maxUses }];
   const messages = [...history];
   const sources = new Map();
   let text = "";

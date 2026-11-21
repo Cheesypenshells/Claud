@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getLearnerSamples, getSkills, saveAssessment } from "./store.js";
+import { MODEL } from "./model.js";
 
 export const CEFR = ["Pre-A1", "A1", "A2", "B1", "B2", "C1", "C2"];
 export const SKILLS = {
@@ -78,7 +79,7 @@ export function runAssessment(userId, langId, langName, { force = false } = {}) 
       `#${i + 1} [${s.tutor}${s.voice ? ", via speech" : ""}]\nTUTOR (context): ${s.context.slice(0, 280)}\nLEARNER: ${s.text}`
     ).join("\n\n");
     const response = await client.messages.parse({
-      model: "claude-opus-5-5",
+      model: MODEL,
       max_tokens: 16000,
       output_config: { effort: "medium", format: zodOutputFormat(AssessmentSchema) },
       system: SYSTEM,

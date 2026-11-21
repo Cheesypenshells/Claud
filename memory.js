@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getProfile, getPending, setProfile } from "./store.js";
+import { MODEL } from "./model.js";
 
 const UPDATE_EVERY = 3; // perbarui ingatan setiap 3 pertukaran baru
 
@@ -50,7 +51,7 @@ export function maybeUpdateMemory(userId, { force = false, accountName = "" } = 
     ).join("\n\n");
 
     const response = await client.messages.parse({
-      model: "claude-opus-5-5",
+      model: MODEL,
       max_tokens: 16000,
       output_config: { effort: "low", format: zodOutputFormat(ProfileSchema) },
       system: SYSTEM,

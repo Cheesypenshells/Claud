@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { MODEL } from "./model.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FILE = path.join(here, "data", "world.json");
@@ -58,7 +59,7 @@ export function ensureLife(id, c, dateStr, { localText, weather, outfitDesc }) {
     const past = Object.entries(ch.days).sort(([a], [b]) => a.localeCompare(b)).slice(-7)
       .map(([d, x]) => `${d}: ${x.today_id} | mood: ${x.mood} | progress: ${x.dream_progress}`).join("\n") || "(no previous days yet — this is day one of the story)";
     const res = await client.messages.parse({
-      model: "claude-opus-5-5",
+      model: MODEL,
       max_tokens: 2000,
       output_config: { effort: "low", format: zodOutputFormat(DaySchema) },
       system: `You simulate the ongoing everyday life of a FICTIONAL adult character so they feel like a real person living in the real world. Write today's entry of their life.
