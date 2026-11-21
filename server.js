@@ -754,9 +754,42 @@ async function handleAuth(req, res, action) {
   }
 }
 
+// ----- pemasangan API key lewat browser (hanya kalau key belum ada, hanya dari perangkat ini) -----
+const KEY_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;
+let hasKey = KEY_RE.test(process.env.ANTHROPIC_API_KEY ?? "");
+const isLocal = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
+
+async function handleSetupKey(req, res) {
+  if (hasKey) return json(res, 409, { error: "API key sudah terpasang." });
+  if (!isLocal(req)) return json(res, 403, { error: "Hanya bisa dari perangkat yang menjalankan server." });
+  const body = await readJson(req);
+  const key = String(body?.text ?? "").match(KEY_RE)?.[0];
+  if (!key) return json(res, 400, { error: "Tidak menemukan key yang diawali sk-ant-. Salin ulang key yang pendek, lalu tempel lagi." });
+  try {
+    await new Anthropic({ apiKey: key }).models.list({ limit: 1 });
+  } catch (e) {
+    const st = e?.status;
+    return json(res, 400, { error: st === 401 ? "Key ditolak (salah atau sudah dihapus). Buat key baru lalu coba lagi." : `Gagal mengecek key${st ? ` (kode ${st})` : ""}. Cek internet lalu coba lagi.` });
+  }
+  const envFile = path.join(here, ".env");
+  let env = "";
+  try { env = await fs.readFile(envFile, "utf8"); } catch {}
+  env = env.split("\n").filter((l) => !l.startsWith("ANTHROPIC_API_KEY")).join("\n").replace(/\n*$/, "\n");
+  await fs.writeFile(envFile, `${env}ANTHROPIC_API_KEY=${key}\n`, { mode: 0o600 });
+  await fs.chmod(envFile, 0o600).catch(() => {});
+  hasKey = true;
+  console.log("🔑 API key tersimpan di .env. Jalankan ulang server: CTRL+C lalu npm start");
+  return json(res, 200, { ok: true });
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   try {
+    if (req.method === "POST" && url.pathname === "/api/setup-key") return await handleSetupKey(req, res);
+    if (!hasKey && req.method === "GET" && /^\/(|index\.html|login\.html)$/.test(url.pathname)) {
+      res.writeHead(302, { Location: "/setup.html" });
+      return res.end();
+    }
     // ----- akun (tanpa login) -----
     if (req.method === "POST" && url.pathname === "/api/register") return await handleAuth(req, res, "register");
     if (req.method === "POST" && url.pathname === "/api/login") return await handleAuth(req, res, "login");
@@ -899,7 +932,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Cheesy Pen Shells · Tutor Bahasa AI berjalan di http://localhost:${PORT}`);
-  if (!process.env.ANTHROPIC_API_KEY) console.warn("⚠️  ANTHROPIC_API_KEY belum diset — salin .env.example ke .env lalu isi API key-mu.");
+  if (!hasKey) console.warn(`⚠️  API key belum terpasang. Buka http://localhost:${PORT} di Chrome untuk memasangnya.`);
   startDailyNews(); // berita terkini harian (bisa dimatikan dengan NEWS_AUTO=false)
   // proses sisa antrean ingatan dari sesi sebelumnya, per pengguna
   allUserIds().then((ids) => ids.forEach((id) => maybeUpdateMemory(id, { force: true }))).catch((e) => console.error(e));

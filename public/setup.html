@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pasang API Key · Cheesy Pen Shells</title>
+<link rel="icon" href="img/logo.png">
+<style>
+  :root { --navy: #22348C; --navy-tua: #16226A; --kuning: #F6B800; --krem: #FFF8E6; --teks: #16226A; --merah: #C62828; --hijau: #2E7D32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; background: var(--krem); color: var(--teks); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .kartu { width: 100%; max-width: 460px; background: #fff; border: 3px solid var(--navy); border-radius: 18px; box-shadow: 0 6px 0 var(--navy-tua); padding: 22px; }
+  h1 { margin: 0 0 6px; font-size: 1.35rem; color: var(--navy); }
+  p, li { line-height: 1.5; font-size: .95rem; }
+  ol { padding-left: 20px; }
+  textarea { width: 100%; min-height: 90px; font: .95rem monospace; padding: 10px; border: 2px solid var(--navy); border-radius: 10px; resize: vertical; }
+  button { margin-top: 12px; width: 100%; padding: 13px; font-size: 1rem; font-weight: 800; border: 0; border-radius: 12px; background: var(--kuning); color: var(--navy-tua); box-shadow: 0 4px 0 #C99700; }
+  button:disabled { opacity: .6; }
+  .pesan { margin-top: 14px; padding: 12px; border-radius: 10px; display: none; }
+  .pesan.ok { display: block; background: #E8F5E9; color: var(--hijau); }
+  .pesan.err { display: block; background: #FFEBEE; color: var(--merah); }
+  code { background: #EEF0FA; padding: 2px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main class="kartu">
+  <img src="img/logo.png" alt="" width="56" height="56">
+  <h1>🔑 Pasang API Key Claude</h1>
+  <p>Sekali saja. Setelah ini Cheesy-Bot bisa ngobrol.</p>
+  <ol>
+    <li>Buka <b>platform.claude.com</b> → <b>API Keys</b> → <b>Create Key</b>.</li>
+    <li>Ketuk <b>Copy</b> di sebelah key yang <b>pendek</b> (diawali <code>sk-ant-</code>).</li>
+    <li>Kembali ke sini, tekan lama di kotak bawah → <b>Tempel</b>.</li>
+  </ol>
+  <form id="f">
+    <textarea id="key" placeholder="Tempel di sini… (kalau contoh kode ikut tertempel juga tidak apa-apa)" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    <button id="btn">Simpan &amp; cek key</button>
+  </form>
+  <div id="pesan" class="pesan" role="status"></div>
+</main>
+<script>
+  const f = document.getElementById("f"), btn = document.getElementById("btn"), pesan = document.getElementById("pesan");
+  const show = (cls, html) => { pesan.className = "pesan " + cls; pesan.innerHTML = html; };
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    btn.disabled = true; btn.textContent = "Mengecek key…";
+    try {
+      const r = await fetch("/api/setup-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: document.getElementById("key").value }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Gagal menyimpan");
+      document.getElementById("key").value = "";
+      f.hidden = true;
+      show("ok", "✅ <b>Key benar dan sudah disimpan!</b><br><br>Langkah terakhir di <b>Termux</b>:<br>1. Ketuk <b>CTRL</b> lalu huruf <b>c</b><br>2. Ketik <code>npm start</code> lalu Enter<br>3. Kembali ke sini dan muat ulang halaman 🔄");
+    } catch (err) {
+      show("err", "⚠️ " + err.message);
+    } finally { btn.disabled = false; btn.textContent = "Simpan & cek key"; }
+  };
+</script>
+</body>
+</html>
