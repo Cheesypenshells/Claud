@@ -42,6 +42,13 @@ Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert*
   pekerjaan, kota, latar adegan, tingkat kesulitan, serta **hal yang disukai & tidak disukai** — jadi cara pendekatannya berbeda-beda.
   Contoh: Wang Yutong (pemandu Museum Istana, **Beijing**), Aoi (guru upacara teh, Kyoto), Ji-ho (Busan), Priya (dokter, London),
   Valentina (penari tango, Buenos Aires), Anna (Wina), Karim (koki, Beirut). Data karakter: `characters.js`.
+- **24 pekerjaan yang semuanya berbeda:** penyanyi & penjaga toko piringan hitam, pustakawan, dokter muda NHS, lifeguard, ilustrator,
+  guru upacara teh, koki ramen, instruktur dance K-pop, dokter hewan, pedagang pasar ikan, pemandu Kota Terlarang, pengacara,
+  game developer, arsitek, pilot, penyiar radio & DJ, pastry chef, instruktur selancar layar, kurir sepeda, pemandu gunung,
+  pelayan kafe tradisional Wina, ahli biologi laut, psikolog, pelukis mural. Mereka bercerita soal pekerjaannya, mengajarkan
+  kosakata kerja, membandingkan budaya kerja di negaranya dengan Indonesia, dan bertanya balik soal pekerjaan/kuliahmu.
+- **💼 Ketemu di tempat kerja:** sesuai jam kerjanya (atau pilih "di tempat kerja" di panggung) kamu bisa ngobrol dengan mereka
+  di dapur, studio, kantor, klinik, perpustakaan, bandara, pasar, pantai, dll. — mereka mungkin sibuk atau sedang istirahat.
 - **Pertukaran budaya:** tiap karakter membawa budaya kotanya (kebiasaan, makanan, hari raya, etika, tabu, logat). Tanyakan soal budaya mereka,
   ceritakan budaya Indonesia — mereka penasaran & membandingkan. Rasa ingin tahu budaya menaikkan ketertarikan; salah etika diberi tahu wingman.
   Setiap pelajaran budaya muncul sebagai kartu **📚 Catatan Budaya** dan tersimpan di **Buku Budaya** milikmu.

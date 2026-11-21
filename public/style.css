@@ -471,3 +471,4 @@ body.date-picking #composer { opacity: .5; pointer-events: none; }
   .msg.vocab-card { background: #0F1F33; border-color: #2F5F8F; }
 }
 @media (max-width: 760px) { .condition-bar { padding: 6px 12px 0; } }
+.char-info .job { color: var(--teks); font-size: .8rem; } .char-info .job b { font-weight: 800; }

@@ -191,6 +191,36 @@ const SCENES = {
     ${[0, 1, 2, 3, 4].map((i) => `<path d="M${i * 120 + 20} 10 v20" stroke="#5C3A1E" stroke-width="2"/><path d="M${i * 120 + 8} 30 h24 l-6 12 h-12z" fill="#F6B800"/>`).join("")}
     <rect y="230" width="600" height="70" fill="#B98A5E"/>${Array.from({ length: 10 }, (_, i) => `<rect x="${i * 60}" y="230" width="58" height="70" fill="#C49668"/>`).join("")}
     ${[110, 330, 520].map((x) => `<ellipse cx="${x}" cy="205" rx="40" ry="8" fill="#6B4A2E"/><rect x="${x - 3}" y="205" width="6" height="30" fill="#5C3A1E"/><rect x="${x - 12}" y="190" width="12" height="14" rx="2" fill="#fff"/><path d="M${x} 193 q6 0 6 5 q0 5 -6 5" stroke="#fff" stroke-width="2" fill="none"/>`).join("")}` },
+  kitchen: { sky: "linear-gradient(#DDE3E8, #F2F4F6)", tile: `
+    <rect y="0" width="600" height="300" fill="#E9EDF0"/>${Array.from({ length: 15 }, (_, i) => Array.from({ length: 5 }, (_, r) => `<rect x="${i * 40}" y="${r * 30 + 20}" width="38" height="28" fill="#F7F9FA" stroke="#D3DADF"/>`).join("")).join("")}
+    <rect y="170" width="600" height="14" fill="#9AA5AE"/><rect y="184" width="600" height="60" fill="#B8C2C9"/>${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${i * 100 + 10}" y="190" width="80" height="48" rx="4" fill="#C9D1D7" stroke="#8C979F"/>`).join("")}
+    ${[60, 260, 460].map((x) => `<rect x="${x}" y="140" width="70" height="30" rx="4" fill="#5F6B75"/><ellipse cx="${x + 35}" cy="138" rx="30" ry="6" fill="#3E4850"/><path d="M${x + 20} 128 q5 -14 0 -24 M${x + 40} 128 q5 -14 0 -24" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>`).join("")}
+    <rect y="244" width="600" height="56" fill="#6E7A84"/>${[140, 340, 540].map((x) => `<path d="M${x} 20 v30" stroke="#555" stroke-width="2"/><path d="M${x - 14} 50 h28 l-6 10 h-16z" fill="#C0392B"/>`).join("")}` },
+  studio: { sky: "linear-gradient(#2F3550, #3E4566)", tile: `
+    <rect y="0" width="600" height="230" fill="#3E4566"/><rect x="20" y="30" width="560" height="160" fill="#9FB4D8" opacity=".22" stroke="#C9D3EA" stroke-width="3"/>
+    ${[0, 1, 2, 3, 4, 5, 6].map((i) => `<rect x="${i * 90 + 30}" y="10" width="40" height="8" rx="3" fill="#F6D776"/><path d="M${i * 90 + 50} 18 l-24 60 h48z" fill="#F6D776" opacity=".08"/>`).join("")}
+    <rect y="230" width="600" height="70" fill="#8A6A4A"/>${Array.from({ length: 20 }, (_, i) => `<rect x="${i * 30}" y="230" width="2" height="70" fill="#6E5236"/>`).join("")}
+    <rect x="470" y="150" width="70" height="80" rx="6" fill="#222"/><circle cx="505" cy="175" r="14" fill="#444"/><circle cx="505" cy="210" r="9" fill="#444"/>
+    <path d="M80 230 v-60" stroke="#999" stroke-width="3"/><circle cx="80" cy="166" r="8" fill="#333"/>` },
+  office: { sky: "linear-gradient(#BFD9EE, #E9F1F8)", tile: `
+    <rect y="0" width="600" height="300" fill="#EEF1F4"/>${[0, 1, 2].map((i) => `<rect x="${i * 200 + 15}" y="20" width="170" height="130" fill="#A9CBEA" stroke="#7D8A96" stroke-width="5"/>${[0, 1, 2, 3].map((k) => `<rect x="${i * 200 + 30 + k * 38}" y="${60 + (k % 2) * 20}" width="24" height="${90 - (k % 2) * 20}" fill="#7E9FC0"/>`).join("")}`).join("")}
+    <rect y="200" width="600" height="12" fill="#C9A46A"/>${[60, 260, 460].map((x) => `<rect x="${x}" y="160" width="70" height="40" rx="3" fill="#2B2F40"/><rect x="${x + 4}" y="164" width="62" height="30" fill="#5DA9E9"/><rect x="${x + 30}" y="200" width="10" height="6" fill="#555"/>`).join("")}
+    <rect y="212" width="600" height="88" fill="#9AA3AD"/>${[180, 400].map((x) => `<rect x="${x}" y="150" width="16" height="50" rx="4" fill="#7CBF6B"/><circle cx="${x + 8}" cy="146" r="16" fill="#5DB063"/>`).join("")}` },
+  clinic: { sky: "linear-gradient(#DFF2EE, #F6FBFA)", tile: `
+    <rect y="0" width="600" height="300" fill="#F3FAF8"/><rect y="0" width="600" height="18" fill="#7CC8B8"/>
+    ${[0, 1, 2].map((i) => `<rect x="${i * 200 + 30}" y="40" width="140" height="100" rx="6" fill="#CDEBF5" stroke="#9CC7C0" stroke-width="4"/>`).join("")}
+    ${[100, 300, 500].map((x) => `<rect x="${x - 16}" y="150" width="32" height="32" rx="6" fill="#fff" stroke="#E57373" stroke-width="2"/><rect x="${x - 4}" y="156" width="8" height="20" fill="#E57373"/><rect x="${x - 10}" y="162" width="20" height="8" fill="#E57373"/>`).join("")}
+    <rect y="200" width="600" height="10" fill="#9CC7C0"/><rect y="210" width="600" height="90" fill="#DCE8E5"/>${Array.from({ length: 12 }, (_, i) => `<rect x="${i * 50}" y="210" width="49" height="90" fill="#E5EFEC"/>`).join("")}
+    <rect x="420" y="190" width="90" height="20" rx="4" fill="#B0BEC5"/>` },
+  library: { sky: "linear-gradient(#E8DCC8, #F5EDE0)", tile: `
+    <rect y="0" width="600" height="300" fill="#6B4A2E"/>
+    ${[0, 1, 2].map((i) => `<rect x="${i * 200 + 10}" y="10" width="180" height="220" fill="#8A5A34"/>${[0, 1, 2, 3, 4].map((r) => `<rect x="${i * 200 + 14}" y="${18 + r * 42}" width="172" height="6" fill="#5C3A1E"/>${Array.from({ length: 13 }, (_, k) => `<rect x="${i * 200 + 18 + k * 13}" y="${26 + r * 42}" width="11" height="${28 + (k * 7) % 8}" fill="${["#C0392B", "#22348C", "#F6B800", "#2E8B57", "#E8E0D0", "#7A1F2A"][(k + r + i) % 6]}"/>`).join("")}`).join("")}`).join("")}
+    <rect y="230" width="600" height="70" fill="#A57C52"/>${[140, 440].map((x) => `<rect x="${x}" y="196" width="100" height="10" fill="#5C3A1E"/><rect x="${x + 10}" y="206" width="6" height="30" fill="#4A2E18"/><rect x="${x + 84}" y="206" width="6" height="30" fill="#4A2E18"/><path d="M${x + 40} 196 v-18" stroke="#333" stroke-width="2"/><path d="M${x + 28} 178 h24 l-4 -10 h-16z" fill="#2E8B57"/>`).join("")}` },
+  airport: { sky: "linear-gradient(#8EC5EE, #E3F1FB)", tile: `
+    <rect y="0" width="600" height="190" fill="#CFE6F7"/>${Array.from({ length: 6 }, (_, i) => `<rect x="${i * 100}" y="0" width="6" height="190" fill="#9AA5AE"/>`).join("")}<rect y="0" width="600" height="8" fill="#9AA5AE"/>
+    <g transform="translate(180 70)"><path d="M0 30 h220 q20 0 20 10 q0 10 -20 10 h-220 q-10 0 -10 -10 q0 -10 10 -10z" fill="#fff" stroke="#9AA5AE"/><path d="M90 30 l40 -30 h20 l-20 30z" fill="#22348C"/><path d="M90 50 l40 30 h20 l-20 -30z" fill="#22348C"/><path d="M200 30 l20 -22 h12 l-8 22z" fill="#F6B800"/>${[30, 50, 70, 110, 130, 150, 170].map((x) => `<circle cx="${x}" cy="38" r="3" fill="#7DA7D8"/>`).join("")}</g>
+    <rect y="190" width="600" height="50" fill="#22348C"/>${[40, 240, 440].map((x) => `<rect x="${x}" y="198" width="120" height="30" rx="3" fill="#0D1550"/><text x="${x + 8}" y="218" font-family="monospace" font-size="12" fill="#F6B800">CAI ✈ CGK 14:20</text>`).join("")}
+    <rect y="240" width="600" height="60" fill="#D9D4CB"/>${Array.from({ length: 10 }, (_, i) => `<rect x="${i * 60}" y="240" width="58" height="60" fill="#E2DED6"/>`).join("")}` },
 };
 
 export function sceneStyle(scene) {

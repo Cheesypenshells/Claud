@@ -24,7 +24,7 @@ wajah yang menyerupai selebriti/orang tertentu, dan beri label "karakter AI" bil
 ---
 
 ## 🇺🇸 Hannah Brooks — `hannah`
-27 th · penyanyi-penulis lagu · Nashville, USA · Hangat & suka bercerita
+27 th · penyanyi-penulis lagu & penjaga toko piringan hitam · Nashville, USA · Hangat & suka bercerita
 
 Folder: `public/characters/hannah/`
 
@@ -40,7 +40,7 @@ Folder: `public/characters/hannah/`
 ---
 
 ## 🇬🇧 Oliver Hughes — `oliver`
-28 th · barista toko buku & penulis cerpen · London, Inggris · Sarkas & kalem
+28 th · pustakawan di perpustakaan umum · London, Inggris · Sarkas & kalem
 
 Folder: `public/characters/oliver/`
 
@@ -56,7 +56,7 @@ Folder: `public/characters/oliver/`
 ---
 
 ## 🇬🇧 Priya Sharma — `priya`
-28 th · dokter muda di rumah sakit · London, Inggris · Ambisius & sibuk
+28 th · dokter muda (junior doctor) di NHS · London, Inggris · Ambisius & sibuk
 
 Folder: `public/characters/priya/`
 
@@ -88,7 +88,7 @@ Folder: `public/characters/ethan/`
 ---
 
 ## 🇯🇵 Yui Sato (佐藤ゆい) — `yui`
-25 th · ilustrator lepas · Tokyo, Jepang · Pemalu tapi jahil
+25 th · ilustrator lepas (buku anak & iklan) · Tokyo, Jepang · Pemalu tapi jahil
 
 Folder: `public/characters/yui/`
 
@@ -136,7 +136,7 @@ Folder: `public/characters/ren/`
 ---
 
 ## 🇰🇷 Seo-yeon Park (박서연) — `seoyeon`
-26 th · instruktur dance · Seoul, Korea · Percaya diri & blak-blakan
+26 th · instruktur dance K-pop · Seoul, Korea · Percaya diri & blak-blakan
 
 Folder: `public/characters/seoyeon/`
 
@@ -152,23 +152,23 @@ Folder: `public/characters/seoyeon/`
 ---
 
 ## 🇰🇷 Min-jun Kim (김민준) — `minjun`
-27 th · barista & fotografer · Seoul, Korea · Kalem & pendengar
+27 th · dokter hewan · Seoul, Korea · Kalem & pendengar
 
 Folder: `public/characters/minjun/`
 
-- **neutral.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, relaxed neutral expression, looking at the camera as if someone just said hi`
-- **happy.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, genuine warm smile, eyes crinkling, looking at the camera`
-- **amused.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, playful smirk, one eyebrow slightly raised, amused`
-- **shy.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, shy smile, glancing slightly down and away, light blush`
-- **curious.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, curious interested expression, head slightly tilted, eyebrows raised`
-- **annoyed.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, unimpressed annoyed expression, slight frown, arms crossed`
-- **uncomfortable.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
-- **leaving.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater, grey trousers, vintage film camera on a strap, in a green park in Seoul, turning away and walking off, looking back over the shoulder with a disapproving look`
+- **neutral.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `27-year-old Korean man, soft curtain-parted black hair, fair skin, gentle smile, beige knit sweater over a light blue vet scrub shirt, grey trousers, in a green park in Seoul, turning away and walking off, looking back over the shoulder with a disapproving look`
 
 ---
 
 ## 🇰🇷 Ji-ho Lee (이지호) — `jiho`
-25 th · pegawai pasar ikan & pemain futsal · Busan, Korea · Ekstrovert heboh
+25 th · pedagang di pasar ikan Jagalchi · Busan, Korea · Ekstrovert heboh
 
 Folder: `public/characters/jiho/`
 
@@ -200,23 +200,23 @@ Folder: `public/characters/yutong/`
 ---
 
 ## 🇨🇳 Lin Xiaoyu (林晓雨) — `xiaoyu`
-25 th · pemilik kedai teh · Shanghai, China · Cerdas & suka debat
+25 th · pengacara korporat · Shanghai, China · Cerdas & suka debat
 
 Folder: `public/characters/xiaoyu/`
 
-- **neutral.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, relaxed neutral expression, looking at the camera as if someone just said hi`
-- **happy.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, genuine warm smile, eyes crinkling, looking at the camera`
-- **amused.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, playful smirk, one eyebrow slightly raised, amused`
-- **shy.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, shy smile, glancing slightly down and away, light blush`
-- **curious.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, curious interested expression, head slightly tilted, eyebrows raised`
-- **annoyed.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, unimpressed annoyed expression, slight frown, arms crossed`
-- **uncomfortable.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
-- **leaving.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, burgundy qipao-inspired top, black skirt, on a riverside walkway at golden hour in Shanghai, turning away and walking off, looking back over the shoulder with a disapproving look`
+- **neutral.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `25-year-old Chinese woman from Shanghai, very long straight black hair, fair skin, playful smile, sharp burgundy blazer, black skirt, holding a tea tumbler, on a riverside walkway at golden hour in Shanghai, turning away and walking off, looking back over the shoulder with a disapproving look`
 
 ---
 
 ## 🇨🇳 Chen Hao (陈浩) — `hao`
-28 th · insinyur software & pecinta hotpot · Chengdu, China · Santai & ramah
+28 th · pengembang game (game developer) · Chengdu, China · Santai & ramah
 
 Folder: `public/characters/hao/`
 
@@ -248,34 +248,34 @@ Folder: `public/characters/layla/`
 ---
 
 ## 🇪🇬 Omar Nasser (عمر ناصر) — `omar`
-28 th · pemandu wisata · Kairo, Mesir · Karismatik & receh
+28 th · pilot pesawat komersial · Kairo, Mesir · Karismatik & receh
 
 Folder: `public/characters/omar/`
 
-- **neutral.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, relaxed neutral expression, looking at the camera as if someone just said hi`
-- **happy.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, genuine warm smile, eyes crinkling, looking at the camera`
-- **amused.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, playful smirk, one eyebrow slightly raised, amused`
-- **shy.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, shy smile, glancing slightly down and away, light blush`
-- **curious.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, curious interested expression, head slightly tilted, eyebrows raised`
-- **annoyed.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, unimpressed annoyed expression, slight frown, arms crossed`
-- **uncomfortable.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
-- **leaving.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white linen shirt, beige chinos, on a riverside walkway at golden hour in Kairo, turning away and walking off, looking back over the shoulder with a disapproving look`
+- **neutral.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `28-year-old Egyptian man, short curly black hair, trimmed beard, medium-brown skin, big friendly smile, white pilot uniform shirt with epaulettes, dark trousers, on a riverside walkway at golden hour in Kairo, turning away and walking off, looking back over the shoulder with a disapproving look`
 
 ---
 
 ## 🇱🇧 Karim Khoury (كريم خوري) — `karim`
-27 th · koki restoran · Beirut, Lebanon · Ramah & penggila makanan
+27 th · penyiar radio & DJ · Beirut, Lebanon · Ramah & penggila makanan
 
 Folder: `public/characters/karim/`
 
-- **neutral.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, relaxed neutral expression, looking at the camera as if someone just said hi`
-- **happy.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, genuine warm smile, eyes crinkling, looking at the camera`
-- **amused.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, playful smirk, one eyebrow slightly raised, amused`
-- **shy.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, shy smile, glancing slightly down and away, light blush`
-- **curious.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, curious interested expression, head slightly tilted, eyebrows raised`
-- **annoyed.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, unimpressed annoyed expression, slight frown, arms crossed`
-- **uncomfortable.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
-- **leaving.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, white chef's shirt with rolled sleeves, dark jeans, holding a bag of fresh herbs, on a lively city street in Beirut, turning away and walking off, looking back over the shoulder with a disapproving look`
+- **neutral.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `27-year-old Lebanese man, dark wavy hair, light-olive skin, short stubble, headphones around his neck, black t-shirt under an open denim shirt, dark jeans, on a lively city street in Beirut, turning away and walking off, looking back over the shoulder with a disapproving look`
 
 ---
 
@@ -312,18 +312,18 @@ Folder: `public/characters/lucas/`
 ---
 
 ## 🇩🇪 Lena Fischer — `lena`
-26 th · fotografer & pesepeda · Berlin, Jerman · Lugas & jujur
+26 th · kurir sepeda · Berlin, Jerman · Lugas & jujur
 
 Folder: `public/characters/lena/`
 
-- **neutral.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, relaxed neutral expression, looking at the camera as if someone just said hi`
-- **happy.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, genuine warm smile, eyes crinkling, looking at the camera`
-- **amused.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, playful smirk, one eyebrow slightly raised, amused`
-- **shy.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, shy smile, glancing slightly down and away, light blush`
-- **curious.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, curious interested expression, head slightly tilted, eyebrows raised`
-- **annoyed.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, unimpressed annoyed expression, slight frown, arms crossed`
-- **uncomfortable.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
-- **leaving.jpg** — `26-year-old German woman, long straight dark-blonde hair, fair skin, minimal makeup, olive green jacket, black jeans, walking a city bicycle, camera around neck, on a riverside walkway at golden hour in Berlin, turning away and walking off, looking back over the shoulder with a disapproving look`
+- **neutral.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, relaxed neutral expression, looking at the camera as if someone just said hi`
+- **happy.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, genuine warm smile, eyes crinkling, looking at the camera`
+- **amused.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, playful smirk, one eyebrow slightly raised, amused`
+- **shy.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, shy smile, glancing slightly down and away, light blush`
+- **curious.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, curious interested expression, head slightly tilted, eyebrows raised`
+- **annoyed.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, unimpressed annoyed expression, slight frown, arms crossed`
+- **uncomfortable.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, uncomfortable expression, leaning back slightly, polite but tense, hand raised in a 'stop' gesture`
+- **leaving.jpg** — `26-year-old German woman, long straight dark-blonde hair under a cycling cap, fair skin, minimal makeup, olive messenger jacket, black jeans, big messenger bag, with a bicycle, on a riverside walkway at golden hour in Berlin, turning away and walking off, looking back over the shoulder with a disapproving look`
 
 ---
 
@@ -344,7 +344,7 @@ Folder: `public/characters/jonas/`
 ---
 
 ## 🇦🇹 Anna Gruber — `anna`
-26 th · mahasiswi filsafat & pelayan kafe · Wina, Austria · Intelektual & sarkas
+26 th · mahasiswi filsafat & pelayan kafe tradisional · Wina, Austria · Intelektual & sarkas
 
 Folder: `public/characters/anna/`
 
@@ -376,7 +376,7 @@ Folder: `public/characters/sofia/`
 ---
 
 ## 🇦🇷 Valentina Ruiz — `valentina`
-27 th · penari tango & mahasiswi psikologi · Buenos Aires, Argentina · Romantis & dramatis
+27 th · psikolog · Buenos Aires, Argentina · Romantis & dramatis
 
 Folder: `public/characters/valentina/`
 

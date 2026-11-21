@@ -30,8 +30,13 @@ const feelLabel = (r) => (r < 15 ? "Dingin 🥶" : r < 35 ? "Sopan aja" : r < 55
 export function createDating(ctx) {
   const { $, fetch, escapeHtml, scrollDown, toast, speak, stopAll, setStatus, getLevel, setLanguage, voiceOn, startListening, refreshSkills, refreshMemory, getCtx } = ctx;
   const st = { chars: null, states: {}, rules: null, activities: {}, current: null, filter: "all", busy: false };
-  const actOf = (state) => st.activities[state?.activity] ?? st.activities.walk;
-  const sceneOf = (c, state) => actOf(state)?.scene ?? c.scene;
+  // "lagi kerja" memakai tempat kerja masing-masing karakter
+  const actInfo = (c, id) => (id === "work" && c?.work
+    ? { emoji: c.jobEmoji ?? "💼", label: `lagi kerja · ${c.job}`, scene: c.work.scene, walking: c.work.walking }
+    : st.activities[id] ?? st.activities.walk);
+  const curChar = () => st.chars?.[st.current];
+  const actOf = (state, c = curChar()) => actInfo(c, state?.activity);
+  const sceneOf = (c, state) => actOf(state, c)?.scene ?? c.scene;
 
   const stage = () => $("date-stage");
 
@@ -77,9 +82,9 @@ export function createDating(ctx) {
             <div class="char-info">
               <b>${escapeHtml(c.name)}</b>
               <span class="persona-tag">${escapeHtml(c.personality)}</span>
-              <span>${c.age} th · ${escapeHtml(c.job)}</span>
+              <span class="job">${c.jobEmoji ?? ""} <b>${escapeHtml(c.job)}</b> · ${c.age} th</span>
               <span>${c.flag} ${escapeHtml(c.city)}</span>
-              ${c.now ? `<span class="now">🕗 ${escapeHtml(c.now.time)} di sana · ${st.activities[c.now.activity]?.emoji ?? ""} ${escapeHtml(st.activities[c.now.activity]?.label ?? "")}</span>` : ""}
+              ${c.now ? `<span class="now">🕗 ${escapeHtml(c.now.time)} di sana · ${actInfo(c, c.now.activity)?.emoji ?? ""} ${escapeHtml(c.now.activity === "work" ? "lagi kerja" : actInfo(c, c.now.activity)?.label ?? "")}</span>` : ""}
               <span class="diff d${c.difficulty}">${"●".repeat(c.difficulty)}${"○".repeat(3 - c.difficulty)} ${c.difficultyLabel}</span>
               ${rec(c.id).success ? `<span class="rec ok">💘 Berhasil ${rec(c.id).success}×</span>` : ""}
               ${rec(c.id).walked_away ? `<span class="rec bad">🚶 Ditinggal ${rec(c.id).walked_away}×</span>` : ""}
@@ -125,7 +130,7 @@ export function createDating(ctx) {
         <button type="button" class="mini" id="date-back">← Pilih gebetan</button>
         <span class="turns" id="date-turns">Giliran ${state.turns}/${st.rules.maxTurns}</span>
         <select class="mini" id="date-activity" title="Ganti aktivitas (mulai adegan baru)">
-          ${(c.activities ?? ["walk"]).map((a) => `<option value="${a}" ${a === state.activity ? "selected" : ""}>${st.activities[a]?.emoji ?? ""} ${escapeHtml(st.activities[a]?.label ?? a)}</option>`).join("")}
+          ${(c.activities ?? ["walk"]).map((a) => `<option value="${a}" ${a === state.activity ? "selected" : ""}>${actInfo(c, a)?.emoji ?? ""} ${escapeHtml(a === "work" ? `di tempat kerja (${c.job})` : actInfo(c, a)?.label ?? a)}</option>`).join("")}
         </select>
         <button type="button" class="mini" id="date-restart">↺ Mulai lagi</button>
       </div>`;

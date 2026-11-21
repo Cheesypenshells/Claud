@@ -45,6 +45,7 @@ export function localParts(tz, date = new Date()) {
 
 // ---------- Aktivitas ----------
 export const ACTIVITIES = {
+  work: { emoji: "💼", label: "lagi kerja", desc: "at work" },
   walk: { emoji: "🚶", label: "jalan-jalan", desc: "taking a relaxed walk around the neighbourhood", walking: true },
   night: { emoji: "🌙", label: "jalan malam", desc: "a late-night walk to grab snacks at a convenience store / night food stall", walking: true },
   fishing: { emoji: "🎣", label: "memancing", desc: "fishing with a rod, bait and a cooler box", scene: "lake" },

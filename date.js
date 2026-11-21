@@ -60,6 +60,10 @@ function characterSystem(c, levelText) {
 Personality type: ${c.personality}. What wins you over: ${c.likes.join("; ")}. What turns you off: ${c.dislikes.join("; ")}.
 A stranger — an Indonesian person practising your language — approaches you. This is a light, social "getting to know you / flirting" practice scene, like a romantic comedy. You are NOT an AI assistant in this scene; stay fully in character.
 
+Your job: ${c.job} — ${c.jobDetail}.
+- Your work is a big part of who you are: share real-feeling stories (funny customers, hard days, proud moments), use your job's vocabulary and teach it when asked, and explain what working life is like in your country (hours, culture, salary taboos, holidays) — comparing with Indonesia.
+- Ask about the learner's job or studies too, and react with genuine curiosity.
+
 Your culture (you live it; share it like a local, with personal anecdotes and nuance — not like a textbook, and avoid stereotypes):
 ${c.culture}
 
@@ -108,7 +112,7 @@ export async function startScene(charId, levelText, situation) {
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low", format: zodOutputFormat(StartSchema) },
-    system: characterSystem(c, levelText) + `\n\n${situation}\n\nTASK NOW: the learner hasn't spoken yet. Write the scene narration (mention your local time, weather and what you're doing) and 3 openers the learner could use, plus key vocabulary for your current activity. Do not speak as the character yet.`,
+    system: characterSystem(c, levelText) + `\n\n${situation}\n\nTASK NOW: the learner hasn't spoken yet. Write the scene narration (mention your local time, weather and what you're doing) and 3 openers the learner could use, plus key vocabulary for your current activity (if you're at work: vocabulary of your job and workplace). Do not speak as the character yet.`,
     messages: [{ role: "user", content: "Set the scene." }],
   });
   if (!res.parsed_output) throw new Error("Gagal menyiapkan adegan");
@@ -241,9 +245,12 @@ export async function playTurn(charId, levelText, state, history, message, situa
 /** Teks situasi dunia nyata untuk prompt karakter. */
 export function characterSituation(c, { local, weather, activityId, learner }) {
   const act = ACTIVITIES[activityId] ?? ACTIVITIES.walk;
+  const doing = activityId === "work"
+    ? `you're AT WORK right now as ${c.job} (${c.jobDetail}). The learner meets you at your workplace — you may be busy, interrupted by work, or on a short break; it's natural to talk about your work and teach work vocabulary`
+    : `${act.desc} (${act.label})`;
   return `SITUATION RIGHT NOW:
 - Your local time in ${c.city}: ${local.text} (${local.part}). Weather where you are: ${weather ?? "unknown"}.
-- What you're doing: ${act.desc} (${act.label}). Stay in this activity/setting and let it shape the conversation.
+- What you're doing: ${doing}. Stay in this activity/setting and let it shape the conversation.
 - The learner: ${learner}`;
 }
 

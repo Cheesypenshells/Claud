@@ -447,7 +447,7 @@ const server = http.createServer(async (req, res) => {
         }
         return json(res, 200, {
           characters: chars,
-          scenePhotos: Object.fromEntries(["city", "park", "beach", "market", "riverside", "lake", "pool", "gym", "cafe"]
+          scenePhotos: Object.fromEntries(["city", "park", "beach", "market", "riverside", "lake", "pool", "gym", "cafe", "kitchen", "studio", "office", "clinic", "library", "airport"]
             .map((sc) => [sc, findFile("scenes", sc, IMG_EXT)]).filter(([, u]) => u)),
           activities: Object.fromEntries(Object.entries(ACTIVITIES).map(([k, a]) => [k, { emoji: a.emoji, label: a.label, scene: a.scene ?? null, walking: !!a.walking }])),
           states: Object.fromEntries(Object.entries(dates).map(([id, d]) => [id, { status: d.status, rapport: d.rapport, best: d.best, record: d.record }])),
