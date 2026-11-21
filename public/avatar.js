@@ -75,44 +75,106 @@ export function faceMarkup(look, mood) {
     f.mouth + (f.sweat ? `<path d="M128 54 q4 6 0 9 q-4 -3 0 -9z" fill="#7EC8F2"/>` : "");
 }
 
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, Math.round(v + amt)));
+  return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, "0")).join("")}`;
+}
+
 function accessories(look, layer) {
   const a = new Set(look.acc ?? []);
+  const hijab = look.hair === "hijab";
   let out = "";
-  if (layer === "back" && a.has("guitar")) {
-    out += `<g transform="rotate(-14 150 190)"><rect x="138" y="110" width="26" height="150" rx="13" fill="#3B2A20"/><ellipse cx="151" cy="230" rx="22" ry="30" fill="#3B2A20"/><rect x="143" y="120" width="16" height="4" fill="#C9A46A"/></g>`;
+  if (layer === "back") {
+    if (a.has("guitar")) out += `<g transform="rotate(-14 150 190)"><rect x="138" y="110" width="26" height="150" rx="13" fill="#3B2A20"/><ellipse cx="151" cy="230" rx="22" ry="30" fill="#3B2A20"/><rect x="143" y="120" width="16" height="4" fill="#C9A46A"/></g>`;
+    if (a.has("backpack")) out += `<rect x="58" y="128" width="84" height="80" rx="16" fill="#3A5A7A"/>`;
   }
   if (layer === "body") {
+    if (a.has("apron")) out += `<path d="M92 118 L84 150" stroke="#ddd" stroke-width="3"/><path d="M108 118 L116 150" stroke="#ddd" stroke-width="3"/><rect x="76" y="148" width="48" height="${look.skirt ? 110 : 96}" rx="6" fill="${look.style === "chef" ? "#F6B800" : look.top === "#FFFFFF" ? "#F6D046" : "#FAFAFA"}" ${LINE}/><rect x="88" y="182" width="24" height="16" rx="3" fill="rgba(0,0,0,.08)"/>`;
     if (a.has("scarf")) out += `<path d="M84 114 Q100 126 116 114 L118 124 Q100 136 82 124 Z" fill="${look.accent}"/><rect x="104" y="122" width="10" height="34" rx="4" fill="${look.accent}"/>`;
+    if (a.has("necklace") && !a.has("scarf")) out += `<path d="M88 118 Q100 134 112 118" stroke="#F6B800" stroke-width="2" fill="none"/><circle cx="100" cy="132" r="3.2" fill="#F6B800"/>`;
+    if (a.has("tie")) out += `<path d="M97 120 h6 l3 6 l-4 50 l-2 4 l-2 -4 l-4 -50 z" fill="#1F2A44"/>`;
+    if (a.has("lanyard")) out += `<path d="M88 116 L98 160 M112 116 L102 160" stroke="#C0392B" stroke-width="2.5"/><rect x="91" y="158" width="18" height="24" rx="2" fill="#fff" stroke="#999"/><rect x="94" y="162" width="12" height="7" fill="#7FB3D5"/>`;
+    if (a.has("stethoscope")) out += `<path d="M86 116 Q84 150 100 154 Q116 150 114 116" stroke="#333" stroke-width="2.5" fill="none"/><path d="M100 154 v14" stroke="#333" stroke-width="2.5"/><circle cx="100" cy="172" r="5" fill="#999" stroke="#333"/>`;
     if (a.has("camera")) out += `<path d="M80 122 L114 170" stroke="${INK}" stroke-width="2"/><rect x="104" y="160" width="26" height="18" rx="4" fill="#2B2B2B"/><circle cx="117" cy="169" r="5.5" fill="#888"/>`;
+    if (a.has("bag")) out += `<path d="M76 124 L124 196" stroke="#5C3A1E" stroke-width="3"/><rect x="114" y="188" width="26" height="20" rx="4" fill="#8A5A34"/>`;
+    if (a.has("backpack")) out += `<path d="M78 122 L80 200 M122 122 L120 200" stroke="#2A4560" stroke-width="5"/>`;
   }
   if (layer === "head") {
     if (a.has("beard")) out += `<path d="M74 82 Q76 108 100 112 Q124 108 126 82 Q122 98 100 100 Q78 98 74 82 Z" fill="${look.hairColor}" opacity=".85"/>`;
-    if (a.has("glasses")) out += `<g stroke="${INK}" stroke-width="2.2" fill="rgba(255,255,255,.15)"><circle cx="88" cy="75" r="9"/><circle cx="112" cy="75" r="9"/><path d="M97 75 L103 75" fill="none"/></g>`;
-    if (a.has("earrings")) out += `<circle cx="68" cy="88" r="3" fill="#F6B800"/><circle cx="132" cy="88" r="3" fill="#F6B800"/>`;
+    if (a.has("glasses") && !a.has("sunglasses")) out += `<g stroke="${INK}" stroke-width="2.2" fill="rgba(255,255,255,.15)"><circle cx="88" cy="75" r="9"/><circle cx="112" cy="75" r="9"/><path d="M97 75 L103 75" fill="none"/></g>`;
+    if (a.has("sunglasses")) out += `<g fill="#1A1A1A"><rect x="77" y="68" width="21" height="13" rx="5"/><rect x="102" y="68" width="21" height="13" rx="5"/></g><path d="M98 73 h4" stroke="#1A1A1A" stroke-width="2"/><rect x="80" y="70" width="6" height="3" rx="1" fill="#fff" opacity=".35"/>`;
+    if (a.has("earrings") && !hijab) out += `<circle cx="68" cy="88" r="3" fill="#F6B800"/><circle cx="132" cy="88" r="3" fill="#F6B800"/>`;
   }
-  if (layer === "top") {
+  if (layer === "top" && !hijab) {
     if (a.has("beret")) out += `<ellipse cx="94" cy="28" rx="34" ry="11" fill="${look.accent}" transform="rotate(-10 94 28)"/><circle cx="96" cy="17" r="3" fill="${look.accent}"/>`;
-    if (a.has("headband")) out += `<rect x="66" y="40" width="68" height="9" rx="4" fill="${look.accent}" stroke="#ddd"/><circle cx="100" cy="44.5" r="3.4" fill="#C0392B"/>`;
+    if (a.has("headband")) out += `<rect x="66" y="40" width="68" height="9" rx="4" fill="${look.accent === "#FFFFFF" ? "#fff" : look.accent}" stroke="#ddd"/><circle cx="100" cy="44.5" r="3.4" fill="#C0392B"/>`;
+    if (a.has("cap")) out += `<path d="M66 54 Q64 22 100 22 Q136 22 134 54 Z" fill="${look.accent === "#FFFFFF" ? "#22348C" : look.accent}"/><path d="M100 54 Q130 50 148 58 Q128 62 100 58 Z" fill="${shade(look.accent === "#FFFFFF" ? "#22348C" : look.accent, -30)}"/><circle cx="100" cy="23" r="3" fill="${shade(look.accent === "#FFFFFF" ? "#22348C" : look.accent, -40)}"/>`;
+    if (a.has("beanie")) out += `<path d="M66 56 Q64 18 100 18 Q136 18 134 56 Z" fill="#B03A2E"/><rect x="64" y="46" width="72" height="12" rx="5" fill="#8E2B22"/><circle cx="100" cy="16" r="6" fill="#B03A2E"/>`;
+    if (a.has("pilotcap")) out += `<path d="M62 46 Q62 24 100 22 Q138 24 138 46 Z" fill="#1F2A44"/><rect x="62" y="44" width="76" height="8" fill="#111"/><path d="M76 52 Q100 62 124 52 Z" fill="#111"/><circle cx="100" cy="34" r="5" fill="#F6B800"/>`;
+    if (a.has("chefhat")) out += `<rect x="72" y="28" width="56" height="18" fill="#fff" stroke="#ddd"/>${[78, 92, 108, 122].map((x) => `<circle cx="${x}" cy="20" r="12" fill="#fff" stroke="#eee"/>`).join("")}`;
+    if (a.has("headphones")) out += `<path d="M66 72 Q64 24 100 24 Q136 24 134 72" stroke="#2B2B2B" stroke-width="6" fill="none"/><rect x="58" y="66" width="14" height="22" rx="6" fill="#2B2B2B"/><rect x="128" y="66" width="14" height="22" rx="6" fill="#2B2B2B"/>`;
+    if (a.has("hairflower")) out += `<g transform="translate(126 40)">${[0, 72, 144, 216, 288].map((d) => `<ellipse cx="0" cy="-6" rx="4" ry="6" fill="#F48FB1" transform="rotate(${d})"/>`).join("")}<circle r="3.5" fill="#F6B800"/></g>`;
+    if (a.has("hairclip")) out += `<rect x="74" y="40" width="16" height="6" rx="3" fill="${look.accent}" transform="rotate(-20 82 43)"/>`;
   }
   return out;
 }
 
+// Detail gaya atasan (digambar di atas torso)
+function styleDetail(look, female) {
+  const t = look.top, d = shade(t, -35), l = shade(t, 30);
+  const s = look.style ?? "tee";
+  switch (s) {
+    case "shirt": return `<path d="M88 116 L100 132 L112 116 L106 112 L100 124 L94 112 Z" fill="${l}"/><path d="M100 132 V220" stroke="${d}" stroke-width="1.5"/>${[146, 166, 186, 206].map((y) => `<circle cx="100" cy="${y}" r="1.8" fill="${d}"/>`).join("")}`;
+    case "blouse": return `<path d="M88 116 Q100 134 112 116" fill="${look.skin}"/><path d="M84 124 Q100 140 116 124" stroke="${d}" stroke-width="1.5" fill="none"/>`;
+    case "sweater": return `<path d="M88 116 Q100 126 112 116" stroke="${d}" stroke-width="4" fill="none"/><rect x="${female ? 62 : 56}" y="212" width="${female ? 76 : 88}" height="12" fill="${d}" opacity=".6"/>${[0, 1, 2, 3, 4, 5, 6].map((i) => `<path d="M${74 + i * 9} 150 v8" stroke="${d}" stroke-width="1" opacity=".5"/>`).join("")}`;
+    case "jacket": return `<path d="M92 116 L96 224 L104 224 L108 116 Z" fill="${look.accent === t ? "#F2F2F2" : look.accent}" opacity=".95"/><path d="M92 116 L86 150 M108 116 L114 150" stroke="${d}" stroke-width="2"/><path d="M96 116 V224 M104 116 V224" stroke="${d}" stroke-width="1.5"/>`;
+    case "hoodie": return `<path d="M80 116 Q100 134 120 116 Q118 104 100 104 Q82 104 80 116 Z" fill="${d}"/><path d="M95 124 v26 M105 124 v26" stroke="#eee" stroke-width="2"/><path d="M80 180 h40 l4 26 h-48 z" fill="${d}" opacity=".5"/>`;
+    case "blazer": return `<path d="M90 116 L100 170 L110 116 Z" fill="#F7F7F7"/><path d="M90 116 L82 146 L100 170 Z M110 116 L118 146 L100 170 Z" fill="${d}"/>${[182, 200].map((y) => `<circle cx="100" cy="${y}" r="2.5" fill="${shade(t, -60)}"/>`).join("")}`;
+    case "scrubs": return `<path d="M88 116 L100 140 L112 116" fill="${look.skin}" stroke="${d}" stroke-width="2"/><rect x="70" y="150" width="20" height="16" rx="2" fill="${d}" opacity=".5"/>`;
+    case "chef": return `<rect x="90" y="112" width="20" height="8" rx="2" fill="#E8E8E8"/>${[136, 156, 176, 196].map((y) => `<circle cx="92" cy="${y}" r="2.4" fill="#BBB"/><circle cx="108" cy="${y}" r="2.4" fill="#BBB"/>`).join("")}`;
+    case "kimono": return `<path d="M86 116 L112 200 M114 116 L94 160" stroke="${d}" stroke-width="3"/><path d="M88 116 L100 136 L112 116" fill="#F2E6D0"/><rect x="${female ? 70 : 60}" y="168" width="${female ? 60 : 80}" height="18" fill="#C99700"/><rect x="${female ? 70 : 60}" y="175" width="${female ? 60 : 80}" height="3" fill="#8E2B22"/>`;
+    case "wetsuit": return `<path d="M100 116 V210" stroke="${shade(t, 60)}" stroke-width="2"/><path d="M${female ? 70 : 62} 140 L${female ? 72 : 64} 220 M${female ? 130 : 138} 140 L${female ? 128 : 136} 220" stroke="${look.accent}" stroke-width="4"/>`;
+    case "overalls": return `<rect x="78" y="146" width="44" height="78" rx="4" fill="${look.bottom}" ${LINE}/><path d="M80 148 L76 118 M120 148 L124 118" stroke="${look.bottom}" stroke-width="6"/><circle cx="82" cy="150" r="2.5" fill="#C9A46A"/><circle cx="118" cy="150" r="2.5" fill="#C9A46A"/>${[[86, 170, "#E8710A"], [110, 160, "#2F8FD0"], [96, 196, "#F6B800"], [120, 205, "#4E9E55"]].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`).join("")}`;
+    case "dress": return `<path d="M88 116 Q100 130 112 116" fill="${look.skin}"/><rect x="${female ? 70 : 60}" y="176" width="${female ? 60 : 80}" height="5" fill="${d}"/>`;
+    default: return `<path d="M88 116 Q100 126 112 116" stroke="${d}" stroke-width="3" fill="none"/>`; // tee
+  }
+}
+
 /** Gambar karakter lengkap. opts.portrait = potong sampai dada (untuk kartu). */
 export function renderAvatar(look, gender, mood = "neutral", opts = {}) {
-  const { skin, top, bottom, shoes } = look;
+  const { skin, top, shoes } = look;
+  const bottom = look.bottom ?? "#2B2B2B";
   const female = gender === "F";
+  const style = look.style ?? "tee";
+  const longSkirt = style === "kimono";
+  const skirt = look.skirt || style === "dress" || longSkirt;
+  const shortSleeve = ["tee", "scrubs", "dress"].includes(style) || (style === "overalls");
   const torso = female
     ? `<path d="M68 120 Q100 110 132 120 L128 176 L138 224 L62 224 L72 176 Z" fill="${top}" ${LINE}/>`
     : `<path d="M60 122 Q100 110 140 122 L144 224 L56 224 Z" fill="${top}" ${LINE}/>`;
-  const legs = look.skirt
-    ? `<g class="leg leg-l"><rect x="76" y="230" width="18" height="90" rx="8" fill="${skin}"/><ellipse cx="84" cy="322" rx="14" ry="7" fill="${shoes}"/></g>
-       <g class="leg leg-r"><rect x="106" y="230" width="18" height="90" rx="8" fill="${skin}"/><ellipse cx="116" cy="322" rx="14" ry="7" fill="${shoes}"/></g>
-       <path d="M60 214 L140 214 L154 268 L46 268 Z" fill="${bottom}" ${LINE}/>`
-    : `<g class="leg leg-l"><rect x="70" y="214" width="26" height="106" rx="10" fill="${bottom}" ${LINE}/><ellipse cx="82" cy="322" rx="16" ry="7" fill="${shoes}"/></g>
-       <g class="leg leg-r"><rect x="104" y="214" width="26" height="106" rx="10" fill="${bottom}" ${LINE}/><ellipse cx="118" cy="322" rx="16" ry="7" fill="${shoes}"/></g>`;
+  const legColor = style === "wetsuit" ? top : bottom;
+  let legs;
+  if (skirt) {
+    legs = `<g class="leg leg-l"><rect x="76" y="230" width="18" height="90" rx="8" fill="${longSkirt ? bottom : skin}"/><ellipse cx="84" cy="322" rx="14" ry="7" fill="${shoes}"/></g>
+       <g class="leg leg-r"><rect x="106" y="230" width="18" height="90" rx="8" fill="${longSkirt ? bottom : skin}"/><ellipse cx="116" cy="322" rx="14" ry="7" fill="${shoes}"/></g>
+       ${longSkirt ? `<path d="M60 214 L140 214 L146 312 L54 312 Z" fill="${bottom}" ${LINE}/>` : `<path d="M60 214 L140 214 L154 268 L46 268 Z" fill="${style === "dress" ? top : bottom}" ${LINE}/>`}`;
+  } else if (look.shorts) {
+    const leg = (x, cls) => `<g class="leg ${cls}"><rect x="${x + 2}" y="250" width="22" height="70" rx="9" fill="${skin}"/><rect x="${x}" y="214" width="26" height="46" rx="8" fill="${legColor}" ${LINE}/><ellipse cx="${x + 12}" cy="322" rx="16" ry="7" fill="${shoes}"/></g>`;
+    legs = leg(70, "leg-l") + leg(104, "leg-r");
+  } else {
+    legs = `<g class="leg leg-l"><rect x="70" y="214" width="26" height="106" rx="10" fill="${legColor}" ${LINE}/><ellipse cx="82" cy="322" rx="16" ry="7" fill="${shoes}"/></g>
+       <g class="leg leg-r"><rect x="104" y="214" width="26" height="106" rx="10" fill="${legColor}" ${LINE}/><ellipse cx="118" cy="322" rx="16" ry="7" fill="${shoes}"/></g>`;
+  }
+  const acc = new Set(look.acc ?? []);
+  const armTop = style === "overalls" ? "#FFFFFF" : top;
   const arm = (side) => {
     const x = side === "l" ? (female ? 56 : 48) : (female ? 128 : 136);
-    return `<g class="arm arm-${side}"><rect x="${x}" y="122" width="16" height="80" rx="8" fill="${top}" ${LINE}/><circle cx="${x + 8}" cy="206" r="8.5" fill="${skin}"/></g>`;
+    const sleeve = shortSleeve ? `<rect x="${x}" y="122" width="16" height="80" rx="8" fill="${skin}"/><rect x="${x}" y="122" width="16" height="34" rx="8" fill="${armTop}" ${LINE}/>`
+      : `<rect x="${x}" y="122" width="16" height="80" rx="8" fill="${armTop}" ${LINE}/>`;
+    const watch = side === "l" && acc.has("watch") ? `<rect x="${x - 1}" y="190" width="18" height="6" rx="2" fill="#2B2B2B"/>` : "";
+    const bracelet = side === "r" && acc.has("bracelet") ? `<rect x="${x - 1}" y="191" width="18" height="4" rx="2" fill="#F6B800"/>` : "";
+    return `<g class="arm arm-${side}">${sleeve}${watch}${bracelet}<circle cx="${x + 8}" cy="206" r="8.5" fill="${skin}"/></g>`;
   };
   const vb = opts.portrait ? "40 4 120 150" : "0 0 200 340";
   return `<svg class="avatar" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -122,7 +184,9 @@ export function renderAvatar(look, gender, mood = "neutral", opts = {}) {
       ${hairBack(look.hair, look.hairColor)}
       ${legs}
       ${torso}
+      ${styleDetail(look, female)}
       <rect x="91" y="98" width="18" height="22" rx="6" fill="${skin}"/>
+      ${style === "blouse" || style === "scrubs" || style === "dress" ? "" : `<path d="M91 112 h18 v6 q-9 6 -18 0 z" fill="${top}"/>`}
       ${accessories(look, "body")}
       ${arm("l")}${arm("r")}
       ${look.hair === "hijab" ? "" : `<ellipse cx="67" cy="78" rx="6" ry="9" fill="${skin}"/><ellipse cx="133" cy="78" rx="6" ry="9" fill="${skin}"/>`}

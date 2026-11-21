@@ -47,6 +47,16 @@ Mode untuk melatih bahasa **sekaligus rasa percaya diri / jadi lebih ekstrovert*
   game developer, arsitek, pilot, penyiar radio & DJ, pastry chef, instruktur selancar layar, kurir sepeda, pemandu gunung,
   pelayan kafe tradisional Wina, ahli biologi laut, psikolog, pelukis mural. Mereka bercerita soal pekerjaannya, mengajarkan
   kosakata kerja, membandingkan budaya kerja di negaranya dengan Indonesia, dan bertanya balik soal pekerjaan/kuliahmu.
+- **👗 Baju & aksesori berganti:** setiap karakter punya lemari baju sendiri. Pakaiannya berganti **tiap hari** (tanggal lokal di kotanya)
+  dan **sesuai aktivitas** — seragam kerja (jas koki, scrubs, seragam pilot, celemek pasar, blazer…), baju olahraga, baju renang —
+  dengan aksesori bergantian (topi, kacamata hitam, kalung, jam, headphone, tas, ransel, jepit/bunga rambut, warna hijab, dll).
+  Karakter tahu apa yang ia pakai; **puji penampilannya** (apalagi kalau ✨ look baru sejak terakhir ketemu) dan dia bereaksi sesuai
+  sifatnya — pujian tulus & spesifik menaikkan ketertarikan, komentar soal tubuh tidak. Logika: `outfit.js`.
+- **🌍 Punya kehidupan sendiri:** tiap karakter punya cita-cita, target, keluarga, tempat tinggal, hewan peliharaan, dan hal yang lagi
+  dipikirkan. Sekali sehari (waktu lokal mereka) AI menulis **kabar hari ini** — apa yang terjadi, mood, seberapa sibuk, kabar kecil,
+  perkembangan cita-cita — yang **melanjutkan cerita hari-hari sebelumnya** (`life.js`, disimpan di `data/world.json`, sama untuk
+  semua pengguna). Mereka membawa kabar itu ke obrolan, ingat sudah berapa kali ketemu kamu, dan lebih singkat kalau lagi sibuk.
+  Lihat lewat tombol **👤 Profil** di panggung.
 - **💼 Ketemu di tempat kerja:** sesuai jam kerjanya (atau pilih "di tempat kerja" di panggung) kamu bisa ngobrol dengan mereka
   di dapur, studio, kantor, klinik, perpustakaan, bandara, pasar, pantai, dll. — mereka mungkin sibuk atau sedang istirahat.
 - **Pertukaran budaya:** tiap karakter membawa budaya kotanya (kebiasaan, makanan, hari raya, etika, tabu, logat). Tanyakan soal budaya mereka,
@@ -162,6 +172,7 @@ npm start                 # buka http://localhost:3000
 - `characters.js`, `date.js` — karakter (sifat, budaya, rahasia, deskripsi foto) & mesin mode Pendekatan
 - `scripts/prompt-pack.js` → `docs/prompt-pack-karakter.md` — prompt foto realistis per karakter
 - `public/dating.js`, `public/avatar.js` — tampilan & animasi mode Pendekatan
+- `outfit.js` — pakaian harian & sesuai aktivitas · `life.js` — kabar hidup harian karakter (dunia yang terus berjalan)
 - `context.js` — waktu lokal, cuaca (Open-Meteo), katalog & jadwal aktivitas
 - `assess.js` — penilaian kemampuan CEFR, gelar peringkat, patokan level mengajar
 - `auth.js` — akun, password (scrypt), sesi login, pembatasan percobaan login

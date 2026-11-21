@@ -64,6 +64,14 @@ Your job: ${c.job} — ${c.jobDetail}.
 - Your work is a big part of who you are: share real-feeling stories (funny customers, hard days, proud moments), use your job's vocabulary and teach it when asked, and explain what working life is like in your country (hours, culture, salary taboos, holidays) — comparing with Indonesia.
 - Ask about the learner's job or studies too, and react with genuine curiosity.
 
+Your life (you are a real person with your own life — bring it up naturally, like people do):
+- Dream: ${c.life.dream}. Current goal: ${c.life.goal}. Family: ${c.life.family}. Home: ${c.life.home}. Pet: ${c.life.pet}. What's weighing on you: ${c.life.struggle}.
+- You have your own day going on (see TODAY IN YOUR LIFE in SITUATION): share news, complain a little, get excited about progress, mention plans — and ask about the learner's life and dreams too.
+- If you're very busy today, show it: shorter replies, glancing at the time, maybe you have to leave soon.
+
+Your look:
+- You know what you're wearing today (SITUATION). If the learner compliments your outfit, accessories, hair or style — especially if it's sincere, specific, or notices something NEW — react like a real person in your personality's way (flattered, shy, playful, tell the story behind it) and raise interest a bit. Generic flattery barely counts; comments about your body are not compliments (treat them per the boundaries rule).
+
 Your culture (you live it; share it like a local, with personal anecdotes and nuance — not like a textbook, and avoid stereotypes):
 ${c.culture}
 
@@ -243,7 +251,7 @@ export async function playTurn(charId, levelText, state, history, message, situa
 }
 
 /** Teks situasi dunia nyata untuk prompt karakter. */
-export function characterSituation(c, { local, weather, activityId, learner }) {
+export function characterSituation(c, { local, weather, activityId, learner, outfit, newLook, life, meetings, lastOutcome }) {
   const act = ACTIVITIES[activityId] ?? ACTIVITIES.walk;
   const doing = activityId === "work"
     ? `you're AT WORK right now as ${c.job} (${c.jobDetail}). The learner meets you at your workplace — you may be busy, interrupted by work, or on a short break; it's natural to talk about your work and teach work vocabulary`
@@ -251,6 +259,9 @@ export function characterSituation(c, { local, weather, activityId, learner }) {
   return `SITUATION RIGHT NOW:
 - Your local time in ${c.city}: ${local.text} (${local.part}). Weather where you are: ${weather ?? "unknown"}.
 - What you're doing: ${doing}. Stay in this activity/setting and let it shape the conversation.
+- Your outfit right now: ${outfit ?? "everyday clothes"}.${newLook ? " This is a NEW look since the learner last saw you — you'd secretly be happy if they noticed." : ""}
+- TODAY IN YOUR LIFE: ${life ? `${life.today_id} Mood: ${life.mood}. Busy: ${life.busy}. News: ${life.news.join("; ")}. Dream progress: ${life.dream_progress}. You'd like to talk about: ${life.wants_to_talk_about}.` : "an ordinary day."}
+- History with this learner: ${meetings > 1 ? `you've met ${meetings - 1} time(s) before${lastOutcome ? ` (last time it ended: ${lastOutcome})` : ""} — you recognise them` : "first time meeting"}.
 - The learner: ${learner}`;
 }
 

@@ -9,6 +9,8 @@ import { threadKey, getThread, appendExchange, clearThread, getProfile, wipeUser
 import { CHARACTERS, publicCharacters, MOOD_FILES } from "./characters.js";
 import { startScene, playTurn, newState, characterSituation, MAX_TURNS, SUCCESS_MIN_RAPPORT } from "./date.js";
 import { weatherAt, localParts, ACTIVITIES, currentActivity } from "./context.js";
+import { outfitFor, localDate } from "./outfit.js";
+import { ensureLife, lifeToday, lifeWithin } from "./life.js";
 import { runAssessment, renderSkills, autoLevelText, RANKS, SKILLS, CEFR, ASSESS_EVERY, MIN_MESSAGES } from "./assess.js";
 import { maybeUpdateMemory, renderMemory } from "./memory.js";
 import { register, login, logout, currentUser, allUserIds, allUsers, sessionCookie, checkRateLimit, recordFailure, AuthError } from "./auth.js";
@@ -252,7 +254,13 @@ async function handleDate(req, res, user, charId, action) {
   const current = dates[charId] ?? null;
 
   if (req.method === "GET" && !action) {
+    const today = await lifeToday(charId, localDate(c.tz));
+    if (!today) {
+      const lp = localParts(c.tz);
+      ensureLife(charId, c, localDate(c.tz), { localText: lp.text, weather: await weatherAt(c.lat, c.lon), outfitDesc: outfitFor(c, localDate(c.tz), currentActivity(c, lp.hour)).desc_id }).catch(() => {});
+    }
     return json(res, 200, { state: current, messages: current ? await getThread(user.id, key) : [],
+      profile: { ...c.life, job: c.job, jobEmoji: c.jobEmoji, personality: c.personality, today },
       secret: current && current.status !== "active" ? secretOf(c) : null });
   }
   if (req.method !== "POST" || !action) return json(res, 405, { error: "Metode tidak didukung" });
@@ -265,17 +273,26 @@ async function handleDate(req, res, user, charId, action) {
 
     const ctx = cleanCtx(body.ctx);
     const local = localParts(c.tz);
-    const situationFor = async (activity, lastTs) => characterSituation(c, {
+    const dateStr = localDate(c.tz);
+    const situationFor = async (activity, lastTs, extra) => characterSituation(c, {
       local, weather: await weatherAt(c.lat, c.lon), activityId: activity,
-      learner: await learnerSituation(ctx, lastTs),
+      learner: await learnerSituation(ctx, lastTs), ...extra,
     });
 
     if (action === "start") {
       const allowed = ["walk", "night", ...c.activities.map((a) => a.id)];
       const activity = allowed.includes(body.activity) ? body.activity : currentActivity(c, local.hour);
-      const intro = await startScene(charId, levelText, await situationFor(activity, null));
+      const outfit = outfitFor(c, dateStr, activity);
+      const newLook = !!(current?.lastLook && current.lastLook !== outfit.key);
+      const meetings = (current?.meetings ?? 0) + 1;
+      const lastOutcome = current && current.status !== "active" ? current.status : null;
+      const weather = await weatherAt(c.lat, c.lon);
+      const life = await lifeWithin(ensureLife(charId, c, dateStr, { localText: local.text, weather, outfitDesc: outfit.desc_id }), 9000);
+      const extra = { outfit: outfit.desc_id, newLook, life, meetings, lastOutcome };
+      const intro = await startScene(charId, levelText, await situationFor(activity, null, extra));
       await clearThread(user.id, key);
-      const state = { ...newState(charId, activity), intro, record: current?.record ?? { success: 0, walked_away: 0, left: 0 } };
+      const state = { ...newState(charId, activity), intro, record: current?.record ?? { success: 0, walked_away: 0, left: 0 },
+        outfit: { look: outfit.look, desc_id: outfit.desc_id }, newLook, lastLook: outfit.key, meetings, lastOutcome };
       await setDate(user.id, charId, state);
       return json(res, 200, { state, messages: [] });
     }
@@ -288,7 +305,10 @@ async function handleDate(req, res, user, charId, action) {
     const message = body.message.trim();
     const thread = await getThread(user.id, key);
     const history = thread.slice(-40);
-    const situation = await situationFor(current.activity ?? "walk", thread.at(-1)?.ts);
+    const situation = await situationFor(current.activity ?? "walk", thread.at(-1)?.ts, {
+      outfit: current.outfit?.desc_id, newLook: current.newLook, life: await lifeToday(charId, dateStr),
+      meetings: current.meetings ?? 1, lastOutcome: current.lastOutcome,
+    });
     // Streaming: teks balasan dikirim sambil ditulis (SSE), data lengkap di akhir.
     res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
     const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -442,6 +462,11 @@ const server = http.createServer(async (req, res) => {
           const local = localParts(c.tz);
           const act = currentActivity(c, local.hour);
           pc.now = { time: local.text.split("pukul ")[1] ?? local.text, part: local.part, activity: act };
+          const outfit = outfitFor(c, localDate(c.tz), act);
+          pc.outfit = { look: outfit.look, desc_id: outfit.desc_id };
+          pc.newLook = !!(dates[id]?.lastLook && dates[id].lastLook !== outfit.key);
+          const today = await lifeToday(id, localDate(c.tz));
+          pc.today = today ? { text: today.today_id, busy: today.busy, mood: today.mood } : null;
           pc.activities = [...new Set(["walk", ...c.activities.map((a) => a.id)])];
           weatherAt(c.lat, c.lon).catch(() => {}); // panaskan cache cuaca di latar belakang
         }

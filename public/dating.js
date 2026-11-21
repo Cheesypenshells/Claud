@@ -15,9 +15,10 @@ function photoFor(c, mood) {
   for (const k of [mood, ...(MOOD_FALLBACK[mood] ?? []), "neutral", "happy"]) if (m[k]) return m[k];
   return Object.values(m)[0];
 }
+const lookOf = (c, state) => state?.outfit?.look ?? c.outfit?.look ?? c.look;
 function portraitHtml(c) {
   if (c.media?.portrait) return `<img class="photo-portrait" src="${c.media.portrait}" alt="" loading="lazy">`;
-  return renderAvatar(c.look, c.gender, "happy", { portrait: true });
+  return renderAvatar(lookOf(c), c.gender, "happy", { portrait: true });
 }
 let SCENE_PHOTOS = {};
 function sceneCss(c, scene = c.scene) {
@@ -84,6 +85,8 @@ export function createDating(ctx) {
               <span class="persona-tag">${escapeHtml(c.personality)}</span>
               <span class="job">${c.jobEmoji ?? ""} <b>${escapeHtml(c.job)}</b> · ${c.age} th</span>
               <span>${c.flag} ${escapeHtml(c.city)}</span>
+              ${c.newLook ? `<span class="newlook">✨ look baru hari ini</span>` : ""}
+              ${c.today ? `<span class="today" title="${escapeHtml(c.today.text)}">📰 ${escapeHtml(c.today.text.split(/(?<=[.!?])\s/)[0])}</span>` : ""}
               ${c.now ? `<span class="now">🕗 ${escapeHtml(c.now.time)} di sana · ${actInfo(c, c.now.activity)?.emoji ?? ""} ${escapeHtml(c.now.activity === "work" ? "lagi kerja" : actInfo(c, c.now.activity)?.label ?? "")}</span>` : ""}
               <span class="diff d${c.difficulty}">${"●".repeat(c.difficulty)}${"○".repeat(3 - c.difficulty)} ${c.difficultyLabel}</span>
               ${rec(c.id).success ? `<span class="rec ok">💘 Berhasil ${rec(c.id).success}×</span>` : ""}
@@ -109,6 +112,7 @@ export function createDating(ctx) {
     s.innerHTML = `
       <div class="stage-hud">
         <div class="who"><b>${escapeHtml(c.name)}</b><span>${c.flag} ${escapeHtml(c.city)} · ${c.age} th</span>
+          <span class="outfit-now">👗 ${escapeHtml(state.outfit?.desc_id ?? c.outfit?.desc_id ?? "")}${state.newLook ? ` <em>✨ baru!</em>` : ""}</span>
           <span class="act-now">${actOf(state)?.emoji ?? ""} ${escapeHtml(actOf(state)?.label ?? "")}${c.now ? ` · 🕗 ${escapeHtml(c.now.time)}` : ""}</span></div>
         <div class="rapport"><span class="lbl">💗 Ketertarikan <b id="rapport-num">${state.rapport}</b></span>
           <div class="meter heart"><i id="rapport-bar" style="width:${state.rapport}%"></i><em style="left:${st.rules.successMin}%"></em></div>
@@ -123,11 +127,12 @@ export function createDating(ctx) {
       </div>` : `
       <div class="walker" id="walker">
         <div class="mood-bubble" id="mood-bubble">${MOOD_EMOJI[mood]}</div>
-        ${renderAvatar(c.look, c.gender, mood)}
+        ${renderAvatar(lookOf(c, state), c.gender, mood)}
       </div>`}
       <div class="hearts" id="hearts"></div>
       <div class="stage-actions">
         <button type="button" class="mini" id="date-back">← Pilih gebetan</button>
+        <button type="button" class="mini" id="date-profile">👤 Profil</button>
         <span class="turns" id="date-turns">Giliran ${state.turns}/${st.rules.maxTurns}</span>
         <select class="mini" id="date-activity" title="Ganti aktivitas (mulai adegan baru)">
           ${(c.activities ?? ["walk"]).map((a) => `<option value="${a}" ${a === state.activity ? "selected" : ""}>${actInfo(c, a)?.emoji ?? ""} ${escapeHtml(a === "work" ? `di tempat kerja (${c.job})` : actInfo(c, a)?.label ?? a)}</option>`).join("")}
@@ -136,6 +141,7 @@ export function createDating(ctx) {
       </div>`;
     $("date-back").onclick = showPicker;
     $("date-restart").onclick = () => startScene(c.id);
+    $("date-profile").onclick = () => showProfile(c);
     $("date-activity").onchange = (e) => startScene(c.id, e.target.value);
     applyMotion(state, mood);
   }
@@ -169,7 +175,7 @@ export function createDating(ctx) {
         next.onload = () => { imgs.forEach((i) => i.classList.toggle("on", i === next)); };
       }
     } else {
-      setMood($("walker"), c.look, mood);
+      setMood($("walker"), lookOf(c, state), mood);
     }
     $("mood-bubble").textContent = MOOD_EMOJI[mood] ?? "🙂";
     $("mood-bubble").classList.remove("pop");
@@ -263,6 +269,32 @@ export function createDating(ctx) {
   function renderCulture(n, c) {
     addCard(`<div class="tag">📚 CATATAN BUDAYA · ${c.flag} ${escapeHtml(c.city)}</div>
       <b>${escapeHtml(n.title)}</b><p>${escapeHtml(n.note)}</p><span class="saved">✓ tersimpan di Buku Budaya</span>`, "msg culture-card");
+  }
+
+  async function showProfile(c) {
+    const data = await (await fetch(`/api/date/${c.id}`)).json();
+    const p = data.profile ?? {};
+    const t = p.today;
+    const st0 = data.state;
+    $("skill-dialog-title").textContent = `👤 ${c.name.split(" (")[0]}`;
+    $("skill-body").innerHTML = `
+      <div class="profile-head">${portraitHtml(c)}<div>
+        <b>${escapeHtml(c.name)}</b><span>${c.flag} ${escapeHtml(c.city)} · ${c.age} th</span>
+        <span>${p.jobEmoji ?? ""} ${escapeHtml(p.job ?? c.job)}</span><span class="persona-tag">${escapeHtml(p.personality ?? c.personality)}</span></div></div>
+      ${t ? `<h3>📰 Hari ini (${escapeHtml(c.now?.time ?? "")} di sana)</h3>
+        <p>${escapeHtml(t.today_id)}</p>
+        <p class="muted">Mood: <b>${escapeHtml(t.mood)}</b> · Kesibukan: <b>${escapeHtml(t.busy)}</b></p>
+        ${t.news?.length ? `<ul>${t.news.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>` : ""}
+        <p>🎯 ${escapeHtml(t.dream_progress)}</p>
+        <p class="muted">💬 Lagi pengin ngobrolin: ${escapeHtml(t.wants_to_talk_about)}</p>` : `<p class="muted">📰 Kabar hari ini sedang disiapkan… buka lagi sebentar.</p>`}
+      <h3>👗 Penampilan hari ini</h3><p>${escapeHtml(st0?.outfit?.desc_id ?? c.outfit?.desc_id ?? "-")}${st0?.newLook || c.newLook ? " <b>✨ (baru sejak kalian terakhir ketemu)</b>" : ""}</p>
+      <p class="muted">Bajunya ganti tiap hari & sesuai aktivitas. Coba puji penampilannya secara spesifik 😉</p>
+      <h3>🌟 Cita-cita</h3><p>${escapeHtml(p.dream ?? "-")}</p>
+      <h3>🎯 Target sekarang</h3><p>${escapeHtml(p.goal ?? "-")}</p>
+      <h3>🏠 Kehidupan</h3>
+      <ul><li>Keluarga: ${escapeHtml(p.family ?? "-")}</li><li>Tempat tinggal: ${escapeHtml(p.home ?? "-")}</li><li>Peliharaan: ${escapeHtml(p.pet ?? "-")}</li><li>Lagi kepikiran: ${escapeHtml(p.struggle ?? "-")}</li></ul>
+      ${st0?.meetings ? `<p class="muted">Kalian sudah ketemu ${st0.meetings}× · rekor: 💘 ${st0.record?.success ?? 0} · 🚶 ${st0.record?.walked_away ?? 0}</p>` : ""}`;
+    if (!$("skill-dialog").open) $("skill-dialog").showModal();
   }
 
   async function showCultureBook() {

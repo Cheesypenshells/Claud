@@ -431,3 +431,88 @@ const LIFE = {
 for (const [id, l] of Object.entries(LIFE)) {
   Object.assign(CHARACTERS[id], { tz: l.tz, lat: l.lat, lon: l.lon, activities: l.activities.map(([a, s, e]) => ({ id: a, hours: [s, e] })) });
 }
+
+// ---------- Kehidupan (cita-cita, target, keluarga, rumah, peliharaan, tantangan) ----------
+const LIFE_SEEDS = {
+  hannah: { dream: "merilis album pertama dan tampil di Grand Ole Opry", goal: "menabung untuk rekaman di studio profesional", family: "anak sulung, adik laki-lakinya masih kuliah; ibunya guru piano", home: "apartemen kecil bareng teman sekamar di East Nashville", pet: "kucing oranye bernama Dolly", struggle: "takut lagunya nggak cukup bagus" },
+  oliver: { dream: "novel pertamanya diterbitkan", goal: "menyelesaikan draf novel misteri sebelum akhir tahun", family: "orang tuanya pensiunan di Brighton, punya kakak perempuan perawat", home: "flat sempit di Camden", pet: "tidak ada — alergi kucing, tapi tetap suka kucing", struggle: "naskahnya sudah ditolak 12 penerbit" },
+  priya: { dream: "jadi dokter spesialis anak (pediatri)", goal: "lulus ujian spesialis tahap pertama", family: "orang tua imigran dari Gujarat, ibunya terus menanyakan kapan menikah", home: "berbagi rumah dengan dua dokter lain di Whitechapel", pet: "tidak ada — jarang di rumah", struggle: "kurang tidur dan hampir burnout" },
+  ethan: { dream: "ikut kompetisi selancar internasional dan buka sekolah surfing sendiri", goal: "naik sertifikasi jadi senior lifeguard", family: "keluarga besar petani di pedalaman Queensland", home: "rumah sewa dekat pantai bareng tiga teman", pet: "anjing kelpie bernama Bluey", struggle: "orang tuanya ingin dia pulang mengurus pertanian" },
+  yui: { dream: "menerbitkan buku bergambar karyanya sendiri", goal: "menyelesaikan portofolio untuk penerbit", family: "anak tunggal, orang tua di Sendai", home: "apartemen mungil di Shimokitazawa", pet: "memberi makan kucing jalanan bernama Mochi", struggle: "klien sering telat bayar" },
+  aoi: { dream: "membawa upacara teh ke generasi muda lewat kelas modern", goal: "dapat lisensi pengajar tingkat lanjut", family: "keluarga turun-temurun pemilik sekolah teh; neneknya masih mengajar", home: "rumah kayu tradisional keluarga di Higashiyama", pet: "ikan koi di kolam rumah", struggle: "tekanan meneruskan tradisi keluarga" },
+  ren: { dream: "punya kedai ramen sendiri dan masuk Michelin Bib Gourmand", goal: "menyempurnakan resep kaldu barunya", family: "ayahnya juga koki; adik perempuannya penggemar berat Hanshin Tigers", home: "apartemen di atas kedai tempatnya bekerja", pet: "kura-kura bernama Tora", struggle: "modal untuk buka kedai belum cukup" },
+  seoyeon: { dream: "jadi koreografer untuk grup K-pop besar", goal: "menang kompetisi dance cover tingkat nasional", family: "ibunya pemilik restoran kecil di Incheon", home: "officetel di Hongdae", pet: "tidak ada", struggle: "cedera lutut lama yang kadang kambuh" },
+  minjun: { dream: "membuka klinik hewan sendiri dan pameran foto pertamanya", goal: "menabung untuk alat rontgen klinik", family: "anak bungsu; kakaknya baru menikah", home: "apartemen di Seongsu dekat Sungai Han", pet: "anjing jindo tua bernama Bori", struggle: "sedih tiap kehilangan pasien hewan" },
+  jiho: { dream: "memodernisasi lapak keluarga dan jualan seafood online", goal: "belajar bikin konten jualan di media sosial", family: "orang tua & neneknya mengurus lapak bersama", home: "rumah keluarga dekat pasar Jagalchi", pet: "kucing pasar gemuk bernama Godeungeo", struggle: "ayahnya menganggap jualan online itu buang waktu" },
+  yutong: { dream: "jadi kurator museum dan menulis buku sejarah hutong untuk anak muda", goal: "lulus ujian magister sejarah", family: "tinggal dengan kakek-nenek; kakeknya mantan pemain opera Peking", home: "rumah siheyuan (rumah halaman) keluarga di hutong", pet: "burung kenari kakeknya", struggle: "hutong keluarganya terancam digusur" },
+  xiaoyu: { dream: "buka kedai teh sendiri suatu hari — jauh dari dunia hukum", goal: "jadi partner di firma hukum dalam 5 tahun", family: "orang tua di Hangzhou yang ingin dia segera menikah", home: "apartemen di Jing'an", pet: "kucing ras British Shorthair bernama Pu'er", struggle: "lembur terus sampai lupa hidup" },
+  hao: { dream: "merilis game indie buatannya sendiri tentang panda", goal: "menyelesaikan demo game di waktu luang", family: "orang tuanya ingin dia jadi PNS", home: "apartemen dekat studio di Chengdu", pet: "dua ikan mas koki", struggle: "budaya 996 bikin nggak punya waktu bikin game sendiri" },
+  layla: { dream: "merestorasi rumah-rumah batu tua di Amman jadi ruang publik", goal: "memenangkan tender proyek restorasi pertamanya", family: "anak tengah dari lima bersaudara; ayahnya insinyur", home: "rumah keluarga di Jabal Amman", pet: "kucing putih bernama Yasmin", struggle: "klien sering meragukan arsitek perempuan" },
+  omar: { dream: "jadi kapten pilot dan terbang keliling dunia", goal: "lulus pelatihan simulator untuk pesawat berbadan lebar", family: "ibunya khawatir tiap dia terbang; adiknya kuliah kedokteran", home: "apartemen di Zamalek dengan pemandangan Sungai Nil", pet: "tidak ada — terlalu sering terbang", struggle: "jet lag dan jarang ketemu keluarga" },
+  karim: { dream: "punya acara radio musik terpopuler di dunia Arab dan buka restoran keluarga", goal: "menambah pendengar acaranya", family: "keluarga besar yang makan siang bersama tiap Minggu", home: "apartemen di Gemmayzeh", pet: "burung beo cerewet bernama Fairuz", struggle: "situasi ekonomi Lebanon yang tidak menentu" },
+  camille: { dream: "membuka pâtisserie sendiri di Paris", goal: "ikut kompetisi pastry nasional", family: "neneknya di Bretagne yang mengajarinya bikin kue", home: "studio kecil di lantai 6 tanpa lift di Le Marais", pet: "tidak ada", struggle: "jam kerja subuh bikin susah punya kehidupan sosial" },
+  lucas: { dream: "berlayar keliling Mediterania dengan perahunya sendiri", goal: "menabung beli perahu bekas", family: "ayahnya nelayan di Marseille", home: "apartemen dekat Vieux-Port", pet: "anjing labrador bernama Pastis", struggle: "musim sepi turis membuat penghasilan turun" },
+  lena: { dream: "pameran foto jalanan Berlin di galeri besar", goal: "mengumpulkan 100 foto terbaik untuk portofolio", family: "orang tuanya di Hamburg, hubungannya kurang dekat", home: "Altbau (apartemen tua) bareng teman di Kreuzberg", pet: "tidak ada", struggle: "kerja kurir capek dan bayarannya pas-pasan" },
+  jonas: { dream: "mendaki salah satu gunung 8.000 meter di Himalaya", goal: "melatih diri untuk ekspedisi tahun depan", family: "keluarga petani susu di pedesaan Bavaria", home: "apartemen di Schwabing", pet: "anjing Bernese bernama Bergl", struggle: "ibunya takut dia celaka di gunung" },
+  anna: { dream: "jadi dosen filsafat dan menulis buku tentang kebahagiaan", goal: "menyelesaikan tesis tentang Wittgenstein", family: "orang tuanya dokter di Graz yang ingin dia kuliah kedokteran", home: "kamar di asrama mahasiswa", pet: "tidak ada", struggle: "pusing antara kerja dan menulis tesis" },
+  sofia: { dream: "memimpin proyek restorasi terumbu karang & tiram di Mediterania", goal: "dapat hibah riset dari Uni Eropa", family: "keluarga besar Catalan yang heboh", home: "apartemen di Barceloneta dekat laut", pet: "kura-kura bernama Nemo", struggle: "dana riset susah didapat" },
+  valentina: { dream: "membuka klinik psikologi gratis untuk anak muda dan tampil di festival tango", goal: "menyelesaikan spesialisasi terapi keluarga", family: "nenek Italia yang menganggap terapi itu omong kosong", home: "apartemen tua di San Telmo", pet: "kucing hitam bernama Freud", struggle: "terlalu sering menolong orang lain sampai lupa diri sendiri" },
+  mateo: { dream: "melukis mural raksasa di luar negeri — mungkin di Indonesia", goal: "menang kompetisi mural kota", family: "ibunya penjual tamales; ia anak sulung dari empat bersaudara", home: "rumah kecil penuh cat di Coyoacán", pet: "anjing jalanan yang ia adopsi bernama Frida", struggle: "seniman sering dibayar telat" },
+};
+
+// ---------- Lemari baju ----------
+// tops/bottoms: [hex, nama warna]; styles: gaya atasan harian; acc: aksesori yang bisa dipakai bergantian;
+// features: ciri tetap (kacamata minus, janggut); uniform: seragam kerja.
+const W = (tops, bottoms, styles, acc, uniform, extra = {}) => ({ tops, bottoms, styles, acc, uniform, ...extra });
+const WARDROBE = {
+  hannah: W([["#C0392B", "merah"], ["#F2E3C9", "krem"], ["#2F6FB2", "biru"], ["#3D5A40", "hijau zaitun"]], [["#2F4A7A", "jins"], ["#6B3E26", "cokelat"]], ["sweater", "shirt", "dress", "jacket"],
+    ["hairflower", "necklace", "bracelet", "bag", "earrings"], { style: "tee", top: "#2B2B2B", topName: "kaos band hitam", acc: ["headphones"] }, { skirtOk: true }),
+  oliver: W([["#3D5A40", "hijau tua"], ["#7A1F2A", "marun"], ["#D9CBB0", "krem"], ["#2E3A6E", "navy"]], [["#3A3A48", "abu tua"], ["#C9B28F", "khaki"]], ["sweater", "shirt", "jacket"],
+    ["scarf", "watch", "bag"], { style: "sweater", top: "#7A5A3A", topName: "kardigan cokelat", acc: ["lanyard"] }, { features: ["glasses"] }),
+  priya: W([["#1F2A44", "navy"], ["#B71C1C", "merah marun"], ["#F2E3C9", "krem"], ["#4E9E55", "hijau"]], [["#2B2B2B", "hitam"], ["#5B8DB8", "biru muda"]], ["blouse", "jacket", "sweater"],
+    ["earrings", "watch", "necklace", "bag"], { style: "scrubs", top: "#4A7BB7", bottom: "#4A7BB7", topName: "scrubs biru", acc: ["stethoscope", "lanyard"] }),
+  ethan: W([["#C0392B", "merah"], ["#F6B800", "kuning"], ["#2F8FD0", "biru laut"], ["#FFFFFF", "putih"]], [["#3A3A48", "abu"], ["#C9B28F", "khaki"]], ["tee", "shirt", "hoodie"],
+    ["cap", "sunglasses", "necklace", "watch"], { style: "tee", top: "#C0392B", bottom: "#F6B800", shorts: true, topName: "kaos lifeguard merah & celana pendek kuning", acc: ["cap", "sunglasses"] }),
+  yui: W([["#F2E6D0", "krem"], ["#E79AA8", "pink"], ["#7A8FB8", "biru pastel"], ["#FFFFFF", "putih"]], [["#7A8FB8", "biru pastel"], ["#5C4A3A", "cokelat"]], ["blouse", "sweater", "dress"],
+    ["beret", "hairclip", "bag", "earrings"], { style: "sweater", top: "#C9B8E0", topName: "sweater oversized ungu muda", acc: ["hairclip"] }, { skirtOk: true }),
+  aoi: W([["#2E3A6E", "indigo"], ["#F2E6D0", "krem"], ["#8E5A7A", "ungu plum"], ["#4E7A5A", "hijau lumut"]], [["#F2E6D0", "krem"], ["#3A3A48", "abu tua"]], ["blouse", "dress", "sweater"],
+    ["hairclip", "necklace", "bag"], { style: "kimono", top: "#6E4F7A", topName: "kimono ungu dengan obi emas", acc: ["hairflower"] }, { skirtOk: true }),
+  ren: W([["#22348C", "biru navy"], ["#2B2B2B", "hitam"], ["#E8710A", "oranye"], ["#FFFFFF", "putih"]], [["#2B2B2B", "hitam"], ["#3A5A7A", "jins"]], ["tee", "hoodie", "shirt"],
+    ["headband", "cap", "watch"], { style: "chef", top: "#FFFFFF", topName: "jaket koki putih", acc: ["headband", "apron"] }),
+  seoyeon: W([["#111111", "hitam"], ["#FFFFFF", "putih"], ["#7BE495", "hijau neon"], ["#E79AA8", "pink"]], [["#E8E8E8", "putih"], ["#111111", "hitam"]], ["jacket", "hoodie", "tee"],
+    ["earrings", "cap", "necklace", "sunglasses"], { style: "hoodie", top: "#111111", topName: "crop hoodie hitam", acc: ["cap"] }),
+  minjun: W([["#D9CBB0", "krem"], ["#2B2B2B", "hitam"], ["#7A8FB8", "biru pastel"], ["#5C7A5A", "hijau sage"]], [["#4A4A55", "abu"], ["#C9B28F", "khaki"]], ["sweater", "shirt", "jacket"],
+    ["camera", "watch", "bag"], { style: "scrubs", top: "#7FB3D5", bottom: "#4A4A55", topName: "baju dokter hewan biru muda", acc: ["stethoscope"] }),
+  jiho: W([["#E8710A", "oranye"], ["#22348C", "biru"], ["#FFFFFF", "putih"], ["#C0392B", "merah"]], [["#3A3A48", "abu"], ["#2B2B2B", "hitam"]], ["tee", "hoodie", "jacket"],
+    ["cap", "watch", "necklace"], { style: "tee", top: "#FFFFFF", topName: "kaos putih dengan celemek karet kuning", acc: ["apron", "cap"] }),
+  yutong: W([["#8E2420", "merah"], ["#1F2A44", "navy"], ["#F2E3C9", "krem"], ["#4E9E55", "hijau giok"]], [["#1F1F2A", "hitam"], ["#C9B28F", "khaki"]], ["jacket", "blouse", "sweater"],
+    ["earrings", "bracelet", "scarf", "bag"], { style: "blazer", top: "#22348C", topName: "blazer seragam museum biru", acc: ["lanyard"] }),
+  xiaoyu: W([["#9E2B25", "burgundy"], ["#F2F2F2", "putih"], ["#2E3A6E", "navy"], ["#C9A46A", "camel"]], [["#1F1F2A", "hitam"], ["#7A7A85", "abu"]], ["blouse", "dress", "jacket"],
+    ["earrings", "necklace", "watch", "bag"], { style: "blazer", top: "#2B2B2B", topName: "blazer hitam rapi", acc: ["watch", "necklace"] }, { skirtOk: true }),
+  hao: W([["#4A7BB7", "biru"], ["#2B2B2B", "hitam"], ["#F6B800", "kuning"], ["#7A8FB8", "biru keabuan"]], [["#2E3440", "jins gelap"], ["#4A4A55", "abu"]], ["hoodie", "tee", "shirt"],
+    ["headphones", "watch", "cap"], { style: "hoodie", top: "#3A3F55", topName: "hoodie studio abu gelap", acc: ["headphones", "lanyard"] }, { features: ["glasses"] }),
+  layla: W([["#F2E3C9", "krem"], ["#6E4F7A", "lilac"], ["#2F6FB2", "biru"], ["#4E7A5A", "hijau zaitun"]], [["#5C4A3A", "cokelat"], ["#2B2B2B", "hitam"]], ["blouse", "jacket", "sweater"],
+    ["bracelet", "bag", "watch", "necklace"], { style: "blazer", top: "#C9B28F", topName: "blazer krem", acc: ["lanyard"] }),
+  omar: W([["#F2F2F2", "putih"], ["#2F6FB2", "biru"], ["#3D5A40", "hijau"], ["#C9A46A", "camel"]], [["#C9B28F", "khaki"], ["#2B2B2B", "hitam"]], ["shirt", "tee", "jacket"],
+    ["sunglasses", "watch", "necklace"], { style: "shirt", top: "#FFFFFF", bottom: "#1F2A44", topName: "seragam pilot putih berdasi", acc: ["tie", "pilotcap"] }, { features: ["beard"] }),
+  karim: W([["#FFFFFF", "putih"], ["#2B2B2B", "hitam"], ["#4E9E55", "hijau"], ["#C0392B", "merah"]], [["#2E3440", "jins gelap"], ["#C9B28F", "khaki"]], ["shirt", "tee", "jacket"],
+    ["headphones", "necklace", "watch", "sunglasses"], { style: "tee", top: "#2B2B2B", topName: "kaos hitam bertuliskan logo radio", acc: ["headphones"] }, { features: ["beard"] }),
+  camille: W([["#1F2A44", "navy"], ["#F2E6D0", "krem"], ["#C0392B", "merah"], ["#FFFFFF", "putih bergaris"]], [["#C9B28F", "beige"], ["#2B2B2B", "hitam"]], ["blouse", "jacket", "sweater"],
+    ["scarf", "earrings", "necklace", "bag"], { style: "chef", top: "#FFFFFF", topName: "jaket pastry putih & topi koki", acc: ["chefhat"] }),
+  lucas: W([["#FFFFFF", "putih"], ["#22348C", "navy"], ["#2F8FD0", "biru"], ["#E8710A", "oranye"]], [["#22348C", "navy"], ["#C9B28F", "khaki"]], ["tee", "shirt"],
+    ["sunglasses", "cap", "necklace", "bracelet"], { style: "tee", top: "#22348C", shorts: true, topName: "kaos instruktur navy & celana pendek", acc: ["cap", "sunglasses"] }),
+  lena: W([["#5C7A5A", "hijau zaitun"], ["#2B2B2B", "hitam"], ["#B03A2E", "merah bata"], ["#D9CBB0", "krem"]], [["#2E3440", "hitam"], ["#4A5A3A", "hijau army"]], ["jacket", "hoodie", "tee"],
+    ["beanie", "camera", "bag", "earrings"], { style: "jacket", top: "#4A5A3A", topName: "jaket kurir hijau army", acc: ["cap", "bag"] }),
+  jonas: W([["#B03A2E", "merah"], ["#3D5A40", "hijau"], ["#2E3A6E", "navy"], ["#D9CBB0", "krem"]], [["#4A5A3A", "hijau army"], ["#3A3A48", "abu"]], ["shirt", "sweater", "jacket"],
+    ["beanie", "watch", "backpack"], { style: "jacket", top: "#E8710A", topName: "jaket gunung oranye", acc: ["backpack", "beanie"] }, { features: ["beard"] }),
+  anna: W([["#7A1F2A", "burgundy"], ["#2B2B2B", "hitam"], ["#C9A46A", "camel"], ["#F2E6D0", "krem"]], [["#C9A46A", "camel"], ["#2B2B2B", "hitam"]], ["sweater", "blouse", "dress"],
+    ["scarf", "earrings", "bag", "necklace"], { style: "blouse", top: "#111111", topName: "blus hitam & celemek putih ala kafe Wina", acc: ["apron"] }, { features: ["glasses"], skirtOk: true }),
+  sofia: W([["#F6B800", "kuning mustard"], ["#2F6FB2", "biru"], ["#FFFFFF", "putih"], ["#E8710A", "oranye"]], [["#FFFFFF", "putih"], ["#2F6FB2", "biru"]], ["blouse", "dress", "tee"],
+    ["earrings", "sunglasses", "bracelet", "hairflower"], { style: "wetsuit", top: "#1F2A44", bottom: "#1F2A44", topName: "baju selam riset biru gelap", acc: ["sunglasses"] }, { skirtOk: true }),
+  valentina: W([["#111111", "hitam"], ["#B71C1C", "merah"], ["#F2E3C9", "krem"], ["#6E4F7A", "ungu"]], [["#B71C1C", "merah"], ["#2B2B2B", "hitam"]], ["blouse", "dress", "jacket"],
+    ["earrings", "necklace", "hairflower", "bracelet"], { style: "blouse", top: "#F2E3C9", topName: "blus krem rapi untuk praktik", acc: ["necklace", "glasses"] }, { skirtOk: true }),
+  mateo: W([["#2F6FB2", "biru denim"], ["#E8710A", "oranye"], ["#FFFFFF", "putih"], ["#4E9E55", "hijau"]], [["#2B2B2B", "hitam"], ["#C9B28F", "khaki"]], ["shirt", "tee", "jacket"],
+    ["cap", "necklace", "bracelet", "watch"], { style: "overalls", top: "#FFFFFF", bottom: "#3A5A8A", topName: "overall jins penuh cipratan cat", acc: ["cap"] }, { features: ["beard"] }),
+};
+for (const [id, l] of Object.entries(LIFE_SEEDS)) CHARACTERS[id].life = l;
+for (const [id, w] of Object.entries(WARDROBE)) CHARACTERS[id].wardrobe = w;
