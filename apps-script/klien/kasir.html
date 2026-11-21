@@ -6,6 +6,7 @@
 <label for="event">Event</label><select id="event" onchange="gantiEvent()"></select>
 <div id="sesiBox"></div>
 <p id="proses" class="redup"></p><p id="sinkron" class="redup" style="margin:0"></p>
+<button class="kecil abu" style="margin-top:10px" onclick="riwayat()">📊 Riwayat omzet</button>
 </div>
 <div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>
 </div>
@@ -149,6 +150,24 @@ function lihat(id, o) {
   el("qr").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace("<svg ", "<svg style=\"width:min(86vw,380px);height:auto;background:#fff\" ");
 }
 function tutup() { el("modal").innerHTML = ""; }
+// ---- riwayat omzet per hari + akumulasi ----
+var NAMA_HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"], NAMA_BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+function tglIndo(t) { var d = new Date(t + "T00:00:00"); return NAMA_HARI[d.getDay()] + " " + Number(t.slice(8, 10)) + " " + NAMA_BULAN[Number(t.slice(5, 7)) - 1]; }
+function riwayat() {
+  el("modal").innerHTML = "<div class=modal><div class=kartu><p>Menghitung riwayat omzet...</p></div></div>";
+  google.script.run.withSuccessHandler(tampilRiwayat).withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); }).riwayatOmzet(PIN, kode());
+}
+function tampilRiwayat(r) {
+  var baris = r.hari.map(function (h) {
+    return "<tr><td><b>" + tglIndo(h.tanggal) + "</b>" + (h.masihBuka ? " <small class=redup>(berjalan)</small>" : "") + "<br><small class=redup>" + h.struk + " struk" + (h.sesi > 1 ? " · " + h.sesi + " sesi" : "") + (h.rataTunggu !== null ? " · tunggu " + String(h.rataTunggu).replace(".", ",") + " mnt" : "") + (h.tanpaTotal ? " · " + h.tanpaTotal + " tanpa total" : "") + "</small>" +
+      (h.laporanTim !== null ? "<br><small class=redup>laporan tim " + rp(h.laporanTim) + "</small>" : "") + "</td>" +
+      "<td style=\"text-align:right\"><b>" + rp(h.omzet) + "</b></td><td style=\"text-align:right\">" + rp(h.kumulatifOmzet) + "</td></tr>";
+  }).join("");
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h2 class=judul><span>📊 Riwayat omzet</span></h2><p class=redup>" + aman(kode()) + " · dari struk kasir (hasil bacaan struk, bisa diperbaiki di detail pesanan)</p>" +
+    "<p style=\"font-size:1.35em;margin:6px 0\">💰 Total: <b>" + rp(r.total.omzet) + "</b><br><small class=redup>" + r.total.hari + " hari · " + r.total.struk + " struk · rata-rata " + rp(r.total.rataPerHari) + "/hari" + (r.total.tanpaTotal ? " · " + r.total.tanpaTotal + " struk belum ada total (belum terhitung)" : "") + "</small></p>" +
+    "<table style=\"width:100%;border-collapse:collapse\"><thead><tr><th style=\"text-align:left\">Hari</th><th style=\"text-align:right\">Omzet</th><th style=\"text-align:right\">Akumulasi</th></tr></thead><tbody>" + (baris || "<tr><td colspan=3 class=redup>Belum ada sesi kasir.</td></tr>") + "</tbody></table>" +
+    "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
+}
 function simpanTotal(id) {
   google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { pesan("⚠️ " + e.message); }).ubahTotal(PIN, id, el("totalEdit").value);
 }

@@ -351,6 +351,65 @@ function daftarAntrian(pin, kode) {
   return { pesanan: pesanan, sesi: s ? ringkasSesi_(s) : null };
 }
 
+// Omzet yang dilaporkan tim lewat #omzet (tab Omzet), per tanggal; laporan terbaru menggantikan yang lama.
+function omzetLaporanTim_(kode) {
+  var hasil = {};
+  var sh = ss_().getSheetByName('Omzet');
+  if (!sh || sh.getLastRow() < 2) return hasil;
+  var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var j = v[0];
+  var iT = j.indexOf('Tanggal Jualan'), iK = j.indexOf('Kode Event'), iO = j.indexOf('Omzet'), iS = j.indexOf('Status');
+  if (iT < 0 || iK < 0 || iO < 0) return hasil;
+  v.slice(1).forEach(function (r) {
+    if (String(r[iK]) !== kode || (iS >= 0 && String(r[iS]) === 'BATAL')) return;
+    var t = tglStr_(r[iT]);
+    if (t) hasil[t] = Number(r[iO]) || 0;
+  });
+  return hasil;
+}
+
+// Riwayat omzet dari struk kasir: per hari (semua sesi di tanggal itu), akumulasi, dan total event.
+function riwayatOmzet(pin, kode) {
+  cekPin_(pin);
+  var sesi = baca_(tab_('Sesi Kasir', KOLOM_SESI)).filter(function (x) { return x.kode_event === kode; });
+  var antrian = baca_(tab_('Antrian', KOLOM_ANTRIAN)).filter(function (o) { return o.kode_event === kode; });
+  var tim = omzetLaporanTim_(kode);
+  var perSesi = {};
+  antrian.forEach(function (o) { (perSesi[o.sesi] = perSesi[o.sesi] || []).push(o); });
+  var menit = function (a, b) { var p = waktuDate_(a), q = waktuDate_(b); if (!p || !q) return null; var d = (q - p) / 60000; return d < 0 ? null : d; };
+  var hari = {};
+  sesi.forEach(function (x) {
+    var t = tglStr_(x.tanggal) || waktuStr_(x.dibuka).slice(0, 10);
+    var h = hari[t] || (hari[t] = { tanggal: t, sesi: 0, struk: 0, omzet: 0, tanpaTotal: 0, batal: 0, kasir: [], tunggu: [], bintang: [], masihBuka: false });
+    var semua = perSesi[x.id] || [];
+    var layan = semua.filter(function (o) { return o.status !== STATUS.BATAL; });
+    h.sesi++;
+    h.struk += layan.length;
+    h.batal += semua.length - layan.length;
+    h.omzet += layan.reduce(function (m, o) { return m + (Number(o.total) || 0); }, 0);
+    h.tanpaTotal += layan.filter(function (o) { return !Number(o.total); }).length;
+    layan.forEach(function (o) {
+      var w = o.dipanggil ? menit(o.dibuat, o.dipanggil) : null;
+      if (w !== null) h.tunggu.push(w);
+      if (Number(o.rating) > 0) h.bintang.push(Number(o.rating));
+    });
+    String(x.kasir || '').split(',').forEach(function (k) { k = k.trim(); if (k && h.kasir.indexOf(k) < 0) h.kasir.push(k); });
+    if (x.status === 'BUKA') h.masihBuka = true;
+  });
+  var rata = function (a) { return a.length ? Math.round(a.reduce(function (m, v) { return m + v; }, 0) / a.length * 10) / 10 : null; };
+  var urut = Object.keys(hari).sort();
+  var kumOmzet = 0, kumStruk = 0;
+  var daftar = urut.map(function (t) {
+    var h = hari[t];
+    kumOmzet += h.omzet; kumStruk += h.struk;
+    return { tanggal: t, sesi: h.sesi, struk: h.struk, omzet: h.omzet, tanpaTotal: h.tanpaTotal, batal: h.batal, kasir: h.kasir.join(', '),
+      rataTunggu: rata(h.tunggu), bintang: rata(h.bintang), laporanTim: tim[t] === undefined ? null : tim[t], masihBuka: h.masihBuka,
+      kumulatifOmzet: kumOmzet, kumulatifStruk: kumStruk };
+  });
+  return { hari: daftar, total: { hari: daftar.length, struk: kumStruk, omzet: kumOmzet, tanpaTotal: daftar.reduce(function (m, h) { return m + h.tanpaTotal; }, 0),
+    rataPerHari: daftar.length ? Math.round(kumOmzet / daftar.length) : 0, laporanTim: Object.keys(tim).reduce(function (m, t) { return m + tim[t]; }, 0) } };
+}
+
 // ---------------------------------------------------------------- sesi kasir
 
 function sesiAktif_(kode) {
@@ -993,6 +1052,7 @@ var HTML_KASIR =
   "<label for=\"event\">Event</label><select id=\"event\" onchange=\"gantiEvent()\"></select>\n" +
   "<div id=\"sesiBox\"></div>\n" +
   "<p id=\"proses\" class=\"redup\"></p><p id=\"sinkron\" class=\"redup\" style=\"margin:0\"></p>\n" +
+  "<button class=\"kecil abu\" style=\"margin-top:10px\" onclick=\"riwayat()\">📊 Riwayat omzet</button>\n" +
   "</div>\n" +
   "<div class=\"kolom\"><div><h3>⏳ Menunggu</h3><div id=\"k-MENUNGGU\"></div></div><div><h3>🔥 Dibakar</h3><div id=\"k-DIBAKAR\"></div></div><div><h3>✅ Siap / dipanggil</h3><div id=\"k-SIAP\"></div></div></div>\n" +
   "</div>\n" +
@@ -1136,6 +1196,24 @@ var HTML_KASIR =
   "  el(\"qr\").innerHTML = q.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace(\"<svg \", \"<svg style=\\\"width:min(86vw,380px);height:auto;background:#fff\\\" \");\n" +
   "}\n" +
   "function tutup() { el(\"modal\").innerHTML = \"\"; }\n" +
+  "// ---- riwayat omzet per hari + akumulasi ----\n" +
+  "var NAMA_HARI = [\"Min\", \"Sen\", \"Sel\", \"Rab\", \"Kam\", \"Jum\", \"Sab\"], NAMA_BULAN = [\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"Mei\", \"Jun\", \"Jul\", \"Agu\", \"Sep\", \"Okt\", \"Nov\", \"Des\"];\n" +
+  "function tglIndo(t) { var d = new Date(t + \"T00:00:00\"); return NAMA_HARI[d.getDay()] + \" \" + Number(t.slice(8, 10)) + \" \" + NAMA_BULAN[Number(t.slice(5, 7)) - 1]; }\n" +
+  "function riwayat() {\n" +
+  "  el(\"modal\").innerHTML = \"<div class=modal><div class=kartu><p>Menghitung riwayat omzet...</p></div></div>\";\n" +
+  "  google.script.run.withSuccessHandler(tampilRiwayat).withFailureHandler(function (e) { tutup(); pesan(\"⚠️ \" + e.message); }).riwayatOmzet(PIN, kode());\n" +
+  "}\n" +
+  "function tampilRiwayat(r) {\n" +
+  "  var baris = r.hari.map(function (h) {\n" +
+  "    return \"<tr><td><b>\" + tglIndo(h.tanggal) + \"</b>\" + (h.masihBuka ? \" <small class=redup>(berjalan)</small>\" : \"\") + \"<br><small class=redup>\" + h.struk + \" struk\" + (h.sesi > 1 ? \" · \" + h.sesi + \" sesi\" : \"\") + (h.rataTunggu !== null ? \" · tunggu \" + String(h.rataTunggu).replace(\".\", \",\") + \" mnt\" : \"\") + (h.tanpaTotal ? \" · \" + h.tanpaTotal + \" tanpa total\" : \"\") + \"</small>\" +\n" +
+  "      (h.laporanTim !== null ? \"<br><small class=redup>laporan tim \" + rp(h.laporanTim) + \"</small>\" : \"\") + \"</td>\" +\n" +
+  "      \"<td style=\\\"text-align:right\\\"><b>\" + rp(h.omzet) + \"</b></td><td style=\\\"text-align:right\\\">\" + rp(h.kumulatifOmzet) + \"</td></tr>\";\n" +
+  "  }).join(\"\");\n" +
+  "  el(\"modal\").innerHTML = \"<div class=modal onclick=\\\"if(event.target===this)tutup()\\\"><div class=kartu><h2 class=judul><span>📊 Riwayat omzet</span></h2><p class=redup>\" + aman(kode()) + \" · dari struk kasir (hasil bacaan struk, bisa diperbaiki di detail pesanan)</p>\" +\n" +
+  "    \"<p style=\\\"font-size:1.35em;margin:6px 0\\\">💰 Total: <b>\" + rp(r.total.omzet) + \"</b><br><small class=redup>\" + r.total.hari + \" hari · \" + r.total.struk + \" struk · rata-rata \" + rp(r.total.rataPerHari) + \"/hari\" + (r.total.tanpaTotal ? \" · \" + r.total.tanpaTotal + \" struk belum ada total (belum terhitung)\" : \"\") + \"</small></p>\" +\n" +
+  "    \"<table style=\\\"width:100%;border-collapse:collapse\\\"><thead><tr><th style=\\\"text-align:left\\\">Hari</th><th style=\\\"text-align:right\\\">Omzet</th><th style=\\\"text-align:right\\\">Akumulasi</th></tr></thead><tbody>\" + (baris || \"<tr><td colspan=3 class=redup>Belum ada sesi kasir.</td></tr>\") + \"</tbody></table>\" +\n" +
+  "    \"<br><button onclick=\\\"tutup()\\\">Tutup</button></div></div>\";\n" +
+  "}\n" +
   "function simpanTotal(id) {\n" +
   "  google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { pesan(\"⚠️ \" + e.message); }).ubahTotal(PIN, id, el(\"totalEdit\").value);\n" +
   "}\n" +

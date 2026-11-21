@@ -264,6 +264,46 @@ test('apps-script: total belanja dibaca dari teks struk / bukti trf, omzet sesi 
   assert.equal(tabel['Sesi Kasir'].rows[0].omzet, 405000);
 });
 
+test('apps-script: riwayat omzet per hari (beberapa sesi sehari digabung), akumulasi, total, dan laporan #omzet tim', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = {
+    'Sesi Kasir': [
+      { id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara', status: 'TUTUP', dibuka: '2026-11-14 10:00:00' },
+      { id: 'S2', kode_event: 'SMR26-11', tanggal: '2026-11-15', kasir: 'Tiara, Bima', status: 'TUTUP', dibuka: '2026-11-15 10:00:00' },
+      { id: 'S3', kode_event: 'SMR26-11', tanggal: '2026-11-15', kasir: 'George', status: 'BUKA', dibuka: '2026-11-15 20:00:00' },
+      { id: 'X', kode_event: 'LAIN26-11', tanggal: '2026-11-14', kasir: 'Z', status: 'TUTUP', dibuka: '2026-11-14 10:00:00' },
+    ],
+    Antrian: [
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'DIAMBIL', total: 100000, dibuat: '2026-11-14 10:10:00', dipanggil: '2026-11-14 10:20:00', rating: 5 },
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'DIAMBIL', total: 75000, dibuat: '2026-11-14 11:00:00', dipanggil: '2026-11-14 11:10:00' },
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'BATAL', total: 999000 },
+      { kode_event: 'SMR26-11', sesi: 'S2', status: 'DIAMBIL', total: 120000, dibuat: '2026-11-15 10:10:00', dipanggil: '2026-11-15 10:16:00' },
+      { kode_event: 'SMR26-11', sesi: 'S3', status: 'DIBAKAR', total: '' },
+      { kode_event: 'SMR26-11', sesi: 'S3', status: 'DIAMBIL', total: 60000 },
+      { kode_event: 'LAIN26-11', sesi: 'X', status: 'DIAMBIL', total: 5000000 },
+    ],
+  };
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: (n) => ({ nama: n }), baca_: (t) => (tabel[t.nama] || []).map((r, i) => ({ ...r, _baris: i + 2 })),
+    omzetLaporanTim_: () => ({ '2026-11-14': 180000, '2026-11-15': 10460 }),
+  });
+  const r = JSON.parse(JSON.stringify(c.riwayatOmzet('1', 'SMR26-11')));
+  assert.deepEqual(r.hari.map((h) => [h.tanggal, h.sesi, h.struk, h.omzet, h.kumulatifOmzet, h.tanpaTotal]), [
+    ['2026-11-14', 1, 2, 175000, 175000, 0],
+    ['2026-11-15', 2, 3, 180000, 355000, 1], // dua sesi di hari yang sama digabung; sesi 15 Nov yang masih BUKA ikut
+  ]);
+  assert.equal(r.hari[0].batal, 1); // pesanan batal tidak dihitung omzet
+  assert.equal(r.hari[0].rataTunggu, 10); assert.equal(r.hari[0].bintang, 5);
+  assert.equal(r.hari[1].masihBuka, true); assert.equal(r.hari[1].kasir, 'Tiara, Bima, George');
+  assert.equal(r.hari[0].laporanTim, 180000);
+  assert.deepEqual(r.total, { hari: 2, struk: 5, omzet: 355000, tanpaTotal: 1, rataPerHari: 177500, laporanTim: 190460 });
+  assert.equal(c.riwayatOmzet('1', 'BELUM-ADA').hari.length, 0); // event tanpa sesi: kosong, tidak error
+});
+
 test('ringkasan tutup kasir diteruskan bot ke WhatsApp owner sekali', async () => {
   const { tugasSesiKasir } = await import('../src/komplain.js');
   const rows = [{ id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara, Bima', dibuka: '2026-11-14 08:05:00', ditutup: '2026-11-14 22:10:00', jumlah_struk: 126, diambil: 121, batal: 3, belum: 2, rata_tunggu_menit: 11, rating_rata: 4.8, jumlah_rating: 58, rating_kasir: 'Tiara 4,9 (40) · Bima 4,6 (18)', ulasan_buruk: '#88 2★ (Bima) nunggu lama', status: 'TUTUP' }];
