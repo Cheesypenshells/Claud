@@ -23,6 +23,15 @@ Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & meneng
 - **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
 - **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
 
+### 🤖 Mode Robot (simulasi ngobrol dengan AI)
+
+Tekan **"🤖 Ngobrol dengan Robot"** di atas chat. Muncul karakter robot "Robo" layar penuh, seperti telepon dengan AI:
+- Robot menyapa, lalu mikrofon otomatis menyala.
+- Robot **beranimasi sesuai keadaan**: cincin hijau saat mendengar, antena berkedip & mata melirik saat berpikir, mulut bergerak saat bicara.
+- Ucapanmu dan ucapan robot tampil sebagai **subtitle**.
+- Tekan 🎤 untuk bicara / memotong robot, **📞 Akhiri** (atau Esc) untuk kembali ke chat. Riwayat percakapan tetap tersimpan di chat.
+- Mode Robot memakai tutor, bahasa, dan level yang sedang dipilih.
+
 Fitur suara memakai Web Speech API bawaan browser — **gratis, tanpa API key tambahan**.
 Mikrofon berfungsi di **Chrome, Edge, dan Safari** (Firefox belum mendukung; di Firefox tetap bisa mendengar suara AI).
 Browser hanya mengizinkan mikrofon di `http://localhost` atau situs `https://`.
@@ -44,6 +53,7 @@ npm start                 # buka http://localhost:3000
 - `tutors.js` — definisi 5 mode tutor (system prompt). **Tambah/ubah tutor di sini.**
 - `public/` — tampilan web (HTML/CSS/JS biasa, mendukung mode gelap dan HP)
 - `public/voice.js` — fitur suara (ucapan → teks, teks → suara)
+- `public/robot.js` — karakter robot animasi untuk Mode Robot
 
 ## Catatan Teknis
 

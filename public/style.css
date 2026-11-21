@@ -61,3 +61,58 @@ input[type="range"] { accent-color: var(--accent); }
 .speak-btn { position: absolute; top: 6px; right: 6px; border: 0; background: transparent; cursor: pointer; font-size: 1rem; opacity: .55; padding: 4px; }
 .speak-btn:hover, .speak-btn.playing { opacity: 1; }
 @media (max-width: 760px) { #composer { gap: 6px; } .icon-btn { min-width: 40px; } }
+
+/* ---------- Mode Robot ---------- */
+#robot-open { background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 600; font-size: .85rem; cursor: pointer; white-space: nowrap; }
+.chat header .right { display: flex; align-items: center; gap: 12px; }
+.robot-overlay { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 16px 16px 28px;
+  background: radial-gradient(circle at 50% 35%, #2b3170 0%, #151832 55%, #0c0e1f 100%); color: #eef0ff; overflow-y: auto; }
+.robot-overlay[hidden] { display: none; }
+.robot-top { width: 100%; max-width: 720px; display: flex; justify-content: space-between; align-items: center; }
+.robot-name { font-weight: 700; }
+.robot-sub { font-weight: 400; opacity: .75; }
+.robot-x { background: rgba(255,255,255,.1); color: #fff; border: 0; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
+.robot-stage { position: relative; width: min(300px, 70vw); aspect-ratio: 200/220; margin-top: 2vh; }
+.robot-svg { position: relative; width: 100%; height: 100%; overflow: visible; }
+.r-head { fill: #dfe3ff; } .r-face { fill: #1b1f3d; } .r-ear, .r-body { fill: #b9c0f5; }
+.r-stroke { stroke: #b9c0f5; } .r-antenna { fill: #8b94ff; } .r-heart { fill: #8b94ff; }
+.r-eye { fill: #7ef0ff; transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
+.r-mouth rect { fill: #7ef0ff; transform-box: fill-box; transform-origin: center; transition: transform .15s; }
+.robot-float { animation: float 4s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-6px); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+
+/* Mendengarkan: cincin berdenyut, antena hijau, mata membesar */
+.robot-rings { position: absolute; inset: 8% 0 20%; display: grid; place-items: center; pointer-events: none; }
+.robot-rings span { position: absolute; width: 70%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #4ee6a1; opacity: 0; }
+[data-phase="listening"] .robot-rings span { animation: ring 1.8s ease-out infinite; }
+[data-phase="listening"] .robot-rings span:nth-child(2) { animation-delay: .9s; }
+@keyframes ring { 0% { transform: scale(.8); opacity: .8; } 100% { transform: scale(1.5); opacity: 0; } }
+[data-phase="listening"] .r-antenna, [data-phase="listening"] .r-heart { fill: #4ee6a1; }
+[data-phase="listening"] .r-eye { transform: scale(1.15); }
+
+/* Berpikir: antena berkedip, mata melirik */
+[data-phase="thinking"] .r-antenna { fill: #ffc857; animation: flash .6s infinite alternate; }
+[data-phase="thinking"] .r-eyes { animation: look 1.6s ease-in-out infinite; }
+@keyframes flash { to { opacity: .25; } }
+@keyframes look { 0%,100% { transform: translateX(-6px); } 50% { transform: translateX(6px); } }
+
+/* Berbicara: mulut bergerak seperti equalizer */
+[data-phase="speaking"] .r-antenna, [data-phase="speaking"] .r-heart { fill: #7ef0ff; }
+[data-phase="speaking"] .r-mouth rect { animation: talk .45s ease-in-out infinite alternate; }
+[data-phase="speaking"] .r-mouth rect:nth-child(2) { animation-delay: -.15s; animation-duration: .35s; }
+[data-phase="speaking"] .r-mouth rect:nth-child(3) { animation-delay: -.3s; animation-duration: .5s; }
+[data-phase="speaking"] .r-mouth rect:nth-child(4) { animation-delay: -.1s; animation-duration: .4s; }
+[data-phase="speaking"] .r-mouth rect:nth-child(5) { animation-delay: -.25s; animation-duration: .3s; }
+@keyframes talk { from { transform: scaleY(.6); } to { transform: scaleY(2.6); } }
+
+.robot-phase { font-size: 1rem; opacity: .85; min-height: 1.4em; }
+.robot-captions { width: 100%; max-width: 640px; text-align: center; min-height: 5.5em; }
+.cap-ai { font-size: clamp(1.05rem, 2.6vw, 1.35rem); line-height: 1.5; margin: 0 0 8px; }
+.cap-user { font-size: .95rem; opacity: .65; margin: 0; }
+.robot-controls { display: flex; gap: 16px; align-items: center; margin-top: auto; }
+.robot-mic { width: 76px; height: 76px; border-radius: 50%; border: 0; font-size: 2rem; cursor: pointer; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+.robot-mic.active { background: #4ee6a1; animation: pulse 1.2s ease-in-out infinite; }
+.robot-end { border: 0; border-radius: 999px; padding: 12px 20px; font: inherit; font-weight: 600; background: #e74c3c; color: #fff; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .robot-overlay *, .robot-overlay *::before { animation-duration: 0s !important; } }
+@media (max-width: 760px) { .chat header { flex-wrap: wrap; row-gap: 6px; padding-top: 10px; padding-bottom: 10px; } }

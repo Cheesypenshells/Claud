@@ -1,4 +1,5 @@
 import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking } from "./voice.js";
+import { createRobot } from "./robot.js";
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -9,6 +10,9 @@ const state = {
 const lang = () => $("language").value;
 const rate = () => Number($("rate").value);
 const setStatus = (t) => ($("status").textContent = t);
+const robot = createRobot({ onMic: robotMic, onClose: closeRobot });
+// Suara aktif jika Mode Suara dicentang atau sedang di Mode Robot
+const voiceOn = () => state.voiceMode || robot.isOpen;
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -54,9 +58,11 @@ async function playBubble(el, speechLang) {
   if (wasPlaying) return;
   btn?.classList.add("playing");
   setStatus("🔊 AI berbicara…");
-  await speak(el.dataset.raw, speechLang, rate());
+  robot.phase("speaking");
+  await speak(el.dataset.raw, speechLang, rate(), (part) => robot.captionAI(part));
   btn?.classList.remove("playing");
   setStatus("");
+  if (robot.isOpen) robot.phase("idle");
 }
 
 function stopAll() {
@@ -64,6 +70,7 @@ function stopAll() {
   stopListening();
   document.querySelectorAll(".speak-btn.playing").forEach((b) => b.classList.remove("playing"));
   setStatus("");
+  if (robot.isOpen) robot.phase("idle");
 }
 
 function resetChat() {
@@ -74,7 +81,7 @@ function resetChat() {
   $("chat-title").textContent = `${t.name} · ${state.config.languages[lang()]}`;
   updateMicLangLabel();
   const greet = addMessage("assistant", t.greeting, "id");
-  if (state.voiceMode) playBubble(greet, "id");
+  if (state.voiceMode && !robot.isOpen) playBubble(greet, "id");
 }
 
 // ---------- Kirim ke AI ----------
@@ -87,6 +94,9 @@ async function send(text) {
   const bubble = addMessage("assistant typing", "");
   let reply = "";
   setStatus("✍️ AI sedang menjawab…");
+  robot.captionUser(text);
+  robot.captionAI("");
+  robot.phase("thinking");
 
   try {
     const res = await fetch("/api/chat", {
@@ -94,7 +104,7 @@ async function send(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tutor: state.tutor, language: lang(), level: $("level").value,
-        voice: state.voiceMode,
+        voice: voiceOn(),
         messages: state.history.slice(-40),
       }),
     });
@@ -132,18 +142,20 @@ async function send(text) {
       state.history.pop(); // buang pesan user yang gagal agar urutan tetap user/assistant
     }
     addMessage("error", `⚠️ ${e.message}`);
+    if (robot.isOpen) robot.phase("idle", `⚠️ ${e.message}`);
     reply = "";
   } finally {
     bubble.classList.remove("typing");
     state.busy = false;
     setControlsDisabled(false);
     setStatus("");
+    if (robot.isOpen && reply) robot.phase("idle");
   }
 
   // Mode suara: bacakan balasan, lalu otomatis dengarkan lagi (ngobrol tanpa tangan)
-  if (state.voiceMode && reply) {
+  if (voiceOn() && reply) {
     await playBubble(bubble, lang());
-    if (state.voiceMode && !state.busy) startListening({ auto: true });
+    if (voiceOn() && !state.busy && !state.listening) startListening({ auto: true });
   } else {
     $("input").focus();
   }
@@ -169,19 +181,23 @@ async function startListening({ auto = false } = {}) {
   state.listening = true;
   $("mic").classList.add("listening");
   setStatus("🎙️ Mendengarkan… silakan bicara");
+  robot.phase("listening");
+  robot.captionUser("");
   const before = $("input").value;
   try {
     const text = await listen(state.micLang === "id" ? "id" : lang(), (t) => {
       $("input").value = (before ? before + " " : "") + t;
+      robot.captionUser(t);
     });
     const full = $("input").value.trim();
     if (!text) {
       $("input").value = before;
       setStatus(auto ? "Tekan 🎤 untuk bicara lagi" : "Tidak ada suara terdengar");
+      if (robot.isOpen) robot.phase("idle", "Tidak ada suara terdengar. Tekan 🎤 untuk bicara.");
       return;
     }
     setStatus("");
-    if (state.voiceMode && full) {
+    if (voiceOn() && full) {
       $("input").value = "";
       send(full);
     } else {
@@ -191,10 +207,40 @@ async function startListening({ auto = false } = {}) {
     $("input").value = before;
     setStatus("");
     addMessage("error", `⚠️ ${e.message}`);
+    if (robot.isOpen) robot.phase("idle", `⚠️ ${e.message}`);
   } finally {
     state.listening = false;
     $("mic").classList.remove("listening");
   }
+}
+
+// ---------- Mode Robot ----------
+async function openRobot() {
+  if (state.busy) return;
+  stopAll();
+  robot.open(`${state.config.tutors[state.tutor].name} · ${state.config.languages[lang()]}`);
+  if (!canListen) {
+    robot.phase("idle", "⚠️ Mikrofon belum didukung browser ini. Pakai Chrome, Edge, atau Safari.");
+    return;
+  }
+  // Robot menyapa dulu, lalu mulai mendengarkan
+  robot.phase("speaking");
+  robot.captionAI("Halo! Aku Robo, tutor bahasamu. Silakan bicara!");
+  await speak("💬 Halo! Aku Robo, tutor bahasamu. Silakan bicara!", lang(), rate());
+  if (robot.isOpen && !state.listening && !state.busy) startListening({ auto: true });
+}
+
+function closeRobot() {
+  stopAll();
+  robot.close();
+  $("input").value = "";
+}
+
+function robotMic() {
+  if (state.busy) return;
+  if (state.listening) return stopListening(); // tekan lagi = selesai bicara
+  stopSpeaking(); // potong robot yang sedang bicara
+  startListening();
 }
 
 // ---------- Inisialisasi ----------
@@ -220,6 +266,7 @@ async function init() {
   $("reset").onclick = () => !state.busy && resetChat();
 
   // Suara
+  $("robot-open").onclick = openRobot;
   $("mic").onclick = () => startListening();
   $("mic-lang").onclick = () => {
     state.micLang = state.micLang === "id" ? "target" : "id";

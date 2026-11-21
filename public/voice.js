@@ -77,7 +77,7 @@ export function splitForSpeech(text, targetLang) {
     line = line.replace(/💬/g, "").replace(/[*_`#>|]/g, ""); // sisa markdown
     // Di kalimat bahasa target, isi kurung biasanya romanisasi → tidak dibaca
     if (!isIndo) line = line.replace(/\([^)]*\)|（[^）]*）/g, "");
-    line = line(/[\p{Extended_Pictographic}]/gu, "") // emoji
+    line = line.replace(/[\p{Extended_Pictographic}]/gu, "") // emoji
       .replace(/^\s*(\d+\.|-)\s*/, "")
       .trim();
     if (!line) continue;
@@ -92,7 +92,7 @@ export function splitForSpeech(text, targetLang) {
 let speakToken = 0;
 
 /** Bacakan teks. Resolve ketika selesai (atau dihentikan). */
-export function speak(text, targetLang, rate = 0.95) {
+export function speak(text, targetLang, rate = 0.95, onPart = null) {
   if (!canSpeak) return Promise.resolve();
   stopSpeaking();
   const token = ++speakToken;
@@ -103,6 +103,7 @@ export function speak(text, targetLang, rate = 0.95) {
     const next = () => {
       if (token !== speakToken || i >= parts.length) return resolve();
       const { lang, text } = parts[i++];
+      onPart?.(text, lang);
       const u = new SpeechSynthesisUtterance(text);
       u.lang = SPEECH_LANG[lang];
       const v = pickVoice(u.lang);
