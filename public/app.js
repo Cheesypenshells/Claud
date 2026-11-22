@@ -1,4 +1,4 @@
-import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking, createSpeechQueue } from "./voice.js";
+import { canListen, canSpeak, listen, stopListening, speak, stopSpeaking, createSpeechQueue, stripEmotions } from "./voice.js";
 import { createRobot } from "./robot.js";
 import { createDating } from "./dating.js";
 import { createIelts } from "./ielts.js";
@@ -120,7 +120,7 @@ function escapeHtml(s) {
 }
 // Markdown ringan: **tebal**, *miring*, `kode`
 function renderMarkdown(text) {
-  return escapeHtml(text)
+  return escapeHtml(stripEmotions(text))
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>")
     .replace(/`([^`]+)`/g, "<code>$1</code>");
@@ -160,7 +160,7 @@ async function playBubble(el, speechLang) {
   btn?.classList.add("playing");
   setStatus("🔊 AI berbicara…");
   robot.phase("speaking");
-  await speak(el.dataset.raw, speechLang, rate(), (part) => robot.captionAI(part));
+  await speak(el.dataset.raw, speechLang, rate(), (part) => robot.captionAI(part), 1, { skipNotes: true });
   btn?.classList.remove("playing");
   setStatus("");
   if (robot.isOpen) robot.phase("idle");
@@ -240,7 +240,7 @@ async function send(text, { proactive = false } = {}) {
   let reply = "";
   setStatus(proactive ? "👋 Cheesy-Bot nyapa kamu…" : "✍️ AI sedang menjawab…");
   // Mode suara: bacakan per kalimat begitu selesai ditulis (tidak menunggu seluruh balasan)
-  const queue = voiceOn() ? createSpeechQueue(ttsLang(), rate(), (part) => { robot.captionAI(part); robot.phase("speaking"); }) : null;
+  const queue = voiceOn() ? createSpeechQueue(ttsLang(), rate(), (part) => { robot.captionAI(part); robot.phase("speaking"); }, 1, { skipNotes: true }) : null;
   robot.captionUser(text ?? "");
   robot.captionAI("");
   robot.phase("thinking");

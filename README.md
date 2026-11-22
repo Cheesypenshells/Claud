@@ -241,6 +241,11 @@ Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & meneng
 - **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
 - **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
 
+### 🎭 Suara yang berekspresi
+Di mode suara, AI menandai kalimat dengan emosi (`[happy]`, `[excited]`, `[sad]`, `[angry]`, `[surprised]`, `[calm]`, `[whisper]`, `[laugh]`).
+Tanda ini tidak tampil di layar, tapi mengubah **nada, kecepatan & volume** suara supaya tidak monoton. Catatan bahasa Indonesia (baris 💬)
+tetap tampil tapi **tidak dibacakan**, kecuali balasannya memang hanya berisi bahasa Indonesia.
+
 ### 🤖 Mode Robot "Cheesy-Bot" (simulasi ngobrol dengan AI)
 
 Tekan **"🤖 Ngobrol dengan Cheesy-Bot"** di atas chat. Muncul robot "Cheesy-Bot" layar penuh, seperti telepon dengan AI:

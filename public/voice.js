@@ -112,13 +112,55 @@ function watchFirst(u) {
 }
 const ttsUsable = () => canSpeak && ttsOk !== false;
 
+// ---------- Emosi dalam suara ----------
+// AI boleh menandai kalimat dengan [happy] [excited] [sad] [angry] [surprised] [calm] [whisper] [laugh].
+// Tanda tidak ditampilkan; dipakai untuk mengatur nada, kecepatan & volume suara supaya tidak monoton.
+export const EMOTIONS = {
+  happy:     { pitch: 1.12, rate: 1.05, volume: 1 },
+  excited:   { pitch: 1.28, rate: 1.15, volume: 1 },
+  sad:       { pitch: 0.82, rate: 0.84, volume: 0.8 },
+  angry:     { pitch: 0.9,  rate: 1.12, volume: 1 },
+  surprised: { pitch: 1.35, rate: 1.0,  volume: 1 },
+  calm:      { pitch: 0.96, rate: 0.9,  volume: 0.9 },
+  whisper:   { pitch: 1.0,  rate: 0.85, volume: 0.45 },
+  laugh:     { pitch: 1.2,  rate: 1.08, volume: 1, prefix: "Haha! " },
+};
+const EMO_RE = /\[(happy|excited|sad|angry|surprised|calm|whisper|laugh)\]\s*/gi;
+/** Hapus tanda emosi dari teks yang ditampilkan. */
+export const stripEmotions = (t) => String(t).replace(EMO_RE, "");
+/** Ambil emosi terakhir yang disebut di teks (atau null). */
+function lastEmotion(t) {
+  let m, last = null;
+  EMO_RE.lastIndex = 0;
+  while ((m = EMO_RE.exec(t))) last = m[1].toLowerCase();
+  return last;
+}
+function applyVoice(u, part, rate, pitch) {
+  const e = EMOTIONS[part.emo] ?? null;
+  u.rate = Math.min(2, Math.max(0.5, rate * (e?.rate ?? 1)));
+  u.pitch = Math.min(2, Math.max(0.1, pitch * (e?.pitch ?? 1)));
+  u.volume = e?.volume ?? 1;
+}
+
 /**
  * Pecah balasan AI jadi bagian-bagian: baris yang diawali "💬" dibaca dengan suara
  * Bahasa Indonesia, sisanya dengan suara bahasa target.
  */
-export function splitForSpeech(text, targetLang) {
+export function splitForSpeech(text, targetLang, startEmo = null) {
   const parts = [];
-  for (let line of text.split("\n")) {
+  let emo = startEmo;
+  // pecah per tanda emosi supaya tiap bagian punya nadanya sendiri
+  const segs = [];
+  for (const line of String(text).split("\n")) {
+    const isIndoLine = line.trim().startsWith("💬");
+    const bits = line.split(/(\[(?:happy|excited|sad|angry|surprised|calm|whisper|laugh)\])/i);
+    for (const b of bits) {
+      const m = b.match(/^\[(\w+)\]$/);
+      if (m) { emo = m[1].toLowerCase(); continue; }
+      segs.push({ line: (isIndoLine && !b.trim().startsWith("💬") ? "💬 " : "") + b, emo });
+    }
+  }
+  for (let { line, emo: segEmo } of segs) {
     const isIndo = line.trim().startsWith("💬");
     line = line.replace(/💬/g, "").replace(/[*_`#>|]/g, ""); // sisa markdown
     // Di kalimat bahasa target, isi kurung biasanya romanisasi → tidak dibaca
@@ -128,34 +170,43 @@ export function splitForSpeech(text, targetLang) {
       .trim();
     if (!line) continue;
     const lang = isIndo ? "id" : targetLang;
+    const pref = EMOTIONS[segEmo]?.prefix ?? "";
     const last = parts.at(-1);
-    if (last && last.lang === lang) last.text += " " + line;
-    else parts.push({ lang, text: line });
+    if (last && last.lang === lang && last.emo === segEmo) last.text += " " + line;
+    else parts.push({ lang, text: pref + line, emo: segEmo });
   }
   return parts;
+}
+
+/** Catatan bahasa Indonesia (💬) tidak dibacakan bila ada bagian bahasa target; dibacakan bila hanya itu isinya. */
+function dropNotes(parts, targetLang) {
+  if (targetLang === "id" || targetLang?.startsWith("id-")) return parts;
+  const target = parts.filter((p) => p.lang !== "id");
+  return target.length ? target : parts;
 }
 
 let speakToken = 0;
 
 /** Bacakan teks. Resolve ketika selesai (atau dihentikan). */
-export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
+export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1, { skipNotes = false } = {}) {
   if (!ttsUsable()) return Promise.resolve();
   stopSpeaking();
   const token = ++speakToken;
-  const parts = splitForSpeech(text, targetLang);
+  let parts = splitForSpeech(text, targetLang);
+  if (skipNotes) parts = dropNotes(parts, targetLang);
   return new Promise((resolve) => {
     if (!parts.length) return resolve();
     let i = 0;
     const next = () => {
       if (token !== speakToken || i >= parts.length || !ttsUsable()) return resolve();
-      const { lang, text } = parts[i++];
-      onPart?.(text, lang);
+      const part = parts[i++];
+      const { lang, text } = part;
+      onPart?.(stripEmotions(text), lang);
       const u = new SpeechSynthesisUtterance(text);
       u.lang = SPEECH_LANG[lang] ?? lang;
       const v = pickVoice(u.lang);
       if (v) u.voice = v;
-      u.rate = rate;
-      u.pitch = pitch;
+      applyVoice(u, part, rate, pitch);
       let done = false;
       u.onend = u.onerror = () => { if (!done) { done = true; next(); } };
       watchFirst(u);
@@ -175,7 +226,11 @@ export function stopSpeaking() {
  * tanpa menunggu seluruh balasan. Baris yang diawali "💬" dibaca dengan suara Bahasa Indonesia.
  *   const q = createSpeechQueue("en", 0.95, onPart, 1);  q.push(delta) …  await q.end();
  */
-export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch = 1) {
+export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch = 1, { skipNotes = false } = {}) {
+  const notesOff = skipNotes && !(targetLang === "id" || targetLang?.startsWith("id-"));
+  let emo = null;          // emosi yang sedang berlaku (berlanjut antar kalimat)
+  let spokeTarget = false; // sudah ada kalimat bahasa target yang dibacakan?
+  const heldNotes = [];    // catatan 💬 yang ditahan; dibacakan hanya kalau balasan isinya cuma itu
   const token = ++speakToken; // membatalkan bacaan sebelumnya
   if (canSpeak) speechSynthesis.cancel();
   let buf = "";
@@ -186,17 +241,20 @@ export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch 
   const ended = new Promise((r) => (resolveEnd = r));
   const check = () => { if (finished && pending === 0) resolveEnd(); };
 
-  function say(text, indo) {
+  function say(text, indo, force = false) {
     if (!ttsUsable() || token !== speakToken) return;
-    for (const part of splitForSpeech((indo ? "💬 " : "") + text, targetLang)) {
+    if (indo && notesOff && !force) { heldNotes.push(text); return; }
+    const startEmo = emo;
+    emo = lastEmotion(text) ?? emo;
+    for (const part of splitForSpeech((indo ? "💬 " : "") + text, targetLang, startEmo)) {
+      if (part.lang !== "id") spokeTarget = true;
       pending++;
       const u = new SpeechSynthesisUtterance(part.text);
       u.lang = SPEECH_LANG[part.lang] ?? part.lang;
       const v = pickVoice(u.lang);
       if (v) u.voice = v;
-      u.rate = rate;
-      u.pitch = pitch;
-      u.onstart = () => onPart?.(part.text, part.lang);
+      applyVoice(u, part, rate, pitch);
+      u.onstart = () => onPart?.(stripEmotions(part.text), part.lang);
       let done = false;
       u.onend = u.onerror = () => { if (!done) { done = true; pending--; check(); } };
       watchFirst(u);
@@ -230,6 +288,7 @@ export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch 
     push(text) { if (token === speakToken) { buf += text; drain(false); } },
     async end() {
       if (token === speakToken) drain(true);
+      if (notesOff && !spokeTarget) for (const t of heldNotes.splice(0)) say(t, true, true);
       finished = true;
       check();
       if (!canSpeak || token !== speakToken) return;

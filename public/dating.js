@@ -1,6 +1,6 @@
 // Mode "💘 Pendekatan": kenalan & PDKT dengan karakter fiksi untuk melatih bahasa dan rasa percaya diri.
 import { renderAvatar, setMood, sceneStyle } from "./avatar.js";
-import { createSpeechQueue } from "./voice.js";
+import { createSpeechQueue, stripEmotions } from "./voice.js";
 
 const MOOD_EMOJI = { happy: "😊", amused: "😏", shy: "😳", neutral: "🙂", curious: "🤔", annoyed: "😒", uncomfortable: "😟", leaving: "👋" };
 const MOVE = {
@@ -230,7 +230,7 @@ export function createDating(ctx) {
   }
 
   function finishCharBubble(el, c, text, meta) {
-    el.querySelector(".body").textContent = text;
+    el.querySelector(".body").textContent = stripEmotions(text);
     el.dataset.raw = text;
     el.classList.remove("typing");
     el.insertAdjacentHTML("beforeend", `${meta?.romanization ? `<div class="roman">${escapeHtml(meta.romanization)}</div>` : ""}
@@ -428,7 +428,7 @@ export function createDating(ctx) {
           const data = JSON.parse(chunk.match(/^data: (.+)$/m)?.[1] ?? "{}");
           if (event === "delta") {
             streamed += data.text;
-            bubble.querySelector(".body").textContent = streamed;
+            bubble.querySelector(".body").textContent = stripEmotions(streamed);
             queue?.push(data.text);
             scrollDown();
           } else if (event === "error") throw new Error(data.error);

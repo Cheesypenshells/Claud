@@ -18,7 +18,7 @@ const NON_LATIN = new Set(["ja", "ko", "zh", "ar"]);
 export const MOODS = ["happy", "amused", "shy", "neutral", "curious", "annoyed", "uncomfortable", "leaving"];
 
 const TurnSchema = z.object({
-  reply: z.string().describe("What the character says out loud, ONLY in the character's language. No stage directions, no Indonesian."),
+  reply: z.string().describe("What the character says out loud, ONLY in the character's language. No stage directions, no Indonesian. To sound alive, start a sentence with ONE emotion tag when the feeling changes: [happy] [excited] [sad] [angry] [surprised] [calm] [whisper] [laugh] — it sets the tone of voice and is never shown. Don't put tags in romanization or translation."),
   romanization: z.string().describe("Romanization of reply for non-Latin scripts at beginner/intermediate level, else empty string"),
   translation_id: z.string().describe("Natural Indonesian translation of reply"),
   mood: z.enum(MOODS),
