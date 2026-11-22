@@ -22,6 +22,8 @@ Lokasinya saling berdekatan, jadi bisa dikunjungi berurutan naik kereta cepat.
 | 8 | **Qingdao Haosail Machinery** | Qingdao, Shandong | Hardware marine galvanis (shackle, dll.), tali sintetis | Hardware angkur dan mooring | ⭐ |
 | — | **Kawasan tambak oyster Rushan** (bukan pabrik) | Rushan, Weihai, Shandong | Produsen oyster no.1 tingkat kabupaten di China (±500.000 ton/tahun) | **Benchmark**: lihat cara mereka budidaya, pembenihan, depurasi. Sekalian tanya kontak pemasok lokal | ⭐⭐⭐ |
 
+> **Update:** Produk yang dicari adalah **keranjang plastik kaku hasil injection molding**: model silinder ala SEAPA dan flip basket dengan pipa pelampung ala FlipFarm, bukan sekadar jaring. Prioritasnya jadi: **1. Shouan** (punya flip basket + tumbler), **2. Cnrichsea** (punya mesin injeksi sendiri), **3. HengSu** (hanya kalau mereka juga membuat keranjang kaku).
+
 ### Peta wilayah sentra pemasok
 | Wilayah | Fokus | Pabrik yang diketahui |
 |---|---|---|
