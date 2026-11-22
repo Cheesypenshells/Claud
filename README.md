@@ -265,6 +265,19 @@ cp .env.example .env      # lalu isi ANTHROPIC_API_KEY
 npm start                 # buka http://localhost:3000
 ```
 
+## 📱 Membuka dari Tablet/HP Lain (satu WiFi/hotspot)
+
+1. Server jalan di HP (Termux): `npm start`.
+2. Cari alamat HP dari Termux (sesi lain), ganti `IP-TABLET` dengan alamat IP tablet (Pengaturan → Wi-Fi → detail):
+   `node -e "const s=require('dgram').createSocket('udp4');s.connect(80,'IP-TABLET',()=>{console.log(s.address().address);s.close()})"`
+3. Di Chrome tablet buka `http://ALAMAT-HP:3001`.
+
+**Mikrofon** hanya diizinkan Chrome di `localhost`/`https`. Untuk alamat IP: buka `chrome://flags/#unsafely-treat-insecure-origin-as-secure`,
+isi `http://ALAMAT-HP:3001`, pilih **Enabled**, lalu **Relaunch**.
+
+**Suara robot & mikrofon butuh layanan suara perangkat.** Perangkat tanpa layanan Google (mis. sebagian tablet Huawei) bisa tidak punya
+mesin *Text-to-Speech* / pengenal suara untuk Chrome. Website akan memberi tahu otomatis dan tetap jalan dengan teks.
+
 ## Struktur
 
 - `server.js` — server Node (tanpa framework), endpoint `/api/chat` yang men-stream jawaban AI

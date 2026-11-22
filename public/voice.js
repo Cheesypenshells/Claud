@@ -11,6 +11,20 @@ const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 export const canListen = Boolean(Recognition);
 export const canSpeak = "speechSynthesis" in window;
 
+// ---------- Pemberitahuan masalah suara (sekali per jenis) ----------
+const told = new Set();
+export function voiceNotice(kind, msg) {
+  if (told.has(kind)) return;
+  told.add(kind);
+  const el = document.createElement("div");
+  el.setAttribute("role", "alert");
+  el.style.cssText = "position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;max-width:min(560px,calc(100vw - 32px));" +
+    "background:#16226A;color:#fff;border:3px solid #F6B800;border-radius:14px;padding:14px 16px;font:600 .95rem/1.45 system-ui,sans-serif;box-shadow:0 6px 20px #0006";
+  el.innerHTML = `${msg}<div style="text-align:right;margin-top:8px"><button type="button" style="background:#F6B800;color:#16226A;border:0;border-radius:8px;padding:6px 14px;font-weight:800">Oke</button></div>`;
+  el.querySelector("button").onclick = () => el.remove();
+  document.body.append(el);
+}
+
 // ---------- Mendengar (mikrofon) ----------
 let recognizer = null;
 
@@ -35,9 +49,15 @@ export function listen(lang, onInterim, { continuous = false } = {}) {
     };
     recognizer.onerror = (e) => {
       if (e.error === "no-speech" || e.error === "aborted") return; // ditangani di onend
-      const msg = e.error === "not-allowed"
-        ? "Izin mikrofon ditolak. Izinkan mikrofon di pengaturan browser."
-        : `Gagal mendengar suara (${e.error}).`;
+      let msg = `Gagal mendengar suara (${e.error}).`;
+      if (e.error === "not-allowed") {
+        msg = window.isSecureContext
+          ? "Izin mikrofon ditolak. Izinkan mikrofon di pengaturan browser."
+          : "Mikrofon diblokir karena alamat ini bukan localhost/https. Buka lewat http://localhost:3001 atau atur chrome://flags (lihat README).";
+      } else if (["network", "service-not-allowed", "language-not-supported"].includes(e.error)) {
+        msg = "Pengenal suara Chrome tidak tersedia di perangkat ini (biasanya karena tidak ada layanan Google, misalnya di tablet Huawei). Pakai ketik, atau pakai HP lain.";
+        voiceNotice("stt", "🎙️ " + msg);
+      }
       reject(new Error(msg));
     };
     recognizer.onend = () => {
@@ -66,6 +86,24 @@ function pickVoice(langTag) {
 // Siapkan daftar suara (beberapa browser memuatnya secara async).
 if (canSpeak) speechSynthesis.getVoices();
 
+// Deteksi perangkat tanpa mesin suara: kalau bacaan pertama tidak mulai dalam 6 detik,
+// suara dimatikan (teks tetap tampil) supaya robot tidak macet menunggu.
+let ttsOk = null;
+function watchFirst(u) {
+  if (ttsOk !== null) return;
+  const prevStart = u.onstart;
+  const timer = setTimeout(() => {
+    if (ttsOk !== null) return;
+    ttsOk = false;
+    speechSynthesis.cancel();
+    voiceNotice("tts", "🔇 Perangkat ini belum punya <b>mesin suara (Text-to-Speech)</b>, jadi Cheesy-Bot tidak bisa bersuara. Balasan tetap tampil sebagai teks.<br><br>" +
+      "Cara memperbaiki: buka <b>Pengaturan</b> perangkat → cari <b>\"teks ke ucapan\"</b> → pilih/pasang mesin suara, lalu muat ulang halaman ini.");
+    u.onerror?.();
+  }, 6000);
+  u.onstart = (e) => { ttsOk = true; clearTimeout(timer); prevStart?.(e); };
+}
+const ttsUsable = () => canSpeak && ttsOk !== false;
+
 /**
  * Pecah balasan AI jadi bagian-bagian: baris yang diawali "💬" dibaca dengan suara
  * Bahasa Indonesia, sisanya dengan suara bahasa target.
@@ -93,7 +131,7 @@ let speakToken = 0;
 
 /** Bacakan teks. Resolve ketika selesai (atau dihentikan). */
 export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
-  if (!canSpeak) return Promise.resolve();
+  if (!ttsUsable()) return Promise.resolve();
   stopSpeaking();
   const token = ++speakToken;
   const parts = splitForSpeech(text, targetLang);
@@ -101,7 +139,7 @@ export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
     if (!parts.length) return resolve();
     let i = 0;
     const next = () => {
-      if (token !== speakToken || i >= parts.length) return resolve();
+      if (token !== speakToken || i >= parts.length || !ttsUsable()) return resolve();
       const { lang, text } = parts[i++];
       onPart?.(text, lang);
       const u = new SpeechSynthesisUtterance(text);
@@ -110,8 +148,9 @@ export function speak(text, targetLang, rate = 0.95, onPart = null, pitch = 1) {
       if (v) u.voice = v;
       u.rate = rate;
       u.pitch = pitch;
-      u.onend = next;
-      u.onerror = next;
+      let done = false;
+      u.onend = u.onerror = () => { if (!done) { done = true; next(); } };
+      watchFirst(u);
       speechSynthesis.speak(u);
     };
     next();
@@ -140,7 +179,7 @@ export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch 
   const check = () => { if (finished && pending === 0) resolveEnd(); };
 
   function say(text, indo) {
-    if (!canSpeak || token !== speakToken) return;
+    if (!ttsUsable() || token !== speakToken) return;
     for (const part of splitForSpeech((indo ? "💬 " : "") + text, targetLang)) {
       pending++;
       const u = new SpeechSynthesisUtterance(part.text);
@@ -150,7 +189,9 @@ export function createSpeechQueue(targetLang, rate = 0.95, onPart = null, pitch 
       u.rate = rate;
       u.pitch = pitch;
       u.onstart = () => onPart?.(part.text, part.lang);
-      u.onend = u.onerror = () => { pending--; check(); };
+      let done = false;
+      u.onend = u.onerror = () => { if (!done) { done = true; pending--; check(); } };
+      watchFirst(u);
       speechSynthesis.speak(u);
     }
   }
