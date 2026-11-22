@@ -22,6 +22,16 @@ Lokasinya saling berdekatan, jadi bisa dikunjungi berurutan naik kereta cepat.
 | 8 | **Qingdao Haosail Machinery** | Qingdao, Shandong | Hardware marine galvanis (shackle, dll.), tali sintetis | Hardware angkur dan mooring | ⭐ |
 | — | **Kawasan tambak oyster Rushan** (bukan pabrik) | Rushan, Weihai, Shandong | Produsen oyster no.1 tingkat kabupaten di China (±500.000 ton/tahun) | **Benchmark**: lihat cara mereka budidaya, pembenihan, depurasi. Sekalian tanya kontak pemasok lokal | ⭐⭐⭐ |
 
+### Peta wilayah sentra pemasok
+| Wilayah | Fokus | Pabrik yang diketahui |
+|---|---|---|
+| **Hengshui, Hebei** (Anping + Gucheng) | Anping = sentra wire mesh & jaring terbesar di China; keranjang dan mesh oyster | HeBei HengSu Screen (Anping, dekat Zhengrao Road), Gucheng Shouan |
+| **Qingdao, Shandong** | Tali, jaring, keramba HDPE, hardware marine, pelabuhan ekspor | Qihang, Sikeli, Boyuan Rope, Sunten, Haosail |
+| **Weihai (Rushan & Rongcheng), Shandong** | Sentra budidaya oyster/scallop; toko perlengkapan tambak lokal | Tambak & hatchery Rushan (benchmark) |
+| **Lokasi belum diketahui** | Kandang oyster/scallop, lantern net (punya mesin injeksi sendiri) | Cnrichsea |
+
+**Alternatif:** China Fisheries & Seafood Expo + Aquaculture China di Qingdao, biasanya akhir Oktober (2027: tanggal belum resmi). Ratusan pemasok perlengkapan budidaya bisa ditemui di satu tempat.
+
 ### Yang perlu dikerjakan sebelum berangkat (mulai Jan–Feb 2027)
 1. **Kontak via Alibaba/WhatsApp/WeChat**: minta katalog, MOQ, harga FOB Qingdao/Tianjin, dan **video call keliling pabrik**.
 2. Minta **invitation letter** dari pabrik untuk visa bisnis (M).
