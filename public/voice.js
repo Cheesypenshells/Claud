@@ -60,7 +60,15 @@ export function listen(lang, onInterim, { continuous = false } = {}) {
       }
       reject(new Error(msg));
     };
+    // Perangkat tanpa layanan suara Google (mis. Huawei): mikrofon tidak pernah benar-benar mulai merekam.
+    let audioStarted = false;
+    recognizer.onaudiostart = () => { audioStarted = true; };
+    const sttTimer = setTimeout(() => {
+      if (!audioStarted) voiceNotice("stt-silent", "🎙️ Sepertinya Chrome di perangkat ini <b>tidak bisa mengenali suara</b> (biasanya karena tidak ada layanan Google, misalnya di tablet Huawei).<br><br>" +
+        "Cara lain: tutup mode robot, ketuk kotak ketik, lalu ketuk <b>ikon 🎤 di keyboard</b> untuk mendikte. Suara robot tetap bisa didengar.");
+    }, 6000);
     recognizer.onend = () => {
+      clearTimeout(sttTimer);
       recognizer = null;
       resolve(finalText.trim());
     };
