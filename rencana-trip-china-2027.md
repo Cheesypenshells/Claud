@@ -24,6 +24,31 @@ Lokasinya saling berdekatan, jadi bisa dikunjungi berurutan naik kereta cepat.
 
 > **Update:** Produk yang dicari adalah **keranjang plastik kaku hasil injection molding**: model silinder ala SEAPA dan flip basket dengan pipa pelampung ala FlipFarm, bukan sekadar jaring. Prioritasnya jadi: **1. Shouan** (punya flip basket + tumbler), **2. Cnrichsea** (punya mesin injeksi sendiri), **3. HengSu** (hanya kalau mereka juga membuat keranjang kaku).
 
+### Direktori pabrik: nama resmi dan alamat (dari direktori B2B, wajib verifikasi)
+
+**Fokus: keranjang plastik kaku (flip basket, silinder) – Hengshui, Hebei**
+1. **Gucheng Shouan New Material Technology Co., Ltd.**
+   - Alamat pabrik: West of Guangjiao Road, Zhengkou Town, Gucheng County, Hengshui, Hebei
+   - Produk: flip farm basket, kandang aluminium, oyster mesh bag, tumbler, flip-shelf boat
+   - Web: hebeishouan.en.alibaba.com, made-in-china.com/showroom/hebeishouan
+2. **TAONI Oyster Farming Equipment** (oystermeshbag.com, pemasok foto flip basket)
+   - Alamat: Industrial Park, Hengshui, Hebei (TradeKey: Anping County)
+   - Kontak: Rebecca Wang (Sales), +86 177 3382 3121, rebecca@hdpeoystermesh.com (perlu dicek)
+   - Kemungkinan entitas ekspornya: Shijiazhuang Taoni Import and Export Trading Co., Ltd., Tian Village, Jinzhou City, Shijiazhuang
+3. **Hebei Hengsu Screen Manufacturing Co., Ltd.**
+   - Alamat: South of Zhengrao Road, Anping County / Industrial Park, Anping, Hebei 053600
+   - Produk: oyster mesh, mesh bag, oyster wire cage
+
+**Fokus: lantern net, kandang kerang, keramba – Qingdao, Shandong**
+4. **Qingdao Mansheng Industry and Trade Co., Ltd.** – Dajia Zhuang, Pingdu, Qingdao (lantern net, scallop cage, oyster cage)
+5. **Qingdao Qihang Fishing Cage Co., Ltd.** (brand Sikeli) – Qingdao, alamat jalan belum diketahui (keramba HDPE, kandang abalon)
+6. **Qingdao Boyuan Rope Co., Ltd.** – Qingdao, alamat jalan belum diketahui (tali mooring/longline)
+7. **Qingdao Sinher Commercial Co., Ltd.** – Qingdao (lantern net oyster/scallop, MOQ 500 pcs)
+
+**Belum terkonfirmasi:** Cnrichsea (lokasi tidak ditemukan).
+
+Cara memverifikasi: cek nama Mandarin perusahaan di gsxt.gov.cn atau Qichacha, lalu minta foto izin usaha (营业执照).
+
 ### Peta wilayah sentra pemasok
 | Wilayah | Fokus | Pabrik yang diketahui |
 |---|---|---|
