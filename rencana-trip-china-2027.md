@@ -130,6 +130,20 @@ Kalau berangkat **berdua dan berbagi kamar**, biaya hotel dan interpreter per or
 
 ---
 
+## 5b. ESTIMASI ORDER 3.000 KERANJANG (kasar, perlu dikonfirmasi ke pabrik)
+
+| Item | Kalau dikirim sudah dirakit | Kalau dikirim ditumpuk/terurai |
+|---|---|---|
+| Volume per keranjang (asumsi ukuran ±1 m) | ±0,08 CBM | ±0,015–0,025 CBM |
+| Total volume | ±240 CBM | ±45–75 CBM |
+| Kontainer | ±4 × 40HC | **±1 × 40HC** (maksimal 2) |
+| Ongkos laut Qingdao → Indonesia (sangat fluktuatif) | US$3.000–8.000 | **US$800–2.500** |
+
+- Harga keranjang (asumsi US$5–10/pcs, FOB) → **US$15.000–30.000 (±Rp 250–500 jt)**
+- Tambahan yang perlu dihitung: klip/hook, tali longline, pelampung, tiang
+- Pajak impor: PPN 11% + PPh 22 (2,5% kalau punya API; kalau tidak, lebih tinggi). Bea masuk bisa 0% dengan Form E (ACFTA), cek ke PPJK
+- Inspeksi pra-pengiriman pihak ketiga (SGS/QIMA dll.) sekitar US$300–400
+
 ## 6. LANGKAH SELANJUTNYA
 1. Tentukan **daftar barang dan spesifikasinya** (jenis keranjang, ukuran mesh, panjang longline, jumlah, sistem budidaya: rak, longline, atau floating).
 2. Hubungi pabrik #1–#3 dulu. Kalau ada yang tidak responsif atau harganya tidak cocok, ganti dengan alternatif.
