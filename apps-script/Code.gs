@@ -54,6 +54,7 @@ function MULAI_PASANG() {
   tab_('Sesi Kasir', KOLOM_SESI);
   folder_();
   PASANG_PEMBERSIH();
+  PASANG_CADANGAN();
   var t = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd');
   Logger.log('✅ Siap. Sheet: ' + ss_().getName() + ' · PIN kasir: ' + (pinKasir_() ? 'ada' : 'BELUM (isi pin_kasir di tab Pengaturan)') + ' · ' + t);
   Logger.log('Lanjut: Terapkan > Deployment baru > Aplikasi web (Jalankan sebagai: Saya, Akses: Siapa saja).');
@@ -191,6 +192,45 @@ function PASANG_PEMBERSIH() {
   var ada = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'bersihkanFoto'; });
   if (!ada) ScriptApp.newTrigger('bersihkanFoto').timeBased().everyDays(1).atHour(3).inTimezone('Asia/Jakarta').create();
   Logger.log('🧹 Pembersih foto aktif: foto dihapus ' + HAPUS_FOTO_HARI + ' hari setelah event selesai, dicek tiap hari jam 03.00.');
+}
+
+// ---------------------------------------------------------------- cadangan harian
+// Salinan seluruh spreadsheet ke folder "CADANGAN PEMBUKUAN" di Drive, tiap hari jam 02.00. Yang disimpan 14 hari terakhir;
+// salinan yang lebih lama dipindahkan ke Sampah. Salinan dimiliki akun Google pemilik script (bukan akun robot bot).
+var CADANGAN_SIMPAN_HARI = 14;
+var CADANGAN_FOLDER = 'CADANGAN PEMBUKUAN';
+
+function PASANG_CADANGAN() {
+  var ada = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'cadanganHarian'; });
+  if (!ada) ScriptApp.newTrigger('cadanganHarian').timeBased().everyDays(1).atHour(2).inTimezone('Asia/Jakarta').create();
+  Logger.log('💾 Cadangan harian aktif: salinan spreadsheet tiap hari jam 02.00 ke folder ' + CADANGAN_FOLDER + ', disimpan ' + CADANGAN_SIMPAN_HARI + ' hari terakhir.');
+}
+
+function cadanganFolder_() {
+  var it = DriveApp.getFoldersByName(CADANGAN_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(CADANGAN_FOLDER);
+}
+
+// Bisa juga dijalankan manual dari editor (Run) kapan saja.
+function cadanganHarian() {
+  var folder = cadanganFolder_();
+  var hari = hariIni_();
+  var nama = 'Cadangan Pembukuan ' + hari;
+  // Dijalankan lagi di hari yang sama: salinan hari itu diganti, bukan ditumpuk.
+  var sama = folder.getFilesByName(nama);
+  while (sama.hasNext()) sama.next().setTrashed(true);
+  DriveApp.getFileById(ss_().getId()).makeCopy(nama, folder);
+  // Simpan 14 salinan terakhir (hari ini + 13 hari sebelumnya).
+  var batas = Utilities.formatDate(new Date(Date.now() - (CADANGAN_SIMPAN_HARI - 1) * 86400000), 'Asia/Jakarta', 'yyyy-MM-dd');
+  var dihapus = 0;
+  var semua = folder.getFiles();
+  while (semua.hasNext()) {
+    var f = semua.next();
+    var m = f.getName().match(/^Cadangan Pembukuan (\d{4}-\d{2}-\d{2})$/);
+    if (m && m[1] < batas) { f.setTrashed(true); dihapus++; }
+  }
+  Logger.log('💾 Cadangan ' + hari + ' tersimpan. ' + dihapus + ' salinan lama (lebih dari ' + CADANGAN_SIMPAN_HARI + ' hari) dipindahkan ke Sampah.');
+  return dihapus;
 }
 
 // Tanggal selesai tiap event (tab Event), untuk semua event termasuk yang sudah selesai.

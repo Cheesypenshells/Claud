@@ -325,6 +325,33 @@ test('animasi: atribut SVG sebelum "/>" selalu berkutip (tanpa kutip, bentuk ber
   assert.deepEqual(src.match(/=[^'"\s>]+\/>/g), null);
 });
 
+test('apps-script: cadangan harian menyalin spreadsheet dan menyimpan hanya 14 salinan terakhir', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const sampah = []; const dibuat = [];
+  const berkas = (nama) => ({ getName: () => nama, setTrashed: () => sampah.push(nama) });
+  const daftar = ['2026-11-01', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-21', '2026-11-22'].map((t) => berkas(`Cadangan Pembukuan ${t}`));
+  daftar.push(berkas('Catatan pribadi.txt')); // file lain di folder tidak boleh disentuh
+  const folder = {
+    getFilesByName: (n) => { const a = daftar.filter((f) => f.getName() === n); let i = 0; return { hasNext: () => i < a.length, next: () => a[i++] }; },
+    getFiles: () => { let i = 0; return { hasNext: () => i < daftar.length, next: () => daftar[i++] }; },
+  };
+  Object.assign(c, {
+    hariIni_: () => '2026-11-22', ss_: () => ({ getId: () => 'SHEET1' }), Logger: { log() {} },
+    DriveApp: { getFoldersByName: () => ({ hasNext: () => true, next: () => folder }), getFileById: (id) => ({ makeCopy: (n, f) => { dibuat.push([id, n, f === folder]); } }) },
+    Utilities: { formatDate: (d) => new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10) },
+  });
+  vm.runInContext("Date.now = () => new Date('2026-11-22T02:00:00+07:00').getTime();", c);
+  const dihapus = c.cadanganHarian();
+  assert.deepEqual(dibuat, [['SHEET1', 'Cadangan Pembukuan 2026-11-22', true]]);
+  // batas simpan: 14 hari = 9 Nov s/d 22 Nov. 1 Nov & 8 Nov dibuang; salinan hari ini (22 Nov) diganti baru.
+  assert.deepEqual(sampah, ['Cadangan Pembukuan 2026-11-22', 'Cadangan Pembukuan 2026-11-01', 'Cadangan Pembukuan 2026-11-08']);
+  assert.equal(dihapus, 2);
+});
+
 test('apps-script: foto struk & dibakar dihapus 7 hari setelah event selesai, data pesanan tetap', async () => {
   const { readFileSync } = await import('node:fs');
   const vm = await import('node:vm');

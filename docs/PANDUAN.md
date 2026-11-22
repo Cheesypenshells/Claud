@@ -546,6 +546,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Tersimpan di folder Drive **CPS ANTRIAN (foto struk & pesanan)** (akun owner), dan di tab Antrian (kolom Foto Struk / Foto Dibakar).
 - **Dihapus otomatis 7 hari setelah event selesai** (dipindahkan ke Sampah Drive, dicek tiap hari jam 03.00). Data pesanan di sheet tetap; kolom fotonya berisi "DIHAPUS tanggal".
 - Pemicu harian dipasang dengan menjalankan **MULAI_PASANG** sekali dari editor Apps Script (setelah menempel kode baru).
+- **💾 Cadangan harian otomatis:** tiap hari jam 02.00 seluruh spreadsheet PEMBUKUAN disalin ke folder **CADANGAN PEMBUKUAN** di Google Drive (nama `Cadangan Pembukuan 2026-11-22`). **Disimpan 14 hari terakhir**; salinan yang lebih lama otomatis dipindahkan ke Sampah. Dipasang oleh **MULAI_PASANG** (atau `PASANG_CADANGAN`). Mau cadangan sekarang juga: pilih fungsi `cadanganHarian` di editor Apps Script lalu Run. Memulihkan: buka salinan dengan tanggal yang diinginkan (atau File → Riwayat versi di sheet utama).
 
 ## Pembagian tugas harian (jam 08.00)
 
