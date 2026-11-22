@@ -24,25 +24,26 @@ import { tugasNilaiHarian } from './nilaiHarian.js';
 import { tugasPengingatBagian } from './pengingatBagian.js';
 import { ikutGajian } from './gajian.js';
 import { tanggalLokal } from './util.js';
+import { denganUlang } from './ulang.js';
 
 async function main() {
   let store;
   if (config.spreadsheetId) {
     store = new SheetsStore({ spreadsheetId: config.spreadsheetId, keyFile: config.googleKeyFile });
-    await store.init();
+    await denganUlang('menyiapkan tab', () => store.init());
     console.log('[Sheets] Tersambung ke Google Sheets.');
   } else {
     store = new MemoryStore();
     console.warn('[Sheets] SPREADSHEET_ID kosong: data hanya disimpan sementara di memori (hilang saat bot dimatikan).');
   }
 
-  await isiHargaAwal(store);
-  await store.hapusTab(store.spreadsheetId, ['Main', 'Data Main']); // diganti file per event di folder EVENT
+  await denganUlang('harga awal', () => isiHargaAwal(store));
+  await denganUlang('hapus tab lama', () => store.hapusTab(store.spreadsheetId, ['Main', 'Data Main'])); // diganti file per event di folder EVENT
   const perbarui = async () => {
     const { catatan } = await perbaruiPembukuan(store);
     for (const c of catatan) console.warn(`[Pembukuan] ${c}`);
   };
-  await perbarui();
+  await denganUlang('pembukuan', perbarui);
   console.log('[Sheets] PEMBUKUAN & file event siap.');
 
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');

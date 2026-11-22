@@ -7,7 +7,7 @@ import { KOLOM, JENIS_LAMA } from '../schema.js';
 import { siapkanMain, tulisDataMain } from './mainSheet.js';
 import { TAB_INPUT, CARA_ISI } from '../inputManual.js';
 
-const CACHE_MS = 30_000;
+const CACHE_MS = 50_000;
 const HITAM = { style: 'SOLID', colorStyle: { rgbColor: { red: 0, green: 0, blue: 0 } } };
 const GARIS_HITAM = { top: HITAM, bottom: HITAM, left: HITAM, right: HITAM, innerHorizontal: HITAM, innerVertical: HITAM };
 const FORMAT_ANGKA = {
@@ -67,6 +67,14 @@ export class SheetsStore {
     this.cache = new Map();
   }
 
+  // Judul kolom (baris 1) beberapa tab sekaligus dalam SATU permintaan baca (kuota Google: 60 baca per menit).
+  async bacaJudulSemua(daftarTab) {
+    const res = await this.api.spreadsheets.values.batchGet({
+      spreadsheetId: this.spreadsheetId, ranges: daftarTab.map((tab) => `${q(tab)}!1:1`),
+    });
+    return daftarTab.map((_, i) => res.data.valueRanges?.[i]?.values?.[0] || []);
+  }
+
   // Membuat tab yang belum ada, menulis judul kolom, lalu merapikan tampilan.
   async init() {
     const id = this.spreadsheetId;
@@ -81,9 +89,10 @@ export class SheetsStore {
     }
 
     // Judul kolom: ganti judul lama (key) menjadi label, tambahkan kolom yang belum ada.
-    for (const [tab, def] of Object.entries(KOLOM)) {
-      const res = await this.api.spreadsheets.values.get({ spreadsheetId: id, range: `${q(tab)}!1:1` });
-      const lama = res.data.values?.[0] || [];
+    const daftarTab = Object.keys(KOLOM);
+    const judulLama = await this.bacaJudulSemua(daftarTab);
+    for (const [iTab, [tab, def]] of Object.entries(KOLOM).entries()) {
+      const lama = judulLama[iTab];
       const peta = petaJudul(tab);
       const judul = lama.map((h) => def.kolom.find((c) => c.key === peta.get(h))?.label ?? h);
       for (const c of def.kolom) if (!judul.includes(c.label)) judul.push(c.label);
@@ -134,9 +143,7 @@ export class SheetsStore {
       if (!isi.data.values?.length) requests.push({ deleteSheet: { sheetId: s.properties.sheetId } });
     }
 
-    const header = (await Promise.all(urutan.map((tab) => this.api.spreadsheets.values.get({
-      spreadsheetId: id, range: `${q(tab)}!1:1`,
-    })))).map((r) => r.data.values?.[0] || []);
+    const header = await this.bacaJudulSemua(urutan);
 
     urutan.forEach((tab, iTab) => {
       const s = sheets.find((x) => x.properties.title === tab);
