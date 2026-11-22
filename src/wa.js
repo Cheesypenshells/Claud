@@ -56,11 +56,11 @@ function isiPesan(m) {
   return { teks, adaFoto, kutipan, diteruskan };
 }
 
-export async function mulaiWhatsApp({ folderLogin, nomorBot, kodePairing, onPesan, onGrupBaru }) {
+export async function mulaiWhatsApp({ folderLogin, folderData = folderLogin, nomorBot, kodePairing, onPesan, onGrupBaru }) {
   const { state, saveCreds } = await useMultiFileAuthState(folderLogin);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
   const namaGrup = new Map();
-  const pencatat = buatPencatatId(path.join(folderLogin, 'terproses.json'));
+  const pencatat = buatPencatatId(path.join(folderData, 'terproses.json'));
   let sock;
   let sudahMintaKode = false;
 

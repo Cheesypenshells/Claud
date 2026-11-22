@@ -5,7 +5,7 @@ import { SheetsStore } from './store/sheets.js';
 import { MemoryStore } from './store/memory.js';
 import { handlePesan, handleGrupBaru } from './handlers.js';
 import { buatSesi } from './sesi.js';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, copyFileSync } from 'node:fs';
 import path from 'node:path';
 import { buatPenjadwal } from './scheduler.js';
 import { mulaiWhatsApp } from './wa.js';
@@ -49,7 +49,13 @@ async function main() {
   if (!config.ownerIds.size) console.warn('[Bot] OWNER_IDS kosong. Ketik #idsaya di grup untuk melihat ID owner.');
 
   mkdirSync(config.folderLogin, { recursive: true });
-  const ctx = { store, ownerIds: config.ownerIds, sesi: buatSesi(path.join(config.folderLogin, 'sesi.json')), terakhir: new Map(), wajibStruk: true };
+  mkdirSync(config.folderData, { recursive: true });
+  // Pindahan dari versi lama (file ingatan ada di dalam folder login).
+  for (const f of ['sesi.json', 'terproses.json']) {
+    const lama = path.join(config.folderLogin, f), baru = path.join(config.folderData, f);
+    if (existsSync(lama) && !existsSync(baru)) copyFileSync(lama, baru);
+  }
+  const ctx = { store, ownerIds: config.ownerIds, sesi: buatSesi(path.join(config.folderData, 'sesi.json')), terakhir: new Map(), wajibStruk: true };
   // Sheet Main dihitung ulang paling lambat 30 detik setelah ada laporan baru.
   let perluPerbaruiMain = false;
 
@@ -62,6 +68,7 @@ async function main() {
 
   const wa = await mulaiWhatsApp({
     folderLogin: config.folderLogin,
+    folderData: config.folderData,
     nomorBot: config.nomorBot,
     kodePairing: config.kodePairing,
     onPesan: (pesan, balasKe) => jalankan(async () => {

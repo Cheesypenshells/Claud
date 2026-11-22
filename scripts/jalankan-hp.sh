@@ -15,7 +15,7 @@ utama() {
   local CEK_DETIK=${CPS_CEK_DETIK:-600}
 
   case "${1:-}" in
-    reset) rm -rf auth; echo "Login WhatsApp lama dihapus." ;;
+    reset) rm -rf auth; echo "Login WhatsApp lama dihapus (ingatan bot tetap utuh)." ;;
     qr) rm -rf auth; export NOMOR_BOT=""; echo "Mode QR: scan QR yang muncul dari HP nomor bot." ;;
   esac
   # Pembaca foto bukti trf (OCR gratis). Dipasang sekali kalau belum ada.
