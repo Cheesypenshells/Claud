@@ -377,6 +377,29 @@ sisa keju 2 balok, bumbu garlic 1 pack
 - Karyawan yang membantu pekerjaan owner di luar jobdesk-nya mengirim di grup tim: `#bantu angkat galon & beli es batu untuk pak george` (boleh dengan foto). Beberapa orang: `#bantu Adit dan Veri angkat freezer` — semua nama tim yang disebut ikut tercatat.
 - **Poin sama untuk setiap bantuan** (bawaan 5, ubah di tab Pengaturan kunci `poin_bantu`), langsung masuk **Poin KPI** semua yang membantu (alasan: *Bantu owner: ...*). Bot hanya berterima kasih dan memberi tahu ada tambahan poin, **tanpa menyebut angkanya**. Owner tidak ditanya.
 
+## Loading out (bongkar booth & kirim barang)
+
+Dimulai **setelah closing hari terakhir** (setelah ⏹ Tutup kasir; cadangan 23.30). Bot sendiri yang membagi tugas, mengumumkannya, mengingatkan, dan melaporkan ke owner. Barang langsung dikirim ke **event berikutnya**.
+
+**Pembagian tugas per bagian kerja** (tiap bagian punya **penanggung jawab/PJ** = nama pertama; kelebihan orang membantu bagian berat; bagian ringan ikut PJ bagian terkait). PIC & owner tidak dibagi, PIC mengecek di lokasi:
+
+| Bagian | Isi pekerjaan | Foto laporan |
+|---|---|---|
+| 🔧 Bongkar bawah | etalase, meja, kompor, lepas regulator gas, banner | `#bongkarbawah` |
+| 💡 Bongkar atas | lampu gantung, LED, bendera, hexos, kabel atas & bawah | `#bongkaratas` |
+| 🧽 Cuci | cuci & keringkan alat masak/perlengkapan, area booth bersih | `#cuci` |
+| 🦪 Bahan baku | hitung sisa fisik (oyster, mozzarella, garlic, saus keju, topping, nampan), foto, **`#sisa ...`**, kemas bahan dingin | `#stokakhir` |
+| 📦 Packing & koli | koli kering + koli bahan baku/dingin, label | `#koli kering 23 dingin 4` |
+| 🧰 Data alat *(ikut PJ cuci)* | jumlah & kondisi tiap alat | `#alat` |
+| 🚚 Muat & kirim *(ikut PJ koli)* | sopir/ekspedisi, no. kendaraan, jam berangkat, tujuan | `#muat` |
+
+- **Otomatis:** setelah closing hari terakhir bot mengumumkan pembagian di grup tim, dan mengirim chat pribadi ke tiap PJ. Lalu **tiap 2 jam** bot menyebut bagian yang belum lapor beserta PJ-nya (sampai 18 jam). Begitu semua bagian lapor, **owner dan grup pengeluaran** menerima ringkasan.
+- `#jobdeskout` lihat pembagian · `#jobdeskout ulang` (owner/PIC) bagi ulang · `#loadingout` cek status (lengkap dengan PJ).
+- **Koli vs kiriman awal:** laporan `#koli kering 22 dingin 4` dibandingkan angka kiriman awal (tab Pengiriman, mis. 23 kering + 4 dingin). Kalau berbeda, bot menandai ⚠️ dan meneruskannya ke grup pengeluaran.
+- **Data alat:** `#alat` + foto, satu alat per baris: `Kompor = 4 baik, 1 rusak` · `Regulator gas = 4 baik` · `Lampu gantung = 5 baik 1 hilang`. Tersimpan di tab **Alat Event**; kirim ulang alat yang sama = menggantikan. Alat **rusak/hilang** otomatis dilaporkan ke grup pengeluaran.
+- **Sisa bahan baku:** `#sisa mozzarella 12 pack, bumbu garlic 5 pack, saus keju 3 kg, topping cumi 3 kantong`. Dipakai untuk menghitung biaya bahan di `#rekap`; tanpa `#sisa`, semua bahan dianggap habis terpakai.
+- **Tanggung jawab:** koli kurang, alat rusak/hilang, atau bahan tidak cocok ditanggung PJ bagian itu; owner memutuskan dengan `#denda Nama 100rb alasan` (dipotong dari gaji pokok). PJ yang tidak mengirim foto laporan kena **−2 KPI** per laporan; pembantu tidak.
+
 ## Info loading in
 
 - Bersama jobdesk (H-2), kalau belum diisi bot bertanya di grup tim: **kapan & jam berapa** loading in dan **lokasi pintu/area loading in**. Siapa pun boleh menjawab, contoh `loading in 13 nov jam 22.00` lalu `pintu 3 belakang hall B`.

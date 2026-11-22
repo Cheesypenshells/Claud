@@ -28,6 +28,7 @@ import { perintahJobdesk } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
 import { perintahRusak, jawabRusak, perintahDendaLangsung } from './bahanRusak.js';
 import { perintahRapor, perintahKpiSaya } from './raporKpi.js';
+import { perintahJobdeskOut } from './loadingOut.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
 import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
@@ -1450,6 +1451,15 @@ export async function handlePesan(ctx, pesan) {
         const picL = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
           && karyawanL.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
         return perintahLoading(ctx, pesan, event, [cmd.sisaBaris, cmd.badan].filter(Boolean).join(' '), { bolehUbah: isOwner || picL });
+      }
+      case 'jobdeskout':
+      case 'tugasout':
+      case 'jobdesklo':
+      case 'jobdeskbongkar': {
+        const karyawanOut = await ctx.store.all('Karyawan');
+        const picOut = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
+          && karyawanOut.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
+        return perintahJobdeskOut(ctx, pesan, event, cmd.argumen, { bolehUbah: isOwner || picOut });
       }
       case 'jobdesk':
       case 'tugas':

@@ -189,6 +189,15 @@ export const KOLOM = {
       k('status', 'Status', 85, { catatan: 'OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // Data alat & perlengkapan saat loading out (#alat): jumlah baik / rusak / hilang per alat.
+  'Alat Event': {
+    warna: '#455A64',
+    kolom: [
+      k('tanggal', 'Tanggal', 105), k('kode_event', 'Kode Event', 110), k('alat', 'Alat / Perlengkapan', 200),
+      k('baik', 'Baik', 70, { format: 'angka' }), k('rusak', 'Rusak', 70, { format: 'angka' }), k('hilang', 'Hilang', 70, { format: 'angka' }),
+      k('pelapor', 'Dilaporkan Oleh', 160), k('foto', 'Foto Bukti', 120), k('status', 'Status', 85), k('dicatat', 'Waktu Dicatat', 140),
+    ],
+  },
   // Sidak stok dadakan oleh PIC/owner (#sidak lewat chat pribadi / grup pengeluaran).
   // Bahan baku rusak / hilang (#rusak + foto). Penanggung jawab bahan menanggung; owner memutuskan ganti rugi.
   'Bahan Rusak': {

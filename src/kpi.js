@@ -145,7 +145,7 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
     // Laporan foto wajib yang terlewat
     const terlewat = [];
     if (loadingSelesai) {
-      for (const j of jobdesk.filter((x) => x.kode_event === kode && aktif(x) && sama(x.nama, o.nama))) {
+      for (const j of jobdesk.filter((x) => x.kode_event === kode && aktif(x) && x.tahap !== 'Loading out (bantu)' && sama(x.nama, o.nama))) {
         if (!lapEv.some((l) => l.tag === j.tag)) terlewat.push(`#${j.tag}`);
       }
     }

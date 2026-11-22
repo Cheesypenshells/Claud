@@ -13,6 +13,7 @@ import { isiHargaAwal } from './main.js';
 import { perbaruiPembukuan } from './pembukuan.js';
 import { tugasPenilaian } from './handlersKpi.js';
 import { tugasRapor } from './raporKpi.js';
+import { tugasLoadingOut } from './loadingOut.js';
 import { tugasAbsensi } from './absensi.js';
 import { tugasLaporan } from './laporanFoto.js';
 import { tugasRekening } from './rekening.js';
@@ -106,6 +107,8 @@ async function main() {
     for (const p of await tugasJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
     // Pengingat foto laporan jobdesk tiap 2 jam selama hari loading in.
     for (const p of await tugasIngatJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
+    // Loading out: pengumuman pembagian setelah closing hari terakhir, pengingat tiap 2 jam, ringkasan ke owner.
+    for (const p of await tugasLoadingOut(ctx)) { if (p.nomor) await wa.kirimPribadi(p.nomor, p.text); else await wa.kirim(p.groupId, p.text); }
     // Komplain pelanggan dari QR booth -> WhatsApp owner.
     for (const p of await tugasKomplain(ctx)) await wa.kirimPribadi(p.nomor, p.text);
     // Ringkasan tutup kasir antrian -> WhatsApp owner.

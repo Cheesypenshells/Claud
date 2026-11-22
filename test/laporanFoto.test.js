@@ -74,7 +74,7 @@ test('laporan foto: loading in, harian (followers OCR, temuan, pulang), loading 
   assert.equal(await kirim(G_TIM, DENA, 'cooler nya dimana ya', pada('03', '09:00')), '');
 
   // ---- loading out (hari terakhir, 8 Nov) ----
-  assert.match(await kirim(G_TIM, TIAR, 'koli sudah dilabel 12 koli', pada('08', '23:00'), foto('koli')), /Koli balik\* \(#koli\).*Belum: #stokakhir, #bongkar, #muat, #terima/s);
+  assert.match(await kirim(G_TIM, TIAR, 'koli sudah dilabel 12 koli', pada('08', '23:00'), foto('koli')), /Koli balik\* \(#koli\).*Belum: #bongkarbawah, #bongkaratas, #cuci, #stokakhir, #bongkar, #alat, #muat, #terima/s);
   assert.match(await kirim(G_TIM, TIAR, '#loadingout', pada('08', '23:05')), /Loading out JMB26-11 – 2026-11-08.*✅ Koli balik: Tiar 23:00 WIB, 1 foto/s);
 });
 

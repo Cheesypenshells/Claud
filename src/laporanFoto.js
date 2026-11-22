@@ -13,6 +13,7 @@
 
 import { mintaNilaiJobdesk, catatPoinBantu } from './nilaiJobdesk.js';
 import { pjPerTag, pembantuPerTag } from './jobdesk.js';
+import { infoKoli, catatAlat, pjLoadingOut } from './loadingOut.js';
 import { createHash } from 'node:crypto';
 import { STATUS } from './schema.js';
 import { waktuLokal } from './util.js';
@@ -43,9 +44,13 @@ export const BUTIR = [
   { tag: 'bersih', tahap: T.HARIAN, bagian: 'tutup', label: 'Kebersihan setelah tutup', isi: 'regulator gas dilepas, booth bersih, cucian bersih, cooler dikuras', foto: true, kata: /\b(bersih|kebersihan|closing|beres(-| )?beres)\b/i },
   { tag: 'pulang', tahap: T.HARIAN, bagian: 'tutup', label: 'Absen pulang', isi: 'tiap orang ketik #pulang', foto: false, orang: true },
 
-  { tag: 'stokakhir', tahap: T.OUT, label: 'Stok akhir', isi: 'stock opname akhir + foto stok dingin', foto: true, kata: /\bstok akhir\b/i },
+  { tag: 'bongkarbawah', tahap: T.OUT, label: 'Bongkar booth bagian bawah', isi: 'etalase, meja, kompor, regulator gas dilepas, banner terbongkar', foto: true, kata: null },
+  { tag: 'bongkaratas', tahap: T.OUT, label: 'Bongkar booth bagian atas', isi: 'lampu gantung, LED, bendera, hexos, kabel terbongkar', foto: true, kata: null },
+  { tag: 'cuci', tahap: T.OUT, label: 'Alat dicuci & area bersih', isi: 'alat masak/perlengkapan bersih & kering, area booth bersih', foto: true, kata: null },
+  { tag: 'stokakhir', tahap: T.OUT, label: 'Stok akhir bahan baku', isi: 'hitung sisa fisik + foto, lalu catat #sisa (mozzarella, garlic, saus keju, topping, oyster, nampan)', foto: true, kata: /\bstok akhir\b/i },
   { tag: 'bongkar', tahap: T.OUT, label: 'Sebelum bongkar', isi: 'booth, area depan-belakang, peralatan, freezer', foto: true, kata: /\bbongkar\b/i },
-  { tag: 'koli', tahap: T.OUT, label: 'Koli balik', isi: 'jumlah koli kering + dingin + foto label', foto: true, kata: /\bkoli\b/i },
+  { tag: 'koli', tahap: T.OUT, label: 'Koli balik', isi: 'jumlah koli kering + dingin + foto label, contoh: #koli kering 23 dingin 4', foto: true, kata: /\bkoli\b/i },
+  { tag: 'alat', tahap: T.OUT, label: 'Data alat & kondisi', isi: 'satu alat per baris, contoh: Kompor = 4 baik, 1 rusak', foto: true, kata: null },
   { tag: 'muat', tahap: T.OUT, label: 'Barang berangkat', isi: 'sopir/ekspedisi, nomor kendaraan, jam berangkat, tujuan, foto muatan', foto: true, kata: /\b(muat|berangkat|jalan)\b.*\b(barang|truk|armada|muatan)\b|\b(barang|truk|armada)\b.*\b(berangkat|jalan)\b/i },
   { tag: 'terima', tahap: T.OUT, label: 'Barang diterima di tujuan', isi: 'hitung ulang di gudang / kota berikutnya', foto: true, kata: /\b(diterima|sampai gudang|tiba di gudang|sudah sampai)\b/i },
 ];
@@ -178,6 +183,15 @@ export async function teksStatus(ctx, event, tahap, tanggal) {
       if (pj[tag]?.length) baris[i] += ` 👷 ${pj[tag].join(', ')}${bantu[tag]?.length ? ` 🤝 ${bantu[tag].join(', ')}` : ''}`;
     }
   }
+  // Loading out: penanggung jawab tiap bagian dari #jobdeskout.
+  if (tahap === T.OUT) {
+    const pj = await pjLoadingOut(ctx, event.kode);
+    const butir = BUTIR.filter((x) => x.tahap === T.OUT && x.tag !== 'bantu');
+    for (let i = 0; i < baris.length; i++) {
+      const tag = butir[i]?.tag;
+      if (tag && pj[tag]?.length) baris[i] += ` 👷 ${pj[tag][0]}`;
+    }
+  }
   return `📋 *${NAMA_TAHAP[tahap]} ${event.kode} – ${tanggal}*${jamBuka}\n${baris.join('\n')}`;
 }
 
@@ -289,6 +303,21 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
   if (pesan.adaFoto && ctx.sesi) ctx.sesi.set(kunciSusul, { id, waktu: Date.now() });
 
   const keluar = [];
+  // Loading out: data koli dibandingkan kiriman awal; data alat disimpan, rusak/hilang dilaporkan ke owner & PIC.
+  let infoData = '';
+  if (tag === 'koli') {
+    const ik = await infoKoli(ctx, event, isi);
+    infoData = ik.teks;
+    if (ik.selisih) for (const g of grupPengeluaran) keluar.push({ groupId: g, text: `⚠️ *Koli ${event.kode} tidak sama dengan kiriman awal* (dilaporkan ${nama})${ik.teks}\n_Keputusan tanggung jawab: owner (*#denda Nama 100rb alasan*)._` });
+  }
+  if (tag === 'alat') {
+    const ha = await catatAlat(ctx, event, { isi, pelapor: nama, fotoId: pesan.id, waktu: pesan.waktu });
+    infoData = ha.teks;
+    if (ha.bermasalah.length) {
+      const rinci = ha.bermasalah.map((a) => `• ${a.alat}:${a.rusak ? ` rusak ${a.rusak}` : ''}${a.hilang ? ` hilang ${a.hilang}` : ''}`).join('\n');
+      for (const g of grupPengeluaran) keluar.push({ groupId: g, text: `⚠️ *Alat rusak/hilang ${event.kode}* (dilaporkan ${nama}, foto di grup tim)\n${rinci}\n_Keputusan ganti rugi: owner (*#denda Nama 100rb alasan*)._` });
+    }
+  }
   if (tag === 'temuan') {
     const lapor = `🚨 *TEMUAN ${event.kode}* dari ${nama} (${jam} ${zona.nama})\n${isi || '(tanpa keterangan)'}\n_Foto ada di grup tim. PIC mohon segera ditindak._`;
     for (const g of grupPengeluaran) keluar.push({ groupId: g, text: lapor });
@@ -308,7 +337,7 @@ export async function tanganiLaporan(ctx, pesan, event, { cmd, isOwner = false, 
     return balas(`🤝 Terima kasih banyak *${orangBantu.join(', ')}* sudah membantu! 🙏\n_${isi}_\n✨ Bantuannya sudah tercatat dan ada *tambahan poin KPI* untuk ${orangBantu.length > 1 ? 'kalian' : 'kamu'}.`);
   }
   const minta = tahap === T.IN ? await mintaNilaiJobdesk(ctx, event, { lapId: id, tag, pengirim: nama, jam: `${jam} ${zona.nama}` }) : [];
-  return [{ text: `📷 *${b.label}* (#${tag}) dari *${nama}* jam ${jam} ${zona.nama} tercatat.${ket}${infoAngka}${sisa}${minta.length ? '\n_PIC akan mengecek hasilnya di lokasi._' : ''}` }, ...minta];
+  return [{ text: `📷 *${b.label}* (#${tag}) dari *${nama}* jam ${jam} ${zona.nama} tercatat.${ket}${infoAngka}${infoData}${sisa}${minta.length ? '\n_PIC akan mengecek hasilnya di lokasi._' : ''}` }, ...minta, ...keluar];
 }
 
 // Pengingat terjadwal: saat booth buka, sebut laporan sebelum-buka (dan loading in hari pertama) yang belum.

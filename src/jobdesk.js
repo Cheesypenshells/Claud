@@ -52,7 +52,7 @@ export function bagiJobdesk(orang, tugas = TUGAS_LOADING_IN) {
   return hasil;
 }
 
-async function anggotaKerja(ctx, event) {
+export async function anggotaKerja(ctx, event) {
   const tim = (await ctx.store.all('Tim Event')).filter((o) => o.kode_event === event.kode && o.status !== STATUS.BATAL && o.status !== 'BERHENTI');
   const kerja = tim.filter((o) => ['Tetap', 'DW', 'Kasir'].includes(o.peran));
   // Senior dulu (pegang pekerjaan utama), lalu DW/kasir.
@@ -118,7 +118,8 @@ function teksJobdesk(event, bagian, jumlahOrang) {
 
 export async function buatJobdesk(ctx, event, { waktu = new Date(), ulang = false } = {}) {
   if (ulang) {
-    await ctx.store.updateWhere('Jobdesk', (j) => j.kode_event === event.kode && j.status !== STATUS.BATAL, { status: STATUS.BATAL });
+    // Hanya pembagian loading in; pembagian loading out (#jobdeskout) tidak ikut dibatalkan.
+    await ctx.store.updateWhere('Jobdesk', (j) => j.kode_event === event.kode && !String(j.tahap).startsWith('Loading out') && j.status !== STATUS.BATAL, { status: STATUS.BATAL });
   }
   const orang = await anggotaKerja(ctx, event);
   const bagian = bagiJobdesk(orang);
