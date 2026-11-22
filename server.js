@@ -1,4 +1,5 @@
 import http from "node:http";
+import os from "node:os";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
@@ -932,6 +933,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Cheesy Pen Shells · Tutor Bahasa AI berjalan di http://localhost:${PORT}`);
+  // alamat untuk membuka dari tablet/HP lain di hotspot/WiFi yang sama (di sebagian Android tidak bisa dibaca)
+  try {
+    const ips = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === "IPv4" && !i.internal).map((i) => i.address);
+    for (const ip of ips) console.log(`📱 Dari tablet (jaringan yang sama): http://${ip}:${PORT}`);
+  } catch {}
   if (!hasKey) console.warn(`⚠️  API key belum terpasang. Buka http://localhost:${PORT} di Chrome untuk memasangnya.`);
   startDailyNews(); // berita terkini harian (bisa dimatikan dengan NEWS_AUTO=false)
   // proses sisa antrean ingatan dari sesi sebelumnya, per pengguna
