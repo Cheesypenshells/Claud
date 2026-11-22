@@ -569,7 +569,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 - Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (**nilai, kategori, dan catatan tidak ikut dikirim** — karyawan hanya menerima pesannya); balas `tidak` kalau tidak ada. `lewati` / `batal`.
 - Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
 - KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
-- **Ada hari yang belum dinilai** (PIC belum menjawab, kasir lupa ⏹ Tutup kasir, atau bot mati): malam berikutnya bot menanyakan **semua hari yang terlewat berurutan** (paling jauh 6 hari ke belakang), lalu hari ini. Satu kali jalan, PIC tidak perlu mengetik apa-apa lagi.
+- **Otomatis hanya hari ini.** Hari yang terlewat (PIC belum menjawab, kasir lupa ⏹ Tutup kasir, bot mati) **tidak** ditanyakan otomatis supaya malam hari tetap fokus. Mau ikut otomatis: isi Pengaturan `nilai_susulan_hari` (misalnya `1` = kemarin, `6` = sampai 6 hari ke belakang).
 - Manual: `#nilaiharian` (hari ini) · `#nilaiharian kemarin` · `#nilaiharian 2 hari` · **`#nilaiharian semua`** (semua hari yang belum dinilai, lalu hari ini).
 
 ## Kejadian, barang perlu dibeli, PR (catatan harian)

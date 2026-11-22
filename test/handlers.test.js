@@ -1571,6 +1571,7 @@ test('kasir lupa tutup: diingatkan tiap jam setelah jam tutup & pagi berikutnya;
     await store.append('Tugas Harian', { tanggal: t, kode_event: 'JMB26-11', bagian: 'Getok', nama: 'Bima', status: 'OK' });
   }
   await store.append('Sesi Kasir', { id: 'S1', kode_event: 'JMB26-11', tanggal: '2026-11-02', kasir: 'Tiara', dibuka: '2026-11-02 09:50:00', status: 'BUKA' });
+  await store.append('Pengaturan', { kunci: 'nilai_susulan_hari', nilai: '1' });
   const pada = (tgl, jam) => tugasPengingatBagian(ctx, new Date(`2026-11-${tgl}T${jam}:00+07:00`));
   const ingat = (r) => r.filter((x) => /Kasir .*belum ditutup/.test(x.text));
   assert.equal(ingat(await pada('02', '21:59')).length, 0);
@@ -1615,6 +1616,12 @@ test('penilaian harian susulan: bot menanyakan semua hari yang belum dinilai ber
     await store.append('Sesi Kasir', { id: `S${t}`, kode_event: 'SMR26-11', tanggal: t, status: 'TUTUP', dibuka: `${t} 10:00:00`, ditutup: `${t} 22:00:00` });
   }
   await store.append('Nilai Harian', { tanggal: '2026-11-15', kode_event: 'SMR26-11', nama: 'Tiara', poin: 80, status: 'OK' }); // hanya 15 Nov yang terisi
+  // bawaan: otomatis hanya hari ini (tanpa susulan)
+  const hanyaHariIni = await tugasNilaiHarian(ctx, new Date('2026-11-18T22:30:00+07:00'));
+  assert.doesNotMatch(hanyaHariIni[0].text, /hari\*/);
+  assert.match(hanyaHariIni[0].text, /Penilaian harian SMR26-11\* – 18 Nov/);
+  ctx.sesi.hapus('nilaiharian-kirim:SMR26-11:2026-11-18'); ctx.sesi.hapus('nilaiharian:62' + '82222222222');
+  await store.append('Pengaturan', { kunci: 'nilai_susulan_hari', nilai: '6' });
   const n = await tugasNilaiHarian(ctx, new Date('2026-11-18T22:30:00+07:00'));
   assert.match(n[0].text, /untuk \*4 hari\* \(14 Nov lalu 16 Nov lalu 17 Nov lalu 18 Nov\)/);
   assert.match(n[0].text, /Penilaian harian SMR26-11\* – 14 Nov \(1\/1\)/);

@@ -104,7 +104,10 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;
   const baca = async (t) => { try { return await ctx.store.all(t); } catch { return []; } };
-  const [events, sesiKasir, nilaiRows] = await Promise.all([baca('Event'), baca('Sesi Kasir'), baca('Nilai Harian')]);
+  const [events, sesiKasir, nilaiRows, pengaturan] = await Promise.all([baca('Event'), baca('Sesi Kasir'), baca('Nilai Harian'), baca('Pengaturan')]);
+  // Otomatis hanya hari ini. Pengaturan "nilai_susulan_hari" (angka) = berapa hari ke belakang yang ikut ditanyakan otomatis
+  // kalau terlewat (bawaan 0). Hari terlewat lainnya: #nilaiharian semua.
+  const susulan = Math.max(0, Math.min(6, Number(pengaturan.find((p) => p.kunci === 'nilai_susulan_hari')?.nilai) || 0));
   const tanggal = tanggalClosing(sekarang);
   for (const e of events.filter((x) => x.mulai && x.mulai <= tanggal && (!x.selesai || tanggal <= x.selesai) && x.status !== 'BATAL')) {
     const tanda = `nilaiharian-kirim:${e.kode}:${tanggal}`;
@@ -113,8 +116,8 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
     const tujuan = await tujuanPic(ctx, e);
     if (!tujuan) continue;
     ctx.sesi.set(tanda, { kirim: true });
-    // Hari-hari sebelumnya yang terlewat (mis. kasir lupa ditutup, bot mati, PIC belum menjawab)? Dinilai dulu, lalu hari ini.
-    const daftarTgl = hariBelumDinilai(e, tanggal, nilaiRows);
+    // Hari-hari sebelumnya yang terlewat hanya ikut kalau Pengaturan nilai_susulan_hari > 0; selain itu hanya hari ini.
+    const daftarTgl = hariBelumDinilai(e, tanggal, nilaiRows, susulan);
     for (const t of daftarTgl) ctx.sesi.set(`nilaiharian-kirim:${e.kode}:${t}`, { kirim: true });
     daftarTgl.push(tanggal);
     keluar.push(...(await mulaiNilaiHarian(ctx, e, daftarTgl, tujuan)));
@@ -123,9 +126,10 @@ export async function tugasNilaiHarian(ctx, sekarang = new Date()) {
 }
 
 // Hari event (sebelum `sampai`) yang belum punya penilaian harian sama sekali, paling jauh 6 hari ke belakang.
-export function hariBelumDinilai(event, sampai, nilaiRows) {
+export function hariBelumDinilai(event, sampai, nilaiRows, maksHari = 6) {
   const hasil = [];
-  for (let t = tambahHari(sampai, -6); t < sampai; t = tambahHari(t, 1)) {
+  if (maksHari <= 0) return hasil;
+  for (let t = tambahHari(sampai, -maksHari); t < sampai; t = tambahHari(t, 1)) {
     if (t < event.mulai || (event.selesai && t > event.selesai)) continue;
     if (!nilaiRows.some((r) => r.kode_event === event.kode && String(r.tanggal) === t && r.status !== STATUS.BATAL)) hasil.push(t);
   }
