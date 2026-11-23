@@ -36,7 +36,10 @@ function dasarGajian(ev, data, kpiBahan, absensi, dendaLain) {
     const bonusDiterima = o.peran === PERAN.TETAP
       ? (o.bonus ? (total === null ? null : Math.round((o.bonus * total) / 100)) : 0)
       : (o.bonus || 0);
-    const telat = absensi.filter((a) => a.kode_event === ev.kode && sama(a.nama, o.nama) && String(a.status || 'OK').toUpperCase() !== 'DITOLAK').reduce((t, a) => t + (Number(a.denda) || 0), 0);
+    const absensiEv = absensi.filter((a) => a.kode_event === ev.kode);
+    // Event yang sudah diarsipkan: data absensi dibersihkan, denda telat dibaca dari KPI yang dibekukan.
+    const telat = !absensiEv.length && s?.dendaTelat !== undefined ? Number(s.dendaTelat) || 0
+      : absensiEv.filter((a) => sama(a.nama, o.nama) && String(a.status || 'OK').toUpperCase() !== 'DITOLAK').reduce((t, a) => t + (Number(a.denda) || 0), 0);
     const lain = dendaLain.filter((x) => x.kode_event === ev.kode && sama(x.nama, o.nama) && x.status !== 'BATAL').reduce((t, x) => t + (Number(x.jumlah) || 0), 0);
     return { ...o, skor: total, bonusDiterima, telat, lain };
   });

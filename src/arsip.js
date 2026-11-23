@@ -30,8 +30,17 @@ export const TAB_ARSIP = [
   { tab: 'Catatan Harian', nama: 'Arsip Catatan Harian', ket: 'kejadian / barang dibeli / PR' },
   { tab: 'Alat Event', nama: 'Arsip Alat Event', ket: 'data alat loading out' },
   { tab: 'Jobdesk', nama: 'Arsip Jobdesk', ket: 'pembagian jobdesk loading in/out' },
+  { tab: 'Absensi', nama: 'Arsip Absensi', ket: 'absensi' },
+  { tab: 'Nilai Harian', nama: 'Arsip Nilai Harian', ket: 'penilaian harian PIC' },
+  { tab: 'Nilai KPI', nama: 'Arsip Nilai KPI', ket: 'nilai KPI input PIC' },
+  { tab: 'Jadwal Absen', nama: 'Arsip Jadwal Absen', ket: 'jadwal khusus & izin absen' },
+  { tab: 'Sesi Kasir', nama: 'Arsip Sesi Kasir', ket: 'ringkasan sesi kasir' },
+  { tab: 'Komplain', nama: 'Arsip Komplain', ket: 'komplain pelanggan' },
+  { tab: 'Bahan Rusak', nama: 'Arsip Bahan Rusak', ket: 'laporan bahan rusak' },
+  { tab: 'Pengiriman', nama: 'Arsip Pengiriman', ket: 'data pengiriman & koli' },
 ];
-const TETAP = 'Transaksi, Omzet, Absensi, Nilai Harian, Nilai KPI, Poin KPI, Denda, Pengiriman, Bahan Event, Sesi Kasir (ringkasan), Komplain, Bahan Rusak, Karyawan, Tim Event, Event';
+// Yang TIDAK pernah dibersihkan: pembukuan per event & per bulan, dan KPI karyawan.
+const TETAP = 'Event, Tim Event, Karyawan, Omzet, Transaksi, Bahan Event, Porsi Gratis, harga bahan & menu, rekap pembukuan (Rekap Event, Gaji per Event, Penggantian Uang) beserta rekap bulanan, Poin KPI, Denda, Arsip KPI, Arsip Event, Pengaturan';
 
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const tgl = (t) => `${Number(String(t).slice(8, 10))} ${BULAN[Number(String(t).slice(5, 7)) - 1]}`;
@@ -109,7 +118,10 @@ export async function perintahArsip(ctx, pesan, event, argumen, { isOwner }) {
 
   // 1) bekukan KPI (ganti bekuan lama kalau pernah setengah jalan)
   await ctx.store.hapusWhere('Arsip KPI', (r) => r.kode_event === ev.kode);
+  const absensiEvent = (await baca(ctx, 'Absensi')).filter((a) => a.kode_event === ev.kode && String(a.status || 'OK').toUpperCase() !== 'DITOLAK');
   for (const s of skor) {
+    // Potongan denda telat absen ikut dibekukan (dipakai #gajian setelah data absensi dibersihkan).
+    s.dendaTelat = absensiEvent.filter((a) => sama(a.nama, s.nama)).reduce((t, a) => t + (Number(a.denda) || 0), 0);
     await ctx.store.append('Arsip KPI', {
       kode_event: ev.kode, nama: s.nama, peran: s.peran, total: s.total ?? '', individu: s.individu ?? '', kelompok: s.kelompok ?? '',
       laporan_minus: s.laporanMinus ?? 0, dibekukan: waktu, data_json: JSON.stringify(s),

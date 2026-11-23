@@ -41,7 +41,7 @@ test('arsip: hanya owner, daftar & pratinjau; belum 7 hari tidak bisa dijalankan
   const daftar = await kirim('#arsip', waktu('2026-11-23'), { pribadi: true });
   assert.match(daftar, /SMR26-11.*⏳ bisa diarsipkan mulai 29 Nov/);
   const pratinjau = await kirim('#arsip SMR26-11', waktu('2026-11-23'), { pribadi: true });
-  assert.match(pratinjau, /Pratinjau arsip SMR26-11.*⏳ Baru bisa diarsipkan mulai 29 Nov.*struk & pesanan kasir: 3 baris.*laporan foto.*: 2 baris.*Tetap di sheet:.*Transaksi, Omzet, Absensi.*Dibekukan permanen:\* hasil akhir KPI 2 orang/s);
+  assert.match(pratinjau, /Pratinjau arsip SMR26-11.*⏳ Baru bisa diarsipkan mulai 29 Nov.*struk & pesanan kasir: 3 baris.*laporan foto.*: 2 baris.*Tetap di sheet:.*Omzet, Transaksi.*Dibekukan permanen:\* hasil akhir KPI 2 orang/s);
   assert.match(await kirim('#arsip SMR26-11 ya', waktu('2026-11-23'), { pribadi: true }), /baru bisa diarsipkan mulai 29 Nov/);
 });
 
@@ -59,17 +59,21 @@ test('arsip: bekukan KPI, salin ke file event, verifikasi, baru hapus; KPI & pem
   assert.ok(sebelum.find((s) => s.nama === 'Tiara').laporanMinus > 0); // laporan terlewat dihitung dari data harian
 
   const selesai = await kirim('#arsip SMR26-11 ya', waktu('2026-11-29'), { pribadi: true });
-  assert.match(selesai, /Arsip SMR26-11 selesai.*6 baris dibersihkan.*struk & pesanan kasir: 3.*KPI 2 orang dibekukan permanen/s);
+  assert.match(selesai, /Arsip SMR26-11 selesai.*10 baris dibersihkan.*struk & pesanan kasir: 3.*KPI 2 orang dibekukan permanen/s);
   // data kerja event itu hilang dari sheet utama, event lain utuh
   assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 0);
   assert.equal((await store.all('Laporan Foto')).length, 0);
   assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'LAIN26-12').length, 1);
   assert.equal((await store.all('Tugas Harian')).filter((r) => r.kode_event === 'LAIN26-12').length, 1);
-  // yang TETAP
-  assert.equal((await store.all('Absensi')).length, 2);
-  assert.equal((await store.all('Nilai Harian')).length, 2);
+  // sisa data kerja (absensi, nilai harian, dll.) ikut dibersihkan; yang TETAP: pembukuan & KPI
+  assert.equal((await store.all('Absensi')).length, 0);
+  assert.equal((await store.all('Nilai Harian')).length, 0);
+  assert.equal(store.tabel['FILE-SMR/Arsip Absensi'].baris.length, 2);
+  assert.equal(store.tabel['FILE-SMR/Arsip Nilai Harian'].baris.length, 2);
   assert.equal((await store.all('Omzet')).length, 1);
   assert.equal((await store.all('Transaksi')).length, 1);
+  assert.equal((await store.all('Event')).filter((e) => e.kode === 'SMR26-11').length, 1);
+  assert.equal((await store.all('Tim Event')).length >= 2, true);
   // salinan di file event (Drive), sel berawalan "=" dibuat teks
   const salinan = store.tabel['FILE-SMR/Arsip Antrian'];
   assert.equal(salinan.baris.length, 3);
@@ -88,6 +92,7 @@ test('arsip: bekukan KPI, salin ke file event, verifikasi, baru hapus; KPI & pem
   const { rincianGajian } = await import('../src/gajian.js');
   const gaji = (await rincianGajian({ store }, { kode: 'SMR26-11' })).orang;
   assert.equal(gaji.find((o) => o.nama === 'Tiara').skor, sebelum.find((s) => s.nama === 'Tiara').total);
+  assert.equal(gaji.find((o) => o.nama === 'Bima').denda.telat, 25000); // denda telat dibaca dari KPI beku (absensi sudah dibersihkan)
   // dijalankan lagi: sudah diarsipkan
   assert.match(await kirim('#arsip SMR26-11 ya', waktu('2026-11-30'), { pribadi: true }), /sudah diarsipkan/);
   assert.match(await kirim('#arsip', waktu('2026-11-30'), { pribadi: true }), /SMR26-11.*✅ sudah diarsipkan/);
@@ -117,7 +122,7 @@ test('tugasArsip: owner diberi tahu sekali, 7 hari setelah event selesai', async
   assert.equal((await tugasArsip(ctx, waktu('2026-11-29', '09:00'))).length, 0); // sebelum jam 10
   const info = await tugasArsip(ctx, waktu('2026-11-29', '10:05'));
   assert.equal(info[0].nomor, OWNER);
-  assert.match(info[0].text, /SMR26-11.*sudah 7 hari.*6 baris.*#arsip SMR26-11 ya/s);
+  assert.match(info[0].text, /SMR26-11.*sudah 7 hari.*10 baris.*#arsip SMR26-11 ya/s);
   assert.equal((await tugasArsip(ctx, waktu('2026-11-29', '10:15'))).length, 0);
 });
 
