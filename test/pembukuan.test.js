@@ -140,3 +140,17 @@ test('input event lama (manual) dihitung dengan mesin yang sama', async () => {
   await perbaruiPembukuan(store);
   assert.equal((await store.all('Pengaturan')).filter((r) => r.kunci === 'file_event_KDR26-09').length, 1);
 });
+
+test('Pembukuan tahunan: per bulan, subtotal triwulan, total, dan event tertunda tidak dihitung', async () => {
+  const { barisTahun } = await import('../src/pembukuan.js');
+  const mk = (kode, selesai, omzetBersih, totalBiaya, laba) => ({ event: { kode, selesai }, omzetBersih, totalBiaya, laba });
+  const hasil = [mk('A', '2026-01-10', 1000, 600, 400), mk('B', '2026-02-10', 2000, 1500, 500), mk('SMR', '2026-11-22', 9000, 8000, -1000)];
+  const baris = barisTahun(hasil, { events: [], omzet: [], transaksi: [] }, '2026', ['SMR']);
+  assert.equal(baris.length, 17);
+  assert.equal(baris[3][0], 'TRIWULAN 1 2026');
+  assert.equal(baris[3][3], 3000);
+  assert.equal(baris[3][5], 900);
+  assert.equal(baris[16][0], 'TOTAL 2026');
+  assert.equal(baris[16][5], 900);
+  assert.match(baris[13][8], /MENUNGGU/);
+});

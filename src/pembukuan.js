@@ -9,6 +9,7 @@ import { JENIS, STATUS } from './schema.js';
 import { eventWajibStruk } from './struk.js';
 import { rekapBulanKPI, skorEventAtauArsip, bahanKpi, teksOtomatis } from './kpi.js';
 import { namaBulan } from './util.js';
+import { rekapBulan } from './finance.js';
 import { PERAN, KATEGORI } from './parsers.js';
 
 const NAMA_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -93,6 +94,51 @@ function barisTotal(baris) {
   const iLaba = KOLOM_REKAP.findIndex((c) => c.label === 'LABA BERSIH');
   total[KOLOM_REKAP.findIndex((c) => c.label === 'Margin')] = total[iOmzet] ? Number(((total[iLaba] / total[iOmzet]) * 100).toFixed(1)) : 0;
   return total;
+}
+
+
+// ---------- Pembukuan tahunan (per bulan + subtotal per 3 bulan) ----------
+
+export const KOLOM_TAHUN = [
+  { label: 'Periode', lebar: 150 }, { label: 'Event', lebar: 260 }, { label: 'Jumlah Event', lebar: 90, format: 'angka' },
+  { label: 'Omzet Kotor', lebar: 140, format: 'rupiah' }, { label: 'Total Pengeluaran Event', lebar: 150, format: 'rupiah' },
+  { label: 'Laba Event', lebar: 140, format: 'rupiah' }, { label: 'Biaya Ruko', lebar: 130, format: 'rupiah' },
+  { label: 'LABA BERSIH', lebar: 145, format: 'rupiah' }, { label: 'Catatan', lebar: 300 },
+];
+
+// Event masuk ke bulan selesainya. Event di daftar `tunda` (menunggu omzet resmi IO) belum dihitung.
+export function barisTahun(hasil, data, tahun, tunda = []) {
+  const tundaSet = new Set(tunda);
+  const baris = [];
+  const akum = (rows) => {
+    const jml = (i) => rows.reduce((s, x) => s + (Number(x[i]) || 0), 0);
+    return [jml(2), jml(3), jml(4), jml(5), jml(6), jml(7)];
+  };
+  const perKuartal = [];
+  for (let q = 0; q < 4; q++) {
+    const bulanQ = [];
+    for (let m = q * 3 + 1; m <= q * 3 + 3; m++) {
+      const ym = `${tahun}-${String(m).padStart(2, '0')}`;
+      const ev = hasil.filter((r) => String(r.event.selesai || '').startsWith(ym));
+      const hitung = ev.filter((r) => !tundaSet.has(r.event.kode));
+      const menunggu = ev.filter((r) => tundaSet.has(r.event.kode)).map((r) => r.event.kode);
+      const ruko = rekapBulan(ym, { events: data.events, omzet: data.omzet, transaksi: data.transaksi }).totalRuko;
+      const kotor = hitung.reduce((s, r) => s + r.omzetBersih, 0);
+      const keluar = hitung.reduce((s, r) => s + r.totalBiaya, 0);
+      const laba = hitung.reduce((s, r) => s + r.laba, 0);
+      const catatan = menunggu.length ? `${menunggu.join(', ')}: MENUNGGU omzet resmi IO, belum dihitung` : '';
+      const row = [`${namaBulan(ym)}`, [...hitung.map((r) => r.event.kode), ...menunggu.map((k) => `${k} (menunggu)`)].join(', '), hitung.length, kotor, keluar, laba, ruko, laba - ruko, catatan];
+      bulanQ.push(row);
+      baris.push(row);
+    }
+    const a = akum(bulanQ);
+    const sub = [`TRIWULAN ${q + 1} ${tahun}`, '', a[0], a[1], a[2], a[3], a[4], a[5], ''];
+    perKuartal.push(sub);
+    baris.push(sub);
+  }
+  const t = akum(perKuartal);
+  baris.push([`TOTAL ${tahun}`, '', t[0], t[1], t[2], t[3], t[4], t[5], '']);
+  return baris;
 }
 
 // ---------- Gaji per Event ----------
@@ -341,13 +387,17 @@ export async function perbaruiPembukuan(store) {
   }
 
   const rekap = hasil.map((r) => barisRekap(r, data.tim));
-  const isiPembukuan = JSON.stringify({ rekap, gaji: hasil.flatMap(barisGaji), uang: hasil.flatMap(barisPenggantian) });
+  const tahun = String(atur.tahun_pembukuan || new Date().getFullYear());
+  const tunda = String(atur.tunda_pembukuan || '').split(/[,\s]+/).filter(Boolean);
+  const barisThn = barisTahun(hasil, data, tahun, tunda);
+  const isiPembukuan = JSON.stringify({ rekap, gaji: hasil.flatMap(barisGaji), uang: hasil.flatMap(barisPenggantian), thn: barisThn });
   if (terakhirDitulis.get('PEMBUKUAN') !== isiPembukuan) {
     await store.tulisTabel(store.spreadsheetId, 'Rekap Event', {
       kolom: KOLOM_REKAP, baris: rekap.length ? [...rekap, barisTotal(rekap)] : [], warna: '#E8710A', index: 0, barisTotal: rekap.length > 0,
     });
     await store.tulisTabel(store.spreadsheetId, 'Gaji per Event', { kolom: KOLOM_GAJI, baris: hasil.flatMap(barisGaji), warna: '#8E24AA', index: 1 });
     await store.tulisTabel(store.spreadsheetId, 'Penggantian Uang', { kolom: KOLOM_PENGGANTIAN, baris: hasil.flatMap(barisPenggantian), warna: '#5F6368', index: 2 });
+    await store.tulisTabel(store.spreadsheetId, `Pembukuan ${tahun}`, { kolom: KOLOM_TAHUN, baris: barisThn, warna: '#188038', index: 3, barisTotal: true });
     terakhirDitulis.set('PEMBUKUAN', isiPembukuan);
   }
   // File KPI KARYAWAN (tab Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung).
