@@ -276,7 +276,7 @@ Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot
 | Kebersihan & komplain | 10 | **−2 per komplain** pelanggan dari QR booth. |
 | Kinerja tim | 5 | Rata-rata seluruh penilaian harian PIC (atau `#nilai tim`). |
 
-Potongan otomatis lain: **laporan foto terlewat −2 per laporan** (bagian tugas harian: `#depan #followers #grill #cooler #nampan`, `#pulang`, jobdesk loading in) untuk penanggung jawabnya, dan **layanan lambat −2 per hari** (rata-rata tunggu pelanggan di atas 7 menit, seluruh tim). Hari yang dibebaskan owner lewat Pengaturan `bebas_laporan` tidak memotong laporan.
+Potongan otomatis lain: **laporan foto terlewat −2 per laporan** (bagian tugas harian: `#depan #followers #grill #cooler #nampan`, `#pulang`, jobdesk loading in) untuk penanggung jawabnya, dan **layanan lambat −2 per hari** (rata-rata tunggu pelanggan di atas 7 menit, seluruh tim). Hari yang dibebaskan owner lewat Pengaturan `bebas_laporan` tidak memotong laporan. **Dispensasi waktu** (mis. bot mati): Pengaturan `dispensasi_jobdesk` berisi `KODE=YYYY-MM-DD` (contoh `SMR26-11=2026-11-25`); laporan jobdesk/loading yang belum masuk tidak dihitung terlewat sampai tanggal itu, dan tim masih boleh mengirimnya.
 
 - **Sumber utama: penilaian harian PIC** (lihat bagian *Penilaian harian PIC*). Karyawan tanpa penilaian harian dan tanpa bintang belum punya skor.
 - **Cadangan:** kalau PIC tidak pernah menjawab penilaian harian, sehari setelah event selesai (jam 10.00) bot menanyakan 4 angka per orang di chat pribadi: `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Nilai `#nilai` yang diisi PIC menggantikan nilai turunan harian untuk attitude, karir, dan tim.

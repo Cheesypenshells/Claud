@@ -119,7 +119,9 @@ function teksJobdesk(event, bagian, jumlahOrang) {
 export async function buatJobdesk(ctx, event, { waktu = new Date(), ulang = false } = {}) {
   if (ulang) {
     // Hanya pembagian loading in; pembagian loading out (#jobdeskout) tidak ikut dibatalkan.
-    await ctx.store.updateWhere('Jobdesk', (j) => j.kode_event === event.kode && !String(j.tahap).startsWith('Loading out') && j.status !== STATUS.BATAL, { status: STATUS.BATAL });
+    // updateWhere mengubah satu baris per panggilan: ulangi sampai semua baris lama dibatalkan.
+    const lama = (j) => j.kode_event === event.kode && !String(j.tahap).startsWith('Loading out') && j.status !== STATUS.BATAL;
+    for (let i = 0; i < 60 && (await ctx.store.updateWhere('Jobdesk', lama, { status: STATUS.BATAL })); i++);
   }
   const orang = await anggotaKerja(ctx, event);
   const bagian = bagiJobdesk(orang);

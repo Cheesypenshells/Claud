@@ -117,3 +117,40 @@ test('pengingat loading out tetap terkirim walau bot sempat mati lebih dari 18 j
   assert.match(telat.find((x) => x.groupId === G_TIM).text, /Update loading out SMR26-11.*belum lapor/s);
   assert.equal((await tugasLoadingOut(ctx, pada('23', '20:40'))).length, 0); // tidak dobel di slot yang sama
 });
+
+test('dispensasi_jobdesk: laporan jobdesk/loading yang belum masuk tidak dihitung terlewat sampai tanggal dispensasi', async () => {
+  const { skorEvent, bahanKpi } = await import('../src/kpi.js');
+  const { bacaData } = await import('../src/main.js');
+  const { hitungEvent } = await import('../src/laporan.js');
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  const kirim = (groupId, senderId, text, waktu) => handlePesan(ctx, { id: `d${Math.random()}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu });
+  await kirim(G_KELUAR, OWNER, `#event\nKode: SMR26-11\nKota: Semarang\nIO: Kepo\nTanggal: 14-22 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 30%\nAdmin: 0\nJam buka: 10.00\nPIC: George\nSenior: Adit, Alam`, pada('14', '07:00'));
+  await store.append('Jobdesk', { kode_event: 'SMR26-11', tahap: 'Loading out', tag: 'cuci', nama: 'Adit', status: 'OK' });
+  const hitung = async () => { const d = await bacaData(store); return skorEvent(hitungEvent(d.events[0], d), { ...(await bahanKpi(store)), hariIni: '2026-11-24' }).find((x) => x.nama === 'Adit'); };
+  assert.ok((await hitung()).laporanTerlewat.includes('#cuci'));
+  await store.append('Pengaturan', { kunci: 'dispensasi_jobdesk', nilai: 'SMR26-11=2026-11-25' });
+  assert.equal((await hitung()).laporanTerlewat.includes('#cuci'), false); // masih masa dispensasi
+  const d = await bacaData(store);
+  const lewat = skorEvent(hitungEvent(d.events[0], d), { ...(await bahanKpi(store)), hariIni: '2026-11-26' }).find((x) => x.nama === 'Adit');
+  assert.ok(lewat.laporanTerlewat.includes('#cuci')); // setelah tanggal dispensasi dihitung lagi
+});
+
+test('#jobdesk ulang membatalkan SEMUA baris pembagian lama (bukan hanya satu)', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  const kirim = (groupId, senderId, text, waktu) => handlePesan(ctx, { id: `u${Math.random()}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu }).then((r) => r.map((x) => x.text).join('\n'));
+  await kirim(G_KELUAR, OWNER, `#event\nKode: TGL26-11\nKota: Tegal\nIO: Infinite\nTanggal: 24-29 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 30%\nAdmin: 0\nJam buka: 10.00\nPIC: George\nSenior: Adit, Alam, Bima, Veri`, pada('20', '07:00'));
+  await kirim(G_TIM, OWNER, '#daftar event TGL26-11', pada('20', '07:01'));
+  await kirim(G_TIM, OWNER, '#jobdesk', pada('23', '10:00'));
+  const aktif = async () => (await store.all('Jobdesk')).filter((j) => j.kode_event === 'TGL26-11' && j.status !== 'BATAL');
+  const awal = (await aktif()).length;
+  assert.ok(awal >= 5);
+  // Veri tidak ikut: tim diubah, lalu bagi ulang
+  await store.updateWhere('Tim Event', (t) => t.kode_event === 'TGL26-11' && t.nama === 'Veri', { status: 'BATAL' });
+  await kirim(G_TIM, OWNER, '#jobdesk ulang', pada('23', '21:50'));
+  const sesudah = await aktif();
+  assert.equal(sesudah.some((j) => j.nama === 'Veri'), false);
+  assert.equal(sesudah.length, (await store.all('Jobdesk')).filter((j) => j.kode_event === 'TGL26-11' && j.status !== 'BATAL').length);
+  assert.ok(sesudah.length >= 5 && sesudah.length <= awal); // tidak menumpuk baris lama + baru
+});

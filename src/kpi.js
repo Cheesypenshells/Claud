@@ -22,7 +22,10 @@ export async function bahanKpi(store) {
     ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian', 'Pengaturan'].map(baca));
   // Pengaturan "bebas_laporan": tanggal (YYYY-MM-DD, pisah koma) yang laporan bagiannya tidak memotong KPI (mis. bot mati).
   const bebasLaporan = String(pengaturan.find((r) => r.kunci === 'bebas_laporan')?.nilai || '').match(/\d{4}-\d{2}-\d{2}/g) || [];
-  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, bebasLaporan };
+  // Pengaturan "dispensasi_jobdesk": "SMR26-11=2026-11-25, KODE=YYYY-MM-DD" = laporan jobdesk/loading yang belum masuk
+  // tidak dihitung sebagai terlewat sampai tanggal itu (mis. bot mati, tim diberi waktu tambahan).
+  const dispensasi = Object.fromEntries([...String(pengaturan.find((r) => r.kunci === 'dispensasi_jobdesk')?.nilai || '').matchAll(/([A-Za-z]{3}\d{2}-\d{2}[\w-]*)\s*=\s*(\d{4}-\d{2}-\d{2})/g)].map((m) => [m[1], m[2]]));
+  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, bebasLaporan, dispensasi };
 }
 
 // Menit dari teks waktu "YYYY-MM-DD HH:MM[:SS]" (WIB).
@@ -77,7 +80,7 @@ export function yangDinilai(r) {
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".
-export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], harian = [], bebasLaporan = [], hariIni = tanggalLokal(new Date()) } = {}) {
+export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [], antrian = [], laporan = [], jobdesk = [], tugas = [], sidak = [], harian = [], bebasLaporan = [], dispensasi = {}, hariIni = tanggalLokal(new Date()) } = {}) {
   const kode = r.event.kode;
   const milik = nilai.filter((n) => n.kode_event === kode && aktif(n));
   const target = num(r.event.target_omzet);
@@ -144,7 +147,8 @@ export function skorEvent(r, { nilai = [], komplain = [], absensi = [], izin = [
 
     // Laporan foto wajib yang terlewat
     const terlewat = [];
-    if (loadingSelesai) {
+    const masaDispensasi = dispensasi[kode] && hariIni <= dispensasi[kode];
+    if (loadingSelesai && !masaDispensasi) {
       for (const j of jobdesk.filter((x) => x.kode_event === kode && aktif(x) && x.tahap !== 'Loading out (bantu)' && sama(x.nama, o.nama))) {
         if (!lapEv.some((l) => l.tag === j.tag)) terlewat.push(`#${j.tag}`);
       }
