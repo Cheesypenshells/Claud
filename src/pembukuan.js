@@ -7,7 +7,7 @@ import { hitungEvent, barisDataMain, KELOMPOK_GRAFIK, warnaKelompok } from './la
 import { bacaData } from './main.js';
 import { JENIS, STATUS } from './schema.js';
 import { eventWajibStruk } from './struk.js';
-import { rekapBulanKPI, skorEvent, bahanKpi, teksOtomatis } from './kpi.js';
+import { rekapBulanKPI, skorEventAtauArsip, bahanKpi, teksOtomatis } from './kpi.js';
 import { namaBulan } from './util.js';
 import { PERAN, KATEGORI } from './parsers.js';
 
@@ -260,7 +260,7 @@ export function tabelKpi(hasil, { poin, ...bahan }) {
   const bulan = rekap.map((h) => [namaBulan(h.bulan), h.peringkat || '', h.nama, h.peran, h.jumlahEvent, h.hari,
     h.individu ?? '', h.kelompok ?? '', h.plus, h.minus, h.skor ?? '', h.bonusMaks, h.bonusDiterima ?? '',
     h.belumDinilai ? `${h.belumDinilai} event belum dinilai PIC` : '']);
-  const perEvent = hasil.flatMap((r) => skorEvent(r, bahan).map((s) => {
+  const perEvent = hasil.flatMap((r) => skorEventAtauArsip(r, bahan).map((s) => {
     const e = evIndex.get(s.kode);
     return [s.kode, e.kota, `${e.mulai} s/d ${e.selesai}`, s.nama, s.peran, s.hari, s.absen ?? '', s.kinerja ?? '', s.attitude ?? '', s.karir ?? '',
       s.individu ?? '', s.omzet, s.stok, s.komplain, s.tim ?? '', s.kelompok, s.laporanMinus ? -s.laporanMinus : '', s.total ?? '',

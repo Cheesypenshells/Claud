@@ -189,6 +189,25 @@ export const KOLOM = {
       k('status', 'Status', 85, { catatan: 'OK / BATAL' }), k('dicatat', 'Waktu Dicatat', 140),
     ],
   },
+  // ARSIP PERMANEN: hasil akhir KPI per orang per event, dibekukan saat #arsip (dipakai rapor, gaji, rekap bulanan,
+  // menggantikan perhitungan ulang dari data harian yang sudah dibersihkan). JANGAN dihapus.
+  'Arsip KPI': {
+    warna: '#2E7D32',
+    kolom: [
+      k('kode_event', 'Kode Event', 110), k('nama', 'Nama', 140), k('peran', 'Peran', 90),
+      k('total', 'Skor Akhir', 90, { format: 'angka' }), k('individu', 'Individu (60)', 100, { format: 'angka' }), k('kelompok', 'Kelompok (40)', 100, { format: 'angka' }),
+      k('laporan_minus', 'Potongan Laporan', 110, { format: 'angka' }), k('dibekukan', 'Dibekukan', 140),
+      k('data_json', 'Data Lengkap (JSON)', 300, { sembunyi: true, catatan: 'Rincian lengkap skor: dipakai bot untuk rapor & gaji event ini. Jangan diubah.' }),
+    ],
+  },
+  // Daftar event yang sudah diarsipkan (data kerja dibersihkan). JANGAN dihapus.
+  'Arsip Event': {
+    warna: '#2E7D32',
+    kolom: [
+      k('kode_event', 'Kode Event', 110), k('tanggal_arsip', 'Tanggal Arsip', 140), k('baris_dibersihkan', 'Baris Dibersihkan', 120, { format: 'angka' }),
+      k('rincian', 'Rincian per Tab', 360), k('file_arsip', 'File Arsip', 280), k('oleh', 'Diarsipkan Oleh', 160), k('status', 'Status', 90),
+    ],
+  },
   // Data alat & perlengkapan saat loading out (#alat): jumlah baik / rusak / hilang per alat.
   'Alat Event': {
     warna: '#455A64',

@@ -18,14 +18,14 @@ import { komplainAktif } from './komplain.js';
 // Semua data yang dipakai KPI, sekali baca (tab yang belum ada dianggap kosong).
 export async function bahanKpi(store) {
   const baca = async (tab) => { try { return await store.all(tab); } catch { return []; } };
-  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, pengaturan] = await Promise.all(
-    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian', 'Pengaturan'].map(baca));
+  const [nilai, absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, pengaturan, arsipKpi] = await Promise.all(
+    ['Nilai KPI', 'Absensi', 'Jadwal Absen', 'Antrian', 'Laporan Foto', 'Jobdesk', 'Tugas Harian', 'Sidak Stok', 'Nilai Harian', 'Pengaturan', 'Arsip KPI'].map(baca));
   // Pengaturan "bebas_laporan": tanggal (YYYY-MM-DD, pisah koma) yang laporan bagiannya tidak memotong KPI (mis. bot mati).
   const bebasLaporan = String(pengaturan.find((r) => r.kunci === 'bebas_laporan')?.nilai || '').match(/\d{4}-\d{2}-\d{2}/g) || [];
   // Pengaturan "dispensasi_jobdesk": "SMR26-11=2026-11-25, KODE=YYYY-MM-DD" = laporan jobdesk/loading yang belum masuk
   // tidak dihitung sebagai terlewat sampai tanggal itu (mis. bot mati, tim diberi waktu tambahan).
   const dispensasi = Object.fromEntries([...String(pengaturan.find((r) => r.kunci === 'dispensasi_jobdesk')?.nilai || '').matchAll(/([A-Za-z]{3}\d{2}-\d{2}[\w-]*)\s*=\s*(\d{4}-\d{2}-\d{2})/g)].map((m) => [m[1], m[2]]));
-  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, bebasLaporan, dispensasi };
+  return { nilai, komplain: await komplainAktif(store), absensi, izin, antrian, laporan, jobdesk, tugas, sidak, harian, bebasLaporan, dispensasi, arsipKpi };
 }
 
 // Menit dari teks waktu "YYYY-MM-DD HH:MM[:SS]" (WIB).
@@ -77,6 +77,14 @@ export function poinDari(nilai, bobot) {
 // Orang yang dinilai KPI di sebuah event: semua anggota tim kecuali PIC dan owner.
 export function yangDinilai(r) {
   return r.barisTim.filter((o) => o.peran !== PERAN.PIC && !o.owner && !o.catatanGaji);
+}
+
+// Event yang sudah diarsipkan (#arsip): hasil akhir KPI dibaca dari tab permanen "Arsip KPI", bukan dihitung ulang
+// (data harian yang menjadi sumbernya sudah dibersihkan). Event lain dihitung seperti biasa.
+export function skorEventAtauArsip(r, bahan = {}) {
+  const beku = (bahan.arsipKpi || []).filter((x) => x.kode_event === r.event.kode && x.data_json);
+  if (beku.length) return beku.map((x) => JSON.parse(x.data_json));
+  return skorEvent(r, bahan);
 }
 
 // Skor KPI tiap orang di satu event. r = hasil hitungEvent; nilai = baris tab "Nilai KPI".
@@ -210,7 +218,7 @@ export function rekapBulanKPI(hasilEvent, { poin = [], ...bahan } = {}) {
   for (const r of hasilEvent) {
     const bulan = String(r.event.mulai || '').slice(0, 7);
     if (!bulan) continue;
-    for (const s of skorEvent(r, bahan)) ambil(bulan, s.nama, s.peran).events.push(s);
+    for (const s of skorEventAtauArsip(r, bahan)) ambil(bulan, s.nama, s.peran).events.push(s);
   }
   for (const p of poin.filter(aktif)) {
     const bulan = String(p.tanggal || '').slice(0, 7);

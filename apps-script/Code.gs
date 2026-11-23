@@ -422,6 +422,18 @@ function riwayatOmzet(pin, kode) {
     var t = tglStr_(x.tanggal) || waktuStr_(x.dibuka).slice(0, 10);
     var h = hari[t] || (hari[t] = { tanggal: t, sesi: 0, struk: 0, omzet: 0, tanpaTotal: 0, batal: 0, kasir: [], tunggu: [], bintang: [], masihBuka: false });
     var semua = perSesi[x.id] || [];
+    // Event yang sudah diarsipkan: baris struk dibersihkan, pakai ringkasan sesi yang tetap tersimpan di tab Sesi Kasir.
+    if (!semua.length && Number(x.jumlah_struk) > 0) {
+      h.sesi++;
+      h.struk += Number(x.jumlah_struk) || 0;
+      h.batal += Number(x.batal) || 0;
+      h.omzet += Number(x.omzet) || 0;
+      h.tanpaTotal += Number(x.tanpa_total) || 0;
+      for (var i = 0; i < Math.min(500, Number(x.jumlah_struk) || 0); i++) { if (x.rata_tunggu_menit !== '' && x.rata_tunggu_menit !== undefined) h.tunggu.push(Number(x.rata_tunggu_menit)); }
+      for (var j = 0; j < Math.min(500, Number(x.jumlah_rating) || 0); j++) { if (Number(x.rating_rata) > 0) h.bintang.push(Number(x.rating_rata)); }
+      String(x.kasir || '').split(',').forEach(function (k) { k = k.trim(); if (k && h.kasir.indexOf(k) < 0) h.kasir.push(k); });
+      return;
+    }
     var layan = semua.filter(function (o) { return o.status !== STATUS.BATAL; });
     h.sesi++;
     h.struk += layan.length;

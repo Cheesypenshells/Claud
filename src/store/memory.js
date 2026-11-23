@@ -71,6 +71,19 @@ export class MemoryStore {
     return { ...row };
   }
 
+  // Menghapus semua baris yang memenuhi `cocok`; mengembalikan jumlah yang dihapus.
+  async hapusWhere(tab, cocok) {
+    const sebelum = this.data[tab].length;
+    this.data[tab] = this.data[tab].filter((r) => !cocok({ ...r }));
+    return sebelum - this.data[tab].length;
+  }
+
+  // Menulis satu tab arsip di file tujuan (tiruan): disimpan untuk diperiksa tes.
+  async tulisArsip(fileId, tab, kolom, baris) {
+    this.tabel[`${fileId}/${tab}`] = { kolom, baris };
+    return baris.length;
+  }
+
   // Ubah baris pertama yang memenuhi fungsi `cocok(baris)`.
   async updateWhere(tab, cocok, patch) {
     const row = this.data[tab].find((r) => cocok({ ...r }));

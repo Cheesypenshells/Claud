@@ -400,6 +400,20 @@ Dimulai **setelah closing hari terakhir** (setelah ⏹ Tutup kasir; cadangan 23.
 - **Sisa bahan baku:** `#sisa mozzarella 12 pack, bumbu garlic 5 pack, saus keju 3 kg, topping cumi 3 kantong`. Dipakai untuk menghitung biaya bahan di `#rekap`; tanpa `#sisa`, semua bahan dianggap habis terpakai.
 - **Tanggung jawab:** koli kurang, alat rusak/hilang, atau bahan tidak cocok ditanggung PJ bagian itu; owner memutuskan dengan `#denda Nama 100rb alasan` (dipotong dari gaji pokok). PJ yang tidak mengirim foto laporan kena **−2 KPI** per laporan; pembantu tidak.
 
+## Arsip event (pembersihan 1 minggu setelah selesai)
+
+Supaya bot dan sheet tetap ringan, **7 hari setelah event selesai** data kerja yang besar dibersihkan. **Pembukuan dan KPI tidak pernah dihapus.** Foto WhatsApp memang tidak disimpan di sistem (hanya kodenya); foto struk kasir di Drive sudah otomatis dipindahkan ke Sampah 7 hari setelah event.
+
+**Dibersihkan** (hanya baris milik event itu): struk & pesanan kasir (tab Antrian), laporan foto, tugas harian, stok harian, sidak stok, catatan harian, data alat, pembagian jobdesk.
+**Tetap di sheet:** Transaksi, Omzet, Absensi, Nilai Harian, Nilai KPI, Poin KPI, Denda, Pengiriman, Bahan Event, ringkasan Sesi Kasir (struk per sesi, omzet, rata-rata tunggu, bintang), Komplain, Bahan Rusak, Karyawan, Tim Event, Event, serta semua tab rekap.
+
+**Cara kerja (aman, bertahap):**
+1. Bot memberi tahu owner 7 hari setelah event selesai (hanya event dengan sistem baru, mulai 14 Nov).
+2. **`#arsip`** = daftar event & statusnya · **`#arsip KODE`** = pratinjau (berapa baris dibersihkan, apa yang tetap) · **`#arsip KODE ya`** = jalankan. Hanya owner.
+3. Saat dijalankan: (a) hasil akhir KPI tiap orang **dibekukan permanen** di tab **Arsip KPI** (rapor, gaji, dan rekap bulanan memakai angka ini); (b) baris yang akan dibuang **disalin** ke tab "Arsip ..." di **file event di Drive**; (c) jumlah baris salinan **dicek sama** dengan aslinya; (d) baru dihapus dari sheet utama dan dicatat di tab **Arsip Event**. Kalau salah satu langkah gagal, **tidak ada data yang dihapus**.
+4. Syarat: event sudah lewat 7 hari, punya file event di Drive, dan semua anggota tim sudah punya skor akhir (kalau belum: `#arsip KODE ya paksa`). **Setelah dibekukan, nilai KPI baru untuk event itu tidak ikut.**
+5. Tombol **📊 Riwayat omzet** di halaman kasir tetap menampilkan event yang sudah diarsipkan, memakai ringkasan sesi.
+
 ## Info loading in
 
 - Bersama jobdesk (H-2), kalau belum diisi bot bertanya di grup tim: **kapan & jam berapa** loading in dan **lokasi pintu/area loading in**. Siapa pun boleh menjawab, contoh `loading in 13 nov jam 22.00` lalu `pintu 3 belakang hall B`.

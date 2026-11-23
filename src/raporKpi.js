@@ -8,7 +8,7 @@
 
 import { hitungEvent } from './laporan.js';
 import { bacaData } from './main.js';
-import { skorEvent, bahanKpi, BOBOT, ATURAN_OTOMATIS } from './kpi.js';
+import { skorEventAtauArsip, bahanKpi, BOBOT, ATURAN_OTOMATIS } from './kpi.js';
 import { ikutGajian } from './gajian.js';
 import { tanggalLokal } from './util.js';
 
@@ -83,7 +83,7 @@ export async function dataRapor(ctx, kode) {
   const ev = data.events.find((e) => sama(e.kode, kode));
   if (!ev) return null;
   const r = hitungEvent(ev, data);
-  return { ev, skor: skorEvent(r, bahan), karyawan: data.karyawan || [], atur: data.atur, bahan };
+  return { ev, skor: skorEventAtauArsip(r, bahan), karyawan: data.karyawan || [], atur: data.atur, bahan };
 }
 
 function nomorDari(karyawan, nama) {

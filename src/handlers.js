@@ -29,6 +29,7 @@ import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHaria
 import { perintahRusak, jawabRusak, perintahDendaLangsung } from './bahanRusak.js';
 import { perintahRapor, perintahKpiSaya } from './raporKpi.js';
 import { perintahJobdeskOut } from './loadingOut.js';
+import { perintahArsip } from './arsip.js';
 import { perintahTugas, perintahPemanggang, perintahTukar } from './tugasHarian.js';
 import { jawabNilaiHarian, perintahNilaiHarian } from './nilaiHarian.js';
 import { perintahCatatan, perintahSudahBeli } from './catatanHarian.js';
@@ -997,6 +998,7 @@ async function handlePribadi(ctx, pesan) {
   if (cmd.perintah === 'nilai') return perintahNilai(ctx, pesan, opsi);
   if (cmd.perintah === 'kpi') return perintahKpi(ctx, pesan, opsi);
   if (cmd.perintah === 'rapor') return perintahRapor(ctx, pesan, null, cmd, { isOwner });
+  if (cmd.perintah === 'arsip') return perintahArsip(ctx, pesan, null, cmd.argumen, { isOwner });
   if (['kpisaya', 'kpiku', 'rapor_saya'].includes(cmd.perintah)) return perintahKpiSaya(ctx, pesan);
   if (isOwner && cmd.perintah === 'karyawan') return balas(await perintahKaryawan(ctx, [cmd.sisaBaris, cmd.badan].filter(Boolean).join('\n'), null));
   if (isOwner && ['izin', 'ijin', 'ijjin', 'dispensasi', 'jadwal'].includes(cmd.perintah)) {
@@ -1513,6 +1515,7 @@ export async function handlePesan(ctx, pesan) {
       case 'poinbatal': return perintahPoinBatal(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
       case 'kpi': return perintahKpi(ctx, pesan, { event, argumen: cmd.argumen, isOwner });
       case 'rapor': return perintahRapor(ctx, pesan, event, cmd, { isOwner });
+      case 'arsip': return perintahArsip(ctx, pesan, event, event && !cmd.argumen.some((a) => /^[A-Za-z]{3}\d{2}-\d{2}/.test(a)) ? [event.kode, ...cmd.argumen] : cmd.argumen, { isOwner });
       case 'kpisaya':
       case 'kpiku': return balas('🔒 Rapor KPI pribadi. Ketik *#kpisaya* lewat *chat pribadi* ke bot ini.');
       case 'batal': return perintahBatal(ctx, pesan, cmd, isOwner);

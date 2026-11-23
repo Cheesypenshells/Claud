@@ -544,6 +544,31 @@ export class SheetsStore {
   }
 
   // Ubah baris pertama yang memenuhi fungsi `cocok(baris)`.
+  // Menghapus semua baris yang memenuhi `cocok` dalam SATU permintaan hapus (dari bawah ke atas). Mengembalikan jumlahnya.
+  async hapusWhere(tab, cocok) {
+    this.cache.delete(tab);
+    const { header, rows } = await this.baca(tab);
+    const idx = [];
+    rows.forEach((r, i) => { if (cocok(Object.fromEntries(header.map((h, j) => [h, r[j] ?? '']))) ) idx.push(i); });
+    if (!idx.length) return 0;
+    const meta = await this.api.spreadsheets.get({ spreadsheetId: this.spreadsheetId, fields: 'sheets(properties(sheetId,title))' });
+    const sheetId = meta.data.sheets.find((s) => s.properties.title === tab)?.properties.sheetId;
+    if (sheetId === undefined) throw new Error(`Tab ${tab} tidak ditemukan`);
+    const requests = idx.sort((a, b) => b - a).map((i) => ({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: i + 1, endIndex: i + 2 } } }));
+    await this.api.spreadsheets.batchUpdate({ spreadsheetId: this.spreadsheetId, requestBody: { requests } });
+    this.cache.delete(tab);
+    return idx.length;
+  }
+
+  // Menulis satu tab arsip (judul + baris) di file lain, lalu membaca balik jumlah barisnya untuk verifikasi.
+  async tulisArsip(fileId, tab, kolom, baris) {
+    // Sel yang diawali = + - @ dibuat teks biasa supaya tidak dibaca sebagai rumus.
+    const aman = (v) => { const t = String(v ?? ''); return /^[=+\-@]/.test(t) ? `'${t}` : t; };
+    await this.tulisTabel(fileId, tab, { kolom: kolom.map((label) => ({ label, lebar: 140 })), baris: baris.map((b) => b.map(aman)), warna: '#455A64' });
+    const res = await this.api.spreadsheets.values.get({ spreadsheetId: fileId, range: `${q(tab)}!A:A` });
+    return Math.max(0, (res.data.values?.length || 1) - 1);
+  }
+
   async updateWhere(tab, cocok, patch) {
     this.cache.delete(tab);
     const { header, rows } = await this.baca(tab);

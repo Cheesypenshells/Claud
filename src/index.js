@@ -14,6 +14,7 @@ import { perbaruiPembukuan } from './pembukuan.js';
 import { tugasPenilaian } from './handlersKpi.js';
 import { tugasRapor } from './raporKpi.js';
 import { tugasLoadingOut } from './loadingOut.js';
+import { tugasArsip } from './arsip.js';
 import { tugasAbsensi } from './absensi.js';
 import { tugasLaporan } from './laporanFoto.js';
 import { tugasRekening } from './rekening.js';
@@ -92,7 +93,7 @@ async function main() {
   // Penilaian KPI ke PIC sehari setelah event selesai (dicek tiap 10 menit).
   setInterval(() => jalankan(async () => {
     // Setelah event selesai: rekening senior/DW/kasir untuk transfer gaji & bonus.
-    for (const p of [...await tugasPenilaian(ctx), ...await tugasRapor(ctx), ...await tugasRekening(ctx, new Date(), { tanggalLokal, ikutGajian })]) {
+    for (const p of [...await tugasPenilaian(ctx), ...await tugasRapor(ctx), ...await tugasArsip(ctx), ...await tugasRekening(ctx, new Date(), { tanggalLokal, ikutGajian })]) {
       if (p.nomor) await wa.kirimPribadi(p.nomor, p.text);
       else await wa.kirim(p.groupId, p.text);
     }

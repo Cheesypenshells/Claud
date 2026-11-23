@@ -10,7 +10,7 @@
 import { rupiah } from './util.js';
 import { bacaData } from './main.js';
 import { hitungEvent, ATURAN } from './laporan.js';
-import { skorEvent, bahanKpi } from './kpi.js';
+import { skorEventAtauArsip, bahanKpi } from './kpi.js';
 import { PERAN } from './parsers.js';
 import { komplainAktif } from './komplain.js';
 
@@ -29,7 +29,7 @@ export const ikutGajian = (event, atur) => String(event?.mulai || '') >= gajiMul
 // (bonus bisa kosong kalau event sepi). Kalau denda lebih besar dari gaji pokok event ini, sisanya dibawa ke event berikutnya.
 function dasarGajian(ev, data, kpiBahan, absensi, dendaLain) {
   const r = hitungEvent(ev, data);
-  const skor = skorEvent(r, kpiBahan);
+  const skor = skorEventAtauArsip(r, kpiBahan);
   const orang = r.barisTim.filter((o) => !o.owner && !o.catatanGaji && o.peran !== PERAN.PIC).map((o) => {
     const s = skor.find((x) => sama(x.nama, o.nama));
     const total = s?.total ?? null;

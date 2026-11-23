@@ -301,6 +301,11 @@ test('apps-script: riwayat omzet per hari (beberapa sesi sehari digabung), akumu
   assert.equal(r.hari[1].masihBuka, true); assert.equal(r.hari[1].kasir, 'Tiara, Bima, George');
   assert.equal(r.hari[0].laporanTim, 180000);
   assert.deepEqual(r.total, { hari: 2, struk: 5, omzet: 355000, tanpaTotal: 1, rataPerHari: 177500, laporanTim: 190460 });
+  // sesi yang barisnya sudah dibersihkan (arsip event): pakai ringkasan di Sesi Kasir
+  tabel['Sesi Kasir'].push({ id: 'S4', kode_event: 'SMR26-11', tanggal: '2026-11-16', kasir: 'Tiara', status: 'DITERUSKAN', dibuka: '2026-11-16 10:00:00', jumlah_struk: 40, batal: 2, omzet: 3685000, tanpa_total: 6, rata_tunggu_menit: 12, jumlah_rating: 5, rating_rata: 4.8 });
+  const arsip = JSON.parse(JSON.stringify(c.riwayatOmzet('1', 'SMR26-11')));
+  const hari16 = arsip.hari.find((h) => h.tanggal === '2026-11-16');
+  assert.deepEqual([hari16.struk, hari16.omzet, hari16.tanpaTotal, hari16.batal, hari16.rataTunggu, hari16.bintang, hari16.kumulatifOmzet], [40, 3685000, 6, 2, 12, 4.8, 355000 + 3685000]);
   assert.equal(c.riwayatOmzet('1', 'BELUM-ADA').hari.length, 0); // event tanpa sesi: kosong, tidak error
 });
 

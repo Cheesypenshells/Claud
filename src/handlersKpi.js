@@ -6,7 +6,7 @@ import { ikutGajian, gajiMulai } from './gajian.js';
 import { STATUS } from './schema.js';
 import { hitungEvent } from './laporan.js';
 import { bacaData } from './main.js';
-import { skorEvent, bahanKpi, teksOtomatis, rekapBulanKPI, yangDinilai, bacaNilai, poinDari, BOBOT, NAMA_ASPEK } from './kpi.js';
+import { skorEventAtauArsip, bahanKpi, teksOtomatis, rekapBulanKPI, yangDinilai, bacaNilai, poinDari, BOBOT, NAMA_ASPEK } from './kpi.js';
 import { tanggalLokal, waktuLokal, rupiah, namaBulan } from './util.js';
 
 const balas = (text) => [{ text }];
@@ -45,7 +45,7 @@ const TANYA_TIM = (kode) => `👥 *Terakhir: kinerja tim ${kode}* secara keselur
 export async function mulaiPenilaian(ctx, pesan, kode) {
   const d = await dataEvent(ctx, kode);
   if (!d) return balas(`⚠️ Event ${kode} tidak ditemukan.`);
-  const skorOto = skorEvent(d.r, await bahanKpi(ctx.store));
+  const skorOto = skorEventAtauArsip(d.r, await bahanKpi(ctx.store));
   const daftar = yangDinilai(d.r).map((o) => {
     const x = skorOto.find((y) => sama(y.nama, o.nama));
     const bagian = [x?.otomatis?.absen ? `absen ${x.absen}/12` : '', x?.otomatis?.bintang && !x.otomatis.bintang.kurang ? `kinerja ${x.kinerja}/24 dari ⭐ pelanggan` : ''].filter(Boolean);
@@ -73,7 +73,7 @@ export async function jawabPenilaian(ctx, pesan) {
     await simpanNilai(ctx, pesan, sesi.kode, 'TIM', { tim: n });
     ctx.sesi.hapus(k);
     const d = await dataEvent(ctx, sesi.kode);
-    const skor = skorEvent(d.r, await bahanKpi(ctx.store));
+    const skor = skorEventAtauArsip(d.r, await bahanKpi(ctx.store));
     return balas([
       `✅ *Penilaian ${sesi.kode} selesai.* Terima kasih!`,
       ...skor.map((s) => `• ${s.nama}: individu ${fmt(s.individu)}/60 + kelompok ${fmt(s.kelompok)}/40${s.laporanMinus ? ` − laporan ${s.laporanMinus}` : ''} = *${fmt(s.total)}*${teksOtomatis(s) ? `\n   _${teksOtomatis(s)}_` : ''}`),
@@ -120,7 +120,7 @@ export async function perintahNilai(ctx, pesan, { event, argumen, isOwner }) {
   const nilai = bacaNilai(sisa.slice(angkaAwal).join(' '));
   if (angkaAwal < 0 || !nilai) return balas('Format: *#nilai Dena 5 4 4 3* (absen, kinerja, attitude, karir; skala 1–5)');
   await simpanNilai(ctx, pesan, kode, orang.nama, nilai);
-  const s = skorEvent(d.r, await bahanKpi(ctx.store)).find((x) => sama(x.nama, orang.nama));
+  const s = skorEventAtauArsip(d.r, await bahanKpi(ctx.store)).find((x) => sama(x.nama, orang.nama));
   return balas(`✅ Nilai ${orang.nama} (${kode}): individu *${fmt(s.individu)}/60*${s.tim === null ? '\n_Kinerja tim belum dinilai: *#nilai tim 4*_' : `, total ${fmt(s.total)}`}${teksOtomatis(s) ? `\n_${teksOtomatis(s)}_` : ''}`);
 }
 
