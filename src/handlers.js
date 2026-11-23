@@ -989,6 +989,7 @@ async function handlePribadi(ctx, pesan) {
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
   if (cmd?.perintah === 'gantirugi') return (await jawabRusak(ctx, pesan, { isOwner })) || [];
+  if (!cmd && /Cek jobdesk/i.test(pesan.kutipan?.teks || '')) { const nj = await jawabNilaiJobdesk(ctx, pesan); if (nj) return nj; }
   if (!cmd) return (await jawabPanduJobdesk(ctx, pesan, isOwner)) || (await jawabRusak(ctx, pesan, { isOwner })) || (await jawabNilaiHarian(ctx, pesan)) || (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
   if (cmd.perintah === 'nilaiharian') {
     const evs = await eventSidak(ctx, pesan, isOwner);

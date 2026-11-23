@@ -161,6 +161,8 @@ export async function jawabNilaiHarian(ctx, pesan) {
   if (!s || Date.now() - s.waktu > 2 * 24 * 3600e3) return null;
   const teks = String(pesan.text || '').trim();
   if (!teks || teks.startsWith('#')) return null;
+  // Balasan (reply) untuk pertanyaan bot yang lain (mis. "Cek jobdesk ...") bukan jawaban penilaian harian.
+  if (pesan.kutipan?.teks && /Cek jobdesk|Cek stok|Bahan rusak|Sidak/i.test(pesan.kutipan.teks) && !/Penilaian harian|kejadian atau PR|Pesan untuk/i.test(pesan.kutipan.teks)) return null;
   // Di grup (pengeluaran) hanya balasan yang me-reply pesan penilaian, supaya catatan pengeluaran tidak tertukar.
   if (!pesan.pribadi && !/Penilaian harian|kejadian atau PR|Pesan untuk/i.test(pesan.kutipan?.teks || '')) return null;
   if (/^batal$/i.test(teks)) { ctx.sesi.hapus(k); return balas('👌 Penilaian harian dihentikan. Yang sudah dijawab tetap tersimpan.'); }

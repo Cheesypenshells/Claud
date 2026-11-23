@@ -314,3 +314,10 @@ test('loading in lewat tengah malam tidak diulang dari awal; belum selesai tetap
   // hari kedua: loading in belum lengkap masih diterima
   assert.match(await kirim(G_TIM, DENA, '#listrik', pada('15', '09:00'), foto('lampu')), /Booth bagian atas.*\(#listrik\)/);
 });
+
+test('penilaian harian tidak mencuri balasan untuk pertanyaan "Cek jobdesk"', async () => {
+  const { jawabNilaiHarian } = await import('../src/nilaiHarian.js');
+  const ctx = { sesi: { get: () => ({ waktu: Date.now(), tahap: 'nilai', langkah: 'nilai', i: 0, daftar: [{ nama: 'TiarA', bagian: [] }], kode: 'X', tanggal: '2026-11-22' }), set() {}, hapus() {} }, store: new MemoryStore() };
+  const pesan = { pribadi: true, senderId: 'p1', text: '10', kutipan: { teks: 'Cek jobdesk TGL26-11: Hitung koli (#tiba) Foto laporan dari Veri (L0123)' } };
+  assert.equal(await jawabNilaiHarian(ctx, pesan), null);
+});
