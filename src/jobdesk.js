@@ -193,12 +193,77 @@ async function nomorPicOwner(ctx, event) {
 
 const PETUNJUK_DRAF = (kode) => [
   '',
-  `✏️ *Ini DRAF, belum dikirim ke grup.* PIC bisa mengubah dulu:`,
-  `• Ganti satu bagian: *#jobdesk ${kode} ganti display Imam, Veri*  (bagian: tiba, booth, listrik, display, gudang)`,
-  `• Lihat hasil: *#jobdesk ${kode}*`,
-  `• Kirim ke grup: *#jobdesk ${kode} kirim*`,
-  '_Kalau belum dikirim sampai H-1 jam 10.00, bot mengumumkan sendiri. Setelah terkirim, pembagian tetap untuk event ini (tidak diacak lagi)._',
+  '✏️ *Ini DRAF, belum dikirim ke grup.* Balas dengan *angka*:',
+  '*1* ✅ Kirim ke grup sekarang',
+  '*2* ✏️ Ubah pembagian (saya tanya satu per satu)',
+  '*3* 🔄 Bagi ulang acak',
+  '*0* ⏳ Nanti dulu',
+  '_Kalau belum dikirim sampai H-1 jam 10.00, bot mengumumkan sendiri. Setelah terkirim, pembagian tetap untuk event ini._',
+  `_(Cara ketik: *#jobdesk ${kode} ganti display Imam* · *#jobdesk ${kode} kirim*)_`,
 ].join('\n');
+
+// ---------- Tanya jawab dengan angka (PIC tidak perlu hafal perintah) ----------
+const kunciPandu = (nomor) => `jobdesk-pandu:${nomor}`;
+
+export function mulaiPandu(ctx, nomor, kode) {
+  ctx.sesi?.set(kunciPandu(nomor), { kode, tahap: 'menu', waktu: Date.now() });
+}
+
+function menuBagian() {
+  return ['Bagian mana yang mau diubah? Balas angka:',
+    ...TUGAS_LOADING_IN.map((t, i) => `*${i + 1}* ${t.label.split(':')[0]} _(#${t.tag})_`),
+    '*0* Batal'].join('\n');
+}
+
+export async function jawabPandu(ctx, pesan, { bolehUbah }) {
+  if (!ctx.sesi || !pesan.pribadi) return null;
+  const k = kunciPandu(pesan.senderId);
+  const s = ctx.sesi.get(k);
+  const teks = String(pesan.text || '').trim();
+  if (!s || !teks || teks.startsWith('#')) return null;
+  if (!/^[\d\s,.&]+$|^(batal|ya|tidak)$/i.test(teks)) return null;
+  const event = (await ctx.store.all('Event')).find((e) => e.kode === s.kode);
+  if (!event) { ctx.sesi.hapus(k); return null; }
+  if (!bolehUbah) return null;
+  const angka = teks.split(/[\s,.&]+/).filter(Boolean).map(Number);
+  const tampil = async () => {
+    const t = await teksJobdeskAda(ctx, event);
+    return `${t}${PETUNJUK_DRAF(event.kode)}`;
+  };
+  const batal = /^(batal|0)$/i.test(teks);
+  if (s.tahap === 'menu') {
+    if (teks === '0') { ctx.sesi.hapus(k); return balas('👌 Oke, draf disimpan. Ketik *#jobdesk ' + event.kode + '* kapan saja untuk melanjutkan.'); }
+    if (teks === '1') {
+      ctx.sesi.hapus(k);
+      return perintahJobdesk(ctx, pesan, event, ['kirim'], { bolehUbah });
+    }
+    if (teks === '2') { ctx.sesi.set(k, { ...s, tahap: 'bagian', waktu: Date.now() }); return balas(`${await teksJobdeskAda(ctx, event)}\n\n${menuBagian()}`); }
+    if (teks === '3') { await buatJobdesk(ctx, event, { waktu: pesan.waktu, ulang: true }); return balas(`🔄 Sudah diacak ulang.\n\n${await tampil()}`); }
+    return null;
+  }
+  if (s.tahap === 'bagian') {
+    if (batal) { ctx.sesi.set(k, { ...s, tahap: 'menu', waktu: Date.now() }); return balas(await tampil()); }
+    const t = TUGAS_LOADING_IN[angka[0] - 1];
+    if (!t || angka.length !== 1) return balas(`⚠️ Balas satu angka 0–${TUGAS_LOADING_IN.length}.\n\n${menuBagian()}`);
+    const kerja = await anggotaKerja(ctx, event);
+    const sekarang = (await jobdeskEvent(ctx, event.kode)).filter((j) => j.tag === t.tag).map((j) => j.nama);
+    ctx.sesi.set(k, { ...s, tahap: 'orang', tag: t.tag, waktu: Date.now() });
+    return balas([`*${t.label.split(':')[0]}* sekarang: ${sekarang.join(', ') || '-'}`, 'Siapa penanggung jawabnya? Balas angka (boleh lebih dari satu, mis. *1,3*):',
+      ...kerja.map((n, i) => `*${i + 1}* ${n}`), '*0* Batal'].join('\n'));
+  }
+  if (s.tahap === 'orang') {
+    if (batal) { ctx.sesi.set(k, { ...s, tahap: 'menu', waktu: Date.now() }); return balas(await tampil()); }
+    const kerja = await anggotaKerja(ctx, event);
+    const nama = [...new Set(angka.map((n) => kerja[n - 1]).filter(Boolean))];
+    if (!nama.length || angka.some((n) => !kerja[n - 1])) return balas(`⚠️ Balas angka 1–${kerja.length}, mis. *1,3*.`);
+    const galat = await gantiJobdesk(ctx, event, ['ganti', s.tag, nama.join(', ')], pesan.waktu);
+    if (galat) return balas(galat);
+    ctx.sesi.hapus(`jobdesk_diumumkan:${event.kode}`);
+    ctx.sesi.set(k, { ...s, tahap: 'menu', waktu: Date.now() });
+    return balas(`✅ Diubah.\n\n${await tampil()}`);
+  }
+  return null;
+}
 
 // #jobdesk | #jobdesk ganti <bagian> <nama,..> | #jobdesk kirim | #jobdesk ulang (hanya sebelum dikirim, atau "ulang paksa")
 export async function perintahJobdesk(ctx, pesan, event, argumen, { bolehUbah }) {
@@ -214,7 +279,7 @@ export async function perintahJobdesk(ctx, pesan, event, argumen, { bolehUbah })
     const galat = await gantiJobdesk(ctx, event, kata, pesan.waktu);
     if (galat) return balas(galat);
     const teks = await teksJobdeskAda(ctx, event);
-    ctx.sesi?.delete?.(`jobdesk_diumumkan:${event.kode}`);
+    ctx.sesi?.hapus?.(`jobdesk_diumumkan:${event.kode}`);
     if (final && lewatGrup) return balas(`🔄 *Jobdesk diperbarui oleh PIC*\n\n${teks}`);
     return balas(`${teks}${final ? '' : PETUNJUK_DRAF(event.kode)}`);
   }
@@ -241,6 +306,7 @@ export async function perintahJobdesk(ctx, pesan, event, argumen, { bolehUbah })
     return balas(final ? teks : `${teks}${PETUNJUK_DRAF(event.kode)}`);
   }
   if (!final && !bolehUbah) return balas('⏳ Pembagian jobdesk masih disusun PIC. Akan diumumkan di grup ini.');
+  if (!final && !lewatGrup) mulaiPandu(ctx, pesan.senderId, event.kode);
   const ada = await teksJobdeskAda(ctx, event);
   if (ada) return balas(final ? ada : `${ada}${PETUNJUK_DRAF(event.kode)}`);
   const teks = await buatJobdesk(ctx, event, { waktu: pesan.waktu });
@@ -266,7 +332,7 @@ export async function tugasJobdesk(ctx, sekarang = new Date(), { tanggalLokal })
       if (!ctx.sesi?.get(tandaDraf)) {
         ctx.sesi?.set(tandaDraf, { waktu: hariIni });
         const isi = ada.length ? await teksJobdeskAda(ctx, e) : await buatJobdesk(ctx, e, { waktu: sekarang });
-        for (const n of await nomorPicOwner(ctx, e)) keluar.push({ nomor: n, text: `${isi}${PETUNJUK_DRAF(e.kode)}` });
+        for (const n of await nomorPicOwner(ctx, e)) { mulaiPandu(ctx, n, e.kode); keluar.push({ nomor: n, text: `${isi}${PETUNJUK_DRAF(e.kode)}` }); }
       }
       if (hariIni < tambahHariStr(e.mulai, -1)) continue;
       await tandaiFinal(ctx, e.kode, sekarang);

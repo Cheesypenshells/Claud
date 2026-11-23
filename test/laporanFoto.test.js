@@ -109,6 +109,12 @@ test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #l
   assert.match(draf[0].text, /DRAF, belum dikirim ke grup/);
   assert.match(await kirim(G_TIM, DENA, '#jobdesk', pada('03', '11:00')), /masih disusun PIC/);
   assert.equal((await tugasJobdesk(ctx, pada('03', '12:00'), { tanggalLokal })).length, 0); // draf sekali saja
+  // Alur angka lewat chat pribadi owner: 2 (ubah) -> bagian -> orang -> 1 (kirim)
+  const dm = async (text, waktu) => (await handlePesan(ctx, { id: `dm${++n}`, groupId: OWNER, senderId: OWNER, senderName: 'Owner', text, adaFoto: false, waktu, pribadi: true })).map((r) => r.text).join('\n');
+  assert.match(await dm('2', pada('03', '12:30')), /Bagian mana yang mau diubah/);
+  assert.match(await dm('4', pada('03', '12:31')), /Siapa penanggung jawabnya.*\*1\* /s);
+  assert.match(await dm('1', pada('03', '12:32')), /Diubah.*DRAF/s);
+  assert.match(await dm('3', pada('03', '12:33')), /diacak ulang/);
   // PIC/owner ubah satu bagian, lalu kirim
   assert.match(await kirim(G_TIM, OWNER, '#jobdesk ganti display Nobody', pada('03', '13:00')), /Bukan tim kerja/);
   assert.match(await kirim(G_TIM, OWNER, '#jobdesk kirim', pada('03', '13:30')), /JOBDESK LOADING IN/);

@@ -24,7 +24,7 @@ import { tanganiAbsen, perintahAbsen, perintahIzin, perintahJadwal } from './abs
 import { tanganiLaporan } from './laporanFoto.js';
 import { perintahRekening, jawabRekening, perintahSetor, tanyaRekeningPic, jawabRekeningPribadi } from './rekening.js';
 import { perintahGajian } from './gajian.js';
-import { perintahJobdesk } from './jobdesk.js';
+import { perintahJobdesk, jawabPandu } from './jobdesk.js';
 import { perintahStok, perintahSidak, jawabSidak, eventSidak } from './stokHarian.js';
 import { perintahRusak, jawabRusak, perintahDendaLangsung } from './bahanRusak.js';
 import { perintahRapor, perintahKpiSaya } from './raporKpi.js';
@@ -973,13 +973,23 @@ export async function handleGrupBaru(ctx, groupId) {
   return balas(mulaiSapaan(ctx, groupId));
 }
 
+// Jawaban angka untuk draf jobdesk (PIC/owner): lihat jobdesk.js jawabPandu.
+async function jawabPanduJobdesk(ctx, pesan, isOwner) {
+  const s = ctx.sesi?.get(`jobdesk-pandu:${pesan.senderId}`);
+  if (!s) return null;
+  const kary = await ctx.store.all('Karyawan');
+  const pic = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === s.kode && o.peran === 'PIC'
+    && kary.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
+  return jawabPandu(ctx, pesan, { bolehUbah: isOwner || pic });
+}
+
 // Chat pribadi dengan bot: hanya penilaian KPI (PIC/owner) dan perintah KPI owner; selain itu diabaikan.
 async function handlePribadi(ctx, pesan) {
   const teks = String(pesan.text || '').trim();
   const cmd = parsePerintah(teks);
   const isOwner = ctx.ownerIds.has(pesan.senderId);
   if (cmd?.perintah === 'gantirugi') return (await jawabRusak(ctx, pesan, { isOwner })) || [];
-  if (!cmd) return (await jawabRusak(ctx, pesan, { isOwner })) || (await jawabNilaiHarian(ctx, pesan)) || (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
+  if (!cmd) return (await jawabPanduJobdesk(ctx, pesan, isOwner)) || (await jawabRusak(ctx, pesan, { isOwner })) || (await jawabNilaiHarian(ctx, pesan)) || (await jawabSidak(ctx, pesan)) || (await jawabNilaiJobdesk(ctx, pesan)) || (await jawabPenilaian(ctx, pesan)) || (await jawabRekeningPribadi(ctx, pesan)) || [];
   if (cmd.perintah === 'nilaiharian') {
     const evs = await eventSidak(ctx, pesan, isOwner);
     const kodeN = cmd.argumen.find((a) => /^[A-Z]{3}\d{2}-\d{2}/i.test(a));
