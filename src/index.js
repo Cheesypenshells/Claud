@@ -105,7 +105,7 @@ async function main() {
     // Laporan foto: saat booth buka, sebut laporan sebelum buka / loading in yang belum masuk.
     for (const p of await tugasLaporan(ctx)) await wa.kirim(p.groupId, p.text);
     // Jobdesk loading in: H-2 sebelum event mulai, jam 10.00, di grup tim.
-    for (const p of await tugasJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
+    for (const p of await tugasJobdesk(ctx, new Date(), { tanggalLokal })) { if (p.nomor) await wa.kirimPribadi(p.nomor, p.text); else await wa.kirim(p.groupId, p.text); }
     // Pengingat foto laporan jobdesk tiap 2 jam selama hari loading in.
     for (const p of await tugasIngatJobdesk(ctx, new Date(), { tanggalLokal })) await wa.kirim(p.groupId, p.text);
     // Loading out: pengumuman pembagian setelah closing hari terakhir, pengingat tiap 2 jam, ringkasan ke owner.

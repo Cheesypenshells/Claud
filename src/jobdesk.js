@@ -142,16 +142,109 @@ export async function teksJobdeskAda(ctx, event) {
   return teksJobdesk(event, bagian, new Set(ada.map((j) => j.nama)).size);
 }
 
-// #jobdesk / #jobdesk ulang
-export async function perintahJobdesk(ctx, pesan, event, argumen, { bolehUbah }) {
-  if (!event) return balas('⚠️ Grup ini belum terhubung ke event.');
-  const ulang = /^(ulang|bagi ulang|acak|reset)$/i.test(argumen.join(' ').trim());
-  if (ulang && !bolehUbah) return balas('⚠️ Bagi ulang jobdesk hanya oleh owner atau PIC.');
-  if (!ulang) {
-    const ada = await teksJobdeskAda(ctx, event);
-    if (ada) return balas(ada);
+// ---------- Draf -> ubah -> kirim ----------
+// Pembagian dibuat bot sebagai DRAF dan hanya dikirim ke PIC & owner (chat pribadi). PIC boleh mengubah, lalu
+// *#jobdesk kirim* mengumumkan ke grup. Setelah dikirim pembagian bersifat TETAP untuk event itu (tidak diacak lagi).
+// Kalau PIC belum mengirim sampai H-1 jam 10.00, bot mengumumkan sendiri supaya tugas tidak kosong.
+const kunciFinal = (kode) => `jobdesk_final:${kode}`;
+
+export async function sudahFinal(ctx, kode) {
+  return (await ctx.store.all('Pengaturan')).some((r) => r.kunci === kunciFinal(kode) && r.nilai);
+}
+
+async function tandaiFinal(ctx, kode, waktu) {
+  const ada = (await ctx.store.all('Pengaturan')).some((r) => r.kunci === kunciFinal(kode));
+  const nilai = waktuLokal(waktu);
+  if (ada) await ctx.store.update('Pengaturan', 'kunci', kunciFinal(kode), { nilai });
+  else await ctx.store.append('Pengaturan', { kunci: kunciFinal(kode), nilai, keterangan: 'Pembagian jobdesk loading in sudah dikirim ke grup (tetap).' });
+}
+
+// "#jobdesk ganti display Imam, Veri" -> ganti penanggung jawab satu bagian.
+export async function gantiJobdesk(ctx, event, argumen, waktu) {
+  const [kata, tagMentah, ...sisa] = argumen;
+  void kata;
+  const tag = String(tagMentah || '').replace(/^#/, '').toLowerCase();
+  const tugas = TUGAS_LOADING_IN.find((t) => t.tag === tag);
+  const daftarTag = TUGAS_LOADING_IN.map((t) => t.tag).join(', ');
+  if (!tugas) return `⚠️ Bagian tidak dikenal. Pilih salah satu: ${daftarTag}.\nContoh: *#jobdesk ganti display Imam, Veri*`;
+  const kerja = await anggotaKerja(ctx, event);
+  const diminta = sisa.join(' ').split(/[,&]|\bdan\b/i).map((x) => x.trim()).filter(Boolean);
+  if (!diminta.length) return `⚠️ Tulis nama orangnya. Contoh: *#jobdesk ganti ${tag} Imam, Veri*`;
+  const nama = []; const asing = [];
+  for (const d of diminta) {
+    const cocok = kerja.find((k) => k.toLowerCase() === d.toLowerCase()) || kerja.find((k) => k.toLowerCase().startsWith(d.toLowerCase()));
+    if (cocok) { if (!nama.includes(cocok)) nama.push(cocok); } else asing.push(d);
   }
-  return balas(await buatJobdesk(ctx, event, { waktu: pesan.waktu, ulang }));
+  if (asing.length) return `⚠️ Bukan tim kerja event ini: ${asing.join(', ')}.\nTim: ${kerja.join(', ')}`;
+  const lama = (j) => j.kode_event === event.kode && j.tag === tag && !String(j.tahap).startsWith('Loading out') && j.status !== STATUS.BATAL;
+  for (let i = 0; i < 30 && (await ctx.store.updateWhere('Jobdesk', lama, { status: STATUS.BATAL })); i++);
+  const stempel = waktuLokal(waktu);
+  for (const n of nama) await ctx.store.append('Jobdesk', { kode_event: event.kode, tahap: 'Loading in', tag, tugas: tugas.label, nama: n, status: STATUS.OK, dicatat: stempel });
+  return null;
+}
+
+async function nomorPicOwner(ctx, event) {
+  const [tim, kary] = await Promise.all([ctx.store.all('Tim Event'), ctx.store.all('Karyawan')]);
+  const pic = tim.filter((o) => o.kode_event === event.kode && o.peran === 'PIC' && o.status !== STATUS.BATAL)
+    .map((o) => kary.find((k) => k.nama === o.nama)?.nomor_wa).filter(Boolean)
+    .map((n) => String(n).replace(/\D/g, '').replace(/^0/, '62'));
+  return [...new Set([...pic, ...(ctx.ownerIds || [])])];
+}
+
+const PETUNJUK_DRAF = (kode) => [
+  '',
+  `✏️ *Ini DRAF, belum dikirim ke grup.* PIC bisa mengubah dulu:`,
+  `• Ganti satu bagian: *#jobdesk ${kode} ganti display Imam, Veri*  (bagian: tiba, booth, listrik, display, gudang)`,
+  `• Lihat hasil: *#jobdesk ${kode}*`,
+  `• Kirim ke grup: *#jobdesk ${kode} kirim*`,
+  '_Kalau belum dikirim sampai H-1 jam 10.00, bot mengumumkan sendiri. Setelah terkirim, pembagian tetap untuk event ini (tidak diacak lagi)._',
+].join('\n');
+
+// #jobdesk | #jobdesk ganti <bagian> <nama,..> | #jobdesk kirim | #jobdesk ulang (hanya sebelum dikirim, atau "ulang paksa")
+export async function perintahJobdesk(ctx, pesan, event, argumen, { bolehUbah }) {
+  if (!event) return balas('⚠️ Grup ini belum terhubung ke event. Lewat chat pribadi tulis kode event, mis. *#jobdesk TGL26-11*.');
+  const kata = argumen.map((x) => String(x));
+  const sub = (kata[0] || '').toLowerCase();
+  const final = await sudahFinal(ctx, event.kode);
+  const lewatGrup = Boolean(pesan.groupId);
+
+  if (/^(ganti|ubah|pindah)$/.test(sub)) {
+    if (!bolehUbah) return balas('⚠️ Mengubah jobdesk hanya oleh owner atau PIC.');
+    if (!(await jobdeskEvent(ctx, event.kode)).length) await buatJobdesk(ctx, event, { waktu: pesan.waktu });
+    const galat = await gantiJobdesk(ctx, event, kata, pesan.waktu);
+    if (galat) return balas(galat);
+    const teks = await teksJobdeskAda(ctx, event);
+    ctx.sesi?.delete?.(`jobdesk_diumumkan:${event.kode}`);
+    if (final && lewatGrup) return balas(`🔄 *Jobdesk diperbarui oleh PIC*\n\n${teks}`);
+    return balas(`${teks}${final ? '' : PETUNJUK_DRAF(event.kode)}`);
+  }
+  if (/^(kirim|umumkan|final|setuju)$/.test(sub)) {
+    if (!bolehUbah) return balas('⚠️ Mengirim jobdesk hanya oleh owner atau PIC.');
+    const ada = (await jobdeskEvent(ctx, event.kode)).length ? await teksJobdeskAda(ctx, event) : await buatJobdesk(ctx, event, { waktu: pesan.waktu });
+    await tandaiFinal(ctx, event.kode, pesan.waktu || new Date());
+    ctx.sesi?.set?.(`jobdesk_diumumkan:${event.kode}`, { versi: (await jobdeskEvent(ctx, event.kode))[0]?.dicatat || '' });
+    const grup = (await ctx.store.all('Grup')).filter((g) => g.kode_event === event.kode && g.jenis === 'event').map((g) => g.group_id);
+    const teksGrup = event.loading_in || event.lokasi_loading ? `${teksInfoLoading(event)}\n\n${ada}` : ada;
+    const out = [];
+    for (const g of grup) {
+      out.push({ groupId: g, text: teksGrup });
+      const tanya = mulaiTanyaLoading(ctx, g, event);
+      if (tanya) out.push({ groupId: g, text: tanya });
+    }
+    if (!pesan.groupId) out.push({ text: `✅ Jobdesk ${event.kode} dikirim ke grup tim.` });
+    return out;
+  }
+  if (/^(ulang|bagi ulang|acak|reset)$/.test(kata.join(' ').trim().toLowerCase().replace(/ paksa$/, ''))) {
+    if (!bolehUbah) return balas('⚠️ Bagi ulang jobdesk hanya oleh owner atau PIC.');
+    if (final && !/paksa/i.test(kata.join(' '))) return balas('🔒 Jobdesk event ini sudah dikirim ke grup dan bersifat tetap. Ubah satu bagian: *#jobdesk ganti display Imam*. Bagi ulang total: *#jobdesk ulang paksa*.');
+    const teks = await buatJobdesk(ctx, event, { waktu: pesan.waktu, ulang: true });
+    return balas(final ? teks : `${teks}${PETUNJUK_DRAF(event.kode)}`);
+  }
+  if (!final && !bolehUbah) return balas('⏳ Pembagian jobdesk masih disusun PIC. Akan diumumkan di grup ini.');
+  const ada = await teksJobdeskAda(ctx, event);
+  if (ada) return balas(final ? ada : `${ada}${PETUNJUK_DRAF(event.kode)}`);
+  const teks = await buatJobdesk(ctx, event, { waktu: pesan.waktu });
+  return balas(`${teks}${PETUNJUK_DRAF(event.kode)}`);
 }
 
 // Terjadwal: H-2 s/d H-1 sebelum event mulai, jam >= 10.00, sekali per event -> grup tim.
@@ -165,12 +258,24 @@ export async function tugasJobdesk(ctx, sekarang = new Date(), { tanggalLokal })
     if (!(hariIni >= tambahHariStr(e.mulai, -2) && hariIni < e.mulai)) continue;
     const grupTim = grup.filter((g) => g.kode_event === e.kode && g.jenis === 'event').map((g) => g.group_id);
     if (!grupTim.length) continue;
-    // Sekali per pembagian: tanda "jobdesk_diumumkan" berisi waktu pembagian yang sudah diumumkan.
     const ada = await jobdeskEvent(ctx, e.kode);
+    const final = await sudahFinal(ctx, e.kode);
+    // Belum final: kirim DRAF ke PIC & owner (sekali). Otomatis diumumkan ke grup mulai H-1 jam 10.00.
+    if (!final) {
+      const tandaDraf = `jobdesk_draf:${e.kode}`;
+      if (!ctx.sesi?.get(tandaDraf)) {
+        ctx.sesi?.set(tandaDraf, { waktu: hariIni });
+        const isi = ada.length ? await teksJobdeskAda(ctx, e) : await buatJobdesk(ctx, e, { waktu: sekarang });
+        for (const n of await nomorPicOwner(ctx, e)) keluar.push({ nomor: n, text: `${isi}${PETUNJUK_DRAF(e.kode)}` });
+      }
+      if (hariIni < tambahHariStr(e.mulai, -1)) continue;
+      await tandaiFinal(ctx, e.kode, sekarang);
+    }
+    // Sekali per pembagian: tanda "jobdesk_diumumkan" berisi waktu pembagian yang sudah diumumkan.
     const tanda = `jobdesk_diumumkan:${e.kode}`;
-    const versi = ada[0]?.dicatat || '';
-    if (ada.length && ctx.sesi?.get(tanda)?.versi === versi) continue;
-    let teks = ada.length ? await teksJobdeskAda(ctx, e) : await buatJobdesk(ctx, e, { waktu: sekarang });
+    const versi = (await jobdeskEvent(ctx, e.kode))[0]?.dicatat || '';
+    if (versi && ctx.sesi?.get(tanda)?.versi === versi) continue;
+    let teks = (await jobdeskEvent(ctx, e.kode)).length ? await teksJobdeskAda(ctx, e) : await buatJobdesk(ctx, e, { waktu: sekarang });
     const versiBaru = (await jobdeskEvent(ctx, e.kode))[0]?.dicatat || versi;
     ctx.sesi?.set(tanda, { versi: versiBaru });
     if (e.loading_in || e.lokasi_loading) teks = `${teksInfoLoading(e)}\n\n${teks}`;

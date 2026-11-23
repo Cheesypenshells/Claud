@@ -1466,10 +1466,14 @@ export async function handlePesan(ctx, pesan) {
       case 'jobdesk':
       case 'tugas':
       case 'pembagian': {
+        // Chat pribadi / grup lain: kode event boleh ditulis di depan, mis. "#jobdesk TGL26-11 ganti display Imam".
+        let evJ = event;
+        let argJ = cmd.argumen;
+        if (/^[A-Za-z]{3}\d{2}-\d{2}/.test(argJ[0] || '')) { evJ = await cariEvent(ctx.store, argJ[0]) || evJ; argJ = argJ.slice(1); }
         const karyawanSemua = await ctx.store.all('Karyawan');
-        const pic = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === event?.kode && o.peran === 'PIC'
+        const pic = (await ctx.store.all('Tim Event')).some((o) => o.kode_event === evJ?.kode && o.peran === 'PIC'
           && karyawanSemua.some((k) => k.nama === o.nama && String(k.nomor_wa).replace(/\D/g, '').replace(/^0/, '62') === pesan.senderId));
-        return perintahJobdesk(ctx, pesan, event, cmd.argumen, { bolehUbah: isOwner || pic });
+        return perintahJobdesk(ctx, pesan, evJ, argJ, { bolehUbah: isOwner || pic });
       }
       case 'gajian':
       case 'penggajian':

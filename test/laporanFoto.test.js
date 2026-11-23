@@ -103,11 +103,21 @@ test('jobdesk loading in: dibagi rata H-2 jam 10.00 di grup tim, PJ tampil di #l
   const { tanggalLokal } = await import('../src/util.js');
   assert.equal((await tugasJobdesk(ctx, pada('02', '12:00'), { tanggalLokal })).length, 0); // H-3: belum
   assert.equal((await tugasJobdesk(ctx, pada('03', '09:59'), { tanggalLokal })).length, 0); // H-2 sebelum jam 10
-  const j = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
-  assert.equal(j[0].groupId, G_TIM);
-  assert.match(j[0].text, /JOBDESK LOADING IN JMB26-11.*SEMUA turunkan barang.*Hitung & cek koli.*TIM BOOTH.*bagian BAWAH.*#booth.*bagian ATAS.*#listrik.*TIM BARANG.*#gudang/s);
-  assert.doesNotMatch(j[0].text, /Budi/); // PIC tidak dibagi pekerjaan
-  assert.equal((await tugasJobdesk(ctx, pada('04', '10:00'), { tanggalLokal })).length, 0); // sekali saja
+  // H-2: DRAF hanya ke PIC & owner lewat chat pribadi, belum ke grup.
+  const draf = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
+  assert.ok(draf.length >= 1 && draf.every((x) => x.nomor && !x.groupId));
+  assert.match(draf[0].text, /DRAF, belum dikirim ke grup/);
+  assert.match(await kirim(G_TIM, DENA, '#jobdesk', pada('03', '11:00')), /masih disusun PIC/);
+  assert.equal((await tugasJobdesk(ctx, pada('03', '12:00'), { tanggalLokal })).length, 0); // draf sekali saja
+  // PIC/owner ubah satu bagian, lalu kirim
+  assert.match(await kirim(G_TIM, OWNER, '#jobdesk ganti display Nobody', pada('03', '13:00')), /Bukan tim kerja/);
+  assert.match(await kirim(G_TIM, OWNER, '#jobdesk kirim', pada('03', '13:30')), /JOBDESK LOADING IN/);
+  assert.match(await kirim(G_TIM, OWNER, '#jobdesk ulang', pada('03', '13:40')), /sudah dikirim ke grup dan bersifat tetap/);
+  const j = await tugasJobdesk(ctx, pada('04', '10:00'), { tanggalLokal }); // sudah dikirim PIC lewat #jobdesk kirim: bot tidak umumkan lagi
+  assert.equal(j.length, 0);
+  const j0 = { groupId: G_TIM, text: await kirim(G_TIM, OWNER, '#jobdesk', pada('04', '10:30')) };
+  assert.match(j0.text, /JOBDESK LOADING IN JMB26-11.*SEMUA turunkan barang.*Hitung & cek koli.*TIM BOOTH.*bagian BAWAH.*#booth.*bagian ATAS.*#listrik.*TIM BARANG.*#gudang/s);
+  assert.doesNotMatch(j0.text, /Budi/); // PIC tidak dibagi pekerjaan
   assert.match(await kirim(G_TIM, DENA, '#jobdesk', pada('04', '11:00')), /JOBDESK LOADING IN/);
   assert.match(await kirim(G_TIM, DENA, '#jobdesk ulang', pada('04', '11:01')), /hanya oleh owner atau PIC/);
   assert.match(await kirim(G_TIM, OWNER, '#loadingin', pada('05', '07:00')), /Booth bagian bawah.*👷/s);
@@ -216,9 +226,11 @@ test('info loading in: ditanya bersama jobdesk, dijawab tim, pertanyaan "loading
   })).map((r) => r.text).join('\n');
   await kirim(G_KELUAR, OWNER, '#event\nKode: JMB26-11\nKota: Jambi\nIO: Kepo\nTanggal: 5-8 Nov 2026\nWilayah harga: Sumatra\nBagi hasil: 25%\nAdmin: 0\nJam buka: 11.00\nPIC: Budi\nSenior: Dena, Tiar', pada('01', '09:00'));
   await kirim(G_TIM, OWNER, '#daftar event JMB26-11', pada('01', '09:01'));
-  const j = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
+  const draf = await tugasJobdesk(ctx, pada('03', '10:00'), { tanggalLokal });
+  assert.ok(draf.every((x) => x.nomor)); // H-2: draf ke PIC/owner dulu
+  const j = await tugasJobdesk(ctx, pada('04', '10:00'), { tanggalLokal }); // belum dikirim PIC: H-1 jam 10 diumumkan otomatis
   assert.match(j.map((x) => x.text).join('\n'), /JOBDESK LOADING IN.*Info loading in JMB26-11.*kapan & jam berapa.*lokasi pintu/s);
-  assert.equal((await tugasJobdesk(ctx, pada('03', '11:00'), { tanggalLokal })).length, 0); // sudah diumumkan
+  assert.equal((await tugasJobdesk(ctx, pada('04', '11:00'), { tanggalLokal })).length, 0); // sudah diumumkan
   assert.match(await kirim(G_TIM, DENA, 'loading in 4 nov jam 22.00', pada('03', '12:00')), /Waktu: \*Rabu 2026-11-04 jam 22:00\*.*lokasi pintu/s);
   assert.match(await kirim(G_TIM, DENA, 'lewat pintu 3 belakang hall B dekat parkir motor', pada('03', '12:05')), /Lokasi\/pintu: \*(lewat )?pintu 3 belakang hall B dekat parkir motor\*/);
   assert.match(await kirim(G_TIM, '6289999999999', 'loading in jam berapa ya?', pada('04', '18:00')), /jam 22:00.*pintu 3 belakang/s);
