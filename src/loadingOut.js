@@ -218,7 +218,7 @@ export async function catatAlat(ctx, event, { isi, pelapor, fotoId, waktu }) {
 
 // ---------- terjadwal: pengumuman, pengingat 2 jam, ringkasan ----------
 const JEDA_INGAT_MS = 2 * 3600e3;
-const MAKS_INGAT = 9;
+const MAKS_INGAT = 24; // 48 jam: tetap mengingatkan walau bot sempat mati lama (slot dihitung dari jam pengumuman)
 
 async function laporanOut(ctx, kode) {
   return (await baca(ctx, 'Laporan Foto')).filter((r) => r.kode_event === kode && r.tahap === TAHAP_OUT && r.status === STATUS.OK);
@@ -247,7 +247,7 @@ async function ringkasanOwner(ctx, event, peta, lap) {
 }
 
 // Dipanggil tiap menit. Setelah closing hari terakhir: umumkan pembagian (grup tim + chat pribadi PJ), ingatkan tiap 2 jam
-// yang belum lapor, lalu beri ringkasan ke owner begitu semua bagian lapor.
+// yang belum lapor, lalu beri ringkasan ke owner begitu semua bagian lapor. Pengingat berlanjut sampai 48 jam setelah pengumuman.
 export async function tugasLoadingOut(ctx, sekarang = new Date()) {
   const keluar = [];
   if (!ctx.sesi) return keluar;

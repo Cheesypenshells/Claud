@@ -103,3 +103,17 @@ test('loading out: pembagian otomatis setelah closing, koli vs kiriman awal, ala
   assert.ok(sisa.some((x) => x.groupId === G_KELUAR));
   assert.equal((await tugasLoadingOut(ctx, pada('23', '04:00'))).length, 0);
 });
+
+test('pengingat loading out tetap terkirim walau bot sempat mati lebih dari 18 jam (sampai 48 jam)', async () => {
+  const store = new MemoryStore();
+  const ctx = { store, ownerIds: new Set([OWNER]), sesi: buatSesi(null), terakhir: new Map() };
+  const kirim = async (groupId, senderId, text, waktu) => (await handlePesan(ctx, { id: `x${Math.random()}`, groupId, groupName: groupId, senderId, senderName: 'X', text, adaFoto: false, waktu })).map((r) => r.text).join('\n');
+  await kirim(G_KELUAR, OWNER, `#event\nKode: SMR26-11\nKota: Semarang\nIO: Kepo\nTanggal: 14-22 Nov 2026\nWilayah harga: Jawa\nBagi hasil: 30%\nAdmin: 0\nJam buka: 10.00\nPIC: George\nSenior: Adit, Alam`, pada('14', '07:00'));
+  await kirim(G_TIM, OWNER, '#daftar event SMR26-11', pada('14', '07:01'));
+  await store.append('Sesi Kasir', { id: 'S22', kode_event: 'SMR26-11', tanggal: '2026-11-22', status: 'TUTUP', dibuka: '2026-11-22 10:00:00', ditutup: '2026-11-22 21:40:00' });
+  assert.ok((await tugasLoadingOut(ctx, pada('22', '21:45'))).some((x) => x.groupId === G_TIM)); // pengumuman
+  // bot mati sampai 23 Nov 20.30 (22,8 jam kemudian): pengingat pertama setelah bot menyala tetap terkirim
+  const telat = await tugasLoadingOut(ctx, pada('23', '20:30'));
+  assert.match(telat.find((x) => x.groupId === G_TIM).text, /Update loading out SMR26-11.*belum lapor/s);
+  assert.equal((await tugasLoadingOut(ctx, pada('23', '20:40'))).length, 0); // tidak dobel di slot yang sama
+});
