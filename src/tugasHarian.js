@@ -1,7 +1,7 @@
 // Pembagian tugas harian (setiap hari event, jam 08.00 di grup tim).
 //
 // Bagian: Kasir (tetap, dari jawaban "saya" pertanyaan kasir harian / #kasirnya), Pemanggang (tetap, #pemanggang Veri),
-// Getok oyster dan Plating (dibagi bot, bergilir tiap hari; PIC boleh menukar dengan #tukar Bima Tiara).
+// Getok oyster dan Plating (dibagi bot di hari pertama, lalu TETAP sampai event selesai; hanya PIC yang boleh menukar dengan #tukar Bima Tiara).
 //   3 orang: kasir + plating · pemanggang · getok 1
 //   4 orang: kasir + plating · pemanggang · getok 2
 //   5 orang: kasir · pemanggang · plating 1 · getok 2      6+: orang tambahan ke getok
@@ -87,7 +87,7 @@ export function teksTugas(event, tanggal, daftar, tambahan = '') {
     ...(tambahan ? [tambahan, ''] : []),
     '🧹 Tutup: semua bantu bersih-bersih; foto *#bersih* (regulator gas dilepas, booth bersih, cucian bersih) lalu tiap orang *#pulang*.',
     '_Lapor kejadian: *#kejadian ...* · perlu dibeli: *#beli ...* · PR/evaluasi: *#pr ...*_',
-    '_Tukar bagian (PIC/owner): *#tukar Bima Tiara* · lihat lagi: *#tugas*_',
+    '_Pembagian tetap sampai event selesai. Tukar bagian (hanya PIC/owner): *#tukar Bima Tiara* · lihat lagi: *#tugas*_',
     '_Laporan foto yang tidak dikirim mengurangi KPI −2 untuk bagian yang bertugas._',
   ].join('\n');
 }
@@ -107,9 +107,46 @@ export async function tugasHariIni(ctx, event, tanggal) {
   return rows.filter((r) => r.kode_event === event.kode && String(r.tanggal) === tanggal && aktif(r)).map((r) => ({ bagian: r.bagian, nama: r.nama, rangkap: r.rangkap === 'ya' }));
 }
 
+// Pembagian TETAP sejak hari pertama sampai event selesai (tidak diputar tiap hari). Hari berikutnya menyalin hari
+// sebelumnya; kalau kasir/pemanggang berganti, orang itu bertukar bagian dengan kasir/pemanggang sebelumnya.
+export function lanjutkanTugas(sebelumnya, anggota, { kasir, pemanggang }) {
+  const ada = (n) => n && anggota.some((a) => sama(a, n));
+  const nyata = (n) => anggota.find((a) => sama(a, n));
+  let daftar = sebelumnya.filter((d) => anggota.some((a) => sama(a, d.nama))).map((d) => ({ ...d }));
+  const tukarPeran = (bagian, baru) => {
+    if (!ada(baru)) return true;
+    const lama = daftar.find((d) => d.bagian === bagian && !d.rangkap);
+    const nama = nyata(baru);
+    if (!lama) return false; // dari "kosong" -> ada orang: hitung ulang dari awal
+    if (sama(lama.nama, nama)) return true;
+    const miliknya = daftar.filter((d) => sama(d.nama, nama) && d.bagian !== bagian);
+    const bekas = lama.nama;
+    for (const d of miliknya) { if (d.rangkap) d.nama = nama; else d.nama = bekas; }
+    lama.nama = nama;
+    // Plating yang dirangkap kasir ikut orang yang menjadi kasir.
+    if (bagian === 'Kasir') for (const d of daftar) if (d.rangkap) d.nama = nama;
+    return true;
+  };
+  const bagianKerja = (b) => daftar.some((d) => d.bagian === b && !d.rangkap);
+  if ((ada(kasir) && !bagianKerja('Kasir')) || (ada(pemanggang) && !bagianKerja('Pemanggang'))) return null;
+  if (!tukarPeran('Kasir', kasir) || !tukarPeran('Pemanggang', pemanggang)) return null;
+  // Anggota baru (belum punya bagian) masuk getok.
+  for (const a of anggota) if (!daftar.some((d) => sama(d.nama, a))) daftar.push({ bagian: 'Getok', nama: a });
+  return daftar.length ? daftar : null;
+}
+
 export async function buatTugas(ctx, event, tanggal, oleh = 'bot') {
   const anggota = await dataTim(ctx, event);
-  const daftar = bagiTugas(anggota, { kasir: kasirEvent(event), pemanggang: event.pemanggang, hariKe: hariKeDari(event, tanggal) });
+  const opsi = { kasir: kasirEvent(event), pemanggang: event.pemanggang };
+  let daftar = null;
+  let rows = [];
+  try { rows = await ctx.store.all('Tugas Harian'); } catch { rows = []; }
+  const tanggalLalu = [...new Set(rows.filter((r) => r.kode_event === event.kode && aktif(r) && String(r.tanggal) < tanggal).map((r) => String(r.tanggal)))].sort().pop();
+  if (tanggalLalu) {
+    const lalu = rows.filter((r) => r.kode_event === event.kode && aktif(r) && String(r.tanggal) === tanggalLalu).map((r) => ({ bagian: r.bagian, nama: r.nama, rangkap: r.rangkap === 'ya' }));
+    daftar = lanjutkanTugas(lalu, anggota, opsi);
+  }
+  if (!daftar) daftar = bagiTugas(anggota, { ...opsi, hariKe: 0 });
   await simpanTugas(ctx, event, tanggal, daftar, oleh);
   return daftar;
 }

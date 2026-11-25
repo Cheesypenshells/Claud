@@ -113,6 +113,7 @@ function teksJobdesk(event, bagian, jumlahOrang) {
     ...bagian.filter((t) => t.tim === 'barang').map(baris),
     '',
     '_Setiap penanggung jawab wajib kirim *foto hasil kerjanya* di grup ini dengan tag di atas. PIC mengecek di lokasi & memberi poin. Cek yang belum: *#loadingin*._',
+    '_Pembagian ini *tetap sampai event selesai* (tidak ditukar-tukar), kecuali PIC mengubahnya._',
   ].join('\n');
 }
 

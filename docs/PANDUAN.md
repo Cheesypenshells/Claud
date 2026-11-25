@@ -588,7 +588,7 @@ Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke 
 
 ## Pembagian tugas harian (jam 08.00)
 
-- Setiap hari event jam 08.00 bot membagi tugas di grup tim: **Kasir** (dari jawaban "saya" pertanyaan kasir), **Pemanggang** (tetap, `#pemanggang Veri` oleh owner/PIC), **Getok** dan **Plating** (dibagi bot, bergilir tiap hari).
+- Setiap hari event jam 08.00 bot membagi tugas di grup tim: **Kasir** (dari jawaban "saya" pertanyaan kasir), **Pemanggang** (tetap, `#pemanggang Veri` oleh owner/PIC), **Getok** dan **Plating** (dibagi bot di hari pertama, lalu *tetap sampai event selesai*, tidak diputar tiap hari; kalau kasir berganti, kasir baru bertukar bagian dengan kasir lama; hanya PIC/owner yang boleh menukar dengan `#tukar`).
   - 3 orang: kasir + plating · pemanggang · getok 1 — 4 orang: kasir + plating · pemanggang · getok 2 — 5 orang: plating sendiri · getok 2 — 6+: tambahan ke getok.
 - Tugas & foto wajib: Getok jam 09.30 pesan es batu → cooler box (`#cooler`, kosong pun difoto), getok sampai plating bilang stop · Kasir dekorasi depan, kulkas menyala, cucian kemarin bersih (`#depan`), followers (`#followers`) · Pemanggang pajangan & area panggang bersih, gas kaleng penuh & jauh dari panas (`#grill`) · Plating kekurangan nampan (min 7), oyster fresh menarik, area kulkas bersih, nampan bersih & kering, wadah air buangan (`#nampan`).
 - `#tugas` lihat pembagian hari ini · `#tukar Bima Tiara` (owner/PIC) tukar bagian hari ini.

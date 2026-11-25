@@ -321,3 +321,18 @@ test('penilaian harian tidak mencuri balasan untuk pertanyaan "Cek jobdesk"', as
   const pesan = { pribadi: true, senderId: 'p1', text: '10', kutipan: { teks: 'Cek jobdesk TGL26-11: Hitung koli (#tiba) Foto laporan dari Veri (L0123)' } };
   assert.equal(await jawabNilaiHarian(ctx, pesan), null);
 });
+
+test('tugas harian: pembagian tetap sejak hari pertama; ganti kasir = tukar bagian dengan kasir lama', async () => {
+  const { bagiTugas, lanjutkanTugas } = await import('../src/tugasHarian.js');
+  const tim = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const hari1 = bagiTugas(tim, { kasir: 'A', pemanggang: 'B', hariKe: 0 });
+  const bag = (d, n) => d.filter((x) => x.nama === n).map((x) => x.bagian).join('+');
+  // hari berikutnya tanpa perubahan: sama persis (tidak diputar)
+  assert.deepEqual(lanjutkanTugas(hari1, tim, { kasir: 'A', pemanggang: 'B' }), hari1);
+  // kasir ganti dari A ke D (getok): A ambil getok milik D, D jadi kasir; yang lain tidak berubah
+  const hari2 = lanjutkanTugas(hari1, tim, { kasir: 'D', pemanggang: 'B' });
+  assert.equal(bag(hari2, 'D'), 'Kasir');
+  assert.equal(bag(hari2, 'A'), 'Getok');
+  assert.equal(bag(hari2, 'C'), bag(hari1, 'C'));
+  assert.equal(bag(hari2, 'B'), 'Pemanggang');
+});
