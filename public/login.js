@@ -2,7 +2,7 @@ const $ = (id) => document.getElementById(id);
 let mode = "login";
 
 // Kalau sudah login, langsung ke halaman utama
-fetch("/api/me").then((r) => { if (r.ok) location.replace("/"); }).catch(() => {});
+fetch("/api/me").then((r) => { if (r.ok) location.replace("/" + location.hash); }).catch(() => {});
 
 function setMode(m) {
   mode = m;
@@ -32,7 +32,7 @@ $("auth-form").onsubmit = async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Gagal. Coba lagi.");
-    location.replace("/");
+    location.replace("/" + location.hash);
   } catch (err) {
     $("error").textContent = err.message;
   } finally {

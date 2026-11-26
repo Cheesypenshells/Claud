@@ -241,6 +241,10 @@ Untuk huruf non-Latin, tutor menambahkan romanisasi (untuk level pemula & meneng
 - **Mode Suara** (di sidebar) — ngobrol tanpa mengetik: kamu bicara → AI menjawab dengan suara → mikrofon menyala lagi otomatis. Balasan AI juga dibuat lebih singkat supaya enak didengar.
 - **Kecepatan suara AI** bisa diatur (lebih lambat cocok untuk pemula).
 
+### 🔗 Link langsung ke robot
+Tambahkan `#robot` di belakang alamat, mis. `http://localhost:3001/#robot` atau `http://ALAMAT-HP:3001/#robot`.
+Setelah login, muncul tombol besar "Ketuk untuk mulai" (browser hanya mengizinkan suara setelah layar diketuk), lalu mode robot terbuka.
+
 ### 🎭 Suara yang berekspresi
 Di mode suara, AI menandai kalimat dengan emosi (`[happy]`, `[excited]`, `[sad]`, `[angry]`, `[surprised]`, `[calm]`, `[whisper]`, `[laugh]`).
 Tanda ini tidak tampil di layar, tapi mengubah **nada, kecepatan & volume** suara supaya tidak monoton. Catatan bahasa Indonesia (baris 💬)

@@ -11,7 +11,7 @@ const rawFetch = window.fetch.bind(window);
 const fetch = async (...args) => {
   const res = await rawFetch(...args);
   if (res.status === 401) {
-    location.replace("/login.html");
+    location.replace("/login.html" + location.hash);
     throw new Error("Sesi berakhir, silakan masuk lagi.");
   }
   return res;
@@ -587,7 +587,7 @@ async function init() {
   $("logout").onclick = async () => {
     stopAll();
     await rawFetch("/api/logout", { method: "POST" });
-    location.replace("/login.html");
+    location.replace("/login.html" + location.hash);
   };
   state.config = await (await fetch("/api/config")).json();
   for (const [id, name] of Object.entries(state.config.languages)) {
@@ -708,5 +708,21 @@ async function init() {
   setupContextUI();
   refreshMemory();
   loadChat();
+  // Link langsung ke robot: http://alamat:3001/#robot
+  if (location.hash === "#robot") {
+    history.replaceState(null, "", location.pathname);
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "robot-start";
+    go.innerHTML = "🤖<br>Ketuk untuk mulai ngobrol dengan Cheesy-Bot";
+    go.onclick = async () => {
+      go.innerHTML = "🤖<br>Menyiapkan Cheesy-Bot…";
+      // tunggu sapaan pembuka selesai dulu (robot tidak bisa dibuka saat bot masih menjawab)
+      for (let i = 0; i < 100 && state.busy; i++) await new Promise((r) => setTimeout(r, 200));
+      go.remove();
+      openRobot();
+    };
+    document.body.append(go);
+  }
 }
 init();

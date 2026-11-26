@@ -682,3 +682,8 @@ body.insights-on #robot-open, body.insights-on #composer, body.insights-on #cond
 .ic-sources a { color: #6A1B9A; font-weight: 700; }
 .discuss-chat { margin-top: 10px; }
 .discuss-chat .ic-log { max-height: 55vh; }
+
+/* Link langsung ke mode robot (#robot): tombol mulai (suara butuh ketukan pengguna) */
+.robot-start { position: fixed; inset: 0; z-index: 900; border: 0; background: radial-gradient(circle at 50% 40%, #2b3fa8, #0D1550);
+  color: #fff; font: 800 1.3rem/1.6 inherit; font-family: inherit; cursor: pointer; padding: 16px; }
+.robot-start::first-line { font-size: 4rem; }
