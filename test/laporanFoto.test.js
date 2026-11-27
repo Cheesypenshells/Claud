@@ -336,3 +336,13 @@ test('tugas harian: pembagian tetap sejak hari pertama; ganti kasir = tukar bagi
   assert.equal(bag(hari2, 'C'), bag(hari1, 'C'));
   assert.equal(bag(hari2, 'B'), 'Pemanggang');
 });
+
+test('#sisa dengan koma setelah perintah, setengah (½), nampan & keju parut diabaikan', async () => {
+  const { parsePerintah, parseBahan } = await import('../src/parsers.js');
+  const c = parsePerintah('#sisa, kemas bahan dingin\n•Saos Keju 13');
+  assert.equal(c.perintah, 'sisa');
+  const harga = [{ bahan: 'Saus Keju', satuan: 'kg' }, { bahan: 'Bumbu Garlic', satuan: 'pack' }, { bahan: 'Topping Cumi', satuan: 'kantong' }, { bahan: 'Mozzarella', satuan: 'pack' }];
+  const cocok = (baris) => harga.find((h) => ({ 'Saus Keju': /saos|saus/i, 'Bumbu Garlic': /garlic/i, 'Topping Cumi': /cumi/i, Mozzarella: /mozzarella|keju/i })[h.bahan].test(baris));
+  const hasil = parseBahan('• oyster mozzarella 2 nampan\n•Saos Keju 13\n•Garlic 20 ½\n•Cumi 2 ½\n•Keju Balok 41\n•Keju Parut 1', harga, cocok);
+  assert.deepEqual(hasil.map((h) => `${h.bahan} ${h.jumlah}`), ['Saus Keju 13', 'Bumbu Garlic 20.5', 'Topping Cumi 2.5', 'Mozzarella 41']);
+});

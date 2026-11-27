@@ -441,11 +441,13 @@ export function parsePerintah(teks) {
   const m = t.match(/^#([a-z]+)\b(.*)$/is);
   if (!m) return null;
   const [barisPertama, ...sisa] = (m[1] + m[2]).split('\n');
-  const kata = barisPertama.trim().split(/\s+/);
+  // "#sisa, kemas bahan dingin": tanda baca tepat setelah nama perintah ("sisa,") bukan bagian dari namanya.
+  const depan = m[1];
+  const kata = barisPertama.slice(depan.length).trim().split(/\s+/).filter(Boolean);
   return {
-    perintah: kata[0].toLowerCase(),
-    argumen: kata.slice(1),
-    sisaBaris: bersihkan(barisPertama.slice(kata[0].length)),
+    perintah: depan.toLowerCase(),
+    argumen: kata.map((x) => x.replace(/^[,;:]+/, '')).filter(Boolean),
+    sisaBaris: bersihkan(barisPertama.slice(depan.length)),
     badan: sisa.join('\n'),
   };
 }
@@ -534,11 +536,13 @@ export function parseTim(teks) {
 export function parseBahan(teks, daftarBahan, cocokkan) {
   const items = [];
   for (const baris of String(teks).split(/\n|,(?=\s*\D)/)) {
-    const angka = baris.match(/(\d+(?:[.,]\d+)?)/);
+    // Nampan = oyster yang sudah disiapkan, keju parut = bukan bahan di daftar harga: tidak dihitung.
+    if (/\b(nampan|parut)\b/i.test(baris)) continue;
+    const angka = baris.match(/(\d+(?:[.,]\d+)?)(\s*(?:½|1\/2))?/);
     if (!angka) continue;
     const item = cocokkan(baris, daftarBahan, 'bahan');
     if (!item) continue;
-    items.push({ bahan: item.bahan, jumlah: Number(angka[1].replace(',', '.')), satuan: item.satuan });
+    items.push({ bahan: item.bahan, jumlah: Number(angka[1].replace(',', '.')) + (angka[2] ? 0.5 : 0), satuan: item.satuan });
   }
   return items;
 }
