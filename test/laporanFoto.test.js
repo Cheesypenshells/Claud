@@ -346,3 +346,9 @@ test('#sisa dengan koma setelah perintah, setengah (½), nampan & keju parut dia
   const hasil = parseBahan('• oyster mozzarella 2 nampan\n•Saos Keju 13\n•Garlic 20 ½\n•Cumi 2 ½\n•Keju Balok 41\n•Keju Parut 1', harga, cocok);
   assert.deepEqual(hasil.map((h) => `${h.bahan} ${h.jumlah}`), ['Saus Keju 13', 'Bumbu Garlic 20.5', 'Topping Cumi 2.5', 'Mozzarella 41']);
 });
+
+test('pengembalian deposit/refund dikenali sebagai uang masuk, pembelian biasa tidak', async () => {
+  const { uangMasukKembali } = await import('../src/parsers.js');
+  for (const t of ['pengembalian deposit 1000k ya', 'refund deposit 500rb', 'deposit lpg dikembalikan 600rb', 'jaminan dikembalikan']) assert.equal(uangMasukKembali(t), true, t);
+  for (const t of ['beli deposit galon 50rb', 'es batu 30rb', 'konsumsi 200rb', 'bayar deposit booth 1jt']) assert.equal(uangMasukKembali(t), false, t);
+});

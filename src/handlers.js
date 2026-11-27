@@ -12,7 +12,7 @@ import { rupiah, persen, tanggalLokal, jamLokal, waktuLokal, tambahHari, parseMo
 import { mulaiSapaan, mulaiEventBaru, prosesJawaban, blokUbah } from './wizard.js';
 import { tentukanUangSiapa, perintahUang, perintahGanti, perintahPenggantian } from './uangSiapa.js';
 import { perluTanyaHarga, tanyaHarga, tanyaBahan, tanyaKategori, tanyaKeterangan, jawabLengkapi } from './lengkapi.js';
-import { KATEGORI, ambilTanggal, ambilUangSiapa, tebakKategori } from './parsers.js';
+import { KATEGORI, ambilTanggal, ambilUangSiapa, tebakKategori, uangMasukKembali } from './parsers.js';
 import { idDariTeks, bacaKoreksi, pilihCatatan, BATAS_LANJUTAN_MS } from './koreksi.js';
 import { bacaGambar, bacaBukti, nominalUtama, tanggalBukti, daftarPesanan } from './bukti.js';
 import { BATAS_STRUK, periksaStruk, perluDetail, eventWajibStruk, kenaliStruk, batasTanggal } from './struk.js';
@@ -1634,6 +1634,10 @@ export async function handlePesan(ctx, pesan) {
     }
   }
 
+  // Pengembalian deposit/refund = uang MASUK, bukan pengeluaran: tanyakan dulu, jangan dicatat sebagai biaya.
+  if (uangMasukKembali(teks)) {
+    return balas('💡 Ini *uang masuk* (pengembalian), bukan pengeluaran, jadi tidak saya catat sebagai biaya.\n• Dari IO: *#trf 1jt pengembalian deposit*\n• Uang pribadi/PIC yang dikembalikan: *#penggantian ...*\nSupaya tidak tercatat ganda, kabari owner dulu kalau belum yakin.');
+  }
   const hasil = await catatUang(ctx, pesan, { buku: BUKU.EVENT, jenis: JENIS.KELUAR, kodeEvent: event.kode, teks });
   if (hasil.length || !ctx.sesi) return hasil;
 

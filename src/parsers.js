@@ -600,3 +600,8 @@ export function ambilUangSiapa(baris) {
   if (pilih) return { siapa: pilih.siapa, sisa: bersihkan(String(baris).replace(pilih.teks, ' ')) };
   return { siapa: null, sisa: baris };
 }
+
+// Uang yang KEMBALI ke kita (bukan biaya): "pengembalian deposit 1jt", "refund deposit", "deposit lpg dikembalikan".
+export function uangMasukKembali(teks) {
+  return /\b(pengembalian|dikembalikan|dikembaliin|refund|retur)\s+(uang\s+)?(deposit|jaminan|dp)\b|\b(deposit|jaminan|dp)\b[^\n]{0,25}\b(dikembalikan|dikembaliin|kembali|balik|refund)\b|\brefund\b/i.test(String(teks || ''));
+}
