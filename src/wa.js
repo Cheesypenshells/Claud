@@ -62,6 +62,7 @@ export async function mulaiWhatsApp({ folderLogin, folderData = folderLogin, nom
   const namaGrup = new Map();
   const pencatat = buatPencatatId(path.join(folderData, 'terproses.json'));
   let sock;
+  let tersambungWA = false; // dipakai denyut: bot dianggap hidup hanya kalau WhatsApp tersambung
   let sudahMintaKode = false;
 
   const kirim = async (groupId, text, quoted) => {
@@ -99,8 +100,9 @@ export async function mulaiWhatsApp({ folderLogin, folderData = folderLogin, nom
         console.log('WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon saja,');
         console.log(`lalu ketik ${kode}. Kode tetap sama walau bot menyambung ulang.\n`);
       }
-      if (u.connection === 'open') console.log('[WA] Tersambung. Bot siap.');
+      if (u.connection === 'open') { tersambungWA = true; console.log('[WA] Tersambung. Bot siap.'); }
       if (u.connection === 'close') {
+        tersambungWA = false;
         const kodeStatus = u.lastDisconnect?.error?.output?.statusCode;
         if (kodeStatus === DisconnectReason.loggedOut) {
           // Login lama tidak berlaku lagi: hapus, lalu keluar. Saat dijalankan ulang, bot meminta pairing baru.
@@ -179,5 +181,5 @@ export async function mulaiWhatsApp({ folderLogin, folderData = folderLogin, nom
       return { nomor: angkaId(jid), tersembunyi: !String(jid).endsWith('@s.whatsapp.net'), lid: angkaId(p.lid || (String(p.id).endsWith('@lid') ? p.id : '')), admin: Boolean(p.admin) };
     }).filter((a) => a.nomor && !saya.has(a.nomor) && !saya.has(a.lid));
   };
-  return { anggotaGrup, kirim: (groupId, text) => kirim(groupId, text), kirimPribadi: (nomor, text) => kirim(`${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}@s.whatsapp.net`, text) };
+  return { tersambung: () => tersambungWA, anggotaGrup, kirim: (groupId, text) => kirim(groupId, text), kirimPribadi: (nomor, text) => kirim(`${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}@s.whatsapp.net`, text) };
 }

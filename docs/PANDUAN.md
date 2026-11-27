@@ -633,3 +633,7 @@ Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat
 - **Setelah ⏹ Tutup kasir** (cadangan 23.30): closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
 - **1 jam setelah tutup kasir** (paling cepat 23.30): yang belum `#pulang` ditagih.
 - **Kasir belum ⏹ Tutup kasir** setelah jam tutup: kasir (chat pribadi) + grup tim diingatkan **tiap 1 jam** sampai ditutup (berhenti jam 02.00). Besok paginya, kalau kasir kemarin masih terbuka, diingatkan tiap jam mulai 1,5 jam sebelum buka dan owner diberi tahu: tutup dulu, lalu ▶ Mulai kasir lagi supaya struk tidak tercampur.
+
+## Alarm bot mati (email otomatis)
+Bot menulis penanda "hidup" (`bot_hidup`, tab Pengaturan) tiap 2 menit, hanya kalau WhatsApp tersambung. Skrip kecil di Apps Script (`apps-script/alarm/Alarm.gs`, proyek **terpisah dari kasir**) dijalankan Google tiap 5 menit dan mengirim email ke Gmail pemilik kalau bot tidak ada denyut lebih dari 10 menit (jam 07.00–24.00 WIB), lalu email "hidup lagi" saat pulih.
+Pasang sekali: script.google.com > Proyek baru > tempel isi `Alarm.gs` > jalankan `PASANG_ALARM` (izinkan akses) > jalankan `UJI_EMAIL` untuk mencoba. Ubah `BATAS_MENIT` / jam aktif di bagian atas skrip kalau perlu.

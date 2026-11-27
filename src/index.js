@@ -15,6 +15,7 @@ import { tugasPenilaian } from './handlersKpi.js';
 import { tugasRapor } from './raporKpi.js';
 import { tugasLoadingOut } from './loadingOut.js';
 import { tugasArsip } from './arsip.js';
+import { catatDenyut } from './denyut.js';
 import { tugasAbsensi } from './absensi.js';
 import { tugasLaporan } from './laporanFoto.js';
 import { tugasRekening } from './rekening.js';
@@ -99,6 +100,8 @@ async function main() {
     }
   }), 10 * 60_000);
   setInterval(() => jalankan(async () => {
+    // Denyut: penanda bot hidup untuk alarm email (hanya kalau WhatsApp tersambung).
+    if (wa.tersambung?.()) await catatDenyut(ctx);
     for (const p of await tugasJatuhTempo()) await wa.kirim(p.groupId, p.text);
     // Absensi: gaya foto 2 jam sebelum buka, pengingat saat batas absen (1 jam sebelum buka) lewat.
     for (const p of await tugasAbsensi(ctx)) await wa.kirim(p.groupId, p.text);
