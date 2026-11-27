@@ -6,7 +6,7 @@
 <label for="event">Event</label><select id="event" onchange="gantiEvent()"></select>
 <div id="sesiBox"></div>
 <p id="proses" class="redup"></p><p id="sinkron" class="redup" style="margin:0"></p>
-<button class="kecil abu" style="margin-top:10px" onclick="riwayat()">📊 Riwayat omzet</button>
+<button class="kecil abu" style="margin-top:10px" onclick="riwayat()">📊 Riwayat omzet</button> <button class="kecil abu" style="margin-top:10px" onclick="riwayatTrx()">📜 Riwayat transaksi</button>
 </div>
 <div class="kolom"><div><h3>⏳ Menunggu</h3><div id="k-MENUNGGU"></div></div><div><h3>🔥 Dibakar</h3><div id="k-DIBAKAR"></div></div><div><h3>✅ Siap / dipanggil</h3><div id="k-SIAP"></div></div></div>
 </div>
@@ -168,6 +168,58 @@ function tampilRiwayat(r) {
     "<table style=\"width:100%;border-collapse:collapse\"><thead><tr><th style=\"text-align:left\">Hari</th><th style=\"text-align:right\">Omzet</th><th style=\"text-align:right\">Akumulasi</th></tr></thead><tbody>" + (baris || "<tr><td colspan=3 class=redup>Belum ada sesi kasir.</td></tr>") + "</tbody></table>" +
     "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
 }
+// ---- riwayat transaksi: antrian yang sudah selesai, per tanggal (maks. 31 hari); ubah hanya owner ----
+var rwTrx = null;
+function riwayatTrx(tgl) {
+  el("modal").innerHTML = "<div class=modal><div class=kartu><p>Memuat riwayat transaksi...</p></div></div>";
+  google.script.run.withSuccessHandler(tampilTrx).withFailureHandler(function (e) { tutup(); pesan("⚠️ " + e.message); }).riwayatTransaksi(PIN, tgl || "");
+}
+function tampilTrx(r) {
+  rwTrx = r;
+  var chip = r.tanggalTersedia.map(function (h) {
+    return "<button class=\"kecil " + (h.tanggal === r.tanggal ? "" : "abu") + "\" style=\"margin:2px\" onclick=\"riwayatTrx('" + h.tanggal + "')\">" + tglIndo(h.tanggal) + "<br><small>" + h.jumlah + " struk</small></button>";
+  }).join("");
+  var tot = r.transaksi.filter(function (o) { return o.status !== "BATAL"; }).reduce(function (m, o) { return m + (o.total || 0); }, 0);
+  var baris = r.transaksi.map(function (o, i) {
+    var batal = o.status === "BATAL";
+    return "<tr" + (batal ? " style=\"opacity:.5;text-decoration:line-through\"" : "") + "><td><b>#" + o.nomor + "</b><br><small class=redup>" + o.dibuat + (o.diambil ? "–" + o.diambil : "") + "</small></td>" +
+      "<td>" + aman(o.menu || "–") + "<br><small class=redup>" + aman(o.kodeEvent) + (o.kasir ? " · " + aman(o.kasir.split(",").pop().trim()) : "") + (o.sumberTotal ? " · " + aman(o.sumberTotal) : "") + "</small></td>" +
+      "<td style=\"text-align:right\"><b>" + (o.total ? rp(o.total) : "–") + "</b>" + (batal ? "<br><small>batal</small>" : "") + "</td>" +
+      "<td><button class=\"kecil abu\" onclick=\"ubahTrx(" + i + ")\">✏️</button></td></tr>";
+  }).join("");
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h2 class=judul><span>📜 Riwayat transaksi</span></h2>" +
+    "<p class=redup>Antrian yang sudah selesai, " + tglIndo(r.batas) + " s/d " + tglIndo(r.hariIni) + " (maks. 31 hari). Mengubah data hanya boleh owner (PIN owner).</p>" +
+    "<div style=\"overflow-x:auto;white-space:nowrap;margin:6px 0\">" + (chip || "<span class=redup>Belum ada transaksi selesai.</span>") + "</div>" +
+    "<p style=\"font-size:1.2em;margin:6px 0\"><b>" + tglIndo(r.tanggal) + "</b> · " + r.transaksi.filter(function (o) { return o.status !== "BATAL"; }).length + " struk · 💰 <b>" + rp(tot) + "</b></p>" +
+    "<table style=\"width:100%;border-collapse:collapse\"><tbody>" + (baris || "<tr><td class=redup>Tidak ada transaksi pada tanggal ini.</td></tr>") + "</tbody></table>" +
+    "<br><button onclick=\"tutup()\">Tutup</button></div></div>";
+}
+function ubahTrx(i) {
+  var o = rwTrx.transaksi[i]; if (!o) return;
+  el("modal").innerHTML = "<div class=modal onclick=\"if(event.target===this)tutup()\"><div class=kartu><h3>Ubah #" + o.nomor + " · " + tglIndo(o.tanggal) + "</h3><p class=redup>Hanya owner. PIN owner ditanyakan saat menyimpan.</p>" +
+    "<label for=trxTotal>Total belanja (Rp)</label><input id=trxTotal inputmode=numeric value=\"" + (o.total || "") + "\">" +
+    "<label for=trxMenu>Menu</label><input id=trxMenu value=\"" + aman(o.menu) + "\">" +
+    "<br><br><button onclick=\"simpanTrx(" + i + ")\">💾 Simpan perubahan</button><br>" +
+    (o.status === "BATAL" ? "<button class=abu onclick=\"statusTrx(" + i + ",'DIAMBIL')\">↩️ Pulihkan (jadi selesai)</button>" : "<button class=merah onclick=\"statusTrx(" + i + ",'BATAL')\">🗑 Batalkan transaksi</button>") +
+    "<br><button class=abu onclick=\"tampilTrx(rwTrx)\">Kembali</button></div></div>";
+}
+function kirimUbahTrx(i, perubahan) {
+  var o = rwTrx.transaksi[i];
+  var p = prompt("PIN owner untuk mengubah transaksi #" + o.nomor + ":");
+  if (!p) return;
+  google.script.run.withSuccessHandler(function () { riwayatTrx(rwTrx.tanggal); muat(); })
+    .withFailureHandler(function (e) { pesan("⚠️ " + e.message); }).ubahRiwayat(PIN, p, o.id, perubahan);
+}
+function simpanTrx(i) {
+  var o = rwTrx.transaksi[i];
+  var perubahan = {};
+  var total = el("trxTotal").value.trim(), menu = el("trxMenu").value;
+  if (total !== String(o.total || "")) perubahan.total = total;
+  if (menu !== String(o.menu || "")) perubahan.menu = menu;
+  if (!Object.keys(perubahan).length) { tampilTrx(rwTrx); return; }
+  kirimUbahTrx(i, perubahan);
+}
+function statusTrx(i, st) { kirimUbahTrx(i, { status: st }); }
 function simpanTotal(id) {
   google.script.run.withSuccessHandler(function () { tutup(); muat(); }).withFailureHandler(function (e) { pesan("⚠️ " + e.message); }).ubahTotal(PIN, id, el("totalEdit").value);
 }

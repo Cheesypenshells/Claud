@@ -387,3 +387,41 @@ test('apps-script: foto struk & dibakar dihapus 7 hari setelah event selesai, da
   assert.equal(rows[2].foto_struk, ID('d'));
   assert.equal(c.linkFoto_('DIHAPUS 2026-11-20'), '');
 });
+
+test('apps-script: riwayat transaksi (31 hari, hanya selesai/batal) dan ubah hanya dengan PIN owner', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = [
+    { id: 'A1', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 1, status: 'DIAMBIL', total: 100000, menu: 'Mozzarella', dibuat: '2026-11-20 10:10:00', diambil: '2026-11-20 10:30:00', kasir: 'Tiara' },
+    { id: 'A2', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 2, status: 'BATAL', total: 75000, dibuat: '2026-11-20 10:20:00' },
+    { id: 'A3', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 3, status: 'MENUNGGU', total: 50000, dibuat: '2026-11-20 10:30:00' },
+    { id: 'A4', kode_event: 'TGL26-11', tanggal: '2026-11-25', nomor: 1, status: 'DIAMBIL', total: 120000, dibuat: '2026-11-25 11:00:00' },
+    { id: 'A5', kode_event: 'KUNO', tanggal: '2026-09-01', nomor: 1, status: 'DIAMBIL', total: 90000, dibuat: '2026-09-01 11:00:00' },
+  ];
+  const ubahan = [];
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: () => ({}), baca_: () => tabel.map((r, i) => ({ ...r, _baris: i + 2 })), hariIni_: () => '2026-11-27',
+    pinPic_: () => '4816', atur_: () => '', prop_: () => '',
+    ubah_: (t, b, isi) => { ubahan.push(isi); Object.assign(tabel[b - 2], isi); },
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+  });
+  const r = JSON.parse(JSON.stringify(c.riwayatTransaksi('1', '2026-11-20')));
+  assert.equal(r.batas, '2026-10-27');                         // maksimal 31 hari ke belakang
+  assert.deepEqual(r.tanggalTersedia.map((h) => [h.tanggal, h.jumlah, h.batal, h.omzet]), [['2026-11-25', 1, 0, 120000], ['2026-11-20', 1, 1, 100000]]); // A5 (2 bulan lalu) & A3 (belum selesai) tidak ikut
+  assert.deepEqual(r.transaksi.map((o) => [o.nomor, o.status]), [[1, 'DIAMBIL'], [2, 'BATAL']]);
+  assert.equal(JSON.parse(JSON.stringify(c.riwayatTransaksi('1', '2020-01-01'))).tanggal, '2026-10-27'); // tanggal terlalu lama dibatasi
+  // ubah: PIN owner salah ditolak, benar diterima
+  assert.throws(() => c.ubahRiwayat('1', '0000', 'A1', { total: '110000' }), /PIN owner salah/);
+  assert.equal(ubahan.length, 0);
+  const ok = JSON.parse(JSON.stringify(c.ubahRiwayat('1', '4816', 'A1', { total: '110000', menu: 'Garlic' })));
+  assert.equal(ok.total, 110000);
+  assert.deepEqual(JSON.parse(JSON.stringify(ubahan[0])), { total: 110000, sumber_total: 'owner', menu: 'Garlic' });
+  c.ubahRiwayat('1', '4816', 'A2', { status: 'DIAMBIL' }); // pulihkan yang batal
+  assert.equal(tabel[1].status, 'DIAMBIL');
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A5', { total: '5000' }), /lebih dari 31 hari/);
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A1', { total: '12' }), /tidak masuk akal/);
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A1', { status: 'SIAP' }), /Tidak ada yang diubah/);
+});

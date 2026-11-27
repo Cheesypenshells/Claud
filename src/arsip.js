@@ -19,6 +19,10 @@ import { ikutGajian } from './gajian.js';
 const balas = (text) => [{ text }];
 const sama = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 export const HARI_ARSIP = 7;
+// Riwayat transaksi kasir (tab Antrian & Sesi Kasir) tetap bisa dilihat di halaman kasir sampai 31 hari setelah event selesai.
+export const HARI_RIWAYAT_KASIR = 31;
+const TAB_RIWAYAT_KASIR = ['Antrian', 'Sesi Kasir'];
+const lewatRiwayat = (event, hariIni) => Boolean(event.selesai) && hariIni >= tambahHari(event.selesai, HARI_RIWAYAT_KASIR);
 
 // Tab yang dibersihkan (baris milik event itu). Semua tab lain tetap.
 export const TAB_ARSIP = [
@@ -144,10 +148,12 @@ export async function perintahArsip(ctx, pesan, event, argumen, { isOwner }) {
   // 4) hapus dari sheet utama
   const hasil = [];
   for (const t of sudahSalin) {
+    // Riwayat kasir ditahan dulu (dibersihkan harian setelah 31 hari); salinannya sudah ada di file event.
+    if (TAB_RIWAYAT_KASIR.includes(t.tab) && !lewatRiwayat(ev, hariIni)) { hasil.push(`${t.ket}: ditahan ${HARI_RIWAYAT_KASIR} hari untuk riwayat kasir`); continue; }
     const n = await ctx.store.hapusWhere(t.tab, (r) => r.kode_event === ev.kode);
     hasil.push(`${t.ket}: ${n}`);
   }
-  const jumlah = sudahSalin.reduce((s, t) => s + t.jumlah, 0);
+  const jumlah = sudahSalin.filter((t) => !TAB_RIWAYAT_KASIR.includes(t.tab) || lewatRiwayat(ev, hariIni)).reduce((s, t) => s + t.jumlah, 0);
   await ctx.store.append('Arsip Event', {
     kode_event: ev.kode, tanggal_arsip: waktu, baris_dibersihkan: jumlah, rincian: hasil.join(' · '),
     file_arsip: `https://docs.google.com/spreadsheets/d/${fileId}`, oleh, status: 'OK',
@@ -161,6 +167,14 @@ export async function perintahArsip(ctx, pesan, event, argumen, { isOwner }) {
   ].join('\n'));
 }
 
+// Harian: hapus riwayat kasir (Antrian & Sesi Kasir) event yang sudah diarsipkan dan lewat 31 hari sejak selesai.
+async function bersihkanRiwayatKasir(ctx, hariIni) {
+  const [arsip, events] = await Promise.all([baca(ctx, 'Arsip Event'), baca(ctx, 'Event')]);
+  for (const e of events.filter((x) => sudahDiarsipkan(arsip, x.kode) && lewatRiwayat(x, hariIni))) {
+    for (const tab of TAB_RIWAYAT_KASIR) await ctx.store.hapusWhere(tab, (r) => r.kode_event === e.kode);
+  }
+}
+
 // Harian jam 10.00: beri tahu owner event yang sudah 7 hari sejak selesai dan belum diarsipkan.
 export async function tugasArsip(ctx, sekarang = new Date()) {
   const keluar = [];
@@ -168,6 +182,10 @@ export async function tugasArsip(ctx, sekarang = new Date()) {
   const jam = Number(sekarang.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false }).slice(0, 2));
   if (jam < 10) return keluar;
   const hariIni = tanggalLokal(sekarang);
+  if (!ctx.sesi.get(`riwayatkasir:${hariIni}`)) {
+    ctx.sesi.set(`riwayatkasir:${hariIni}`, { selesai: true });
+    try { await bersihkanRiwayatKasir(ctx, hariIni); } catch { /* dicoba lagi besok */ }
+  }
   const [events, arsip, pengaturan] = await Promise.all([baca(ctx, 'Event'), baca(ctx, 'Arsip Event'), baca(ctx, 'Pengaturan')]);
   const atur = Object.fromEntries(pengaturan.map((r) => [r.kunci, r.nilai]));
   // Pemberitahuan otomatis hanya untuk event dengan sistem baru (mulai tanggal penggajian lewat bot); event lama: #arsip KODE manual.

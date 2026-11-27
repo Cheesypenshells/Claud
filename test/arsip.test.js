@@ -59,9 +59,10 @@ test('arsip: bekukan KPI, salin ke file event, verifikasi, baru hapus; KPI & pem
   assert.ok(sebelum.find((s) => s.nama === 'Tiara').laporanMinus > 0); // laporan terlewat dihitung dari data harian
 
   const selesai = await kirim('#arsip SMR26-11 ya', waktu('2026-11-29'), { pribadi: true });
-  assert.match(selesai, /Arsip SMR26-11 selesai.*10 baris dibersihkan.*struk & pesanan kasir: 3.*KPI 2 orang dibekukan permanen/s);
+  assert.match(selesai, /Arsip SMR26-11 selesai.*7 baris dibersihkan.*struk & pesanan kasir: ditahan 31 hari untuk riwayat kasir.*KPI 2 orang dibekukan permanen/s);
   // data kerja event itu hilang dari sheet utama, event lain utuh
-  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 0);
+  // riwayat kasir (Antrian) ditahan 31 hari supaya bisa dilihat di halaman kasir; yang lain dibersihkan
+  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 3);
   assert.equal((await store.all('Laporan Foto')).length, 0);
   assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'LAIN26-12').length, 1);
   assert.equal((await store.all('Tugas Harian')).filter((r) => r.kode_event === 'LAIN26-12').length, 1);
@@ -133,4 +134,15 @@ test('tugasArsip: event lama (sebelum sistem baru) tidak dibanjiri pemberitahuan
   const info = await tugasArsip(ctx, waktu('2026-11-29', '10:05'));
   assert.ok(info.every((x) => !/LMB26-09/.test(x.text)));
   assert.ok(info.some((x) => /SMR26-11/.test(x.text)));
+});
+
+test('arsip: riwayat kasir (Antrian) dibersihkan harian setelah 31 hari sejak event selesai', async () => {
+  const { store, kirim, ctx } = await siapkan();
+  await kirim('#arsip SMR26-11 ya', waktu('2026-11-29'), { pribadi: true });
+  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 3);
+  await tugasArsip(ctx, waktu('2026-12-10', '10:30')); // belum 31 hari (selesai 22 Nov -> 23 Des)
+  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 3);
+  await tugasArsip(ctx, waktu('2026-12-23', '10:30'));
+  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'SMR26-11').length, 0);
+  assert.equal((await store.all('Antrian')).filter((r) => r.kode_event === 'LAIN26-12').length, 1);
 });

@@ -637,3 +637,9 @@ Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat
 ## Alarm bot mati (email otomatis)
 Bot menulis penanda "hidup" (`bot_hidup`, tab Pengaturan) tiap 2 menit, hanya kalau WhatsApp tersambung. Skrip kecil di Apps Script (`apps-script/alarm/Alarm.gs`, proyek **terpisah dari kasir**) dijalankan Google tiap 5 menit dan mengirim email ke Gmail pemilik kalau bot tidak ada denyut lebih dari 10 menit (jam 07.00–24.00 WIB), lalu email "hidup lagi" saat pulih.
 Pasang sekali: script.google.com > Proyek baru > tempel isi `Alarm.gs` > jalankan `PASANG_ALARM` (izinkan akses) > jalankan `UJI_EMAIL` untuk mencoba. Ubah `BATAS_MENIT` / jam aktif di bagian atas skrip kalau perlu.
+
+## Riwayat transaksi di halaman kasir (📜)
+- Tombol **📜 Riwayat transaksi** di halaman kasir menampilkan antrian yang **sudah selesai** (dan yang dibatalkan, dicoret), per tanggal, dengan nomor, jam, menu, total, kasir, dan asal total. Pilih tanggal di baris tombol; bisa mundur sampai **31 hari** (semua event).
+- **Hanya owner yang bisa mengubah:** tombol ✏️ meminta **PIN owner** setiap kali menyimpan (tidak disimpan di HP). Bisa mengubah total, menu, membatalkan, atau memulihkan transaksi yang dibatalkan. PIN owner diisi di Pengaturan `pin_owner`; kalau belum diisi, PIN PIC (`pin_pic`) dipakai. Total yang diubah owner ditandai sumber `owner`.
+- Supaya riwayatnya masih ada, `#arsip` tidak langsung menghapus tab **Antrian** dan **Sesi Kasir**: ditahan **31 hari setelah event selesai** (salinannya tetap masuk file event), lalu dibersihkan otomatis tiap hari.
+- Fitur ini ada di kode Apps Script terbaru (Code.gs). Tempel & **Deploy versi baru** di luar jam kasir dipakai.
