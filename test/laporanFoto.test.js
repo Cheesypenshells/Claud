@@ -352,3 +352,12 @@ test('pengembalian deposit/refund dikenali sebagai uang masuk, pembelian biasa t
   for (const t of ['pengembalian deposit 1000k ya', 'refund deposit 500rb', 'deposit lpg dikembalikan 600rb', 'jaminan dikembalikan']) assert.equal(uangMasukKembali(t), true, t);
   for (const t of ['beli deposit galon 50rb', 'es batu 30rb', 'konsumsi 200rb', 'bayar deposit booth 1jt']) assert.equal(uangMasukKembali(t), false, t);
 });
+
+test('tugas harian: pemanggang baru ditetapkan = pindah dari bagiannya, bagian lain tetap (kasus Tegal)', async () => {
+  const { lanjutkanTugas } = await import('../src/tugasHarian.js');
+  const tim = ['Alam', 'Veri', 'Adit', 'Imam', 'Bima'];
+  const kemarin = [{ bagian: 'Kasir', nama: 'Alam' }, { bagian: 'Plating', nama: 'Adit' }, { bagian: 'Getok', nama: 'Imam' }, { bagian: 'Getok', nama: 'Bima' }, { bagian: 'Getok', nama: 'Veri' }];
+  const hasil = lanjutkanTugas(kemarin, tim, { kasir: 'Alam', pemanggang: 'Imam' });
+  const peta = hasil.map((d) => `${d.bagian}:${d.nama}`).sort();
+  assert.deepEqual(peta, ['Getok:Bima', 'Getok:Veri', 'Kasir:Alam', 'Pemanggang:Imam', 'Plating:Adit']);
+});

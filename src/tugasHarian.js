@@ -117,6 +117,12 @@ export function lanjutkanTugas(sebelumnya, anggota, { kasir, pemanggang }) {
     if (!ada(baru)) return true;
     const lama = daftar.find((d) => d.bagian === bagian && !d.rangkap);
     const nama = nyata(baru);
+    if (!lama && bagian === 'Pemanggang') {
+      // Pemanggang baru ditetapkan: orang itu pindah dari bagiannya (mis. getok) ke pemanggang, bagian lain tetap.
+      daftar = daftar.filter((d) => !(sama(d.nama, nama) && !d.rangkap));
+      daftar.push({ bagian: 'Pemanggang', nama });
+      return true;
+    }
     if (!lama) return false; // dari "kosong" -> ada orang: hitung ulang dari awal
     if (sama(lama.nama, nama)) return true;
     const miliknya = daftar.filter((d) => sama(d.nama, nama) && d.bagian !== bagian);
@@ -128,7 +134,7 @@ export function lanjutkanTugas(sebelumnya, anggota, { kasir, pemanggang }) {
     return true;
   };
   const bagianKerja = (b) => daftar.some((d) => d.bagian === b && !d.rangkap);
-  if ((ada(kasir) && !bagianKerja('Kasir')) || (ada(pemanggang) && !bagianKerja('Pemanggang'))) return null;
+  if (ada(kasir) && !bagianKerja('Kasir')) return null;
   if (!tukarPeran('Kasir', kasir) || !tukarPeran('Pemanggang', pemanggang)) return null;
   // Anggota baru (belum punya bagian) masuk getok.
   for (const a of anggota) if (!daftar.some((d) => sama(d.nama, a))) daftar.push({ bagian: 'Getok', nama: a });
