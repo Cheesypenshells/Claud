@@ -1,0 +1,427 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { linkKasir, tugasLinkKasir, perintahKasir } from '../src/komplain.js';
+
+const tabel = {
+  Pengaturan: [{ kunci: 'url_antrian', nilai: 'https://script.google.com/x/exec' }, { kunci: 'pin_kasir', nilai: '1234' }],
+  Event: [{ kode: 'SMR26-11', kota: 'Semarang', mulai: '2026-11-14', jam_buka: '10:00', status: 'AKTIF' }],
+  'Tim Event': [{ kode_event: 'SMR26-11', nama: 'Sari', peran: 'Kasir' }, { kode_event: 'SMR26-11', nama: 'Budi', peran: 'DW' }],
+  Karyawan: [{ nama: 'Sari', nomor_wa: '08123' }],
+  Grup: [{ kode_event: 'SMR26-11', jenis: 'event', group_id: 'g@tim' }],
+};
+const buatCtx = (t = tabel) => {
+  const m = new Map();
+  return { store: { all: async (n) => t[n] || [] }, sesi: { get: (k) => m.get(k), set: (k, v) => m.set(k, v) } };
+};
+const tanggalLokal = (d) => d.toISOString().slice(0, 10);
+
+test('link kasir berisi PIN dan kode event', () => {
+  assert.equal(linkKasir({ url_antrian: 'https://u/exec', pin_kasir: '1234' }, 'SMR26-11'), 'https://u/exec?p=kasir&k=1234&e=SMR26-11');
+  assert.equal(linkKasir({}, 'X'), '');
+});
+
+test('setiap hari event, 2 jam sebelum buka: bot tanya kasir hari ini di grup (sekali per hari, tanpa PIN)', async () => {
+  const ctx = buatCtx();
+  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T00:30:00Z'), { tanggalLokal })).length, 0); // 07.30 WIB
+  const k = await tugasLinkKasir(ctx, new Date('2026-11-14T01:05:00Z'), { tanggalLokal }); // 08.05 WIB
+  assert.deepEqual(k.map((x) => x.groupId), ['g@tim']);
+  assert.match(k[0].text, /Siapa yang pegang kasir antrian hari ini\?.*14 Nov.*Sebelumnya: Sari/s);
+  assert.ok(!k[0].text.includes('1234'), 'PIN tidak dikirim ke grup');
+  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-14T05:00:00Z'), { tanggalLokal })).length, 0); // sekali per hari
+  assert.equal((await tugasLinkKasir(ctx, new Date('2026-11-15T01:05:00Z'), { tanggalLokal })).length, 1); // besoknya tanya lagi
+});
+
+test('jawaban "saya": pertama tiap hari menggantikan kasir kemarin, berikutnya ditambah (ganti setengah hari)', async () => {
+  const { tanganiJawabKasir } = await import('../src/komplain.js');
+  const ev = { ...tabel.Event[0], kasir_antrian: 'Sari' };
+  const t = { ...tabel, Event: [ev], 'Tim Event': [], Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }, { nama: 'Bima', nomor_wa: '0833333' }] };
+  const ctx = buatCtx(t);
+  ctx.store.updateWhere = async (tab, f, nilai) => { Object.assign(ev, nilai); };
+  const w = new Date('2026-11-14T02:00:00Z');
+  await tugasLinkKasir(ctx, w, { tanggalLokal });
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'lain', text: 'saya', senderId: '62811111', waktu: w }, ev), null);
+  const r = await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya kak', senderId: '62811111', waktu: w }, ev);
+  assert.match(r[0].text, /TiarA.*hari ini.*#kasir/s);
+  assert.equal(ev.kasir_antrian, 'TiarA');
+  await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'aku gantiin', senderId: '62833333', waktu: new Date('2026-11-14T08:00:00Z') }, ev);
+  assert.equal(ev.kasir_antrian, 'TiarA, Bima');
+  assert.equal(await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya sudah sampai di lokasi bongkar barang sekarang ya', senderId: '62811111', waktu: w }, ev), null);
+  // besoknya: pertanyaan baru, jawaban pertama menggantikan
+  const w2 = new Date('2026-11-15T02:00:00Z');
+  await tugasLinkKasir(ctx, w2, { tanggalLokal });
+  await tanganiJawabKasir(ctx, { groupId: 'g@tim', text: 'saya', senderId: '62833333', waktu: w2 }, ev);
+  assert.equal(ev.kasir_antrian, 'Bima');
+});
+
+test('#kasir hanya owner/PIC', async () => {
+  const ctx = buatCtx();
+  assert.match((await perintahKasir(ctx, tabel.Event[0], { bolehLihat: false }))[0].text, /hanya bisa/);
+  assert.match((await perintahKasir(ctx, tabel.Event[0], { bolehLihat: true }))[0].text, /p=kasir&k=1234/);
+});
+
+test('halaman pelanggan GitHub Pages sinkron dengan apps-script/Code.gs', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { buatHalaman } = await import('../scripts/halaman-pelanggan.mjs');
+  const isi = readFileSync(new URL('../docs/antrian/index.html', import.meta.url), 'utf8');
+  const api = isi.match(/var API="([^"]+)"/)[1];
+  assert.equal(isi, buatHalaman(api), 'jalankan: node scripts/halaman-pelanggan.mjs <url /exec>');
+});
+
+test('apps-script/Code.gs: semua halaman bisa dibuat dan semua fungsi yang dipanggil ada', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  const keluaran = { setTitle() { return this; }, addMetaTag() { return this; }, setMimeType() { return this; } };
+  const c = {
+    HtmlService: { createHtmlOutput: (h) => ({ ...keluaran, html: h }) },
+    ContentService: { createTextOutput: (t) => ({ ...keluaran, html: t }), MimeType: { JSON: 'json' } },
+  };
+  vm.createContext(c);
+  vm.runInContext(src, c);
+  for (const nama of ['KOLOM_ANTRIAN', 'KOLOM_KOMPLAIN', 'KATEGORI_KOMPLAIN', 'STATUS', 'GAYA', 'ASET', 'HTML_KASIR', 'HTML_PESANAN', 'HTML_KOMPLAIN', 'MULAI_PASANG', 'doGet', 'pasang']) {
+    assert.ok(c[nama] !== undefined, `${nama} hilang dari Code.gs`);
+  }
+  const dipanggil = new Set([...src.matchAll(/\b([a-zA-Z]\w*_)\(/g)].map((m) => m[1]));
+  for (const f of dipanggil) assert.equal(typeof c[f], 'function', `fungsi ${f} dipanggil tapi tidak ada`);
+  const kasir = c.doGet({ parameter: { p: 'kasir', k: '1234', e: 'SMR26-11' } }).html;
+  assert.match(kasir, /KUNCI = "1234", EVLINK = "SMR26-11"/);
+  const kom = c.doGet({ parameter: { p: 'komplain', e: 'SMR26-11' } }).html;
+  assert.match(kom, /Oyster tidak fresh/);
+  const pes = c.doGet({ parameter: { p: 'pesanan', t: 'abc' } }).html;
+  assert.match(pes, /var TOKEN="abc"/);
+  for (const h of [kasir, kom, pes]) assert.ok(!h.includes('__ASET__') && h.includes(c.ASET + 'logo-putih.png'));
+});
+
+test('kasir antrian ditunjuk lewat kolom Event (tanpa ubah peran): dapat link otomatis & boleh #kasir', async () => {
+  const { namaKasir, eventKasirUntuk } = await import('../src/komplain.js');
+  const t = {
+    ...tabel,
+    Event: [{ ...tabel.Event[0], kasir_antrian: 'Tiara' }],
+    'Tim Event': [{ kode_event: 'SMR26-11', nama: 'TiarA', peran: 'Tetap' }, { kode_event: 'SMR26-11', nama: 'George', peran: 'PIC' }],
+    Karyawan: [{ nama: 'TiarA', nomor_wa: '0811111' }, { nama: 'George', nomor_wa: '0822222' }, { nama: 'Bima', nomor_wa: '0833333' }],
+  };
+  assert.deepEqual(namaKasir(t.Event[0], t['Tim Event']), ['Tiara']);
+  const ctx = buatCtx(t);
+  assert.equal((await eventKasirUntuk(ctx, '62811111', '2026-11-14')).length, 1);
+  assert.equal((await eventKasirUntuk(ctx, '62822222', '2026-11-14')).length, 1); // PIC
+  assert.equal((await eventKasirUntuk(ctx, '62833333', '2026-11-14')).length, 0);
+});
+
+test('apps-script: 2 HP kasir — tombol dari tampilan lama ditolak (tidak memanggil ulang pesanan yang sudah diambil)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const baris = { _baris: 2, id: 'Q1', nomor: 7, status: 'SIAP', kode_event: 'SMR26-11', panggil_ke: 1 };
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: () => ({}), baca_: () => [baris], ubah_: (t, b, isi) => Object.assign(baris, isi), sekarang_: () => 'x',
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+  });
+  assert.equal(c.ubahStatus('1', 'Q1', 'DIAMBIL'), true);   // HP A: sudah diambil
+  assert.throws(() => c.ubahStatus('1', 'Q1', 'SIAP'), /#7 sudah diubah dari HP lain \(sekarang: sudah diambil\)/); // HP B: panggil ulang
+  assert.equal(baris.status, 'DIAMBIL');
+});
+
+test('apps-script/Code.gs sinkron dengan apps-script/klien/ (jalankan: node scripts/bangun-apps-script.mjs)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { susunCodeGs } = await import('../scripts/bangun-apps-script.mjs');
+  const src = readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  assert.equal(src, susunCodeGs(src));
+});
+
+test('apps-script: mulai/tutup kasir, nomor mulai 1 tiap sesi, ringkasan & bintang pelanggan', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = {};
+  let jam = '2026-11-14 08:00:00';
+  let seq = 0;
+  Object.assign(c, {
+    cekPin_: () => {}, sekarang_: () => jam, hariIni_: () => jam.slice(0, 10), url_: () => 'https://u/exec', atur_: () => '',
+    tab_: (nama) => (tabel[nama] = tabel[nama] || { nama, rows: [] }),
+    baca_: (t) => t.rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    tulisBaris_: (t, o) => t.rows.push({ ...o }),
+    ubah_: (t, b, isi) => Object.assign(t.rows[b - 2], isi),
+    simpanFoto_: () => ({ id: 'F', blob: null }), ocr_: () => '', bacaMenu_: () => '', linkFoto_: (id) => id,
+    daftarEvent: () => [{ kode: 'SMR26-11', kota: 'Semarang', io: 'Kepo' }],
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+    Utilities: { formatDate: () => `2611${String(++seq).padStart(8, '0')}`, getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
+  });
+  assert.throws(() => c.buatPesanan('1', 'SMR26-11', 'data:'), /Kasir belum dibuka/);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi, null);
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  c.mulaiKasir('1', 'SMR26-11', 'Orang lain'); // HP kedua: sesi yang sama dipakai
+  assert.equal(tabel['Sesi Kasir'].rows.length, 1);
+  const p1 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  const p2 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.deepEqual([p1.nomor, p2.nomor], [1, 2]);
+  c.gantiKasir('1', 'SMR26-11', 'Bima');
+  jam = '2026-11-15 00:30:00'; // lewat tengah malam: masih sesi yang sama, nomor berlanjut
+  const p3 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p3.nomor, 3);
+  assert.equal(tabel.Antrian.rows[2].kasir, 'Bima');
+  const tok = (n) => tabel.Antrian.rows[n].token;
+  assert.throws(() => c.nilaiPesanan(tok(0), 5, ''), /setelah pesanan siap/);
+  tabel.Antrian.rows[0].dipanggil = '2026-11-14 08:12:00';
+  c.ubahStatus('1', p1.id, 'SIAP'); tabel.Antrian.rows[0].dipanggil = '2026-11-14 08:12:00';
+  c.ubahStatus('1', p1.id, 'DIAMBIL');
+  c.nilaiPesanan(tok(0), 5, 'ramah');
+  c.ubahStatus('1', p3.id, 'SIAP');
+  c.nilaiPesanan(tok(2), 2, 'lama');
+  // hanya PIC yang boleh membatalkan struk (PIN PIC terpisah dari PIN kasir)
+  c.pinPic_ = () => '9999';
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL'), /PIN PIC salah/);
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL', '', '1'), /PIN PIC salah/);
+  assert.equal(tabel.Antrian.rows[1].status, 'MENUNGGU');
+  c.pinPic_ = () => '';
+  assert.throws(() => c.ubahStatus('1', p2.id, 'BATAL', '', '9999'), /PIN PIC belum diatur/);
+  c.pinPic_ = () => '9999';
+  c.ubahStatus('1', p2.id, 'BATAL', '', '9999');
+  const r = c.tutupKasir('1', 'SMR26-11');
+  assert.equal(r.jumlah_struk, 2);
+  assert.equal(r.diambil, 1);
+  assert.equal(r.batal, 1);
+  assert.equal(r.belum, 1);
+  assert.equal(r.rata_tunggu_menit, 6); // (12 + 0) / 2
+  assert.equal(r.rating_rata, 3.5);
+  assert.match(r.rating_kasir, /Tiara 5 \(1\).*Bima 2 \(1\)/);
+  assert.match(r.ulasan_buruk, /#3 2★ \(Bima\) lama/);
+  assert.equal(tabel['Sesi Kasir'].rows[0].status, 'TUTUP');
+  assert.throws(() => c.buatPesanan('1', 'SMR26-11', 'data:'), /Kasir belum dibuka/);
+  assert.throws(() => c.tutupKasir('1', 'SMR26-11'), /sudah ditutup/);
+  // event berikutnya mulai dari 1 lagi
+  c.mulaiKasir('1', 'PKL26-12', 'Tiara');
+  assert.equal(c.buatPesanan('1', 'PKL26-12', 'data:').nomor, 1);
+  // kasir event yang sama dibuka lagi (hari berikutnya): nomor mulai dari 1, tidak bercampur sesi kemarin
+  jam = '2026-11-15 10:00:00';
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  assert.equal(c.buatPesanan('1', 'SMR26-11', 'data:').nomor, 1);
+  assert.equal(c.buatPesanan('1', 'SMR26-11', 'data:').nomor, 2);
+});
+
+test('apps-script: total belanja dibaca dari teks struk / bukti trf, omzet sesi dijumlah, ringkasan tutup kasir', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  assert.equal(c.angkaRupiah_('Rp 125.000'), 125000);
+  assert.equal(c.angkaRupiah_('125,000'), 125000);
+  assert.equal(c.angkaRupiah_('1.250.000,00'), 1250000);
+  assert.equal(c.bacaTotal_('Garlic 2x 50.000\nMozza 1x 30.000\nSubtotal 130.000\nTOTAL 130.000\nTunai 150.000\nKembali 20.000'), 130000);
+  assert.equal(c.bacaTotal_('Grand Total\nRp 87.500\nTerima kasih'), 87500);
+  assert.equal(c.bacaTotal_('Garlic 2x 50.000\nTunai 150.000'), 0); // tanpa kata total: tidak menebak
+  assert.equal(c.bacaNominalTrf_('Transfer berhasil\nNominal Rp 245.000\nBiaya admin Rp 0\nTotal Rp 245.000'), 245000);
+  assert.equal(c.bacaNominalTrf_('QRIS berhasil\nRp 99.500\nCheesy Pen Shells'), 99500);
+  // struk & bukti bayar asli dari kasir Semarang (hasil OCR Drive, apa adanya: berantakan)
+  const asli = {
+    cashup160: 'SALE\nMID: 20719\nTRX.TYPE: GRIS\nREF.NO: 000000000171\nBATCH: 000004\nINVOICE: 000192\nACQUIRER: CASHLEZ\nISSUER : BNI\nTOTAL:\nDATE TIME : 16 November 2026 11:12:11\nPowered by cashUP | V 3.2.1/4004\n--Salinan--\nRp 160.000',
+    cashup75: 'SALE\nREF.NO: 000000000175\nBATCH: 000004\nACQUIRER: CASHLEZ\nTRX.TYPE: CRIS APP.CODE: stn6up\nINVOICE: 000196\nISSUER BCA\nRp 75.000\nDATE TIME: 16 November 2026 13:23:47\nTOTAL:\nPowered by cashUP V 3.2.1/4004\nO\n--Salinan--\nb 32\'000\nDYLE LINE 5pse 1653:45\ncontate pe\n122',
+    cashup75b: 'ISSUER BCA\nDATE TIME: 16 November 2026 13:23:47\nTOTAL :\nRp 75.000\nPowered by\n3.2.1/4004',
+    qris100: 'Vell 72%\nPembayaran QRIS berhasil\nRp100.000\n16 Nov 2026 11:17:14 WIB.\nRef ID: 20261116111707000460\nBukti Transaksi\nPenerima\nKEPO ASIAN-Cheesy Pen S',
+    bca75: 'Financial Diary\nYou spent IDR 75,000.00 at Payment.\nPayment to\nQRIS Payment Successful\nBCA\n16 Nov 2026 12:56:01\nIDR 75,000.00\nKEPO ASIAN-Cheesy Pen S\nRRN\n267343766',
+    ovo100: 'Yay,\nPembayaran Diproses\nKEPO ASIAN-Ch\nTotal Transaksi\nOVO Cash Terpakai\nRp100.000\nRp100.000\nWaktu Transaksi Berhasil\n16 Nov 2026. 13:04',
+    nota_tulis: 'Tuan Toko\nSH\nNOTA NO.\nBANYAKNYA\nNAMA BARANG\nHARGA\nJUMLAH\n15 NOV 2016\nTanda Terima\nJumlah Rp.\nHormat kami,',
+    menu_saja: '9\nPILIHAN ISI:\nEAFOOD MIX\n25K\n/PCS\nOYSTER FRES\nNaturally Fresh, Pure Ocean Taste!\nO\nX\no 75.000',
+  };
+  assert.deepEqual(
+    ['cashup160', 'cashup75', 'cashup75b', 'qris100', 'bca75', 'ovo100', 'nota_tulis', 'menu_saja'].map((k) => c.bacaTotalStruk_(asli[k])),
+    [160000, 75000, 75000, 100000, 75000, 100000, 0, 0], // tulisan tangan / tanpa total: 0 (kasir isi manual)
+  );
+  const tabel = {};
+  let teks = 'Garlic 2x 50.000\nTOTAL 100.000';
+  Object.assign(c, {
+    cekPin_: () => {}, sekarang_: () => '2026-11-14 10:00:00', hariIni_: () => '2026-11-14', url_: () => 'https://u/exec', atur_: () => '',
+    tab_: (nama) => (tabel[nama] = tabel[nama] || { nama, rows: [] }),
+    baca_: (t) => t.rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    tulisBaris_: (t, o) => t.rows.push({ ...o }), ubah_: (t, b, isi) => Object.assign(t.rows[b - 2], isi),
+    simpanFoto_: () => ({ id: 'F', blob: null }), ocr_: () => teks, bacaMenu_: () => '', linkFoto_: (id) => id,
+    daftarEvent: () => [], LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+    Utilities: { formatDate: () => '261114100000', getUuid: () => `${Math.random()}`.replace('.', 'x').padEnd(20, 'a') },
+  });
+  c.mulaiKasir('1', 'SMR26-11', 'Tiara');
+  const p1 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p1.total, 100000);
+  teks = 'foto buram';
+  const p2 = c.buatPesanan('1', 'SMR26-11', 'data:');
+  assert.equal(p2.total, 0);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi.tanpaTotal, 1);
+  teks = 'Transfer berhasil\nNominal Rp 245.000';
+  assert.deepEqual({ ...c.buktiTransfer('1', p2.id, 'data:') }, { nominal: 245000 });
+  assert.equal(tabel.Antrian.rows[1].sumber_total, 'trf');
+  const p3 = c.buatPesanan('1', 'SMR26-11', 'data:'); // teks masih bukti trf: terbaca sebagai nominal 245.000
+  c.ubahTotal('1', p3.id, '60.000');
+  assert.equal(tabel.Antrian.rows[2].total, 60000);
+  assert.equal(tabel.Antrian.rows[2].sumber_total, 'manual');
+  assert.throws(() => c.ubahTotal('1', p3.id, '12'), /tidak masuk akal/);
+  assert.equal(c.daftarAntrian('1', 'SMR26-11').sesi.omzet, 100000 + 245000 + 60000);
+  const r = c.tutupKasir('1', 'SMR26-11');
+  assert.equal(r.omzet, 405000);
+  assert.equal(r.tanpa_total, 0);
+  assert.equal(tabel['Sesi Kasir'].rows[0].omzet, 405000);
+});
+
+test('apps-script: riwayat omzet per hari (beberapa sesi sehari digabung), akumulasi, total, dan laporan #omzet tim', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = {
+    'Sesi Kasir': [
+      { id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara', status: 'TUTUP', dibuka: '2026-11-14 10:00:00' },
+      { id: 'S2', kode_event: 'SMR26-11', tanggal: '2026-11-15', kasir: 'Tiara, Bima', status: 'TUTUP', dibuka: '2026-11-15 10:00:00' },
+      { id: 'S3', kode_event: 'SMR26-11', tanggal: '2026-11-15', kasir: 'George', status: 'BUKA', dibuka: '2026-11-15 20:00:00' },
+      { id: 'X', kode_event: 'LAIN26-11', tanggal: '2026-11-14', kasir: 'Z', status: 'TUTUP', dibuka: '2026-11-14 10:00:00' },
+    ],
+    Antrian: [
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'DIAMBIL', total: 100000, dibuat: '2026-11-14 10:10:00', dipanggil: '2026-11-14 10:20:00', rating: 5 },
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'DIAMBIL', total: 75000, dibuat: '2026-11-14 11:00:00', dipanggil: '2026-11-14 11:10:00' },
+      { kode_event: 'SMR26-11', sesi: 'S1', status: 'BATAL', total: 999000 },
+      { kode_event: 'SMR26-11', sesi: 'S2', status: 'DIAMBIL', total: 120000, dibuat: '2026-11-15 10:10:00', dipanggil: '2026-11-15 10:16:00' },
+      { kode_event: 'SMR26-11', sesi: 'S3', status: 'DIBAKAR', total: '' },
+      { kode_event: 'SMR26-11', sesi: 'S3', status: 'DIAMBIL', total: 60000 },
+      { kode_event: 'LAIN26-11', sesi: 'X', status: 'DIAMBIL', total: 5000000 },
+    ],
+  };
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: (n) => ({ nama: n }), baca_: (t) => (tabel[t.nama] || []).map((r, i) => ({ ...r, _baris: i + 2 })),
+    omzetLaporanTim_: () => ({ '2026-11-14': 180000, '2026-11-15': 10460 }),
+  });
+  const r = JSON.parse(JSON.stringify(c.riwayatOmzet('1', 'SMR26-11')));
+  assert.deepEqual(r.hari.map((h) => [h.tanggal, h.sesi, h.struk, h.omzet, h.kumulatifOmzet, h.tanpaTotal]), [
+    ['2026-11-14', 1, 2, 175000, 175000, 0],
+    ['2026-11-15', 2, 3, 180000, 355000, 1], // dua sesi di hari yang sama digabung; sesi 15 Nov yang masih BUKA ikut
+  ]);
+  assert.equal(r.hari[0].batal, 1); // pesanan batal tidak dihitung omzet
+  assert.equal(r.hari[0].rataTunggu, 10); assert.equal(r.hari[0].bintang, 5);
+  assert.equal(r.hari[1].masihBuka, true); assert.equal(r.hari[1].kasir, 'Tiara, Bima, George');
+  assert.equal(r.hari[0].laporanTim, 180000);
+  assert.deepEqual(r.total, { hari: 2, struk: 5, omzet: 355000, tanpaTotal: 1, rataPerHari: 177500, laporanTim: 190460 });
+  // sesi yang barisnya sudah dibersihkan (arsip event): pakai ringkasan di Sesi Kasir
+  tabel['Sesi Kasir'].push({ id: 'S4', kode_event: 'SMR26-11', tanggal: '2026-11-16', kasir: 'Tiara', status: 'DITERUSKAN', dibuka: '2026-11-16 10:00:00', jumlah_struk: 40, batal: 2, omzet: 3685000, tanpa_total: 6, rata_tunggu_menit: 12, jumlah_rating: 5, rating_rata: 4.8 });
+  const arsip = JSON.parse(JSON.stringify(c.riwayatOmzet('1', 'SMR26-11')));
+  const hari16 = arsip.hari.find((h) => h.tanggal === '2026-11-16');
+  assert.deepEqual([hari16.struk, hari16.omzet, hari16.tanpaTotal, hari16.batal, hari16.rataTunggu, hari16.bintang, hari16.kumulatifOmzet], [40, 3685000, 6, 2, 12, 4.8, 355000 + 3685000]);
+  assert.equal(c.riwayatOmzet('1', 'BELUM-ADA').hari.length, 0); // event tanpa sesi: kosong, tidak error
+});
+
+test('ringkasan tutup kasir diteruskan bot ke WhatsApp owner sekali', async () => {
+  const { tugasSesiKasir } = await import('../src/komplain.js');
+  const rows = [{ id: 'S1', kode_event: 'SMR26-11', tanggal: '2026-11-14', kasir: 'Tiara, Bima', dibuka: '2026-11-14 08:05:00', ditutup: '2026-11-14 22:10:00', jumlah_struk: 126, diambil: 121, batal: 3, belum: 2, rata_tunggu_menit: 11, rating_rata: 4.8, jumlah_rating: 58, rating_kasir: 'Tiara 4,9 (40) · Bima 4,6 (18)', ulasan_buruk: '#88 2★ (Bima) nunggu lama', status: 'TUTUP' }];
+  const ctx = { ownerIds: new Set(['62811']), store: { all: async () => rows, updateWhere: async (t, f, v) => { for (const r of rows) if (f(r)) Object.assign(r, v); } } };
+  rows[0].omzet = 7960000; rows[0].tanpa_total = 3;
+  const ctx2 = { ...ctx, store: { all: async (t) => (t === 'Omzet' ? [{ kode_event: 'SMR26-11', tanggal: '2026-11-14', omzet: 7900000, status: 'OK' }] : rows), updateWhere: ctx.store.updateWhere } };
+  const k2 = await tugasSesiKasir(ctx2);
+  assert.match(k2[0].text, /Omzet dari struk: Rp 7.960.000.*3 struk belum ada totalnya.*Laporan #omzet tim: Rp 7.900.000 → selisih Rp 60.000 ⚠️/s);
+  rows[0].status = 'TUTUP'; delete rows[0].omzet; delete rows[0].tanpa_total;
+  const k = await tugasSesiKasir(ctx);
+  assert.equal(k[0].nomor, '62811');
+  assert.match(k[0].text, /Kasir SMR26-11 ditutup.*08:05–22:10.*126 struk dilayani.*121 diambil.*2 belum diambil.*11 menit.*4,8 dari 58.*Tiara 4,9.*#88 2★/s);
+  assert.equal((await tugasSesiKasir(ctx)).length, 0);
+});
+
+test('animasi: atribut SVG sebelum "/>" selalu berkutip (tanpa kutip, bentuk berikutnya tidak tergambar)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../apps-script/klien/animasi.js', import.meta.url), 'utf8');
+  assert.deepEqual(src.match(/=[^'"\s>]+\/>/g), null);
+});
+
+test('apps-script: cadangan harian menyalin spreadsheet dan menyimpan hanya 14 salinan terakhir', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const sampah = []; const dibuat = [];
+  const berkas = (nama) => ({ getName: () => nama, setTrashed: () => sampah.push(nama) });
+  const daftar = ['2026-11-01', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-21', '2026-11-22'].map((t) => berkas(`Cadangan Pembukuan ${t}`));
+  daftar.push(berkas('Catatan pribadi.txt')); // file lain di folder tidak boleh disentuh
+  const folder = {
+    getFilesByName: (n) => { const a = daftar.filter((f) => f.getName() === n); let i = 0; return { hasNext: () => i < a.length, next: () => a[i++] }; },
+    getFiles: () => { let i = 0; return { hasNext: () => i < daftar.length, next: () => daftar[i++] }; },
+  };
+  Object.assign(c, {
+    hariIni_: () => '2026-11-22', ss_: () => ({ getId: () => 'SHEET1' }), Logger: { log() {} },
+    DriveApp: { getFoldersByName: () => ({ hasNext: () => true, next: () => folder }), getFileById: (id) => ({ makeCopy: (n, f) => { dibuat.push([id, n, f === folder]); } }) },
+    Utilities: { formatDate: (d) => new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10) },
+  });
+  vm.runInContext("Date.now = () => new Date('2026-11-22T02:00:00+07:00').getTime();", c);
+  const dihapus = c.cadanganHarian();
+  assert.deepEqual(dibuat, [['SHEET1', 'Cadangan Pembukuan 2026-11-22', true]]);
+  // batas simpan: 14 hari = 9 Nov s/d 22 Nov. 1 Nov & 8 Nov dibuang; salinan hari ini (22 Nov) diganti baru.
+  assert.deepEqual(sampah, ['Cadangan Pembukuan 2026-11-22', 'Cadangan Pembukuan 2026-11-01', 'Cadangan Pembukuan 2026-11-08']);
+  assert.equal(dihapus, 2);
+});
+
+test('apps-script: foto struk & dibakar dihapus 7 hari setelah event selesai, data pesanan tetap', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const ID = (n) => `${n}`.padEnd(30, 'x');
+  const rows = [
+    { kode_event: 'BAL26-09', tanggal: '2026-09-30', nomor: 1, foto_struk: ID('a'), foto_bakar: ID('b'), menu: '2× Garlic' }, // selesai 4 Okt -> hapus
+    { kode_event: 'SMR26-11', tanggal: '2026-11-14', nomor: 1, foto_struk: ID('c'), foto_bakar: '' },                     // masih berjalan
+    { kode_event: 'TES-SETUP', tanggal: '2026-11-14', nomor: 2, foto_struk: ID('d'), foto_bakar: '' },                    // tes, belum 7 hari
+  ];
+  const sampah = [];
+  Object.assign(c, {
+    hariIni_: () => '2026-11-20', tab_: () => ({}), baca_: () => rows.map((r, i) => ({ ...r, _baris: i + 2 })),
+    ubah_: (t, b, isi) => Object.assign(rows[b - 2], isi),
+    selesaiEvent_: () => ({ 'BAL26-09': '2026-10-04', 'SMR26-11': '2026-11-22' }),
+    DriveApp: { getFileById: (id) => ({ setTrashed: () => sampah.push(id) }) },
+    Utilities: { formatDate: (d) => new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10) },
+    Logger: { log() {} },
+  });
+  vm.runInContext("Date.now = () => new Date('2026-11-20T10:00:00+07:00').getTime();", c);
+  assert.equal(c.bersihkanFoto(), 2);
+  assert.deepEqual(sampah, [ID('a'), ID('b')]);
+  assert.equal(rows[0].foto_struk, 'DIHAPUS 2026-11-20');
+  assert.equal(rows[0].menu, '2× Garlic');
+  assert.equal(rows[1].foto_struk, ID('c'));
+  assert.equal(rows[2].foto_struk, ID('d'));
+  assert.equal(c.linkFoto_('DIHAPUS 2026-11-20'), '');
+});
+
+test('apps-script: riwayat transaksi (31 hari, hanya selesai/batal) dan ubah hanya dengan PIN owner', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const c = {};
+  vm.createContext(c);
+  vm.runInContext(readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8'), c);
+  const tabel = [
+    { id: 'A1', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 1, status: 'DIAMBIL', total: 100000, menu: 'Mozzarella', dibuat: '2026-11-20 10:10:00', diambil: '2026-11-20 10:30:00', kasir: 'Tiara' },
+    { id: 'A2', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 2, status: 'BATAL', total: 75000, dibuat: '2026-11-20 10:20:00' },
+    { id: 'A3', kode_event: 'SMR26-11', tanggal: '2026-11-20', nomor: 3, status: 'MENUNGGU', total: 50000, dibuat: '2026-11-20 10:30:00' },
+    { id: 'A4', kode_event: 'TGL26-11', tanggal: '2026-11-25', nomor: 1, status: 'DIAMBIL', total: 120000, dibuat: '2026-11-25 11:00:00' },
+    { id: 'A5', kode_event: 'KUNO', tanggal: '2026-09-01', nomor: 1, status: 'DIAMBIL', total: 90000, dibuat: '2026-09-01 11:00:00' },
+  ];
+  const ubahan = [];
+  Object.assign(c, {
+    cekPin_: () => {}, tab_: () => ({}), baca_: () => tabel.map((r, i) => ({ ...r, _baris: i + 2 })), hariIni_: () => '2026-11-27',
+    pinPic_: () => '4816', atur_: () => '', prop_: () => '',
+    ubah_: (t, b, isi) => { ubahan.push(isi); Object.assign(tabel[b - 2], isi); },
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) }, CacheService: { getScriptCache: () => ({ remove() {} }) },
+  });
+  const r = JSON.parse(JSON.stringify(c.riwayatTransaksi('1', '2026-11-20')));
+  assert.equal(r.batas, '2026-10-27');                         // maksimal 31 hari ke belakang
+  assert.deepEqual(r.tanggalTersedia.map((h) => [h.tanggal, h.jumlah, h.batal, h.omzet]), [['2026-11-25', 1, 0, 120000], ['2026-11-20', 1, 1, 100000]]); // A5 (2 bulan lalu) & A3 (belum selesai) tidak ikut
+  assert.deepEqual(r.transaksi.map((o) => [o.nomor, o.status]), [[1, 'DIAMBIL'], [2, 'BATAL']]);
+  assert.equal(JSON.parse(JSON.stringify(c.riwayatTransaksi('1', '2020-01-01'))).tanggal, '2026-10-27'); // tanggal terlalu lama dibatasi
+  // ubah: PIN owner salah ditolak, benar diterima
+  assert.throws(() => c.ubahRiwayat('1', '0000', 'A1', { total: '110000' }), /PIN owner salah/);
+  assert.equal(ubahan.length, 0);
+  const ok = JSON.parse(JSON.stringify(c.ubahRiwayat('1', '4816', 'A1', { total: '110000', menu: 'Garlic' })));
+  assert.equal(ok.total, 110000);
+  assert.deepEqual(JSON.parse(JSON.stringify(ubahan[0])), { total: 110000, sumber_total: 'owner', menu: 'Garlic' });
+  c.ubahRiwayat('1', '4816', 'A2', { status: 'DIAMBIL' }); // pulihkan yang batal
+  assert.equal(tabel[1].status, 'DIAMBIL');
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A5', { total: '5000' }), /lebih dari 31 hari/);
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A1', { total: '12' }), /tidak masuk akal/);
+  assert.throws(() => c.ubahRiwayat('1', '4816', 'A1', { status: 'SIAP' }), /Tidak ada yang diubah/);
+});

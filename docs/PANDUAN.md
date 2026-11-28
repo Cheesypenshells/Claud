@@ -1,0 +1,645 @@
+# Panduan Pemakaian Bot (Tahap 1: Pembukuan)
+
+Ketik `#bantuan` di grup mana pun untuk melihat ringkasan perintah.
+
+---
+
+## 1. Membuka event baru
+
+### Cara paling mudah: bot bertanya
+1. Buat grup WhatsApp baru, misalnya **Pengeluaran Jambi**, lalu masukkan PIC dan nomor bot.
+2. Bot langsung menyapa: *"Grup ini untuk apa?"* Balas **1** (grup pengeluaran event baru).
+   Kalau bot tidak menyapa, ketik `#mulai` atau `#eventbaru`.
+3. Bot menanyakan 13 hal satu per satu: kota, IO, tanggal, wilayah harga, bagi hasil (balas *ok* untuk 30%), admin, jadwal transfer, jam buka, target, PIC, senior, DW, dan kasir. Balas *-* untuk yang tidak ada.
+4. Bot menampilkan ringkasan. Balas **ya** untuk menyimpan, atau nomor pertanyaan untuk mengubahnya (misalnya *5*).
+5. Kode event dibuat otomatis, misalnya **JMB26-11** (Jambi, November 2026).
+
+Hanya jawaban owner yang dibaca bot. Ketik **batal** untuk berhenti.
+
+**Grup tim:** masukkan bot ke grup tim, balas **2**, lalu pilih event dari daftar.
+**Grup kas ruko:** balas **3**.
+
+### Mengubah data event lewat chat (owner, di grup pengeluaran)
+| Contoh | Hasil |
+|---|---|
+| `#ubah bagi hasil 27` | Bagi hasil jadi 27% |
+| `#ubah tanggal 1-16 Nov 2026` | Tanggal event diperpanjang |
+| `#ubah admin 750rb` | Biaya admin IO diganti |
+| `#ubah jam buka 12.00` | Jam buka booth (patokan absensi) |
+| `#ubah jam tutup 22.00` | Jam tutup booth (format stok closing dikirim 15 menit sebelumnya; kosong = 22.00) |
+| `#tambah DW Rina 100rb` / `#berhenti Joko` | Tim berubah di tengah event |
+
+### Cara lama: satu blok sekaligus
+Owner juga tetap bisa mengirim semuanya dalam satu pesan:
+
+```
+#event
+Kode: JMB26-11
+Kota: Jambi
+IO: Kepo Market
+Tanggal: 1-14 Nov 2026
+Wilayah harga: Sumatra
+Target omzet: 150jt
+Bagi hasil: 30%
+Admin: 500rb
+Jadwal trf: H+1, Jumat-Minggu ditransfer Senin
+Jam buka: 11.00
+PIC: Budi
+Senior: Andi, Rudi
+DW: Joko 120rb, Tono
+Kasir: Sari
+```
+
+Lalu di **grup tim** event tersebut, owner mengetik: `#daftar event JMB26-11`
+
+---
+
+## 2. Mencatat pengeluaran (owner/PIC, di grup pengeluaran)
+
+Cukup ketik seperti biasa, satu pengeluaran per baris:
+```
+lalamove 150k
+makan malam 120rb cash
+ember 2 unit @30rb
+```
+Bot membalas:
+```
+✅ Pengeluaran tercatat (JMB26-11)
+T0001 lalamove - Rp 150.000 [Transport & Ekspedisi]
+T0002 makan malam - Rp 120.000 [Konsumsi, CASH]
+T0003 ember 2 unit - Rp 60.000 [Peralatan]
+Total pengeluaran event: Rp 330.000
+```
+
+- **Format nominal yang dikenali:** `150k`, `150rb`, `150 ribu`, `1,5jt`, `Rp 150.000`, `150000`.
+- **Chat biasa tanpa nominal** ("oke pak", "siap") tidak dicatat.
+- **Baris "total ..."** diabaikan supaya tidak terhitung dua kali.
+- **Laporan kurang lengkap? Bot bertanya balik** ke pengirimnya (orang lain yang menjawab tidak dihitung):
+  - `beli sapu` → bot bertanya harganya → balas `25rb`
+  - `300rb` saja → bot bertanya untuk apa → balas `lalamove ke venue`
+  - `kiriman keju` → bot bertanya berapa pack → balas `10`
+  - `kiriman 5 pack` → bot bertanya bahan apa → balas nomor/nama bahan
+  - kategori tidak dikenali → bot menawarkan pilihan kategori → balas nomornya
+  Balas **batal** kalau ternyata bukan laporan. Pertanyaan kedaluwarsa setelah 1 jam.
+- **Uang siapa:** setiap pengeluaran dicatat dibayar pakai uang siapa.
+  - Tulis di pesannya: `makan tim 200rb uang mama`, `hotel 300rb pakai uang valen`, `es batu 20rb uang kas`, `(uang saya)`.
+  - Kalau tidak ditulis, dianggap **uang orang yang mengirim pesan**.
+  - Ubah: `#uang T0012 mama`. Lihat siapa harus diganti berapa: `#penggantian`.
+  - Owner mencatat transfer penggantian: `#ganti Valen 500rb` (bukan biaya event).
+  - Hasilnya ada di file event (bagian ⑥ Uang Siapa) dan PEMBUKUAN → tab **Penggantian Uang**.
+- **Beberapa pengeluaran sekaligus**: satu per baris, atau dalam satu baris dipisah koma: `Listrik 353k, minuman 25 sept 11k, lemon dan softex 24k tanggal 25 sept`. Tambahan pendek di akhir (`, uang mama` / `, cash`) berlaku untuk semuanya. Kata `semua uang valen` (atau `uang valen semua`) di mana pun dalam pesan juga berlaku untuk semua item.
+- **Tanggal belanja** (kalau dilaporkan belakangan): tulis saja tanggalnya di baris itu, contoh `makan siang 22 sept 53rb`, `tgl 22/9 bensin 50rb`, `hotel tanggal2-3 okt 236rb` atau `makan karyawan tanggal 26 sore 66rb`. Kalau bulannya tidak ditulis, bot memilih bulan yang masuk masa event.
+- **Status event menentukan cara kerja bot** (bot memberi tahu langkahnya setelah event dibuat, dan setiap kali ditulis "rekap" / "mulai input"):
+  - **Sudah selesai → mode REKAP DATA LAMA**: grup tim tidak perlu. Semua data dimasukkan di grup pengeluaran dengan tanggalnya: pengeluaran (`hotel 23 sep 350rb uang melia`), omzet (`#omzet 23 sept 12,5jt`, boleh beberapa baris sekaligus), `#trf`, `#potongan`, bahan gudang.
+  - **Belum mulai**: catat pengeluaran persiapan; daftarkan grup tim saat event mulai.
+  - **Sedang berjalan**: pengeluaran di grup pengeluaran, omzet harian di grup tim.
+- **Aturan struk** (berlaku untuk event yang mulai sejak 8 Nov 2026; event yang sudah berjalan seperti Lombok tidak diubah. Untuk karyawan/PIC; input owner sendiri tidak wajib struk):
+  - **≥ Rp 100.000 wajib foto struk.** Kirim foto struk dengan caption pengeluarannya (`makan KFC 150rb`), atau reply pesan bot dengan fotonya. Bot membaca struk dan mengecek: nominal ada di struk, tanggal struk dalam masa event, merek/toko sesuai keterangan (KFC ≠ pecel ayam), kategori sesuai (transport grab ≠ struk KFC), dan struk belum pernah dipakai. Lolos → masuk pembukuan dengan tanda 🧾 struk ✓ dan tanggal dari struk.
+  - **Tanpa struk atau struk tidak sesuai → ditahan (P0001, P0002, …), belum masuk spreadsheet.** Bot meminta penjelasan di grup. Selesai dengan: kirim struk yang benar, owner reply `acc` (atau `acc semua` / `acc P0001`), atau `batal`.
+  - **Batas tanggal transaksi**: hanya dari **2 hari sebelum event mulai s/d 2 hari setelah event selesai** (tanggal di struk, tanggal yang ditulis, atau hari laporan). Di luar itu ditolak, supaya struk lama tidak bisa dimasukkan; hanya owner yang bisa `acc`. Screenshot belanja online wajib menunjukkan **tanggal pesan** (detail pesanan / Waktu Pemesanan), bukan hanya estimasi tiba.
+  - **Cash < Rp 100.000 tanpa struk** wajib keterangan jelas. Keterangan umum seperti "belanja" / "makan" ditahan sampai pengirim reply detailnya (beli apa & di mana).
+  - `#rekap` menampilkan pengeluaran yang masih menunggu (belum dihitung). Struk yang dipakai tersimpan di tab **Struk** PEMBUKUAN; kolom **Bukti** menunjukkan Struk ✓ / ACC owner / Tanpa struk.
+- **Nominal sama dengan catatan lama** (≥ Rp 50.000, kategori/keterangan mirip): bot belum mencatat dan menunjukkan catatan lama beserta tanggalnya. Kirim **foto bukti trf/struk**: bot membaca nominal & tanggalnya. Kalau tanggalnya sama dengan catatan lama → tidak dicatat lagi (dobel); kalau beda → dicatat dengan tanggal di bukti. Bisa juga balas `catat` (memang beda) atau `batal` (dobel).
+- **Koreksi cukup dengan reply** pesan bot "Pengeluaran tercatat": `uang valen`, `batal`, `tanggal 3 okt`, `masuk konsumsi`, atau (kalau isinya satu catatan) `harusnya 50rb`. Bot langsung mengubah dan mengirim konfirmasi. Pesan singkat seperti `Uang valen` yang dikirim tanpa reply dalam 10 menit setelah mencatat juga berlaku untuk catatan terakhir pengirim.
+- **Harga wajib ditulis.** Bot tidak membaca isi foto. Foto bukti boleh tetap dikirim untuk arsip, tapi harga ditulis di caption, misalnya `lalamove 150rb`. Foto tanpa harga akan diminta ditulis ulang.
+- **Salah catat:** `#batal T0002`. Bisa dilakukan owner atau orang yang mengirim.
+- **Ganti kategori:** `#kategori T0001 Transport`.
+
+Kategori: Oyster, Gaji & Upah, Konsumsi, Penginapan, Transport & Ekspedisi, Utilitas Ruko, Bahan Operasional, Peralatan, Lain-lain.
+
+---
+
+## 3. Transfer dari IO (grup pengeluaran)
+
+| Kejadian | Ketik |
+|---|---|
+| Omzet ditransfer IO | `#trf 7.500.000 omzet 3 Nov` |
+| IO memotong listrik/air/gas/galon | `#potongan listrik 250rb` (bisa beberapa baris) |
+
+Bot menghitung **perkiraan transfer**:
+`omzet − bagi hasil − admin − potongan listrik/air/gas/galon`.
+
+Jadwal yang dipakai: **H+1**, sedangkan omzet Jumat, Sabtu, dan Minggu dibayar **Senin**. Kalau di blok `#event` ditulis "setelah event selesai", semuanya dijadwalkan H+1 setelah event berakhir. Setiap pagi jam 10.00 bot mengingatkan kalau ada transfer yang sudah jatuh tempo tapi belum dicatat masuk.
+
+---
+
+## 4. Laporan omzet harian (PIC/kasir, di grup tim)
+
+Pakai format SOP BAB 6 bagian H:
+```
+#omzet
+EVENT/KOTA: Jambi
+OMZET TERVERIFIKASI: Rp 12.500.000
+JUMLAH TRANSAKSI: 85
+SELISIH / REFUND / KOREKSI: 0
+```
+Bisa juga singkat: `#omzet 12,5jt`
+
+**Omzet kotor & omzet bersih:**
+- Angka omzet yang diinput dianggap **omzet kotor** (sebelum dipotong bagi hasil IO). Boleh tanpa #: `omset 3 okt 12,5jt` / `omset kotor bali 125jt`.
+- Kalau yang dipegang angka **setelah dipotong IO**, tulis kata **bersih**: `omset bersih 3 okt 8.750.000`. Bot mengembalikannya ke omzet kotor (bersih ÷ (100% − bagi hasil)).
+- Balasan bot (grup pengeluaran) menampilkan: omzet kotor, potongan IO, dan omzet bersih yang ditransfer IO. `#rekap` juga menampilkan omzet bersih.
+
+- **Laporan sebelum jam 05.00 pagi** dihitung sebagai omzet hari sebelumnya (closing lewat tengah malam).
+- **Laporan dikirim ulang** untuk tanggal yang sama menggantikan laporan sebelumnya.
+- **Omzet tanggal lain:** tambahkan baris `TANGGAL: 2 Nov 2026`.
+- **Di grup tim** bot hanya menampilkan omzet dan pencapaian target. Rincian bagi hasil hanya muncul di grup pengeluaran.
+- **Pengingat:** jam 23.00 bot mengingatkan di grup tim kalau laporan omzet hari itu belum masuk.
+
+---
+
+## 5. Rekap
+
+| Perintah | Di mana | Isi |
+|---|---|---|
+| `#rekap` | Grup pengeluaran | Laba-rugi sementara event: omzet, potongan IO, transfer masuk, piutang, pengeluaran per kategori |
+| `#rekap` | Grup ruko | Rekap bulan ini (owner) |
+| `#rekap bulan 2026-11` | Grup pengeluaran/ruko | Rekap bulan tertentu: semua event + biaya ruko (owner) |
+
+Selain itu, setiap malam jam 23.30 rekap event dikirim otomatis ke grup pengeluaran. Ini berlaku sampai 7 hari setelah event selesai, atau sampai owner mengetik `#selesai`.
+
+---
+
+## 6. Buku kas ruko (owner, di grup kas ruko)
+
+Biaya ruko dicatat terpisah dari event:
+```
+token listrik 850rb
+air PDAM 150rb
+gaji Andi 2jt
+sewa ruko 5jt
+```
+
+---
+
+## 7. Google Sheets
+
+Semua data bisa dilihat dan dikoreksi langsung di spreadsheet **CPS Kantor AI**:
+
+| Tab | Isi |
+|---|---|
+| `Event` | Data setiap event: bagi hasil, admin, jadwal transfer, dan lainnya |
+| `Transaksi` | Semua pengeluaran (merah muda), transfer masuk dari IO (hijau), dan potongan IO (kuning). Kolom **Status**: OK / BATAL (abu-abu dicoret) |
+| `Omzet` | Laporan omzet harian |
+| `Grup` | Grup WhatsApp yang terdaftar |
+
+Aturan saat mengoreksi data di Sheets:
+- Boleh mengubah isi sel. Arahkan jari/kursor ke judul kolom untuk melihat keterangan kolom tersebut.
+- **Jangan mengubah judul kolom** (baris pertama).
+- Tulis tanggal dengan format `2026-11-03`.
+- Untuk membatalkan catatan, ganti `status` menjadi `BATAL`. Jangan menghapus baris.
+
+Perubahan di Sheets terbaca bot paling lambat 30 detik kemudian.
+
+---
+
+## 8. Tim, bahan baku, dan porsi gratis (untuk sheet Main)
+
+### Tim event
+Saat membuat event, tambahkan baris tim di blok `#event`:
+```
+Senior: Andi, Rudi
+DW: Joko 120rb, Tono
+Kasir: Sari
+```
+Upah DW dan kasir standar **Rp 100.000/hari**. Tulis angka setelah nama kalau berbeda.
+
+| Keperluan | Ketik (di grup pengeluaran) |
+|---|---|
+| Lihat tim | `#tim` |
+| Tambah orang di tengah event | `#tambah DW Rina 100rb` (peran: PIC / Tetap / DW / Kasir) |
+| Karyawan berhenti / menghilang | `#berhenti Joko` (hari kerja terakhir = kemarin) atau `#berhenti Joko 9 Nov` |
+
+### Bahan baku dari gudang
+Satu bahan per baris. Bisa dikirim di grup tim atau grup pengeluaran.
+```
+#keluar
+mozzarella 20 pack
+bumbu garlic 5 pack
+oyster 100 kg
+```
+- Bisa juga ditulis dengan kalimat biasa tanpa harga, contoh: `kiriman 10 pack keju`, `restock bumbu garlic 2 pack`, `sisa 3 pack keju dikembalikan`.
+- **Restock** = barang yang datang ke booth di tengah event. Kata *restock*, *datang*, atau *tiba* dicatat sebagai restock, contoh: `barang datang 5 pack keju`.
+- `#restock ...` untuk tambahan di tengah event.
+- `#kembali ...` untuk sisa yang dikembalikan ke gudang. **Pack yang sudah dibuka dianggap habis**, jadi tulis pack utuh saja.
+
+Bahan yang dikenali dan harganya ada di tab **Harga Bahan** (bisa diubah).
+
+### Porsi gratis
+`#gratis 3 porsi mozzarella isi 4 untuk @influencer` → dicatat 12 pcs, dinilai dengan harga jual sesuai wilayah (tab **Harga Menu**).
+**Budget porsi gratis Rp 500.000 per event.** Setiap kali `#gratis`, bot membalas sisa budget, dan memberi peringatan ⚠️ kalau sudah terlewati.
+
+### Kategori pengeluaran otomatis
+| Contoh yang diketik | Masuk kategori |
+|---|---|
+| `sumpit 2 pack @15rb`, `plastik 20rb`, `sarung tangan 30rb` | Barang kering **konsumtif** |
+| `sapu 25rb`, `etalase 500rb`, `kompor 300rb` | Barang kering **non-konsumtif ⚠️ kelalaian** (barang yang seharusnya dibawa) |
+| `endorse @makanjambi 500rb` | Iklan & endorse |
+| `obat sakit Andi 50rb`, `ganti rugi gelas 30rb` | Tak terduga |
+| `hotel 350rb x 3 malam` | Penginapan (otomatis dikali 3) |
+| `makan siang tim 180rb` | Konsumsi (dibandingkan dengan budget makan) |
+
+---
+
+## 9. Susunan file di Google Drive
+
+Semua file bot ada di **PROJECT CHEESY PEN SHELLS > 0. KANTOR AI (BOT)**:
+
+| File | Isi |
+|---|---|
+| **PEMBUKUAN** | Tab **Rekap Event**: satu baris per event, berisi tim, omzet, dibayar ke IO, semua biaya, gaji, fee PIC, **laba bersih**, dan link ke file event. Tab **Gaji per Event**: rincian per orang. Tab lain adalah data mentah bot. |
+| **EVENT** (folder) | Satu spreadsheet per event, misalnya *LOMBOK - JANGKRIK (24 Sep - 11 Okt 2026)*. Tab **Ringkasan** membedah untung/rugi (omzet harian + grafik, biaya, budget makan, tim & gaji, iklan, porsi gratis, sisa bahan, uang siapa). Lalu **satu tab per kategori** (Transport, Penginapan, Konsumsi, Bahan Baku, Bahan Operasional, BK Konsumtif, BK Non-Konsumtif, Admin & Sewa, Iklan, Tak Terduga, Gaji & Upah, Lain-lain) dengan **TOTAL di baris paling atas**, tab **Transfer & Penggantian**, dan tab **Semua Transaksi**. |
+| **0. INPUT EVENT LAMA (manual)** | Untuk mengisi data event sebelumnya secara manual (tab Event, Omzet Harian, Pengeluaran, Transfer & Potongan IO, Tim, Bahan Baku, Porsi Gratis). Bot menghitungnya dengan cara yang sama, lalu hasilnya muncul di PEMBUKUAN dan file event. Petunjuk ada di tab **0. Cara Isi**. |
+| **GUDANG** | Stok bahan baku di gudang (segera dibuat). |
+| **KPI KARYAWAN** | KPI, bonus, dan perhitungan detail (segera dibuat). |
+
+**File event dibuat otomatis.** Setiap ada event baru, bot memakai salah satu file bernama **"(kosong) cadangan event"** di folder EVENT, lalu mengganti namanya. Kalau file cadangan habis, buat spreadsheet kosong baru di folder EVENT dan beri nama **(kosong)**.
+
+**Fee PIC** = 25% dari laba bersih, dikurangi sesuai kehadiran owner. Ketik di grup pengeluaran:
+`#owner tidak` (25%) | `#owner 1 hari` (20%) | `#owner setengah` (15%) | `#owner penuh` (10%), atau `#owner 4 hari`.
+
+Angka diperbarui bot paling lambat 30 detik setelah ada laporan baru, selama bot menyala.
+
+
+## KPI karyawan
+
+**Skor maksimal 100 poin per event** = 60 individu + 40 kelompok. Skor = persen klaim bonus (skor 80 → 80% dari bonus maksimal). Rekap bulanan menambah poin plus/minus owner (dibatasi 0–100).
+
+| Bagian | Poin | Sumber (otomatis) |
+|---|---|---|
+| Absen | 12 | Absensi foto: **−2 per telat**, **−6 per tidak hadir tanpa izin** (karyawan tetap). Izin/dispensasi `#izin` tidak dipotong. |
+| Kinerja | 24 | **Rata-rata penilaian harian PIC** (1–100) ÷ 100 × 24. Kasir: digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). |
+| Sikap kerja (attitude) | 12 | Ikut rata-rata penilaian harian PIC (atau bintang pelanggan untuk kasir), kecuali PIC mengisi `#nilai`. |
+| Pengembangan (karir) | 12 | Sama seperti attitude. |
+| Omzet vs target | 15 | Omzet event ÷ target omzet. |
+| Ketepatan stok | 10 | **−2 per bahan yang selisih saat sidak** (seluruh tim). |
+| Kebersihan & komplain | 10 | **−2 per komplain** pelanggan dari QR booth. |
+| Kinerja tim | 5 | Rata-rata seluruh penilaian harian PIC (atau `#nilai tim`). |
+
+Potongan otomatis lain: **laporan foto terlewat −2 per laporan** (bagian tugas harian: `#depan #followers #grill #cooler #nampan`, `#pulang`, jobdesk loading in) untuk penanggung jawabnya, dan **layanan lambat −2 per hari** (rata-rata tunggu pelanggan di atas 7 menit, seluruh tim). Hari yang dibebaskan owner lewat Pengaturan `bebas_laporan` tidak memotong laporan. **Dispensasi waktu** (mis. bot mati): Pengaturan `dispensasi_jobdesk` berisi `KODE=YYYY-MM-DD` (contoh `SMR26-11=2026-11-25`); laporan jobdesk/loading yang belum masuk tidak dihitung terlewat sampai tanggal itu, dan tim masih boleh mengirimnya.
+
+- **Sumber utama: penilaian harian PIC** (lihat bagian *Penilaian harian PIC*). Karyawan tanpa penilaian harian dan tanpa bintang belum punya skor.
+- **Cadangan:** kalau PIC tidak pernah menjawab penilaian harian, sehari setelah event selesai (jam 10.00) bot menanyakan 4 angka per orang di chat pribadi: `5 4 4 3` (absen, kinerja, attitude, karir), boleh plus catatan, `lewati`, atau `batal`; terakhir nilai kinerja tim `4`. Nilai `#nilai` yang diisi PIC menggantikan nilai turunan harian untuk attitude, karir, dan tim.
+- **Langsung:** `#nilai Dena 5 4 4 3`, `#nilai tim 4`, untuk event lama `#nilai BAL26-09`.
+
+### Rapor KPI ke karyawan
+
+- Sehari setelah event selesai (jam 12.00) bot memberi tahu **owner**: "Rapor KPI ... siap" beserta ringkasan peringkat. **Owner yang memutuskan kapan rapor dikirim.**
+- Owner (grup event / grup pengeluaran, atau chat pribadi dengan `#rapor KODE`):
+  - `#rapor` → ringkasan & peringkat tim (termasuk siapa yang belum dinilai).
+  - `#rapor Dena` → pratinjau rapor Dena persis seperti yang ia terima (belum dikirim).
+  - `#rapor kirim` → kirim rapor ke chat pribadi tiap karyawan yang nomornya dikenal bot. Yang belum dinilai atau tanpa nomor ditandai, tidak dikirim.
+- Karyawan juga bisa mengetik **`#kpisaya`** lewat chat pribadi ke bot untuk melihat rapornya sendiri (bertanda *sementara* kalau event masih berjalan).
+- Isi rapor: skor dan persen klaim bonus, rincian individu & kelompok dengan lampu 🟢🟡🔴, potongan (telat, laporan terlewat, layanan lambat), dan **2 saran peningkatan**. Tidak memuat catatan rahasia PIC, nilai harian per hari, nilai orang lain, maupun nominal bonus.
+- **Poin plus/minus (owner):** `#poin Dena +20 bantu masak bumbu`, `#poin Dena -10 SOP tidak dikerjakan`, batalkan `#poinbatal K0001`.
+- **Lihat (owner):** `#kpi` (peringkat bulan terakhir), `#kpi Dena`, `#kpi 2026-09`. Karyawan nanti melihat nilainya sendiri lewat QR kartu + PIN.
+- **File KPI KARYAWAN** di Drive diperbarui otomatis: Peringkat & Bonus, Nilai per Event, Riwayat Poin, Cara Hitung.
+- **Tab Karyawan** (PEMBUKUAN): isi kode, nama (sama dengan nama di tim event), nomor WA, peran, keahlian, foto, mulai kerja, status.
+
+
+## Anggota grup tim (nomor WhatsApp karyawan)
+
+Nama tim diisi di grup pengeluaran (setup event / `#tim`). Setelah grup tim didaftarkan (atau `#anggota`), bot menampilkan daftar tim dan meminta **setiap karyawan membalas nama sendiri**: `saya Dena` atau nomor urutnya (`2`). Nomor pengirim langsung tercatat di tab **Karyawan** (✅ = sudah tercatat). DW yang belum bernama: `saya Joko DW` (menggantikan "DW 1"); orang baru: `saya Rina kasir`. Nomor ini dipakai untuk KPI, chat pribadi ke PIC, dan absensi.
+
+**Dicocokkan otomatis:** sebelum bertanya, bot mencocokkan anggota grup yang nama WhatsApp-nya memuat nama tim (contoh nama WA `Alam (Karyawan Cheesy Banjarmasin)` → Alam). Karyawan yang chat di grup selama pendataan berjalan juga dicocokkan diam-diam lewat nama WA-nya. Hanya kecocokan yang pasti (satu nama, satu nomor) yang dicatat; kalau salah, orang yang benar cukup balas `saya [nama]`. Nomor anggota grup yang belum dikenal ditampilkan 4 angka terakhirnya.
+
+**Owner menempel daftar** (grup pengeluaran atau chat pribadi dengan bot, bukan grup tim):
+```
+#karyawan
+Dena 081234567890
+Tiar veri 0812-9876-5432
+Rina 081244445555 kasir
+```
+Nama dicocokkan dengan tim event / tab Karyawan; nama baru ditambahkan (peran default Tetap). `#karyawan` saja = tampilkan daftar karyawan & nomornya, plus siapa di tim yang belum bernomor.
+
+## Gaji karyawan tetap & upah DW
+
+**Aturan karyawan tetap (senior)**, gaji pokok dan bonus ditransfer langsung oleh owner (tidak lewat PIC):
+- **Gaji pokok Rp 2,5 jt/bulan** dibebankan ke event yang dijaga dalam rentang sebulan: jaga 1 event = Rp 2,5 jt penuh masuk biaya event itu; jaga 2 event berturut-turut = masing-masing Rp 1,25 jt; dst.
+- **Bonus** hanya kalau omzet kotor event **di atas Rp 100 jt**:
+  - dalam sebulan hanya **1 event**: **0,5%** omzet kotor, **dibagi rata** ke senior yang jaga;
+  - dalam sebulan **2 event atau lebih** (tempat sama atau berbeda, jarak mulai kurang dari sebulan): **setiap senior 1%** omzet kotor event tempat dia jaga, tidak dibagi.
+- Hitungan otomatis; `#gaji` hanya untuk pengecualian (angka itu menggantikan gaji pokok + bonus).
+
+
+- **Pengecualian gaji khusus event** (owner, grup pengeluaran): `#gaji tiara, veri, dena 2jt`. Angka ini = total yang diterima untuk event itu (menggantikan gaji pokok + bonus di atas). Tersimpan di kolom *Gaji Khusus Event* tab Tim Event. Jangan dicatat sebagai pengeluaran biasa.
+- **DW & kasir**: kalau gajinya sudah dicatat sebagai pengeluaran (kategori Gaji & Upah), angka itulah yang dipakai, tanpa bonus perkiraan. Untuk rekap event lama (omzet total), DW tampil satu baris = total catatan gaji dari rekapan PIC, tanpa hari kerja.
+- Rekap event lama dengan omzet total (satu angka): semua tanggal event dihitung sebagai hari kerja.
+
+## Gajian lewat bot (mulai Semarang, 14 Nov 2026)
+
+- Event sebelum 14 Nov 2026 **sudah dibayar** owner: tidak ikut daftar gaji, KPI, dan bonus (pembukuan event-event itu tetap). Batasnya bisa diubah di tab Pengaturan, kunci `gaji_mulai`.
+- `#gajian` (owner, grup pengeluaran) atau `#gajian SMR26-11` (chat pribadi): per karyawan tetap **gaji pokok + bonus omzet × skor KPI** = yang ditransfer, beserta rekening. DW/kasir dan PIC ikut ditampilkan.
+- **Semua denda** dipotong dari **gaji pokok**, bonus tidak disentuh. Kalau melebihi gaji pokok → sisa diakumulasikan ke event berikutnya (tertulis di #gajian: "sisa Rp ... dibawa ke event berikutnya").
+- Bonus baru final setelah PIC/owner menilai KPI (`#nilai`); sehari setelah event selesai bot meminta penilaian otomatis.
+- **Rekening tim**: sehari setelah event selesai (jam 10.00), bot meminta rekening ke senior, DW, dan kasir yang belum punya rekening di tab Karyawan, lewat **chat pribadi** (kalau nomornya dikenal). Yang nomornya belum dikenal diminta lewat satu pesan di grup tim untuk mengirim rekening ke chat pribadi bot, contoh `Joko BCA 1234567890 a.n. Joko`. Sekali per event.
+
+## Setoran ke PIC & rekening
+
+- File event, kanan tabel Ringkasan: tabel **💸 SETORAN KE PIC** = fee PIC + gaji/bonus PIC (kalau ada) + uang PIC yang terpakai (yang belum diganti) → **TOTAL DITRANSFER KE PIC**, beserta rekeningnya.
+- `#setor` (owner, grup pengeluaran): ringkasan yang sama di WhatsApp. Setelah transfer, catat penggantian uang dengan `#ganti Melia <nominal>`.
+- **Rekening**: `#rekap` untuk event yang sudah selesai otomatis menanyakan rekening PIC (sekali). `#rekening` = tanyakan lagi; `#rekening Melia BCA 1234567890 a.n. Melia` = owner mengisi langsung. PIC menjawab `BCA 1234567890 a.n. Melia` (tidak dicatat sebagai pengeluaran). Tersimpan di tab Karyawan (Bank, No. Rekening, Atas Nama), hanya tampil di grup pengeluaran.
+
+## Fee PIC khusus event
+
+Biasanya fee PIC mengikuti kehadiran owner (`#owner`): tidak hadir 25% · 1 hari 20% · setengah 15% · penuh 10% dari laba sebelum fee. **Kalau karyawan tetap (senior) di tim ada 3 orang atau lebih, fee PIC paling tinggi 20%** (kalau owner hadir dan aturannya lebih kecil, yang lebih kecil yang dipakai). Untuk event tertentu owner bisa menetapkan angka sendiri di grup pengeluaran: `#feepic 20` atau kalimat `bonus pic nya 20 persen`. Kembali ke aturan biasa: `#feepic normal`. Tersimpan di kolom *Fee PIC Khusus (%)* tab Event.
+
+## Bahan baku: pengiriman pertama, restock, sisa
+
+Bisa di **grup tim** (tanpa harga) atau **grup pengeluaran** (dengan nilai rupiah). Untuk event yang sudah selesai, masukkan di grup pengeluaran:
+```
+bahan baku pengiriman pertama keju 10 balok, bumbu garlic 5 pack
+restock keju 3 balok 28 sep
+sisa keju 2 balok, bumbu garlic 1 pack
+```
+- Kata yang dikenali: *pengiriman / kiriman / awal / stok awal / kirim / bawa* = **awal**; *restock / tambahan bahan / datang* = **restock**; *sisa / sisah / stok akhir / kembali* = **sisa**.
+- Tanggal boleh ditulis. Tanpa tanggal: awal = hari pertama event, sisa = hari terakhir event.
+- **Jangan tulis harganya**: nilai dihitung dari tab **Harga Bahan** (contoh keju Rp 234.000/pack). Kalau ditulis harga, pesan itu dicatat sebagai pengeluaran biasa.
+- **Nilai sisa ditanya bot**: setelah sisa dilaporkan, bot bertanya di grup pengeluaran *"sisa dihargai berapa per satuan?"*. Balas `200rb` (satu bahan), `keju 200rb, garlic 450rb`, `ya` (pakai harga tab Harga Bahan), atau `0` (rusak/busuk). Sisa yang dilaporkan dari grup tim juga ditanyakan di grup pengeluaran. Nilainya tersimpan di kolom *Nilai Sisa per Satuan* tab Bahan Event.
+- Biaya bahan baku = (awal + restock) × harga tab − nilai sisa. Masuk ke `#rekap`, file event (tab Bahan Baku: baris awal+restock dan baris SISA bernilai minus), dan sheet Main (tabel ⑤: Awal, Restock, Sisa, Terpakai).
+- **Oyster dari supplier = pembelian di lokasi**: catat sebagai pengeluaran dengan harganya (`oyster 100 kg 3,9jt`). Kalau oyster ditulis di pengiriman pertama/restock, bot tidak menghitungnya sebagai bahan gudang dan mengingatkan. **Sisa oyster** tetap boleh dilaporkan (`sisa oyster 5 kg`); nilainya mengurangi biaya.
+
+## Jobdesk loading in
+
+- **H-2 sebelum event mulai (jam 10.00)** bot membagi jobdesk di grup tim (kalau grup baru didaftarkan H-1: H-1). PIC & owner tidak dibagi; PIC mengecek & memberi poin.
+- Alur (dari owner):
+  1. Truk datang → **semua** turunkan barang (min. 4 orang, cepat karena truk gantian dengan tenant lain).
+  2. **1 orang hitung & cek koli** bahan baku + bahan kering sesuai kiriman Jakarta → foto `#tiba`. Setelah selesai membantu rakit booth.
+  3. Dibagi 2 tim: **60% tim booth** — bagian bawah `#booth` (etalase, meja, kompor, banner; 3–5 jam), bagian atas `#listrik` (lampu gantung, LED 120×60, bendera, hexos, jalur kabel; 2–3 jam), estetika `#display` (dekorasi, alat masak, cuci semua alat, siap jualan; 2–3 jam) — dan **40% tim barang** `#gudang` (masukkan & data bahan baku, oyster yang datang, freezer; 1–2 jam).
+- Senior disebar merata ke kedua tim dan tiap bagian booth (4 senior: booth 2, barang 2; 3 senior: booth 2). Penghitung koli = senior di tim barang.
+- **Pengingat laporan**: di hari loading in (H-1 dan hari pertama sebelum booth buka) jam 10, 12, 14, 16, 18, 20 bot menyebut penanggung jawab yang belum mengirim foto beserta kodenya (`#booth`, `#listrik`, …). Berhenti sendiri kalau semua sudah lapor. Foto progres boleh dikirim dengan kode yang sama.
+- **Pembantu**: penanggung jawab pekerjaan ringan (cek barang tiba) setelah selesai membantu **rakit booth**. Di jobdesk tertulis 🤝 *Dibantu: Bima*, dan pembantu ikut mendapat poin saat PIC menilai booth.
+- Jobdesk loading in dibuat bot sebagai **DRAF** (H-2 jam 10.00) dan hanya dikirim ke PIC & owner lewat chat pribadi. PIC cukup membalas **angka** (1 kirim ke grup · 2 ubah, bot tanya bagian lalu orangnya satu per satu · 3 acak ulang · 0 nanti). Cara ketik tetap bisa: `#jobdesk ganti display Imam, Veri` (bagian: tiba, booth, listrik, display, gudang), lihat `#jobdesk`, lalu `#jobdesk kirim` untuk mengumumkan ke grup. Dari chat pribadi tulis kode event: `#jobdesk TGL26-11 ganti display Imam`.
+- Belum dikirim sampai H-1 jam 10.00 -> bot mengumumkan sendiri. Setelah terkirim pembagian **tetap per event** (tidak diacak lagi); perubahan satu bagian tetap boleh (diumumkan sebagai pembaruan). Bagi ulang total: `#jobdesk ulang paksa`. Tersimpan di tab **Jobdesk**.
+- **Penilaian oleh PIC**: setiap ada foto laporan pekerjaan jobdesk, bot bertanya ke PIC lewat **chat pribadi** (kalau nomornya belum dikenal: di grup pengeluaran): setelah dicek di lokasi, sesuai atau tidak dan poinnya berapa. PIC membalas `sesuai 10` / `kurang 6 kabel berantakan` / `tidak 0 booth belum dirakit`. Poin masuk **Poin KPI** setiap penanggung jawab pekerjaan itu (dan kolom *Penilaian PIC* di tab Laporan Foto). Satu pekerjaan dinilai sekali; kalau beberapa menunggu, ditanyakan bergiliran. Salah: `#poinbatal K....`.
+
+## #bantu: membantu pekerjaan owner (poin tambahan)
+
+- Karyawan yang membantu pekerjaan owner di luar jobdesk-nya mengirim di grup tim: `#bantu angkat galon & beli es batu untuk pak george` (boleh dengan foto). Beberapa orang: `#bantu Adit dan Veri angkat freezer` — semua nama tim yang disebut ikut tercatat.
+- **Poin sama untuk setiap bantuan** (bawaan 5, ubah di tab Pengaturan kunci `poin_bantu`), langsung masuk **Poin KPI** semua yang membantu (alasan: *Bantu owner: ...*). Bot hanya berterima kasih dan memberi tahu ada tambahan poin, **tanpa menyebut angkanya**. Owner tidak ditanya.
+
+## Loading out (bongkar booth & kirim barang)
+
+Dimulai **setelah closing hari terakhir** (setelah ⏹ Tutup kasir; cadangan 23.30). Bot sendiri yang membagi tugas, mengumumkannya, mengingatkan, dan melaporkan ke owner. Barang langsung dikirim ke **event berikutnya**.
+
+**Pembagian tugas per bagian kerja** (tiap bagian punya **penanggung jawab/PJ** = nama pertama; kelebihan orang membantu bagian berat; bagian ringan ikut PJ bagian terkait). PIC & owner tidak dibagi, PIC mengecek di lokasi:
+
+| Bagian | Isi pekerjaan | Foto laporan |
+|---|---|---|
+| 🔧 Bongkar bawah | etalase, meja, kompor, lepas regulator gas, banner | `#bongkarbawah` |
+| 💡 Bongkar atas | lampu gantung, LED, bendera, hexos, kabel atas & bawah | `#bongkaratas` |
+| 🧽 Cuci | cuci & keringkan alat masak/perlengkapan, area booth bersih | `#cuci` |
+| 🦪 Bahan baku | hitung sisa fisik (oyster, mozzarella, garlic, saus keju, topping, nampan), foto, **`#sisa ...`**, kemas bahan dingin | `#stokakhir` |
+| 📦 Packing & koli | koli kering + koli bahan baku/dingin, label | `#koli kering 23 dingin 4` |
+| 🧰 Data alat *(ikut PJ cuci)* | jumlah & kondisi tiap alat | `#alat` |
+| 🚚 Muat & kirim *(ikut PJ koli)* | sopir/ekspedisi, no. kendaraan, jam berangkat, tujuan | `#muat` |
+
+- **Otomatis:** setelah closing hari terakhir bot mengumumkan pembagian di grup tim, dan mengirim chat pribadi ke tiap PJ. Lalu **tiap 2 jam** bot menyebut bagian yang belum lapor beserta PJ-nya (sampai 18 jam). Begitu semua bagian lapor, **owner dan grup pengeluaran** menerima ringkasan.
+- `#jobdeskout` lihat pembagian · `#jobdeskout ulang` (owner/PIC) bagi ulang · `#loadingout` cek status (lengkap dengan PJ).
+- **Koli vs kiriman awal:** laporan `#koli kering 22 dingin 4` dibandingkan angka kiriman awal (tab Pengiriman, mis. 23 kering + 4 dingin). Kalau berbeda, bot menandai ⚠️ dan meneruskannya ke grup pengeluaran.
+- **Data alat:** `#alat` + foto, satu alat per baris: `Kompor = 4 baik, 1 rusak` · `Regulator gas = 4 baik` · `Lampu gantung = 5 baik 1 hilang`. Tersimpan di tab **Alat Event**; kirim ulang alat yang sama = menggantikan. Alat **rusak/hilang** otomatis dilaporkan ke grup pengeluaran.
+- **Sisa bahan baku:** `#sisa mozzarella 12 pack, bumbu garlic 5 pack, saus keju 3 kg, topping cumi 3 kantong`. Dipakai untuk menghitung biaya bahan di `#rekap`; tanpa `#sisa`, semua bahan dianggap habis terpakai.
+- **Tanggung jawab:** koli kurang, alat rusak/hilang, atau bahan tidak cocok ditanggung PJ bagian itu; owner memutuskan dengan `#denda Nama 100rb alasan` (dipotong dari gaji pokok). PJ yang tidak mengirim foto laporan kena **−2 KPI** per laporan; pembantu tidak.
+
+## Arsip event (pembersihan 1 minggu setelah selesai)
+
+Supaya bot dan sheet tetap ringan, **7 hari setelah event selesai** data kerja yang besar dibersihkan. **Pembukuan dan KPI tidak pernah dihapus.** Foto WhatsApp memang tidak disimpan di sistem (hanya kodenya); foto struk kasir di Drive sudah otomatis dipindahkan ke Sampah 7 hari setelah event.
+
+**Yang tidak pernah dihapus:** pembukuan **per event dan per bulan** (Event, Tim Event, Omzet, Transaksi, Bahan Event, harga, tab rekap: Rekap Event, Gaji per Event, Penggantian Uang) dan **KPI karyawan** (hasil akhir di tab Arsip KPI, plus Poin KPI dan Denda), serta data induk (Karyawan, Pengaturan).
+**Dibersihkan** (hanya baris milik event itu, setelah disalin ke file event di Drive): struk & pesanan kasir, laporan foto, tugas harian, stok harian, sidak stok, catatan harian, data alat, pembagian jobdesk, absensi, nilai harian PIC, nilai KPI, jadwal absen, ringkasan sesi kasir, komplain, bahan rusak, dan data pengiriman.
+
+**Cara kerja (aman, bertahap):**
+1. Bot memberi tahu owner 7 hari setelah event selesai (hanya event dengan sistem baru, mulai 14 Nov).
+2. **`#arsip`** = daftar event & statusnya · **`#arsip KODE`** = pratinjau (berapa baris dibersihkan, apa yang tetap) · **`#arsip KODE ya`** = jalankan. Hanya owner.
+3. Saat dijalankan: (a) hasil akhir KPI tiap orang **dibekukan permanen** di tab **Arsip KPI** (rapor, gaji, dan rekap bulanan memakai angka ini); (b) baris yang akan dibuang **disalin** ke tab "Arsip ..." di **file event di Drive**; (c) jumlah baris salinan **dicek sama** dengan aslinya; (d) baru dihapus dari sheet utama dan dicatat di tab **Arsip Event**. Kalau salah satu langkah gagal, **tidak ada data yang dihapus**.
+4. Syarat: event sudah lewat 7 hari, punya file event di Drive, dan semua anggota tim sudah punya skor akhir (kalau belum: `#arsip KODE ya paksa`). **Setelah dibekukan, nilai KPI baru untuk event itu tidak ikut.**
+5. Potongan denda telat absen ikut dibekukan di KPI, jadi `#gajian` event yang sudah diarsipkan tetap benar. Tombol **📊 Riwayat omzet** di halaman kasir untuk event yang sudah diarsipkan menjadi kosong (ringkasan sesinya ikut dibersihkan); salinannya ada di file arsip event di Drive.
+
+## Info loading in
+
+- Bersama jobdesk (H-2), kalau belum diisi bot bertanya di grup tim: **kapan & jam berapa** loading in dan **lokasi pintu/area loading in**. Siapa pun boleh menjawab, contoh `loading in 13 nov jam 22.00` lalu `pintu 3 belakang hall B`.
+- Pertanyaan di grup seperti *"loading in jam berapa?"* / *"pintu loading di mana?"* dijawab bot dari data tersimpan.
+- `#loading` = lihat info · `#loading 13 nov 22.00 pintu 3 belakang` (owner/PIC) = isi/ubah. Tersimpan di tab Event (kolom Loading In & Lokasi).
+- Kalau jam loading in diketahui, pengingat foto jobdesk dikirim **tiap 2 jam setelah loading in mulai** sampai booth buka.
+
+## Buku kontak lokasi
+
+- Simpan nomor vendor per kota: `simpan nomor tukang es batu Pak Joko 0812-3456-7890` atau `#kontak katering Bu Sri 0813...` (kota = kota event grup itu; bisa ditulis `di bali`). Tidak dicatat sebagai pengeluaran.
+- Jenis dikenali: es batu, katering, gas, galon/air, supplier oyster/seafood, tukang listrik, laundry, sewa freezer/alat, transport/truk, penginapan, percetakan, pasar/bahan, IO/pengelola.
+- Cari: `#kontak` (kota event ini) · `#kontak bali` · `#kontak es batu` · atau tanya *"nomor es batu semarang?"*. Di chat pribadi: `#kontak` menampilkan semua kota. Tersimpan di tab **Kontak Lokasi**.
+
+## Laporan foto: loading in, harian, loading out (grup tim)
+
+Kirim foto di grup tim dengan caption **tag** (contoh `#booth`) atau kalimat biasa ("booth sudah siap", "barang sudah tiba"). Beberapa foto sekaligus dihitung satu laporan: foto tanpa caption dari orang yang sama dalam 5 menit ikut masuk. Bot membalas siapa, jam berapa, dan apa yang **belum**. Semua tercatat di tab **Laporan Foto**.
+
+| Tahap | Laporan |
+|---|---|
+| **Loading in** (hari pertama) | `#tiba` armada, muatan, semua koli · `#booth` booth selesai dirakit · `#gudang` freezer, label koli, kondisi bahan · data pengiriman (`#kirim`, otomatis ✅) · `#acc` oleh PIC/owner |
+| **Harian – sebelum buka** | `#posisi` (teks: Kasir/Grill/Plating/Getok) · `#grill` · `#cooler` · `#nampan` · `#followers` (screenshot IG) |
+| **Harian – selama buka** | `#temuan` serpihan/bau/busuk/alat rusak/komplain → langsung diteruskan ke grup pengeluaran |
+| **Harian – setelah tutup** | `#omzet` (otomatis ✅) · `#followers` tutup · `#bersih` · `#pulang` (tiap orang, teks) |
+| **Loading out** (hari terakhir) | `#stokakhir` · `#bongkar` · `#koli` · `#muat` (sopir, nomor kendaraan, jam, tujuan) · `#terima` di tujuan |
+
+**Cek checklist:** `#loadingin` · `#harian` · `#loadingout` (bisa ditambah tanggal, contoh `#harian 2026-11-03`).
+
+**Yang dicek otomatis oleh bot:**
+- Foto terusan (forward) dan foto yang sama persis dengan foto laporan sebelumnya ditolak.
+- Screenshot Instagram dibaca angkanya (OCR); saat tutup bot menulis kenaikan followers hari itu. Kalau tidak terbaca, tulis angkanya di caption: `#followers 12.540`.
+- Saat booth buka, bot menyebut laporan sebelum buka yang belum masuk (dan loading in yang belum lengkap di hari pertama).
+
+**Yang belum bisa:** bot tidak bisa menilai *isi* foto (booth rapi, area bersih, jumlah nampan). Itu tetap dicek PIC/owner dari foto di grup.
+
+## Absensi foto & denda telat (grup tim)
+
+Syarat: **Jam Buka** event terisi (setup event, atau owner `#ubah jam buka 11.00`). Jam dihitung di zona kota event (WIB / WITA untuk Bali, Lombok, Kalimantan Selatan/Timur, Sulawesi / WIT untuk Papua, Maluku).
+
+1. **2 jam sebelum buka** bot mengumumkan di grup tim: jam batas absen, **gaya foto hari ini** (contoh ✌️ peace, 👍 jempol, 🫶 love, 🫡 hormat; berganti setiap hari), format absen, dan aturan denda.
+2. Karyawan wajib datang **1 jam sebelum buka**: selfie di booth dengan gaya hari itu, kirim **langsung dari kamera** dengan caption `absen` atau `#absen`. Kalau fotonya terkirim tanpa caption, ketik `absen` / `#absen` paling lambat 10 menit setelahnya (jam foto yang dipakai).
+   - **Foto wajah tanpa caption jam 06.00–12.00** juga otomatis dicatat sebagai absen: bot mendeteksi ada wajah di foto (selfie) dari anggota tim yang belum absen hari itu. Bot hanya tahu *ada wajah*, bukan *wajah siapa* — namanya dari nomor WhatsApp pengirim.
+   - Foto dengan caption `absen` tapi wajahnya tidak terlihat tetap dicatat, diberi tanda "wajah tidak terdeteksi, cek foto" di kolom **Catatan** tab Absensi. Hasil deteksi wajah **tidak diumumkan di grup** (hanya terlihat di sheet).
+3. Bot mencatat jam foto di tab **Absensi** dan membalas tepat waktu / telat + dendanya.
+4. Saat batas absen lewat, bot menyebut siapa yang belum absen.
+
+**Denda telat (per hari):**
+- 1–15 menit: Rp 10.000
+- 16–30 menit: Rp 25.000
+- lebih dari 30 menit: Rp 50.000 per jam, kelipatan (31–60 mnt = 50rb, 61–120 mnt = 100rb, 121–180 mnt = 150rb, dst.)
+
+**Supaya foto valid:**
+- Foto terusan (forward) dan foto yang sama persis dengan foto absen sebelumnya ditolak otomatis. Foto sebelum gaya diumumkan juga ditolak.
+- Bot **tidak bisa melihat gaya tangan di foto**, jadi gayanya dicek owner/PIC. Reply foto absen dengan `tolak` (karyawan harus kirim ulang; denda dihitung dari jam foto ulang) atau `bebas denda` (denda jadi 0, misalnya izin).
+- Nomor karyawan harus sudah dikenal (lihat *Anggota grup tim*); kalau belum, bot meminta `saya [nama]` dulu.
+
+**Izin & dispensasi (owner saja, di grup mana pun atau chat pribadi dengan bot):**
+- `#izin Dena` → hari ini Dena bebas denda telat.
+- `#izin Dena besok datang 10.00 karena pulang jam 3 pagi` → dispensasi: boleh datang s/d 10.00 tanpa denda; lewat dari itu denda dihitung dari 10.00.
+- `#izin Dena, Tiar sabtu` · `#izin Dena 14 Nov` · `#izin batal Dena besok`.
+- Tulis alasan setelah kata **karena**, supaya "jam 3 pagi" di alasan tidak dibaca sebagai jam datang.
+- Kalau izin diberikan setelah karyawan absen, dendanya langsung dihitung ulang.
+- Di chat pribadi, kalau ada lebih dari satu event berjalan, tulis kodenya: `#izin SMG26-11 Dena besok 10.00`.
+
+**Jadwal khusus per hari (owner):**
+- `#jadwal sabtu buka 08.00 karena hari pahlawan` → hari itu buka 08.00, karyawan datang 07.00, gaya foto diumumkan 06.00.
+- `#jadwal sabtu datang 07.00` → hanya jam datang yang diubah (jam buka tetap).
+- `#jadwal batal sabtu` → kembali normal · `#jadwal` → daftar jadwal khusus & izin yang akan datang.
+- Semua tersimpan di tab **Jadwal Absen**.
+
+**Perintah:** `#absen` = siapa sudah/belum absen hari ini · `#absen denda` = rekap denda event · `#absen Joko 10.40` = absen manual oleh owner/PIC (misalnya HP karyawan mati). Denda juga bisa diubah langsung di tab Absensi.
+
+## Pengiriman & stok awal event
+
+Setelah grup tim didaftarkan, bot menanyakan ini di **grup pengeluaran** (owner + PIC), siapa pun di grup itu boleh menjawab; pesan pengeluaran & obrolan biasa tetap diproses seperti biasa:
+1. Penanggung jawab pengiriman ke lokasi
+2. Dikirim pakai apa: 1 = Truk, 2 = Kereta (transit), 3 = lainnya
+3. Jumlah koli bahan kering
+4. Isi bahan kering (daftar barang, satu per baris; 0 koli = dilewati)
+5. Jumlah koli bahan baku (0 = pertanyaan 6 dilewati)
+6. Isi bahan baku, contoh `keju 5 balok, bumbu garlic 3 pack, oyster 100 kg`
+
+**Daftar barang bernomor dari karyawan** (contoh `CPS Barang Dry Semarang` lalu `1. Freezer`, `2. Box L`, …) dikenali otomatis sebagai isi bahan kering, baik dikirim di grup tim maupun grup pengeluaran, sebelum atau saat pertanyaan berjalan. Kalau jumlah koli belum dijawab, jumlah baris daftar dipakai sebagai jumlah koli. Daftar yang dikirim sebelum ditanya disimpan, lalu bot menawarkannya di pertanyaan 4 (balas `ya`). Daftar dengan nominal (pengeluaran) tetap dicatat sebagai pengeluaran.
+
+Bot menampilkan ringkasan; balas `ya` untuk menyimpan, angka 1–6 untuk mengubah, `batal` untuk berhenti. Mulai ulang kapan saja dengan `#kirim` (atau `#stokawal`).
+
+- Bahan baku tercatat sebagai **keluar dari gudang** → masuk pembukuan event sebagai *Bahan baku (dari gudang)* dengan harga di tab **Harga Bahan** (contoh keju 5 × harga per balok/pack).
+- Di grup tim hanya jumlah barang; **nilai rupiah dikirim ke grup pengeluaran** (owner + PIC).
+- Bahan yang belum ada di tab Harga Bahan (misalnya packaging) tetap dicatat di tab **Pengiriman**, tapi belum dihitung nilainya.
+- Akhir event: laporkan sisa (`sisa keju 2 balok`); sisa mengurangi biaya bahan baku.
+
+## Antrian pesanan & QR komplain
+
+Halaman web (Google Apps Script, lihat `apps-script/README.md`) yang menulis ke tab **Antrian** dan **Komplain**.
+
+- **Kasir antrian (setiap hari):** setiap hari event, 2 jam sebelum booth buka (ikut jadwal khusus hari itu), bot bertanya di grup tim "Siapa yang pegang kasir antrian hari ini?". Jawaban **saya** yang pertama menggantikan kasir kemarin; kalau ganti kasir di tengah hari, kasir pengganti juga membalas **saya** (ditambahkan). Kasir lalu mengirim `#kasir` lewat chat pribadi ke bot dan mendapat link ber-PIN (PIN tidak pernah dikirim ke grup). `#tanyakasir` (owner/PIC) untuk bertanya ulang.
+- **▶ Mulai kasir / ⏹ Tutup kasir:** kasir menekan *Mulai kasir* (isi nama kasir) sebelum melayani; tanpa itu struk tidak bisa difoto. *Ganti kasir* untuk pergantian di tengah hari. *Tutup kasir* menampilkan ringkasan (struk dilayani, diambil, batal, rata-rata tunggu, bintang per kasir, ulasan bintang rendah) dan bot mengirimnya ke WhatsApp owner. Tab **Sesi Kasir**.
+- **Nomor antrian mulai dari 1 setiap kali kasir dibuka** (▶ Mulai kasir), jadi tidak bercampur dengan sesi/hari sebelumnya. Dalam satu sesi nomor tetap berlanjut walau lewat tengah malam. Pesanan sesi lama yang belum diambil tetap tampil dengan tanda "(sesi lama)".
+- **Membatalkan struk hanya oleh PIC.** Tombol *🔒 Batalkan (PIC)* meminta **PIN PIC** (Pengaturan `pin_pic`, terpisah dari PIN kasir) setiap kali ditekan; PIN-nya tidak disimpan di HP. Kasir senior dan DW tidak diberi PIN ini. Ganti PIN kapan saja dengan mengubah nilainya di tab Pengaturan.
+- **💰 Omzet dari struk:** total belanja tiap pesanan dibaca otomatis dari foto struk (baris *Total / Grand Total / Tagihan*). Kalau tidak terbaca, kasir mengisi manual di *QR / detail → Total belanja*, atau menekan **📷 Bukti trf** untuk memotret bukti transfer / QRIS pelanggan: nominalnya dibaca dan dipakai sebagai total pesanan itu. Omzet sesi ini tampil langsung di halaman kasir dan di ringkasan saat ⏹ Tutup kasir (disimpan di tab Antrian kolom *Total Belanja* & Sesi Kasir kolom *Omzet dari Struk*). Satu pesanan = satu total (tidak dihitung dobel kalau ada struk dan bukti trf). Format yang terbaca: struk mesin EDC/cashUP, layar bukti bayar QRIS / OVO / BCA, dan struk berbaris *Total*. Nota tulisan tangan tidak terbaca, jadi kasir mengisi manual. Angka di bawah Rp 10.000 diabaikan. Untuk mengisi total pesanan lama dari teks struk yang sudah tersimpan, jalankan fungsi `HITUNG_ULANG_TOTAL` sekali dari editor Apps Script.
+- **📊 Riwayat omzet** (tombol di halaman kasir): daftar tiap hari event dari hari pertama sampai sekarang: jumlah struk, **omzet hari itu**, **akumulasi berjalan**, rata-rata tunggu, jumlah struk yang belum ada total, dan **laporan `#omzet` tim** sebagai pembanding. Di atas ada **total omzet event**, jumlah hari, dan rata-rata per hari. Beberapa sesi kasir di hari yang sama digabung. Hari yang masih berjalan ditandai "(berjalan)". Angkanya dihitung ulang tiap dibuka, jadi total struk yang diperbaiki kasir ikut terhitung.
+- Ringkasan tutup kasir ke WhatsApp owner memuat omzet dari struk dan **membandingkannya dengan laporan `#omzet` tim** hari itu (selisih lebih dari Rp 1.000 ditandai ⚠️).
+- **⭐ Bintang pelayanan:** setelah pesanan siap, pelanggan bisa memberi 1–5 bintang + ulasan untuk kasir (seperti aplikasi ojek online). Tersimpan di tab Antrian (kolom Kasir, Bintang, Ulasan).
+- **Animasi koki** di kiri & kanan nomor antrian: menunggu (terima kasih & menangkap tiram di laut), dibakar (menabur keju sambil joget di pemanggang), siap (menjaga makananmu dari kejaran anjing).
+- **Beberapa HP sekaligus:** link kasir boleh dibuka di 2 HP atau lebih. Datanya sama (tersimpan di sheet, diperbarui tiap 4 detik, ada tulisan "Tersinkron jam ...") dan semua HP bisa memberi perintah. Tombol dari tampilan yang belum diperbarui ditolak, misalnya "Panggil ulang" untuk pesanan yang sudah ditandai diambil di HP lain.
+- `#kasir`: minta link kasir lagi. Boleh owner, PIC, atau kasir antrian yang ditunjuk (di grup event atau chat pribadi ke bot).
+- `#kasirnya Tiara` (owner, di grup event): tunjuk pemegang halaman kasir event itu tanpa mengubah peran/gajinya. Link otomatis dikirim ke chat pribadinya di hari pertama, 2 jam sebelum buka.
+- `#qr` (owner): link kasir & link komplain (cetak jadi QR di depan booth).
+- Di kasir: **foto struk** → nomor antrian & QR muncul, lalu pelanggan scan → **foto & mulai bakar** → **🔔 panggil** (HP pelanggan berbunyi/bergetar).
+- Komplain pelanggan diteruskan ke WhatsApp owner dan mengurangi KPI kelompok −2. Kalau tidak valid, ubah Status menjadi BATAL di tab Komplain.
+- Pengaturan: `url_antrian` (link web app) dan `pin_kasir` (sama dengan PIN di Apps Script).
+
+## Stok bahan baku closing (setiap hari)
+
+- **15 menit sebelum jam tutup** (jam tutup 22.00 → **21.45**), bot mengirim **format stok closing** ke grup tim, supaya tim sempat membereskan yang sudah tidak dipakai dan menghitung lebih dulu. Setelah kasir benar-benar **⏹ Tutup kasir** (saat pembeli sudah habis, jamnya tidak tentu), kalau stok belum diisi bot menagih sekali lagi. Kalau hari itu kasir tidak dipakai: tagihan cadangan jam tutup + 1,5 jam (**23.30**); kasir lupa ditutup: **01.00**.
+- Jam tutup per event: kolom **Jam Tutup** di tab Event, atau owner `#ubah jam tutup 23.00`. Kosong = **22.00**.
+- **Wajib pakai foto bukti**: foto stoknya, lalu kirim foto dengan caption `#stok ...`. Tanpa foto ditolak.
+- Dibagi per bagian & **lokasi**:
+  - 🦪 **Tim getok** – oyster sisa di **cooler**:
+    ```
+    #stok
+    [Cooler]
+    Oyster = 6 kg
+    ```
+  - 🍽️ **Plating & kasir** – bahan baku sisa di **gudang** dan di **booth**, plus nampan di freezer:
+    ```
+    #stok
+    [Gudang]
+    Mozzarella = 10 pack
+    [Booth]
+    Mozzarella = 4 pack
+    Nampan Garlic = 3 nampan
+    ```
+  - Lokasi juga boleh ditulis di baris: `mozzarella 4 pack booth`. Tanpa lokasi: oyster = Cooler, lainnya = Booth.
+- **Penanggung jawab bahan** (tercatat di kolom *Penanggung Jawab* tab Stok Harian, dari tugas harian hari itu): **oyster = tim getok**, **bahan lain & nampan = plating + kasir**. Merekalah yang ditanya minus poin / denda saat sidak, dan yang menanggung ganti rugi kalau bahan rusak.
+- Bot menghitung **berkurang berapa**: stok closing kemarin (hari pertama: stok awal `#keluar`) + restock hari itu − stok closing sekarang. Kalau stok malah naik, bot memberi peringatan (mungkin restock belum dicatat atau salah hitung).
+- Boleh dikirim sebagian; kirim ulang bahan + lokasi yang sama di hari yang sama = koreksi. Berkurang dihitung dari **total semua lokasi**. Closing sebelum jam 05.00 dihitung closing hari sebelumnya.
+- **Nampan siap bakar di freezer** (hasil tim plating) ikut dihitung, 3 jenis: **Nampan Garlic** (oyster + bumbu garlic), **Nampan Garlic Mozza** (garlic + keju mozzarella), **Nampan Garlic Mozza Topping** (garlic + mozzarella + topping). Bot menjumlahkan semua jenis dan memberi peringatan kalau **kurang dari 7 nampan** (ubah di Pengaturan kunci `min_nampan`). Nampan juga ikut `#sidak`.
+- Hanya jumlah, **tanpa harga**. Tersimpan di tab **Stok Harian**. Di hari terakhir, sisa tetap dicatat owner/PIC sebagai `#sisa` di grup pengeluaran.
+
+
+### Bahan baku rusak / hilang (`#rusak`)
+
+- Siapa saja di grup tim, **wajib dengan foto**: `#rusak oyster 2 kg, busuk karena es cooler habis` · `#rusak mozzarella 2 pack gudang, kemasan bocor`.
+- Bot mencatat di tab **Bahan Rusak** dengan **penanggung jawab** bahan hari itu (oyster → getok, lainnya → plating + kasir) dan meneruskan ke **grup pengeluaran**.
+- **Owner** memutuskan (balas pesan bot di grup pengeluaran, atau ketik dengan kodenya):
+  - `ganti rugi 150rb` → dibagi rata ke penanggung jawab
+  - `ganti rugi 150rb Bima` → hanya Bima
+  - `tidak` → tanpa ganti rugi
+  - atau `#gantirugi RS3 150rb [Nama]` / `tidak RS3`
+- Ganti rugi masuk tab **Denda** (jenis *Ganti rugi bahan rusak*) dan **dipotong dari gaji pokok di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
+
+### Denda kelalaian langsung (owner)
+
+- Kalau ada kelalaian yang tidak lewat laporan (misalnya oyster gosong karena pemanggang lalai), owner ketik di grup tim atau grup pengeluaran, boleh dengan **foto bukti**: `#denda imam 30rb oyster gosong` (atau `#gantirugi imam 30rb ...`).
+- Beberapa orang: `#denda imam alam 60rb ...` (dibagi rata) atau `#denda imam alam 30rb masing-masing`.
+- Masuk tab **Denda** (jenis *Denda kelalaian*) dan **dipotong dari gaji pokok di `#gajian`**. Batalkan dengan mengubah Status jadi BATAL.
+
+### Sidak stok dadakan (PIC / owner)
+
+- Lewat **chat pribadi ke bot** (`#sidak` atau `#sidak SMR26-11`) atau di **grup pengeluaran**. Di grup tim ditolak supaya tetap dadakan.
+- `#sidak` saja: bot mengirim format. Isi hitungan stok saat itu, lalu kirim. Bot membandingkan dengan **laporan closing terakhir + restock setelahnya**, menandai ✅ sesuai / ❌ selisih per bahan.
+- Kalau ada selisih, bot bertanya minus poin untuk **penanggung jawab bahan**: balas `minus 5` (untuk penanggung jawab), `minus 5 Bima` (orang tertentu), atau `tidak`. Poin masuk **Poin KPI**; hasil sidak tersimpan di tab **Sidak Stok**. Tim tidak diberi tahu.
+- Paling tepat dilakukan **sebelum booth buka** atau **setelah tim melapor stok closing** (saat jualan, stok memang sedang berkurang).
+
+### Foto struk & foto dibakar di Drive
+
+- Tersimpan di folder Drive **CPS ANTRIAN (foto struk & pesanan)** (akun owner), dan di tab Antrian (kolom Foto Struk / Foto Dibakar).
+- **Dihapus otomatis 7 hari setelah event selesai** (dipindahkan ke Sampah Drive, dicek tiap hari jam 03.00). Data pesanan di sheet tetap; kolom fotonya berisi "DIHAPUS tanggal".
+- Pemicu harian dipasang dengan menjalankan **MULAI_PASANG** sekali dari editor Apps Script (setelah menempel kode baru).
+- **💾 Cadangan harian otomatis:** tiap hari jam 02.00 seluruh spreadsheet PEMBUKUAN disalin ke folder **CADANGAN PEMBUKUAN** di Google Drive (nama `Cadangan Pembukuan 2026-11-22`). **Disimpan 14 hari terakhir**; salinan yang lebih lama otomatis dipindahkan ke Sampah. Dipasang oleh **MULAI_PASANG** (atau `PASANG_CADANGAN`). Mau cadangan sekarang juga: pilih fungsi `cadanganHarian` di editor Apps Script lalu Run. Memulihkan: buka salinan dengan tanggal yang diinginkan (atau File → Riwayat versi di sheet utama).
+
+## Pembagian tugas harian (jam 08.00)
+
+- Setiap hari event jam 08.00 bot membagi tugas di grup tim: **Kasir** (dari jawaban "saya" pertanyaan kasir), **Pemanggang** (tetap, `#pemanggang Veri` oleh owner/PIC), **Getok** dan **Plating** (dibagi bot di hari pertama, lalu *tetap sampai event selesai*, tidak diputar tiap hari; kalau kasir berganti, kasir baru bertukar bagian dengan kasir lama; hanya PIC/owner yang boleh menukar dengan `#tukar`).
+  - 3 orang: kasir + plating · pemanggang · getok 1 — 4 orang: kasir + plating · pemanggang · getok 2 — 5 orang: plating sendiri · getok 2 — 6+: tambahan ke getok.
+- Tugas & foto wajib: Getok jam 09.30 pesan es batu → cooler box (`#cooler`, kosong pun difoto), getok sampai plating bilang stop · Kasir dekorasi depan, kulkas menyala, cucian kemarin bersih (`#depan`), followers (`#followers`) · Pemanggang pajangan & area panggang bersih, gas kaleng penuh & jauh dari panas (`#grill`) · Plating kekurangan nampan (min 7), oyster fresh menarik, area kulkas bersih, nampan bersih & kering, wadah air buangan (`#nampan`).
+- `#tugas` lihat pembagian hari ini · `#tukar Bima Tiara` (owner/PIC) tukar bagian hari ini.
+- KPI: laporan bagian yang tidak dikirim −2 untuk yang bertugas hari itu.
+
+## KPI kelompok tambahan
+
+- **Ketepatan stok (10)**: −2 per bahan yang selisih saat sidak, sama untuk seluruh tim.
+- **Denda selisih stok** (owner, setelah sidak): `denda 200rb Bima` (yang lalai) atau `denda 200rb rata` (dibagi rata ke senior event itu). Tercatat di tab **Denda**.
+- **Kecepatan layanan**: target rata-rata tunggu (struk difoto → dipanggil) di bawah 7 menit per hari; hari yang lebih lambat −2 kelompok.
+- `#gajian`: **semua denda** (telat absen, selisih stok, ganti rugi bahan rusak) **dipotong dari gaji pokok**, bukan dari bonus (bonus bisa kosong kalau event sepi). Kalau denda melebihi gaji pokok event itu, **sisanya dibawa ke event berikutnya**.
+
+## Penilaian harian PIC (setelah tutup kasir)
+
+- Setiap hari event **setelah ⏹ Tutup kasir** (cadangan 23.30 kalau kasir tidak dipakai), bot mengirim penilaian ke **chat pribadi PIC** (nomor PIC belum dikenal: grup pengeluaran), satu per satu per orang. Pertanyaannya sesuai bagian tugas orang itu hari itu (kasir, plating, pemanggang, getok).
+- Per orang: (1) balas **nilai 1–100 + catatan** (catatan rahasia untuk owner/PIC), contoh `80 cepat & rapi`; kategori otomatis: **Buruk 1–24 · Cukup buruk 25–49 · Sudah cukup 50–74 · Baik sekali 75–100**. (2) bot bertanya **pesan untuk karyawan itu** — dikirim langsung ke chat pribadinya (**nilai, kategori, dan catatan tidak ikut dikirim** — karyawan hanya menerima pesannya); balas `tidak` kalau tidak ada. `lewati` / `batal`.
+- Mulai manual: `#nilaiharian` (chat pribadi / grup pengeluaran). Tersimpan di tab **Nilai Harian**.
+- KPI **Kinerja (24)** = rata-rata nilai harian ÷ 100 × 24; kasir digabung 50:50 dengan bintang pelanggan (minimal 5 penilaian). Tanpa nilai harian, dipakai nilai PIC akhir event.
+- **Otomatis hanya hari ini.** Hari yang terlewat (PIC belum menjawab, kasir lupa ⏹ Tutup kasir, bot mati) **tidak** ditanyakan otomatis supaya malam hari tetap fokus. Mau ikut otomatis: isi Pengaturan `nilai_susulan_hari` (misalnya `1` = kemarin, `6` = sampai 6 hari ke belakang).
+- Manual: `#nilaiharian` (hari ini) · `#nilaiharian kemarin` · `#nilaiharian 2 hari` · **`#nilaiharian semua`** (semua hari yang belum dinilai, lalu hari ini).
+
+## Kejadian, barang perlu dibeli, PR (catatan harian)
+
+- Siapa saja di grup tim / pengeluaran:
+  - `#kejadian kompor 2 bocor, sudah pakai cadangan` — kejadian hari ini (diteruskan ke grup pengeluaran)
+  - `#beli gas kaleng 10` (boleh beberapa baris, satu barang per baris) — tampil setiap pagi sampai `#sudahbeli B1`
+  - `#pr evaluasi antrian sore terlalu lama` — PR / evaluasi
+- PIC ditanya **"ada kejadian atau PR hari ini?"** di akhir penilaian harian (dibagikan ke tim besok pagi; balas *tidak* kalau tidak ada).
+- Pesan **tugas jam 08.00** menampilkan **🛒 Perlu dibeli** (yang belum dibeli) dan **📌 Kejadian kemarin & PR**. Tab **Catatan Harian**. Hanya teks, tanpa harga.
+- Kejadian dengan foto (oyster bau, alat rusak, komplain) tetap bisa lewat `#temuan` + foto.
+
+- **PIC tidak perlu absen** (datang maupun `#pulang`): tidak diingatkan, tidak didenda, tidak tercantum "belum absen". Kalau PIC mengirim foto absen, bot hanya membalas bahwa PIC tidak perlu absen.
+
+## Bot aktif menyuruh & menagih (setiap hari event)
+
+Owner/PIC tinggal memutuskan & menilai; bot yang menyuruh dan menagih lewat chat pribadi ke orangnya + ringkasan di grup tim:
+- **09.30** (atau 1 jam sebelum buka kalau lebih awal): Getok — pesan es batu, tuang ke cooler, kirim `#cooler`.
+- **1 jam sebelum buka**: Kasir `#depan`, Pemanggang `#grill`, Plating `#nampan`, lengkap dengan daftar tugasnya.
+- **Saat buka**: Kasir screenshot `#followers`.
+- **10 menit setelah buka**: yang belum mengirim laporan bagiannya ditagih satu per satu.
+- **15 menit sebelum jam tutup (21.45)**: format stok closing (`#stok` + foto).
+- **Setelah ⏹ Tutup kasir** (cadangan 23.30): closing — `#followers` tutup, `#bersih`, `#stok`, `#pulang`.
+- **1 jam setelah tutup kasir** (paling cepat 23.30): yang belum `#pulang` ditagih.
+- **Kasir belum ⏹ Tutup kasir** setelah jam tutup: kasir (chat pribadi) + grup tim diingatkan **tiap 1 jam** sampai ditutup (berhenti jam 02.00). Besok paginya, kalau kasir kemarin masih terbuka, diingatkan tiap jam mulai 1,5 jam sebelum buka dan owner diberi tahu: tutup dulu, lalu ▶ Mulai kasir lagi supaya struk tidak tercampur.
+
+## Alarm bot mati (email otomatis)
+Bot menulis penanda "hidup" (`bot_hidup`, tab Pengaturan) tiap 2 menit, hanya kalau WhatsApp tersambung. Skrip kecil di Apps Script (`apps-script/alarm/Alarm.gs`, proyek **terpisah dari kasir**) dijalankan Google tiap 5 menit dan mengirim email ke Gmail pemilik kalau bot tidak ada denyut lebih dari 10 menit (jam 07.00–24.00 WIB), lalu email "hidup lagi" saat pulih.
+Pasang sekali: script.google.com > Proyek baru > tempel isi `Alarm.gs` > jalankan `PASANG_ALARM` (izinkan akses) > jalankan `UJI_EMAIL` untuk mencoba. Ubah `BATAS_MENIT` / jam aktif di bagian atas skrip kalau perlu.
+
+## Riwayat transaksi di halaman kasir (📜)
+- Tombol **📜 Riwayat transaksi** di halaman kasir menampilkan antrian yang **sudah selesai** (dan yang dibatalkan, dicoret), per tanggal, dengan nomor, jam, menu, total, kasir, dan asal total. Pilih tanggal di baris tombol; bisa mundur sampai **31 hari** (semua event).
+- **Hanya owner yang bisa mengubah:** tombol ✏️ meminta **PIN owner** setiap kali menyimpan (tidak disimpan di HP). Bisa mengubah total, menu, membatalkan, atau memulihkan transaksi yang dibatalkan. PIN owner diisi di Pengaturan `pin_owner`; kalau belum diisi, PIN PIC (`pin_pic`) dipakai. Total yang diubah owner ditandai sumber `owner`.
+- Supaya riwayatnya masih ada, `#arsip` tidak langsung menghapus tab **Antrian** dan **Sesi Kasir**: ditahan **31 hari setelah event selesai** (salinannya tetap masuk file event), lalu dibersihkan otomatis tiap hari.
+- Fitur ini ada di kode Apps Script terbaru (Code.gs). Tempel & **Deploy versi baru** di luar jam kasir dipakai.
