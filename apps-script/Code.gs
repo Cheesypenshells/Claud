@@ -1224,7 +1224,9 @@ var HTML_KASIR =
   "    r.events.forEach(function (e) { saranKasir[e.kode] = e.kasir || \"\"; });\n" +
   "    var s = el(\"event\");\n" +
   "    s.innerHTML = r.events.map(function (e) { return \"<option value=\\\"\" + e.kode + \"\\\">\" + e.kode + \" – \" + e.kota + \"</option>\"; }).join(\"\");\n" +
-  "    var ingat = ambil(\"cps_ev\") || EVLINK; if (ingat) s.value = ingat;\n" +
+  "    var ingat = EVLINK || ambil(\"cps_ev\"); if (ingat) s.value = ingat;\n" +
+  "    // Event yang diingat HP sudah tidak ada (selesai): pilih event pertama supaya pilihan tidak kosong.\n" +
+  "    if (!s.value && s.options.length) s.selectedIndex = 0;\n" +
   "    muat(); setInterval(muat, 4000);\n" +
   "  }).withFailureHandler(function (e) { el(\"salah\").textContent = e.message; hapus(\"cps_pin\"); }).kasirMasuk(p);\n" +
   "}\n" +
